@@ -8,8 +8,7 @@ import { loadGameData } from "./src/dataLoader.js";
 const refs = {
   editor: document.getElementById("editor"),
   board: document.getElementById("board"),
-  worldGround: document.getElementById("world-ground"),
-  worldMechs: document.getElementById("world-mechs"),
+  worldScene: document.getElementById("world-scene"),
   worldUi: document.getElementById("world-ui"),
   rotateLeftButton: document.getElementById("rotateLeft"),
   rotateRightButton: document.getElementById("rotateRight"),
@@ -52,6 +51,7 @@ async function init() {
         state.selection.mechId = state.turn.activeMechId;
         state.selection.action = null;
         state.ui.mode = "idle";
+        state.ui.previewPath = [];
 
         if (state.mechs.length > 0) {
           state.focus.x = state.mechs[0].x;
