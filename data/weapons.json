@@ -1,0 +1,14 @@
+[
+  {
+    "id": "rifle_01",
+    "name": "Combat Rifle",
+    "type": "direct",
+    "rangeBands": {
+      "close": 0,
+      "medium": 1,
+      "long": 3
+    },
+    "damage": 2,
+    "sigil": null
+  }
+]
