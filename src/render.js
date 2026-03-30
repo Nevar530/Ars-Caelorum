@@ -1,4 +1,4 @@
-import { GAME_CONFIG, MAP_CONFIG, RENDER_CONFIG } from "./config.js";
+import { MAP_CONFIG, RENDER_CONFIG } from "./config.js";
 import { getTile, rotateCoord, tileTypeFromElevation } from "./map.js";
 import { svgEl, makePolygon, makeText } from "./utils.js";
 
@@ -70,7 +70,7 @@ export function renderEditor(state, refs) {
       const px = RENDER_CONFIG.editorPadding + (x * cellWidth);
       const py = RENDER_CONFIG.editorPadding + (y * cellHeight);
 
-      const g = svgEl("g");
+      const group = svgEl("g");
 
       const rect = svgEl("rect");
       rect.setAttribute("x", px);
@@ -79,16 +79,8 @@ export function renderEditor(state, refs) {
       rect.setAttribute("height", cellHeight);
       rect.setAttribute("fill", editorCellColor(tile.elevation));
       rect.setAttribute("class", "editor-cell");
-
-      rect.addEventListener("click", (event) => {
-        event.preventDefault();
-        state.handlers.raiseTile?.(x, y);
-      });
-
-      rect.addEventListener("contextmenu", (event) => {
-        event.preventDefault();
-        state.handlers.lowerTile?.(x, y);
-      });
+      rect.dataset.x = String(x);
+      rect.dataset.y = String(y);
 
       const label = makeText(
         px + (cellWidth / 2),
@@ -97,9 +89,9 @@ export function renderEditor(state, refs) {
         "editor-text"
       );
 
-      g.appendChild(rect);
-      g.appendChild(label);
-      editor.appendChild(g);
+      group.appendChild(rect);
+      group.appendChild(label);
+      editor.appendChild(group);
     }
   }
 }
@@ -183,20 +175,20 @@ function drawIsoTile(item, parent) {
 
   const topFace = [top.top, top.right, top.bottom, top.left];
 
-  const g = svgEl("g");
-  g.dataset.x = String(x);
-  g.dataset.y = String(y);
+  const group = svgEl("g");
+  group.dataset.x = String(x);
+  group.dataset.y = String(y);
 
   if (elevation > 0) {
-    g.appendChild(makePolygon(leftFace, "tile-left", colors.left));
-    g.appendChild(makePolygon(rightFace, "tile-right", colors.right));
+    group.appendChild(makePolygon(leftFace, "tile-left", colors.left));
+    group.appendChild(makePolygon(rightFace, "tile-right", colors.right));
   }
 
-  g.appendChild(makePolygon(topFace, "tile-top", colors.top));
-  g.appendChild(makePolygon(topFace, "tile-outline", "none"));
+  group.appendChild(makePolygon(topFace, "tile-top", colors.top));
+  group.appendChild(makePolygon(topFace, "tile-outline", "none"));
 
   if (RENDER_CONFIG.showCoords) {
-    g.appendChild(
+    group.appendChild(
       makeText(
         screenX,
         screenY + (RENDER_CONFIG.isoTileHeight * 0.68),
@@ -206,11 +198,11 @@ function drawIsoTile(item, parent) {
     );
   }
 
-  parent.appendChild(g);
+  parent.appendChild(group);
 }
 
 function drawMech(mech, parent) {
-  const g = svgEl("g");
+  const group = svgEl("g");
 
   const shadow = svgEl("ellipse");
   shadow.setAttribute("cx", mech.screenX);
@@ -232,28 +224,30 @@ function drawMech(mech, parent) {
     "mech-label"
   );
 
-  g.appendChild(shadow);
-  g.appendChild(body);
-  g.appendChild(label);
+  group.appendChild(shadow);
+  group.appendChild(body);
+  group.appendChild(label);
 
-  parent.appendChild(g);
+  parent.appendChild(group);
 }
 
 function drawMechFootprint(mech, parent) {
   const halfW = RENDER_CONFIG.isoTileWidth / 2;
   const halfH = RENDER_CONFIG.isoTileHeight / 2;
 
-  const topX = mech.screenX;
-  const topY = mech.screenY;
-
   const footprint = [
-    { x: topX, y: topY },
-    { x: topX + halfW, y: topY + halfH },
-    { x: topX, y: topY + RENDER_CONFIG.isoTileHeight },
-    { x: topX - halfW, y: topY + halfH }
+    { x: mech.screenX, y: mech.screenY },
+    { x: mech.screenX + halfW, y: mech.screenY + halfH },
+    { x: mech.screenX, y: mech.screenY + RENDER_CONFIG.isoTileHeight },
+    { x: mech.screenX - halfW, y: mech.screenY + halfH }
   ];
 
-  const poly = makePolygon(footprint, "mech-footprint", "rgba(240,176,0,0.10)");
+  const poly = makePolygon(
+    footprint,
+    "mech-footprint",
+    "rgba(240,176,0,0.10)"
+  );
+
   parent.appendChild(poly);
 }
 
