@@ -66,12 +66,18 @@ export function canStepToTile(state, fromX, fromY, toX, toY) {
 }
 
 export function getTileMoveCost(state, fromX, fromY, toX, toY) {
-  if (!canStepToTile(state, fromX, fromY, toX, toY)) {
-    return Infinity;
-  }
+  const fromTile = getTile(state.map, fromX, fromY);
+  const toTile = getTile(state.map, toX, toY);
 
-  // Foundation version: every valid step costs 1
-  return 1;
+  if (!fromTile || !toTile) return Infinity;
+
+  const heightDiff = toTile.elevation - fromTile.elevation;
+
+  // Can't climb more than 1
+  if (heightDiff > 1) return Infinity;
+
+  // Movement cost = base 1 + elevation change
+  return 1 + Math.abs(heightDiff);
 }
 
 export function getReachableTileMap(state) {
