@@ -1,0 +1,178 @@
+:root {
+  --bg: #0f141a;
+  --panel: #18212b;
+  --panel-2: #121922;
+  --line: #314558;
+  --text: #e6edf3;
+  --muted: #9fb0bf;
+  --accent: #f0b000;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+  overflow: hidden;
+}
+
+.app {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 320px;
+  min-width: 320px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.panel-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#editor {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: block;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+button {
+  background: #22303d;
+  color: var(--text);
+  border: 1px solid #3a5268;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+button:hover {
+  background: #2a3a49;
+}
+
+.stage {
+  flex: 1;
+  overflow: hidden;
+}
+
+#board {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: radial-gradient(circle at top, #18212b 0%, #0f141a 70%);
+}
+
+.tile-top {
+  stroke: #223241;
+  stroke-width: 1;
+}
+
+.tile-left,
+.tile-right {
+  stroke: #1a2631;
+  stroke-width: 1;
+}
+
+.tile-outline {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 1;
+}
+
+.editor-cell {
+  stroke: #2b3a48;
+  stroke-width: 1;
+  cursor: pointer;
+}
+
+.editor-cell:hover {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.editor-text {
+  fill: #ffffff;
+  font-size: 11px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  font-weight: 700;
+}
+
+.iso-label {
+  fill: #d7e3ec;
+  font-size: 10px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.mech-shadow {
+  fill: rgba(0, 0, 0, 0.22);
+}
+
+.mech-body {
+  fill: #c84d4d;
+  stroke: #581d1d;
+  stroke-width: 1.5;
+}
+
+.mech-label {
+  fill: #f6f1d5;
+  font-size: 11px;
+  text-anchor: middle;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.mech-footprint {
+  fill: rgba(240, 176, 0, 0.10);
+  stroke: rgba(240, 176, 0, 0.45);
+  stroke-width: 1.5;
+}
+
+.grid-outline {
+  fill: none;
+  stroke: rgba(255,255,255,0.04);
+  stroke-width: 1;
+}
