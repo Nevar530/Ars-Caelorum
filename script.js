@@ -1,7 +1,9 @@
 import { createState } from "./src/state.js";
-import { createInitialMap, changeElevation, resetMap } from "./src/map.js";
-import { createTestMechs } from "./src/mechs.js";
+import { createInitialMap, resetMap } from "./src/map.js";
+import { instantiateTestMechs } from "./src/mechs.js";
 import { renderAll } from "./src/render.js";
+import { bindInput } from "./src/input.js";
+import { loadGameData } from "./src/dataLoader.js";
 
 const refs = {
   editor: document.getElementById("editor"),
@@ -15,58 +17,43 @@ const refs = {
   rotationLabel: document.getElementById("rotationLabel")
 };
 
-const state = createState({
-  map: createInitialMap(),
-  mechs: createTestMechs(),
-  rotation: 0
-});
+async function init() {
+  const content = await loadGameData();
 
-function render() {
-  renderAll(state, refs);
-}
-
-function handleRaiseTile(x, y) {
-  changeElevation(state.map, x, y, 1);
-  render();
-}
-
-function handleLowerTile(x, y) {
-  changeElevation(state.map, x, y, -1);
-  render();
-}
-
-function handleRotateLeft() {
-  state.rotation = (state.rotation + 3) % 4;
-  render();
-}
-
-function handleRotateRight() {
-  state.rotation = (state.rotation + 1) % 4;
-  render();
-}
-
-function handleResetMap() {
-  state.map = resetMap();
-  state.mechs = createTestMechs();
-  render();
-}
-
-function bindEvents() {
-  refs.rotateLeftButton.addEventListener("click", handleRotateLeft);
-  refs.rotateRightButton.addEventListener("click", handleRotateRight);
-  refs.resetMapButton.addEventListener("click", handleResetMap);
-
-  refs.editor.addEventListener("contextmenu", (event) => {
-    event.preventDefault();
+  const state = createState({
+    map: createInitialMap(),
+    mechs: instantiateTestMechs(content),
+    rotation: 0,
+    content
   });
 
-  state.handlers.raiseTile = handleRaiseTile;
-  state.handlers.lowerTile = handleLowerTile;
-}
+  function render() {
+    renderAll(state, refs);
+  }
 
-function init() {
-  bindEvents();
+  function actions() {
+    return {
+      render,
+      rotateLeft() {
+        state.rotation = (state.rotation + 3) % 4;
+        render();
+      },
+      rotateRight() {
+        state.rotation = (state.rotation + 1) % 4;
+        render();
+      },
+      resetMap() {
+        state.map = resetMap();
+        state.mechs = instantiateTestMechs(state.content);
+        render();
+      }
+    };
+  }
+
+  bindInput(state, refs, actions());
   render();
 }
 
-init();
+init().catch((error) => {
+  console.error("Failed to initialize Ars Caelorum:", error);
+});
