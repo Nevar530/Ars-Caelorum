@@ -36,3 +36,16 @@ export function createMechInstance(definition, overrides = {}) {
 export function getMechAt(mechs, x, y) {
   return mechs.find((mech) => mech.x === x && mech.y === y) ?? null;
 }
+
+export function getMechById(mechs, instanceId) {
+  return mechs.find((mech) => mech.instanceId === instanceId) ?? null;
+}
+
+export function moveMechTo(mechs, instanceId, x, y) {
+  const mech = getMechById(mechs, instanceId);
+  if (!mech) return false;
+
+  mech.x = x;
+  mech.y = y;
+  return true;
+}
