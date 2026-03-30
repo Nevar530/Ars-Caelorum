@@ -53,6 +53,7 @@ export function renderIso(state, refs) {
 
   if (state.ui.mode === "move") {
     renderMoveOverlay(state, worldUi);
+    renderPreviewPath(state, worldUi);
   }
 
   renderFocusTile(state, worldUi);
@@ -158,6 +159,35 @@ function renderMoveOverlay(state, parent) {
       "move-range-tile",
       "rgba(80, 180, 255, 0.18)",
       "rgba(80, 180, 255, 0.45)",
+      parent
+    );
+  }
+}
+
+function renderPreviewPath(state, parent) {
+  const path = state.ui.previewPath || [];
+  if (!path.length) return;
+
+  for (const step of path) {
+    const mapTile = getTile(state.map, step.x, step.y);
+    if (!mapTile) continue;
+
+    const rotated = rotateCoord(
+      step.x,
+      step.y,
+      MAP_CONFIG.mechWidth,
+      MAP_CONFIG.mechHeight,
+      state.rotation
+    );
+
+    const projected = isoProject(rotated.x, rotated.y, mapTile.elevation);
+
+    drawOverlayDiamond(
+      projected.x,
+      projected.y,
+      "move-path-tile",
+      "rgba(240, 176, 0, 0.18)",
+      "rgba(240, 176, 0, 0.75)",
       parent
     );
   }
