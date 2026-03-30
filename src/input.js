@@ -1,6 +1,10 @@
 import { changeElevation } from "./map.js";
 import { getMechById, moveMechTo } from "./mechs.js";
-import { clampFocusToBoard, canMoveActiveMechTo } from "./movement.js";
+import {
+  clampFocusToBoard,
+  canMoveActiveMechTo,
+  getPathToTile
+} from "./movement.js";
 
 export function bindInput(state, refs, actions) {
   bindEditorInput(state, refs, actions);
