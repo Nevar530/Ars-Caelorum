@@ -1,7 +1,6 @@
 import { MAP_CONFIG, RENDER_CONFIG } from "./config.js";
 import { getTile, rotateCoord, tileTypeFromElevation } from "./map.js";
 import { getReachableTiles } from "./movement.js";
-import { getMechById } from "./mechs.js";
 import { svgEl, makePolygon, makeText } from "./utils.js";
 
 export function renderAll(state, refs) {
@@ -159,6 +158,13 @@ function renderMoveOverlay(state, parent) {
       "move-range-tile",
       "rgba(80, 180, 255, 0.18)",
       "rgba(80, 180, 255, 0.45)",
+      parent
+    );
+
+    drawOverlayCostLabel(
+      projected.x,
+      projected.y,
+      String(tile.cost),
       parent
     );
   }
@@ -351,6 +357,24 @@ function drawOverlayDiamond(screenX, screenY, className, fill, stroke, parent) {
   poly.setAttribute("stroke", stroke);
   poly.setAttribute("stroke-width", "1.5");
   parent.appendChild(poly);
+}
+
+function drawOverlayCostLabel(screenX, screenY, text, parent) {
+  const label = makeText(
+    screenX,
+    screenY + (RENDER_CONFIG.isoTileHeight * 0.62),
+    text,
+    "move-cost-label"
+  );
+
+  label.setAttribute("fill", "#ffffff");
+  label.setAttribute("font-size", "14");
+  label.setAttribute("font-weight", "700");
+  label.setAttribute("stroke", "rgba(0,0,0,0.65)");
+  label.setAttribute("stroke-width", "3");
+  label.setAttribute("paint-order", "stroke fill");
+
+  parent.appendChild(label);
 }
 
 function tileColors(type) {
