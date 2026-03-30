@@ -31,7 +31,8 @@ export function createState({
     },
 
     ui: {
-      mode: "idle"
+      mode: "idle",
+      previewPath: []
     },
 
     hover: {
