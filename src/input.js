@@ -108,6 +108,7 @@ function handleModeKeys(key, state, actions) {
       state.ui.mode = "move";
       state.selection.action = "move";
       snapFocusToActiveMech(state);
+      state.ui.previewPath = [];
       actions.render();
       return true;
     }
@@ -129,6 +130,13 @@ function handleFocusKeys(key, state, actions) {
   const next = clampFocusToBoard(state.focus.x + dx, state.focus.y + dy);
   state.focus.x = next.x;
   state.focus.y = next.y;
+
+  if (state.ui.mode === "move") {
+    state.ui.previewPath = getPathToTile(state, state.focus.x, state.focus.y);
+  } else {
+    state.ui.previewPath = [];
+  }
+
   actions.render();
   return true;
 }
@@ -152,6 +160,7 @@ function handleConfirmCancelKeys(key, state, actions) {
 
         state.ui.mode = "idle";
         state.selection.action = null;
+        state.ui.previewPath = [];
         snapFocusToActiveMech(state);
         actions.render();
       }
@@ -166,6 +175,7 @@ function handleConfirmCancelKeys(key, state, actions) {
     if (state.ui.mode === "move") {
       state.ui.mode = "idle";
       state.selection.action = null;
+      state.ui.previewPath = [];
       snapFocusToActiveMech(state);
       actions.render();
       return true;
