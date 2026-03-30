@@ -9,14 +9,20 @@ export function renderAll(state, refs) {
 }
 
 export function renderIso(state, refs) {
-  const { worldGround, worldMechs, worldUi, rotationLabel } = refs;
+  const { worldScene, worldUi, rotationLabel } = refs;
   const { map, mechs, rotation } = state;
 
-  worldGround.innerHTML = "";
-  worldMechs.innerHTML = "";
+  worldScene.innerHTML = "";
   worldUi.innerHTML = "";
 
-  const drawList = [];
+  const sceneItems = [];
+  const reachableMap = new Map();
+
+  if (state.ui.mode === "move") {
+    for (const tile of getReachableTiles(state)) {
+      reachableMap.set(`${tile.x},${tile.y}`, tile.cost);
+    }
+  }
 
   for (let y = 0; y < MAP_CONFIG.mechHeight; y++) {
     for (let x = 0; x < MAP_CONFIG.mechWidth; x++) {
@@ -30,33 +36,60 @@ export function renderIso(state, refs) {
       );
       const projected = isoProject(rotated.x, rotated.y, tile.elevation);
 
-      drawList.push({
+      sceneItems.push({
+        kind: "tile",
         x,
         y,
         elevation: tile.elevation,
-        tile,
-        rotatedX: rotated.x,
-        rotatedY: rotated.y,
         screenX: projected.x,
         screenY: projected.y,
-        sortKey: (rotated.x + rotated.y) * 100 + tile.elevation
+        sortKey: (rotated.x + rotated.y) * 100 + tile.elevation,
+        reachableCost: reachableMap.get(`${x},${y}`) ?? null
       });
     }
   }
 
-  drawList.sort((a, b) => a.sortKey - b.sortKey);
+  for (const mech of mechs) {
+    const tile = getTile(map, mech.x, mech.y);
+    const rotated = rotateCoord(
+      mech.x,
+      mech.y,
+      MAP_CONFIG.mechWidth,
+      MAP_CONFIG.mechHeight,
+      rotation
+    );
+    const projected = isoProject(rotated.x, rotated.y, tile.elevation);
 
-  for (const item of drawList) {
-    drawIsoTile(item, worldGround);
+    sceneItems.push({
+      kind: "mech",
+      mech,
+      elevation: tile.elevation,
+      screenX: projected.x,
+      screenY: projected.y,
+      sortKey: (rotated.x + rotated.y) * 100 + tile.elevation + 60
+    });
+  }
+
+  sceneItems.sort((a, b) => a.sortKey - b.sortKey);
+
+  for (const item of sceneItems) {
+    if (item.kind === "tile") {
+      drawIsoTile(item, worldScene);
+
+      if (state.ui.mode === "move" && item.reachableCost !== null) {
+        drawSceneMoveOverlay(item, worldScene, String(item.reachableCost));
+      }
+    } else if (item.kind === "mech") {
+      const isActive = item.mech.instanceId === state.turn.activeMechId;
+      drawMech(item.mech, item.screenX, item.screenY, worldScene, isActive);
+    }
   }
 
   if (state.ui.mode === "move") {
-    renderMoveOverlay(state, worldUi);
     renderPreviewPath(state, worldUi);
   }
 
   renderFocusTile(state, worldUi);
-  renderMechs(state, refs);
 
   rotationLabel.textContent = `Rotation: ${rotation * 90}°`;
 }
@@ -103,73 +136,6 @@ export function renderEditor(state, refs) {
   }
 }
 
-function renderMechs(state, refs) {
-  const { worldMechs, worldUi } = refs;
-  const { map, mechs, rotation } = state;
-
-  const sortedMechs = mechs
-    .map((mech) => {
-      const tile = getTile(map, mech.x, mech.y);
-      const rotated = rotateCoord(
-        mech.x,
-        mech.y,
-        MAP_CONFIG.mechWidth,
-        MAP_CONFIG.mechHeight,
-        rotation
-      );
-      const projected = isoProject(rotated.x, rotated.y, tile.elevation);
-
-      return {
-        ...mech,
-        elevation: tile.elevation,
-        rotatedX: rotated.x,
-        rotatedY: rotated.y,
-        screenX: projected.x,
-        screenY: projected.y,
-        sortKey: (rotated.x + rotated.y) * 100 + tile.elevation + 50
-      };
-    })
-    .sort((a, b) => a.sortKey - b.sortKey);
-
-  for (const mech of sortedMechs) {
-    const isActive = mech.instanceId === state.turn.activeMechId;
-    drawMechFootprint(mech, worldUi, isActive);
-    drawMech(mech, worldMechs, isActive);
-  }
-}
-
-function renderMoveOverlay(state, parent) {
-  const reachableTiles = getReachableTiles(state);
-
-  for (const tile of reachableTiles) {
-    const mapTile = getTile(state.map, tile.x, tile.y);
-    const rotated = rotateCoord(
-      tile.x,
-      tile.y,
-      MAP_CONFIG.mechWidth,
-      MAP_CONFIG.mechHeight,
-      state.rotation
-    );
-    const projected = isoProject(rotated.x, rotated.y, mapTile.elevation);
-
-    drawOverlayDiamond(
-      projected.x,
-      projected.y,
-      "move-range-tile",
-      "rgba(80, 180, 255, 0.18)",
-      "rgba(80, 180, 255, 0.45)",
-      parent
-    );
-
-    drawOverlayCostLabel(
-      projected.x,
-      projected.y,
-      String(tile.cost),
-      parent
-    );
-  }
-}
-
 function renderPreviewPath(state, parent) {
   const path = state.ui.previewPath || [];
   if (!path.length) return;
@@ -192,8 +158,8 @@ function renderPreviewPath(state, parent) {
       projected.x,
       projected.y,
       "move-path-tile",
-      "rgba(240, 176, 0, 0.18)",
-      "rgba(240, 176, 0, 0.75)",
+      "rgba(240, 176, 0, 0.10)",
+      "rgba(240, 176, 0, 0.85)",
       parent
     );
   }
@@ -210,13 +176,14 @@ function renderFocusTile(state, parent) {
     MAP_CONFIG.mechHeight,
     state.rotation
   );
+
   const projected = isoProject(rotated.x, rotated.y, tile.elevation);
 
   drawOverlayDiamond(
     projected.x,
     projected.y,
     "focus-tile",
-    "rgba(240, 176, 0, 0.10)",
+    "rgba(240, 176, 0, 0.04)",
     "rgba(240, 176, 0, 0.95)",
     parent
   );
@@ -293,25 +260,52 @@ function drawIsoTile(item, parent) {
   parent.appendChild(group);
 }
 
-function drawMech(mech, parent, isActive = false) {
+function drawSceneMoveOverlay(item, parent, text) {
+  drawOverlayDiamond(
+    item.screenX,
+    item.screenY,
+    "move-range-tile",
+    "rgba(80, 180, 255, 0.10)",
+    "rgba(80, 180, 255, 0.35)",
+    parent
+  );
+
+  const label = makeText(
+    item.screenX,
+    item.screenY + (RENDER_CONFIG.isoTileHeight * 0.62),
+    text,
+    "move-cost-label"
+  );
+
+  label.setAttribute("fill", "#dceeff");
+  label.setAttribute("font-size", "13");
+  label.setAttribute("font-weight", "700");
+  label.setAttribute("stroke", "rgba(0,0,0,0.65)");
+  label.setAttribute("stroke-width", "3");
+  label.setAttribute("paint-order", "stroke fill");
+
+  parent.appendChild(label);
+}
+
+function drawMech(mech, screenX, screenY, parent, isActive = false) {
   const group = svgEl("g");
 
   const shadow = svgEl("ellipse");
-  shadow.setAttribute("cx", mech.screenX);
-  shadow.setAttribute("cy", mech.screenY + 24);
+  shadow.setAttribute("cx", screenX);
+  shadow.setAttribute("cy", screenY + 24);
   shadow.setAttribute("rx", 18);
   shadow.setAttribute("ry", 8);
   shadow.setAttribute("class", "mech-shadow");
 
   const body = svgEl("circle");
-  body.setAttribute("cx", mech.screenX);
-  body.setAttribute("cy", mech.screenY + 4);
+  body.setAttribute("cx", screenX);
+  body.setAttribute("cy", screenY + 4);
   body.setAttribute("r", isActive ? 16 : 14);
   body.setAttribute("class", "mech-body");
 
   const label = makeText(
-    mech.screenX,
-    mech.screenY + 8,
+    screenX,
+    screenY + 8,
     mech.name,
     "mech-label"
   );
@@ -321,25 +315,6 @@ function drawMech(mech, parent, isActive = false) {
   group.appendChild(label);
 
   parent.appendChild(group);
-}
-
-function drawMechFootprint(mech, parent, isActive = false) {
-  const halfW = RENDER_CONFIG.isoTileWidth / 2;
-  const halfH = RENDER_CONFIG.isoTileHeight / 2;
-
-  const footprint = [
-    { x: mech.screenX, y: mech.screenY },
-    { x: mech.screenX + halfW, y: mech.screenY + halfH },
-    { x: mech.screenX, y: mech.screenY + RENDER_CONFIG.isoTileHeight },
-    { x: mech.screenX - halfW, y: mech.screenY + halfH }
-  ];
-
-  const fill = isActive
-    ? "rgba(240,176,0,0.18)"
-    : "rgba(240,176,0,0.10)";
-
-  const poly = makePolygon(footprint, "mech-footprint", fill);
-  parent.appendChild(poly);
 }
 
 function drawOverlayDiamond(screenX, screenY, className, fill, stroke, parent) {
@@ -357,24 +332,6 @@ function drawOverlayDiamond(screenX, screenY, className, fill, stroke, parent) {
   poly.setAttribute("stroke", stroke);
   poly.setAttribute("stroke-width", "1.5");
   parent.appendChild(poly);
-}
-
-function drawOverlayCostLabel(screenX, screenY, text, parent) {
-  const label = makeText(
-    screenX,
-    screenY + (RENDER_CONFIG.isoTileHeight * 0.62),
-    text,
-    "move-cost-label"
-  );
-
-  label.setAttribute("fill", "#ffffff");
-  label.setAttribute("font-size", "14");
-  label.setAttribute("font-weight", "700");
-  label.setAttribute("stroke", "rgba(0,0,0,0.65)");
-  label.setAttribute("stroke-width", "3");
-  label.setAttribute("paint-order", "stroke fill");
-
-  parent.appendChild(label);
 }
 
 function tileColors(type) {
