@@ -1,5 +1,7 @@
 import { MAP_CONFIG, RENDER_CONFIG } from "./config.js";
 import { getTile, rotateCoord, tileTypeFromElevation } from "./map.js";
+import { getReachableTiles } from "./movement.js";
+import { getMechById } from "./mechs.js";
 import { svgEl, makePolygon, makeText } from "./utils.js";
 
 export function renderAll(state, refs) {
@@ -49,6 +51,11 @@ export function renderIso(state, refs) {
     drawIsoTile(item, worldGround);
   }
 
+  if (state.ui.mode === "move") {
+    renderMoveOverlay(state, worldUi);
+  }
+
+  renderFocusTile(state, worldUi);
   renderMechs(state, refs);
 
   rotationLabel.textContent = `Rotation: ${rotation * 90}°`;
@@ -125,9 +132,58 @@ function renderMechs(state, refs) {
     .sort((a, b) => a.sortKey - b.sortKey);
 
   for (const mech of sortedMechs) {
-    drawMechFootprint(mech, worldUi);
-    drawMech(mech, worldMechs);
+    const isActive = mech.instanceId === state.turn.activeMechId;
+    drawMechFootprint(mech, worldUi, isActive);
+    drawMech(mech, worldMechs, isActive);
   }
+}
+
+function renderMoveOverlay(state, parent) {
+  const reachableTiles = getReachableTiles(state);
+
+  for (const tile of reachableTiles) {
+    const mapTile = getTile(state.map, tile.x, tile.y);
+    const rotated = rotateCoord(
+      tile.x,
+      tile.y,
+      MAP_CONFIG.mechWidth,
+      MAP_CONFIG.mechHeight,
+      state.rotation
+    );
+    const projected = isoProject(rotated.x, rotated.y, mapTile.elevation);
+
+    drawOverlayDiamond(
+      projected.x,
+      projected.y,
+      "move-range-tile",
+      "rgba(80, 180, 255, 0.18)",
+      "rgba(80, 180, 255, 0.45)",
+      parent
+    );
+  }
+}
+
+function renderFocusTile(state, parent) {
+  const tile = getTile(state.map, state.focus.x, state.focus.y);
+  if (!tile) return;
+
+  const rotated = rotateCoord(
+    state.focus.x,
+    state.focus.y,
+    MAP_CONFIG.mechWidth,
+    MAP_CONFIG.mechHeight,
+    state.rotation
+  );
+  const projected = isoProject(rotated.x, rotated.y, tile.elevation);
+
+  drawOverlayDiamond(
+    projected.x,
+    projected.y,
+    "focus-tile",
+    "rgba(240, 176, 0, 0.10)",
+    "rgba(240, 176, 0, 0.95)",
+    parent
+  );
 }
 
 function isoProject(x, y, elevation) {
@@ -201,7 +257,7 @@ function drawIsoTile(item, parent) {
   parent.appendChild(group);
 }
 
-function drawMech(mech, parent) {
+function drawMech(mech, parent, isActive = false) {
   const group = svgEl("g");
 
   const shadow = svgEl("ellipse");
@@ -214,7 +270,7 @@ function drawMech(mech, parent) {
   const body = svgEl("circle");
   body.setAttribute("cx", mech.screenX);
   body.setAttribute("cy", mech.screenY + 4);
-  body.setAttribute("r", 14);
+  body.setAttribute("r", isActive ? 16 : 14);
   body.setAttribute("class", "mech-body");
 
   const label = makeText(
@@ -231,7 +287,7 @@ function drawMech(mech, parent) {
   parent.appendChild(group);
 }
 
-function drawMechFootprint(mech, parent) {
+function drawMechFootprint(mech, parent, isActive = false) {
   const halfW = RENDER_CONFIG.isoTileWidth / 2;
   const halfH = RENDER_CONFIG.isoTileHeight / 2;
 
@@ -242,12 +298,28 @@ function drawMechFootprint(mech, parent) {
     { x: mech.screenX - halfW, y: mech.screenY + halfH }
   ];
 
-  const poly = makePolygon(
-    footprint,
-    "mech-footprint",
-    "rgba(240,176,0,0.10)"
-  );
+  const fill = isActive
+    ? "rgba(240,176,0,0.18)"
+    : "rgba(240,176,0,0.10)";
 
+  const poly = makePolygon(footprint, "mech-footprint", fill);
+  parent.appendChild(poly);
+}
+
+function drawOverlayDiamond(screenX, screenY, className, fill, stroke, parent) {
+  const halfW = RENDER_CONFIG.isoTileWidth / 2;
+  const halfH = RENDER_CONFIG.isoTileHeight / 2;
+
+  const points = [
+    { x: screenX, y: screenY },
+    { x: screenX + halfW, y: screenY + halfH },
+    { x: screenX, y: screenY + RENDER_CONFIG.isoTileHeight },
+    { x: screenX - halfW, y: screenY + halfH }
+  ];
+
+  const poly = makePolygon(points, className, fill);
+  poly.setAttribute("stroke", stroke);
+  poly.setAttribute("stroke-width", "1.5");
   parent.appendChild(poly);
 }
 
