@@ -50,12 +50,27 @@ export function isTileBlocked(state, x, y, activeMech = null) {
   return true;
 }
 
-export function getTileMoveCost(state, x, y) {
-  const tile = getTile(state.map, x, y);
-  if (!tile) return Infinity;
+export function canStepToTile(state, fromX, fromY, toX, toY) {
+  const fromTile = getTile(state.map, fromX, fromY);
+  const toTile = getTile(state.map, toX, toY);
 
-  // foundation version: all tiles cost 1
-  // later: terrain, elevation penalties, jump jets, etc
+  if (!fromTile || !toTile) return false;
+
+  const elevationRise = toTile.elevation - fromTile.elevation;
+
+  // Can climb up at most 1 elevation step per move step.
+  // Going down any amount is allowed for now.
+  if (elevationRise > 1) return false;
+
+  return true;
+}
+
+export function getTileMoveCost(state, fromX, fromY, toX, toY) {
+  if (!canStepToTile(state, fromX, fromY, toX, toY)) {
+    return Infinity;
+  }
+
+  // Foundation version: every valid step costs 1
   return 1;
 }
 
@@ -79,7 +94,14 @@ export function getReachableTileMap(state) {
     for (const next of getNeighbors(current.x, current.y)) {
       if (isTileBlocked(state, next.x, next.y, activeMech)) continue;
 
-      const stepCost = getTileMoveCost(state, next.x, next.y);
+      const stepCost = getTileMoveCost(
+        state,
+        current.x,
+        current.y,
+        next.x,
+        next.y
+      );
+
       if (!Number.isFinite(stepCost)) continue;
 
       const newCost = currentCost + stepCost;
@@ -142,7 +164,14 @@ export function getPathToTile(state, targetX, targetY) {
     for (const next of getNeighbors(current.x, current.y)) {
       if (isTileBlocked(state, next.x, next.y, activeMech)) continue;
 
-      const stepCost = getTileMoveCost(state, next.x, next.y);
+      const stepCost = getTileMoveCost(
+        state,
+        current.x,
+        current.y,
+        next.x,
+        next.y
+      );
+
       if (!Number.isFinite(stepCost)) continue;
 
       const newCost = costSoFar.get(currentKey) + stepCost;
