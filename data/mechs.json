@@ -1,0 +1,19 @@
+[
+  {
+    "id": "hero_standard_01",
+    "name": "A1",
+    "class": "standard",
+    "footprint": 1,
+    "humanScaleSize": 4,
+    "move": 4,
+    "armor": 10,
+    "structure": 6,
+    "pilotSlots": 1,
+    "weapons": ["rifle_01"],
+    "render": {
+      "sprite": "",
+      "offsetX": 0,
+      "offsetY": -24
+    }
+  }
+]
