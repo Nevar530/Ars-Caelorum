@@ -45,6 +45,22 @@ async function init() {
       resetMap() {
         state.map = resetMap();
         state.mechs = instantiateTestMechs(state.content);
+
+        state.turn.activeMechId =
+          state.mechs.length > 0 ? state.mechs[0].instanceId : null;
+
+        state.selection.mechId = state.turn.activeMechId;
+        state.selection.action = null;
+        state.ui.mode = "idle";
+
+        if (state.mechs.length > 0) {
+          state.focus.x = state.mechs[0].x;
+          state.focus.y = state.mechs[0].y;
+        } else {
+          state.focus.x = 0;
+          state.focus.y = 0;
+        }
+
         render();
       }
     };
