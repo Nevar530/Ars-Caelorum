@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ISO Tactics Prototype</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="panel-title">Mech Map Editor</div>
+      <div class="panel-sub">
+        Left click = raise · Right click = lower
+      </div>
+      <div class="panel-sub">
+        1 mech tile = 4×4 human tiles
+      </div>
+      <svg id="editor" viewBox="0 0 420 420" aria-label="Top down mech map editor"></svg>
+    </aside>
+
+    <main class="main">
+      <div class="toolbar">
+        <button id="rotateLeft">⟲ Rotate Left</button>
+        <button id="rotateRight">⟳ Rotate Right</button>
+        <button id="resetMap">Reset Map</button>
+        <span id="rotationLabel">Rotation: 0°</span>
+      </div>
+
+      <div class="stage">
+        <svg id="board" viewBox="0 0 1400 900" aria-label="Isometric tactics board">
+          <g id="world-ground"></g>
+          <g id="world-mechs"></g>
+          <g id="world-ui"></g>
+        </svg>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="./script.js"></script>
+</body>
+</html>
