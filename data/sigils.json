@@ -1,0 +1,22 @@
+[
+  {
+    "id": "fire",
+    "name": "Fire",
+    "role": "attrition"
+  },
+  {
+    "id": "ice",
+    "name": "Ice",
+    "role": "control"
+  },
+  {
+    "id": "lightning",
+    "name": "Lightning",
+    "role": "anti-cluster"
+  },
+  {
+    "id": "rock",
+    "name": "Rock",
+    "role": "anti-defense"
+  }
+]
