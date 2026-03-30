@@ -4,15 +4,36 @@ export function createState({
   rotation = 0,
   content = { mechs: [], weapons: [], sigils: [] }
 }) {
+  const activeMechId = mechs.length > 0 ? mechs[0].instanceId : null;
+  const activeMech = mechs.length > 0 ? mechs[0] : null;
+
   return {
     map,
     mechs,
     rotation,
     content,
-    selection: {
-      mechId: null,
-      tile: null
+
+    turn: {
+      activeMechId,
+      round: 1
     },
+
+    selection: {
+      mechId: activeMechId,
+      action: null,
+      targetTile: null,
+      targetMechId: null
+    },
+
+    focus: {
+      x: activeMech ? activeMech.x : 0,
+      y: activeMech ? activeMech.y : 0
+    },
+
+    ui: {
+      mode: "idle"
+    },
+
     hover: {
       tile: null
     }
