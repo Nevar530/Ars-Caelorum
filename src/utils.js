@@ -18,10 +18,10 @@ export function makePolygon(points, className, fill) {
 }
 
 export function makeText(x, y, text, className) {
-  const t = svgEl("text");
-  t.setAttribute("x", x);
-  t.setAttribute("y", y);
-  t.setAttribute("class", className);
-  t.textContent = text;
-  return t;
+  const textEl = svgEl("text");
+  textEl.setAttribute("x", x);
+  textEl.setAttribute("y", y);
+  textEl.setAttribute("class", className);
+  textEl.textContent = text;
+  return textEl;
 }
