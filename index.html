@@ -3,27 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ISO Tactics Prototype</title>
+  <title>Ars Caelorum</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <div class="app">
     <aside class="sidebar">
-      <div class="panel-title">Mech Map Editor</div>
-      <div class="panel-sub">
-        Left click = raise · Right click = lower
-      </div>
-      <div class="panel-sub">
-        1 mech tile = 4×4 human tiles
-      </div>
-      <svg id="editor" viewBox="0 0 420 420" aria-label="Top down mech map editor"></svg>
+      <div class="panel-title">Ars Caelorum</div>
+      <div class="panel-sub">Mech Map Editor</div>
+      <div class="panel-sub">Left click = raise · Right click = lower</div>
+      <div class="panel-sub">1 mech tile = 4×4 human tiles</div>
+
+      <svg
+        id="editor"
+        viewBox="0 0 420 420"
+        aria-label="Top down mech map editor"
+      ></svg>
     </aside>
 
     <main class="main">
       <div class="toolbar">
-        <button id="rotateLeft">⟲ Rotate Left</button>
-        <button id="rotateRight">⟳ Rotate Right</button>
-        <button id="resetMap">Reset Map</button>
+        <button id="rotateLeft" type="button">⟲ Rotate Left</button>
+        <button id="rotateRight" type="button">⟳ Rotate Right</button>
+        <button id="resetMap" type="button">Reset Map</button>
         <span id="rotationLabel">Rotation: 0°</span>
       </div>
 
