@@ -672,7 +672,7 @@ function getIsoTopStripePointsFromWorld(state, mech, elevation, anchorX, anchorY
 
   const center = {
     x: anchorX,
-    y: anchorY - height + halfH
+    y: anchorY - height
   };
 
   const start = {
