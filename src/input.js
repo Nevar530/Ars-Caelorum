@@ -1,5 +1,5 @@
 import { changeElevation } from "./map.js";
-import { getMechById, moveMechTo } from "./mechs.js";
+import { getMechById, moveMechTo, setMechFacing } from "./mechs.js";
 import {
   clampFocusToBoard,
   canMoveActiveMechTo,
@@ -81,6 +81,11 @@ function bindGameplayInput(state, refs, actions) {
       return;
     }
 
+    if (handleFacingKeys(key, state, actions)) {
+      event.preventDefault();
+      return;
+    }
+
     if (handleFocusKeys(key, state, actions)) {
       event.preventDefault();
       return;
@@ -124,8 +129,20 @@ function handleModeKeys(key, state, actions) {
 
   if (key === "m") {
     if (state.turn.activeMechId) {
+      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+
+      if (activeMech) {
+        state.ui.preMove = {
+          mechId: activeMech.instanceId,
+          x: activeMech.x,
+          y: activeMech.y,
+          facing: activeMech.facing
+        };
+      }
+
       state.ui.mode = "move";
       state.selection.action = "move";
+      state.ui.facingPreview = null;
       snapFocusToActiveMech(state);
       state.ui.previewPath = [];
       actions.render();
@@ -134,6 +151,27 @@ function handleModeKeys(key, state, actions) {
   }
 
   return false;
+}
+
+function handleFacingKeys(key, state, actions) {
+  if (state.ui.mode !== "face") return false;
+
+  let direction = null;
+
+  if (key === "arrowup" || key === "w") direction = "up";
+  else if (key === "arrowdown" || key === "s") direction = "down";
+  else if (key === "arrowleft" || key === "a") direction = "left";
+  else if (key === "arrowright" || key === "d") direction = "right";
+  else return false;
+
+  const delta = getScreenRelativeBoardDelta(state, direction);
+  const facing = facingFromDelta(delta.dx, delta.dy);
+
+  if (facing === null) return true;
+
+  state.ui.facingPreview = facing;
+  actions.render();
+  return true;
 }
 
 function handleFocusKeys(key, state, actions) {
@@ -174,6 +212,11 @@ function handleConfirmCancelKeys(key, state, actions) {
       if (!activeMech) return true;
 
       if (canMoveActiveMechTo(state, state.focus.x, state.focus.y)) {
+        const defaultFacing = facingFromPath(
+          state.ui.previewPath,
+          activeMech.facing
+        );
+
         moveMechTo(
           state.mechs,
           activeMech.instanceId,
@@ -181,13 +224,35 @@ function handleConfirmCancelKeys(key, state, actions) {
           state.focus.y
         );
 
-        state.ui.mode = "idle";
-        state.selection.action = null;
+        state.ui.mode = "face";
+        state.selection.action = "face";
         state.ui.previewPath = [];
+        state.ui.facingPreview = defaultFacing;
         snapFocusToActiveMech(state);
         actions.render();
       }
 
+      return true;
+    }
+
+    if (state.ui.mode === "face") {
+      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+
+      if (activeMech && state.ui.facingPreview !== null) {
+        setMechFacing(
+          state.mechs,
+          activeMech.instanceId,
+          state.ui.facingPreview
+        );
+      }
+
+      state.ui.mode = "idle";
+      state.selection.action = null;
+      state.ui.previewPath = [];
+      state.ui.facingPreview = null;
+      state.ui.preMove = null;
+      snapFocusToActiveMech(state);
+      actions.render();
       return true;
     }
 
@@ -198,6 +263,25 @@ function handleConfirmCancelKeys(key, state, actions) {
     if (state.ui.mode === "move") {
       state.ui.mode = "idle";
       state.selection.action = null;
+      state.ui.previewPath = [];
+      state.ui.facingPreview = null;
+      state.ui.preMove = null;
+      snapFocusToActiveMech(state);
+      actions.render();
+      return true;
+    }
+
+    if (state.ui.mode === "face") {
+      const snap = state.ui.preMove;
+
+      if (snap) {
+        moveMechTo(state.mechs, snap.mechId, snap.x, snap.y);
+        setMechFacing(state.mechs, snap.mechId, snap.facing);
+      }
+
+      state.ui.mode = "move";
+      state.selection.action = "move";
+      state.ui.facingPreview = null;
       state.ui.previewPath = [];
       snapFocusToActiveMech(state);
       actions.render();
@@ -285,6 +369,25 @@ function deltaForRotation270(direction) {
     default:
       return { dx: 0, dy: 0 };
   }
+}
+
+function facingFromDelta(dx, dy) {
+  if (dx === 0 && dy === -1) return 0;
+  if (dx === 1 && dy === 0) return 1;
+  if (dx === 0 && dy === 1) return 2;
+  if (dx === -1 && dy === 0) return 3;
+  return null;
+}
+
+function facingFromPath(path, fallbackFacing) {
+  if (!path || path.length < 2) return fallbackFacing;
+
+  const last = path[path.length - 1];
+  const prev = path[path.length - 2];
+  const dx = last.x - prev.x;
+  const dy = last.y - prev.y;
+
+  return facingFromDelta(dx, dy) ?? fallbackFacing;
 }
 
 function snapFocusToActiveMech(state) {
