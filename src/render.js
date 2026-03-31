@@ -58,7 +58,10 @@ export function renderIso(state, refs) {
       elevation: tile.elevation,
       screenX: projected.x,
       screenY: projected.y,
-      sortKey: getSceneSortKey(state, mech.x, mech.y, tile.elevation) + 60
+
+      // Draw after its own tile, but before neighboring raised tiles
+      // that should visually occlude it.
+      sortKey: getSceneSortKey(state, mech.x, mech.y, tile.elevation) + 0.25
     });
   }
 
@@ -416,7 +419,6 @@ function styleMoveCostLabel(label) {
 function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   const group = svgEl("g");
   const tile = getTile(state.map, mech.x, mech.y);
-  const worldFacing = getWorldFacing(state, mech);
 
   if (!tile) return;
 
@@ -458,14 +460,16 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   const halfH = 10;
   const height = 18;
 
-  const topY = screenY + 2;
-  const baseY = topY + height;
+  // Anchor point:
+  // bottom-center of mech cube aligns to center of tile top face.
+  const anchorX = screenX;
+  const anchorY = screenY + (RENDER_CONFIG.isoTileHeight / 2);
 
   const top = [
-    { x: screenX, y: topY },
-    { x: screenX + halfW, y: topY + halfH },
-    { x: screenX, y: topY + (halfH * 2) },
-    { x: screenX - halfW, y: topY + halfH }
+    { x: anchorX,         y: anchorY - height - halfH },
+    { x: anchorX + halfW, y: anchorY - height },
+    { x: anchorX,         y: anchorY - height + halfH },
+    { x: anchorX - halfW, y: anchorY - height }
   ];
 
   const left = [
@@ -483,8 +487,8 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   ];
 
   const shadow = svgEl("ellipse");
-  shadow.setAttribute("cx", screenX);
-  shadow.setAttribute("cy", baseY + 12);
+  shadow.setAttribute("cx", anchorX);
+  shadow.setAttribute("cy", anchorY + 10);
   shadow.setAttribute("rx", 18);
   shadow.setAttribute("ry", 8);
   shadow.setAttribute("class", "mech-shadow");
@@ -503,15 +507,15 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   topPoly.removeAttribute("fill");
 
   const stripe = makePolygon(
-    getIsoTopStripePointsFromWorld(state, mech, tile.elevation, screenX, topY, halfH),
+    getIsoTopStripePointsFromWorld(state, mech, tile.elevation, anchorX, anchorY, height, halfH),
     getIsoTopStripeClass(state, mech),
     "currentColor"
   );
   stripe.removeAttribute("fill");
 
   const label = makeText(
-    screenX,
-    topY + halfH + 6,
+    anchorX,
+    anchorY - height + 6,
     mech.name,
     "mech-label"
   );
@@ -651,7 +655,7 @@ function getTopFacingStripePointsFromWorld(state, mech, elevation, centerX, cent
   ];
 }
 
-function getIsoTopStripePointsFromWorld(state, mech, elevation, centerX, topY, halfH) {
+function getIsoTopStripePointsFromWorld(state, mech, elevation, anchorX, anchorY, height, halfH) {
   const facing = getWorldFacing(state, mech);
   const { dx, dy } = facingToWorldDelta(facing);
 
@@ -667,8 +671,8 @@ function getIsoTopStripePointsFromWorld(state, mech, elevation, centerX, topY, h
   const py = ux;
 
   const center = {
-    x: centerX,
-    y: topY + halfH
+    x: anchorX,
+    y: anchorY - height + halfH
   };
 
   const start = {
