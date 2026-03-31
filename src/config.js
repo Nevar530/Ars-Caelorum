@@ -10,9 +10,9 @@ export const MAP_CONFIG = {
 };
 
 export const RENDER_CONFIG = {
-  isoTileWidth: 64,
-  isoTileHeight: 32,
-  elevationStepPx: 20,
+  isoTileWidth: 96,
+  isoTileHeight: 48,
+  elevationStepPx: 24,
   originX: 700,
   originY: 140,
   editorSize: 420,
