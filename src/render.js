@@ -138,7 +138,7 @@ export function renderEditor(state, refs) {
 
 function projectScene(state, x, y, elevation) {
   if (state.ui.viewMode === "top") {
-    const snappedTurns = Math.round(state.camera.angle / 90) % 4;
+    const snappedTurns = normalizedTurns(state);
     const rotated = rotateCoord(
       x,
       y,
@@ -183,7 +183,7 @@ function projectScene(state, x, y, elevation) {
 }
 
 function getSceneSortKey(state, x, y, elevation) {
-  const turns = Math.round(state.camera.angle / 90) % 4;
+  const turns = normalizedTurns(state);
 
   const rotated = rotateCoord(
     x,
@@ -267,6 +267,10 @@ function isoProject(x, y, elevation) {
 
 function lerp(a, b, t) {
   return a + ((b - a) * t);
+}
+
+function normalizedTurns(state) {
+  return ((Math.round(state.camera.angle / 90) % 4) + 4) % 4;
 }
 
 function drawIsoTile(item, parent) {
@@ -411,7 +415,8 @@ function styleMoveCostLabel(label) {
 
 function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   const group = svgEl("g");
-  const facing = getDisplayedFacing(state, mech);
+  const worldFacing = getWorldFacing(state, mech);
+  const screenFacing = worldFacingToScreenFacing(worldFacing, state);
 
   if (state.ui.viewMode === "top") {
     const cellX = screenX + (TOPDOWN_CONFIG.cellSize / 2);
@@ -427,7 +432,7 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
     body.setAttribute("class", getTopMechBodyClass(state, mech, isActive));
 
     const facingMark = svgEl("rect");
-    const facingOffset = getTopFacingOffset(facing, size - 4);
+    const facingOffset = getTopFacingOffset(screenFacing, size - 4);
     facingMark.setAttribute("x", cellX - 4 + facingOffset.x);
     facingMark.setAttribute("y", cellY - 4 + facingOffset.y);
     facingMark.setAttribute("width", 8);
@@ -486,14 +491,14 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
 
   const leftPoly = makePolygon(
     left,
-    getIsoLeftClass(state, mech, facing),
+    getIsoLeftClass(state, mech, screenFacing),
     "currentColor"
   );
   leftPoly.removeAttribute("fill");
 
   const rightPoly = makePolygon(
     right,
-    getIsoRightClass(state, mech, facing),
+    getIsoRightClass(state, mech, screenFacing),
     "currentColor"
   );
   rightPoly.removeAttribute("fill");
@@ -504,6 +509,13 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
     "currentColor"
   );
   topPoly.removeAttribute("fill");
+
+  const stripe = makePolygon(
+    getIsoTopStripePoints(screenX, topY, halfW, halfH, screenFacing),
+    getIsoTopStripeClass(state, mech),
+    "currentColor"
+  );
+  stripe.removeAttribute("fill");
 
   const label = makeText(
     screenX,
@@ -516,18 +528,23 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   group.appendChild(leftPoly);
   group.appendChild(rightPoly);
   group.appendChild(topPoly);
+  group.appendChild(stripe);
   group.appendChild(label);
 
   parent.appendChild(group);
 }
 
-function getDisplayedFacing(state, mech) {
+function getWorldFacing(state, mech) {
   const isPreviewing =
     state.ui.mode === "face" &&
     mech.instanceId === state.turn.activeMechId &&
     state.ui.facingPreview !== null;
 
   return isPreviewing ? state.ui.facingPreview : mech.facing;
+}
+
+function worldFacingToScreenFacing(worldFacing, state) {
+  return (worldFacing + normalizedTurns(state)) % 4;
 }
 
 function getTopMechBodyClass(state, mech, isActive) {
@@ -590,7 +607,16 @@ function getIsoTopClass(state, mech, isActive) {
   return classes.join(" ");
 }
 
-function getIsoLeftClass(state, mech, facing) {
+function getIsoTopStripeClass(state, mech) {
+  const isPreviewing =
+    state.ui.mode === "face" &&
+    mech.instanceId === state.turn.activeMechId &&
+    state.ui.facingPreview !== null;
+
+  return isPreviewing ? "mech-cube-top-stripe-preview" : "mech-cube-top-stripe";
+}
+
+function getIsoLeftClass(state, mech, screenFacing) {
   const classes = [];
 
   const isPreviewing =
@@ -598,8 +624,10 @@ function getIsoLeftClass(state, mech, facing) {
     mech.instanceId === state.turn.activeMechId &&
     state.ui.facingPreview !== null;
 
-  if (facing === 3) {
-    classes.push(isPreviewing ? "mech-cube-left-facing-preview" : "mech-cube-left-facing");
+  if (screenFacing === 3) {
+    classes.push(
+      isPreviewing ? "mech-cube-left-facing-preview" : "mech-cube-left-facing"
+    );
   } else {
     classes.push(isPreviewing ? "mech-cube-left-preview" : "mech-cube-left");
   }
@@ -607,7 +635,7 @@ function getIsoLeftClass(state, mech, facing) {
   return classes.join(" ");
 }
 
-function getIsoRightClass(state, mech, facing) {
+function getIsoRightClass(state, mech, screenFacing) {
   const classes = [];
 
   const isPreviewing =
@@ -615,13 +643,79 @@ function getIsoRightClass(state, mech, facing) {
     mech.instanceId === state.turn.activeMechId &&
     state.ui.facingPreview !== null;
 
-  if (facing === 1) {
-    classes.push(isPreviewing ? "mech-cube-right-facing-preview" : "mech-cube-right-facing");
+  if (screenFacing === 1) {
+    classes.push(
+      isPreviewing ? "mech-cube-right-facing-preview" : "mech-cube-right-facing"
+    );
   } else {
     classes.push(isPreviewing ? "mech-cube-right-preview" : "mech-cube-right");
   }
 
   return classes.join(" ");
+}
+
+function getIsoTopStripePoints(cx, topY, halfW, halfH, screenFacing) {
+  const center = { x: cx, y: topY + halfH };
+  const inset = 4;
+
+  let tip;
+  switch (screenFacing) {
+    case 0:
+      tip = { x: cx, y: topY + inset };
+      break;
+    case 1:
+      tip = { x: cx + halfW - inset, y: topY + halfH };
+      break;
+    case 2:
+      tip = { x: cx, y: topY + (halfH * 2) - inset };
+      break;
+    case 3:
+      tip = { x: cx - halfW + inset, y: topY + halfH };
+      break;
+    default:
+      tip = { x: cx, y: topY + inset };
+      break;
+  }
+
+  const dx = tip.x - center.x;
+  const dy = tip.y - center.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const ux = dx / length;
+  const uy = dy / length;
+
+  const px = -uy;
+  const py = ux;
+
+  const start = {
+    x: center.x - (ux * 3),
+    y: center.y - (uy * 3)
+  };
+
+  const end = {
+    x: tip.x,
+    y: tip.y
+  };
+
+  const halfThickness = 2.4;
+
+  return [
+    {
+      x: start.x + (px * halfThickness),
+      y: start.y + (py * halfThickness)
+    },
+    {
+      x: end.x + (px * halfThickness),
+      y: end.y + (py * halfThickness)
+    },
+    {
+      x: end.x - (px * halfThickness),
+      y: end.y - (py * halfThickness)
+    },
+    {
+      x: start.x - (px * halfThickness),
+      y: start.y - (py * halfThickness)
+    }
+  ];
 }
 
 function drawOverlayDiamond(screenX, screenY, className, fill, stroke, parent) {
