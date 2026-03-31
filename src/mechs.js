@@ -49,3 +49,11 @@ export function moveMechTo(mechs, instanceId, x, y) {
   mech.y = y;
   return true;
 }
+
+export function setMechFacing(mechs, instanceId, facing) {
+  const mech = getMechById(mechs, instanceId);
+  if (!mech) return false;
+
+  mech.facing = ((facing % 4) + 4) % 4;
+  return true;
+}
