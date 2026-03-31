@@ -183,10 +183,7 @@ function projectScene(state, x, y, elevation) {
 }
 
 function getSceneSortKey(state, x, y, elevation) {
-  const turns =
-    state.ui.viewMode === "top"
-      ? Math.round(state.camera.angle / 90) % 4
-      : Math.round(state.camera.angle / 90) % 4;
+  const turns = Math.round(state.camera.angle / 90) % 4;
 
   const rotated = rotateCoord(
     x,
@@ -414,16 +411,18 @@ function styleMoveCostLabel(label) {
 
 function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   const group = svgEl("g");
+  const facing = getDisplayedFacing(state, mech);
 
   if (state.ui.viewMode === "top") {
     const cx = screenX + (TOPDOWN_CONFIG.cellSize / 2);
     const cy = screenY + (TOPDOWN_CONFIG.cellSize / 2);
 
-    const body = svgEl("circle");
-    body.setAttribute("cx", cx);
-    body.setAttribute("cy", cy);
-    body.setAttribute("r", isActive ? 16 : 14);
-    body.setAttribute("class", "mech-body");
+    const arrow = makePolygon(
+      getArrowPoints(cx, cy, facing, 16, state.ui.viewMode),
+      getMechArrowClass(state, mech, isActive),
+      "currentColor"
+    );
+    arrow.removeAttribute("fill");
 
     const label = makeText(
       cx,
@@ -432,7 +431,7 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
       "mech-label"
     );
 
-    group.appendChild(body);
+    group.appendChild(arrow);
     group.appendChild(label);
     parent.appendChild(group);
     return;
@@ -445,11 +444,12 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   shadow.setAttribute("ry", 8);
   shadow.setAttribute("class", "mech-shadow");
 
-  const body = svgEl("circle");
-  body.setAttribute("cx", screenX);
-  body.setAttribute("cy", screenY + 4);
-  body.setAttribute("r", isActive ? 16 : 14);
-  body.setAttribute("class", "mech-body");
+  const arrow = makePolygon(
+    getArrowPoints(screenX, screenY + 4, facing, 16, state.ui.viewMode),
+    getMechArrowClass(state, mech, isActive),
+    "currentColor"
+  );
+  arrow.removeAttribute("fill");
 
   const label = makeText(
     screenX,
@@ -459,10 +459,101 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   );
 
   group.appendChild(shadow);
-  group.appendChild(body);
+  group.appendChild(arrow);
   group.appendChild(label);
 
   parent.appendChild(group);
+}
+
+function getDisplayedFacing(state, mech) {
+  const isPreviewing =
+    state.ui.mode === "face" &&
+    mech.instanceId === state.turn.activeMechId &&
+    state.ui.facingPreview !== null;
+
+  return isPreviewing ? state.ui.facingPreview : mech.facing;
+}
+
+function getMechArrowClass(state, mech, isActive) {
+  const classes = ["mech-arrow"];
+
+  if (isActive) {
+    classes.push("mech-arrow-active");
+  }
+
+  if (
+    state.ui.mode === "face" &&
+    mech.instanceId === state.turn.activeMechId &&
+    state.ui.facingPreview !== null
+  ) {
+    classes.push("mech-arrow-preview");
+  }
+
+  return classes.join(" ");
+}
+
+function getArrowPoints(cx, cy, facing, size, viewMode) {
+  const dir = facingToScreenVector(facing, viewMode);
+  const length = Math.hypot(dir.x, dir.y) || 1;
+  const ux = dir.x / length;
+  const uy = dir.y / length;
+
+  const px = -uy;
+  const py = ux;
+
+  const tip = {
+    x: cx + (ux * size),
+    y: cy + (uy * size)
+  };
+
+  const backCenter = {
+    x: cx - (ux * (size * 0.55)),
+    y: cy - (uy * (size * 0.55))
+  };
+
+  const halfWidth = size * 0.55;
+
+  const left = {
+    x: backCenter.x + (px * halfWidth),
+    y: backCenter.y + (py * halfWidth)
+  };
+
+  const right = {
+    x: backCenter.x - (px * halfWidth),
+    y: backCenter.y - (py * halfWidth)
+  };
+
+  return [tip, left, right];
+}
+
+function facingToScreenVector(facing, viewMode) {
+  if (viewMode === "top") {
+    switch (facing) {
+      case 0:
+        return { x: 0, y: -1 };
+      case 1:
+        return { x: 1, y: 0 };
+      case 2:
+        return { x: 0, y: 1 };
+      case 3:
+        return { x: -1, y: 0 };
+      default:
+        return { x: 0, y: -1 };
+    }
+  }
+
+  switch (facing) {
+    case 0:
+      return { x: 0, y: -1.1 };
+    case 1:
+      return { x: 1, y: -0.15 };
+    case 2:
+      return { x: 0, y: 1.1 };
+    case 3:
+      return { x: -1, y: -0.15 };
+    default:
+      return { x: 0, y: -1.1 };
+  }
 }
 
 function drawOverlayDiamond(screenX, screenY, className, fill, stroke, parent) {
