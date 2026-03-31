@@ -10,11 +10,11 @@ export function bindHudInput(state, refs, actions) {
     const action = button.dataset.hudAction;
 
     switch (action) {
+      case "open-menu":
+        actions.openCommandMenu();
+        break;
       case "move":
         actions.startMove();
-        break;
-      case "attack":
-        actions.startAttack();
         break;
       case "wait":
         actions.waitTurn();
@@ -24,6 +24,9 @@ export function bindHudInput(state, refs, actions) {
         break;
       case "cancel":
         actions.cancelAction();
+        break;
+      case "menu-select":
+        actions.selectMenuAction(button.dataset.menuAction);
         break;
       default:
         break;
@@ -42,101 +45,112 @@ function renderActivePanel(state) {
 
   if (!activeMech) {
     return `
-      <div class="hud-section-title">Active Unit</div>
-      <div class="hud-context-card">
+      <div class="hud-section-title">Unit</div>
+      <div class="hud-mini-card">
         <div class="hud-context-title">No Active Mech</div>
-        <div class="hud-context-sub">Load a unit to begin prototype combat flow.</div>
+        <div class="hud-context-sub">Load a unit to begin.</div>
       </div>
     `;
   }
 
   return `
-    <div class="hud-section-title">Active Unit</div>
-    <div class="hud-unit-name">${escapeHtml(activeMech.name)}</div>
-    <div class="hud-subline">Prototype Command Feed · Round ${state.turn.round}</div>
+    <div class="hud-section-title">Unit</div>
 
-    <div class="hud-stat-row">
-      ${statInline("ARM", activeMech.armor)}
-      ${statInline("STR", activeMech.structure)}
-      ${statInline("MOV", activeMech.move)}
-      ${statInline("FAC", facingShort(getDisplayedFacing(state, activeMech)))}
+    <div class="hud-unit-row">
+      <div>
+        <div class="hud-unit-name">${escapeHtml(activeMech.name)}</div>
+        <div class="hud-subline">Round ${state.turn.round} · ${escapeHtml(capitalize(state.turn.phase))} Phase</div>
+      </div>
+      <div class="hud-tag">Active</div>
     </div>
 
-    <div class="hud-context-card">
-      <div class="hud-tag">Player Unit</div>
-      <div class="hud-context-sub" style="margin-top:6px;">
-        Position ${activeMech.x}, ${activeMech.y} · Footprint ${activeMech.footprint}
-      </div>
+    <div class="hud-stat-row">
+      ${renderInlineStat("ARM", activeMech.armor)}
+      ${renderInlineStat("STR", activeMech.structure)}
+      ${renderInlineStat("MV", activeMech.move)}
+      ${renderInlineStat("F", facingLabel(getDisplayedFacing(state, activeMech)))}
     </div>
   `;
 }
 
 function renderCenterPanel(state) {
   const mode = state.ui.mode;
-  const isIdle = mode === "idle";
-  const isMove = mode === "move";
-  const isFace = mode === "face";
+  const menu = state.ui.commandMenu;
 
-  const modeTitle = getModeTitle(mode);
-  const modeText = getModeText(mode);
+  if (mode === "idle" && menu.open) {
+    return `
+      <div class="hud-section-title">Command</div>
+
+      <div class="hud-mode-box compact">
+        <div class="hud-mode-title">Select Action</div>
+        <div class="hud-mode-text">Up / Down to choose · Enter confirm · Esc back</div>
+      </div>
+
+      <div class="hud-menu-list" role="menu" aria-label="Unit command menu">
+        ${menu.items.map((item, index) => {
+          const selected = index === menu.index;
+          return `
+            <button
+              class="hud-menu-button ${selected ? "is-selected" : ""}"
+              type="button"
+              data-hud-action="menu-select"
+              data-menu-action="${item}"
+            >
+              <span class="hud-menu-caret">${selected ? "▶" : "&nbsp;"}</span>
+              <span>${menuLabel(item)}</span>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  if (mode === "move") {
+    return `
+      <div class="hud-section-title">Move</div>
+
+      <div class="hud-mode-box compact">
+        <div class="hud-mode-title">Select Destination</div>
+        <div class="hud-mode-text">Arrow keys move cursor · Enter confirm tile · Esc cancel</div>
+      </div>
+
+      <div class="hud-step-row">
+        <div class="hud-step is-active">1. Menu</div>
+        <div class="hud-step is-active">2. Tile</div>
+        <div class="hud-step">3. Facing</div>
+      </div>
+    `;
+  }
+
+  if (mode === "face") {
+    return `
+      <div class="hud-section-title">Facing</div>
+
+      <div class="hud-mode-box compact">
+        <div class="hud-mode-title">Choose Final Facing</div>
+        <div class="hud-mode-text">Arrow keys set facing · Enter confirm · Esc back to move</div>
+      </div>
+
+      <div class="hud-step-row">
+        <div class="hud-step is-active">1. Menu</div>
+        <div class="hud-step is-active">2. Tile</div>
+        <div class="hud-step is-active">3. Facing</div>
+      </div>
+    `;
+  }
 
   return `
     <div class="hud-section-title">Command</div>
 
-    <div class="hud-mode-box">
-      <div class="hud-mode-title">${modeTitle}</div>
-      <div class="hud-mode-text">${modeText}</div>
+    <div class="hud-mode-box compact">
+      <div class="hud-mode-title">Awaiting Command</div>
+      <div class="hud-mode-text">Press Enter to open command menu for the active mech.</div>
     </div>
 
-    <div class="hud-command-list">
-      <button
-        class="hud-command-button"
-        type="button"
-        data-hud-action="move"
-        ${isIdle ? "" : "disabled"}
-      >
-        <span>Move</span>
-        <span class="hud-command-key">M</span>
-      </button>
-
-      <button
-        class="hud-command-button"
-        type="button"
-        data-hud-action="attack"
-        disabled
-      >
-        <span>Attack</span>
-        <span class="hud-command-key">Soon</span>
-      </button>
-
-      <button
-        class="hud-command-button"
-        type="button"
-        data-hud-action="wait"
-        disabled
-      >
-        <span>Wait</span>
-        <span class="hud-command-key">Later</span>
-      </button>
-
-      <button
-        class="hud-command-button"
-        type="button"
-        data-hud-action="confirm"
-        ${isMove || isFace ? "" : "disabled"}
-      >
-        <span>Confirm</span>
+    <div class="hud-idle-actions">
+      <button class="hud-command-button compact" type="button" data-hud-action="open-menu">
+        <span>Open Menu</span>
         <span class="hud-command-key">Enter</span>
-      </button>
-
-      <button
-        class="hud-command-button"
-        type="button"
-        data-hud-action="cancel"
-        ${isMove || isFace ? "" : "disabled"}
-      >
-        <span>Cancel</span>
-        <span class="hud-command-key">Esc</span>
       </button>
     </div>
   `;
@@ -150,16 +164,17 @@ function renderContextPanel(state) {
   if (focusMech && activeMech && focusMech.instanceId !== activeMech.instanceId) {
     return `
       <div class="hud-section-title">Target</div>
-      <div class="hud-context-card">
+
+      <div class="hud-mini-card">
         <div class="hud-context-title">${escapeHtml(focusMech.name)}</div>
-        <div class="hud-context-sub">Potential target unit</div>
+        <div class="hud-context-sub">Focused hostile / target candidate</div>
       </div>
 
-      <div class="hud-context-row">
-        ${contextInline("ARM", focusMech.armor)}
-        ${contextInline("STR", focusMech.structure)}
-        ${contextInline("MOV", focusMech.move)}
-        ${contextInline("FAC", facingShort(getDisplayedFacing(state, focusMech)))}
+      <div class="hud-stat-row">
+        ${renderInlineStat("ARM", focusMech.armor)}
+        ${renderInlineStat("STR", focusMech.structure)}
+        ${renderInlineStat("MV", focusMech.move)}
+        ${renderInlineStat("F", facingLabel(getDisplayedFacing(state, focusMech)))}
       </div>
     `;
   }
@@ -169,112 +184,82 @@ function renderContextPanel(state) {
 
     return `
       <div class="hud-section-title">Context</div>
-      <div class="hud-context-card">
+
+      <div class="hud-mini-card">
         <div class="hud-context-title">Tile ${focusTile.x}, ${focusTile.y}</div>
-        <div class="hud-context-sub">Focused board position</div>
+        <div class="hud-context-sub">${terrainLabel(terrain)} · Elevation ${focusTile.elevation}</div>
       </div>
 
-      <div class="hud-context-row">
-        ${contextInline("X", focusTile.x)}
-        ${contextInline("Y", focusTile.y)}
-        ${contextInline("Z", focusTile.elevation)}
-        ${contextInline("T", terrainShort(terrain))}
-        ${contextInline("MODE", modeShort(state.ui.mode))}
-        ${contextInline("VIEW", state.ui.viewMode === "iso" ? "ISO" : "TOP")}
+      <div class="hud-stat-row">
+        ${renderInlineStat("Mode", modeLabel(state.ui.mode))}
+        ${renderInlineStat("View", state.ui.viewMode === "iso" ? "Iso" : "Top")}
       </div>
     `;
   }
 
   return `
-    <div class="hud-section-title">Mission</div>
-    <div class="hud-context-card">
+    <div class="hud-section-title">Context</div>
+    <div class="hud-mini-card">
       <div class="hud-context-title">Prototype Skirmish</div>
-      <div class="hud-context-sub">Movement, camera rotation, facing, and HUD validation pass.</div>
-    </div>
-
-    <div class="hud-context-row">
-      ${contextInline("OBJ", "TEST")}
-      ${contextInline("ENEMY", "NONE")}
-      ${contextInline("PHASE", "CMD")}
-      ${contextInline("BUILD", "PROTO")}
+      <div class="hud-context-sub">Move phase flow and facing validation.</div>
     </div>
   `;
 }
 
-function statInline(label, value) {
+function renderInlineStat(label, value) {
   return `
-    <div class="hud-stat-inline">
-      <span class="hud-stat-label">${escapeHtml(String(label))}</span>
-      <span class="hud-stat-value">${escapeHtml(String(value))}</span>
+    <div class="hud-inline-stat">
+      <span class="hud-inline-stat-label">${escapeHtml(String(label))}</span>
+      <span class="hud-inline-stat-value">${escapeHtml(String(value))}</span>
     </div>
   `;
 }
 
-function contextInline(label, value) {
-  return `
-    <div class="hud-context-item">
-      <span class="hud-stat-label">${escapeHtml(String(label))}</span>
-      <span class="hud-stat-value">${escapeHtml(String(value))}</span>
-    </div>
-  `;
-}
-
-function getModeTitle(mode) {
-  switch (mode) {
+function menuLabel(item) {
+  switch (item) {
     case "move":
-      return "Move Selection";
-    case "face":
-      return "Facing Selection";
+      return "Move";
+    case "wait":
+      return "Wait";
     default:
-      return "Unit Command";
+      return capitalize(item);
   }
 }
 
-function getModeText(mode) {
+function modeLabel(mode) {
   switch (mode) {
     case "move":
-      return "Choose a destination tile, then confirm movement.";
+      return "Move";
     case "face":
-      return "Pick final facing, then confirm to lock the unit in place.";
+      return "Facing";
     default:
-      return "Select an action for the active mech. Attack is present in the HUD but not built yet.";
+      return "Idle";
   }
 }
 
-function modeShort(mode) {
-  switch (mode) {
-    case "move":
-      return "MOVE";
-    case "face":
-      return "FACE";
-    default:
-      return "IDLE";
-  }
-}
-
-function facingShort(facing) {
+function facingLabel(facing) {
   switch (facing) {
     case 0:
-      return "N";
+      return "North";
     case 1:
-      return "E";
+      return "East";
     case 2:
-      return "S";
+      return "South";
     case 3:
-      return "W";
+      return "West";
     default:
-      return "?";
+      return "Unknown";
   }
 }
 
-function terrainShort(terrain) {
+function terrainLabel(terrain) {
   switch (terrain) {
     case "peak":
-      return "PEAK";
+      return "Peak";
     case "high":
-      return "HIGH";
+      return "High";
     default:
-      return "GRND";
+      return "Ground";
   }
 }
 
@@ -285,6 +270,11 @@ function getDisplayedFacing(state, mech) {
     state.ui.facingPreview !== null;
 
   return isPreviewing ? state.ui.facingPreview : mech.facing;
+}
+
+function capitalize(value) {
+  if (!value) return "";
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function escapeHtml(value) {
