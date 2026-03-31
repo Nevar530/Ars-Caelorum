@@ -75,7 +75,12 @@ function bindGameplayInput(state, refs, actions) {
       return;
     }
 
-    if (handleModeKeys(key, state, actions)) {
+    if (handleMenuNavigationKeys(key, state, actions)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (handleIdleKeys(key, state, actions)) {
       event.preventDefault();
       return;
     }
@@ -119,15 +124,37 @@ function handleViewKeys(key, actions) {
   return false;
 }
 
-function handleModeKeys(key, state, actions) {
+function handleMenuNavigationKeys(key, state, actions) {
+  if (!state.ui.commandMenu.open || state.ui.mode !== "idle") return false;
+
+  if (key === "arrowup" || key === "w") {
+    actions.moveMenuSelection(-1);
+    return true;
+  }
+
+  if (key === "arrowdown" || key === "s") {
+    actions.moveMenuSelection(1);
+    return true;
+  }
+
+  return false;
+}
+
+function handleIdleKeys(key, state, actions) {
+  if (state.ui.mode !== "idle") return false;
+
   if (key === "tab") {
-    snapFocusToActiveMech(state);
+    actions.snapFocusToActiveMech();
     actions.render();
     return true;
   }
 
-  if (key === "m") {
-    actions.startMove();
+  if (key === "enter" || key === " ") {
+    if (state.ui.commandMenu.open) {
+      actions.confirmMenuSelection();
+    } else {
+      actions.openCommandMenu();
+    }
     return true;
   }
 
@@ -156,6 +183,10 @@ function handleFacingKeys(key, state, actions) {
 }
 
 function handleFocusKeys(key, state, actions) {
+  if (state.ui.commandMenu.open && state.ui.mode === "idle") {
+    return false;
+  }
+
   let direction = null;
 
   if (key === "arrowup" || key === "w") direction = "up";
@@ -187,13 +218,20 @@ function handleConfirmCancelKeys(key, state, actions) {
   const isConfirm = key === "enter" || key === " ";
   const isCancel = key === "escape" || key === "backspace";
 
-  if (isConfirm) {
-    actions.confirmAction();
-    return true;
+  if (state.ui.mode === "move" || state.ui.mode === "face") {
+    if (isConfirm) {
+      actions.confirmAction();
+      return true;
+    }
+
+    if (isCancel) {
+      actions.cancelAction();
+      return true;
+    }
   }
 
-  if (isCancel) {
-    actions.cancelAction();
+  if (state.ui.mode === "idle" && state.ui.commandMenu.open && isCancel) {
+    actions.closeCommandMenu();
     return true;
   }
 
@@ -285,7 +323,7 @@ function facingFromDelta(dx, dy) {
   return null;
 }
 
-function snapFocusToActiveMech(state) {
+export function snapFocusToActiveMech(state) {
   const activeMech = getMechById(state.mechs, state.turn.activeMechId);
   if (!activeMech) return;
 
