@@ -32,7 +32,13 @@ export function createState({
 
     ui: {
       mode: "idle",
-      previewPath: []
+      previewPath: [],
+      viewMode: "iso"
+    },
+
+    camera: {
+      angle: rotation * 90,
+      isTurning: false
     },
 
     hover: {
