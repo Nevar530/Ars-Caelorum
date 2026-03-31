@@ -43,6 +43,7 @@ function bindGameplayInput(state, refs, actions) {
   const {
     rotateLeftButton,
     rotateRightButton,
+    toggleViewButton,
     resetMapButton
   } = refs;
 
@@ -54,6 +55,10 @@ function bindGameplayInput(state, refs, actions) {
     actions.rotateRight();
   });
 
+  toggleViewButton.addEventListener("click", () => {
+    actions.toggleView();
+  });
+
   resetMapButton.addEventListener("click", () => {
     actions.resetMap();
   });
@@ -62,6 +67,11 @@ function bindGameplayInput(state, refs, actions) {
     const key = event.key.toLowerCase();
 
     if (handleRotationKeys(key, actions)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (handleViewKeys(key, actions)) {
       event.preventDefault();
       return;
     }
@@ -90,6 +100,15 @@ function handleRotationKeys(key, actions) {
 
   if (key === "e") {
     actions.rotateRight();
+    return true;
+  }
+
+  return false;
+}
+
+function handleViewKeys(key, actions) {
+  if (key === "r") {
+    actions.toggleView();
     return true;
   }
 
