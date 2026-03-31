@@ -176,7 +176,7 @@ button:hover {
 
 .mech-top-facing-preview {
   fill: #ffe28a;
-  stroke: rgba(0, 0, 0, 0.7);
+  stroke: rgba(0, 0, 0, 0.70);
   stroke-width: 1.2;
 }
 
@@ -219,42 +219,6 @@ button:hover {
   fill: #b84444;
   stroke: #581d1d;
   stroke-width: 1.25;
-}
-
-.mech-cube-left-preview {
-  fill: #9a6a19;
-  stroke: rgba(0, 0, 0, 0.70);
-  stroke-width: 1.4;
-}
-
-.mech-cube-right-preview {
-  fill: #b57b1f;
-  stroke: rgba(0, 0, 0, 0.70);
-  stroke-width: 1.4;
-}
-
-.mech-cube-left-facing {
-  fill: #77d1ff;
-  stroke: rgba(0, 0, 0, 0.65);
-  stroke-width: 1.4;
-}
-
-.mech-cube-right-facing {
-  fill: #77d1ff;
-  stroke: rgba(0, 0, 0, 0.65);
-  stroke-width: 1.4;
-}
-
-.mech-cube-left-facing-preview {
-  fill: #ffe28a;
-  stroke: rgba(0, 0, 0, 0.75);
-  stroke-width: 1.5;
-}
-
-.mech-cube-right-facing-preview {
-  fill: #ffe28a;
-  stroke: rgba(0, 0, 0, 0.75);
-  stroke-width: 1.5;
 }
 
 .mech-label {
