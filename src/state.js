@@ -33,7 +33,9 @@ export function createState({
     ui: {
       mode: "idle",
       previewPath: [],
-      viewMode: "iso"
+      viewMode: "iso",
+      facingPreview: null,
+      preMove: null
     },
 
     camera: {
