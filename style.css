@@ -197,6 +197,18 @@ button:hover {
   stroke-width: 2.5;
 }
 
+.mech-cube-top-stripe {
+  fill: #dceeff;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 0.8;
+}
+
+.mech-cube-top-stripe-preview {
+  fill: #ffe28a;
+  stroke: rgba(0, 0, 0, 0.70);
+  stroke-width: 0.9;
+}
+
 .mech-cube-left {
   fill: #9e3535;
   stroke: #581d1d;
