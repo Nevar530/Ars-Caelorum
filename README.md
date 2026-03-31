@@ -14,7 +14,7 @@ https://nevar530.github.io/Ars-Caelorum/
 * R: Toggle Tactical View (Top-Down)
 * Tab: Snap focus to active mech
 
-Map editor remains mouse-driven for development:
+Map editor:
 
 * Left click: Raise elevation
 * Right click: Lower elevation
@@ -34,7 +34,7 @@ Map editor remains mouse-driven for development:
 ### Terrain System ✅
 
 * Block-based elevation (FFT-style)
-* Elevation tied to tile height (1/2 tile height rule)
+* Elevation = 1/2 tile height (visual consistency rule)
 * Clean stacking and readability
 * Designed for cube + slope expansion
 
@@ -42,216 +42,330 @@ Map editor remains mouse-driven for development:
 
 * Smooth rotational tween (90° increments)
 * Isometric view (default)
-* Tactical top-down toggle (R key)
-* Shared data model across views
+* Tactical top-down toggle
+* Zoom-ready (tile size scaling implemented)
 
 ### Rendering ✅
 
 * SVG-based renderer
-* Depth sorting for terrain + units (fixed layering issues)
-* Bottom-center anchoring for units (correct physical placement)
-* Overlay system for movement and focus
-* Modular rendering pipeline (ready for replacement later)
+* Depth sorting (terrain + units corrected)
+* Units anchored bottom-center to tile top center
+* Proper occlusion with elevation
+* Modular render pipeline
 
 ### HUD / Input System ✅
 
-* Menu-driven action selection (FFT-style)
-* Removed hotkey dependency
+* Menu-driven (FFT-style interaction)
+* No hotkey dependency for core actions
 * Bottom-anchored HUD (no clipping)
-* Context-sensitive UI (idle / move / facing states)
+* Context-sensitive states (idle / move / facing)
 
 ---
 
-# Design Pillars
+# Core Design Rules
 
-* Readability First – Player should understand outcomes at a glance
-* Positioning Over Stats – Movement and placement drive decisions
-* Systems Over Content – Build mechanics before expanding assets
-* Layered Complexity – Add depth without increasing cognitive load
+### Scale Rules (FOUNDATIONAL)
+
+* 1 tile = 1 mech position
+* 1 tile = future 2×2 pilot grid (4 pilot positions)
+* Mech occupies full tile
+* Pilot occupies sub-tile
+
+### Unit Scale
+
+* Mech ≈ 4× human height (~24 ft equivalent scale)
+* Pilot ≈ 1/4 mech height
+* Scale chosen for:
+
+  * readability
+  * environment interaction
+  * dual-scale gameplay
+
+---
+
+# Combat Structure
+
+### Turn Structure (IN PROGRESS)
+
+Each round consists of:
+
+1. Initiative Roll (per unit, pilot-based)
+
+2. Move Phase
+
+   * Lowest initiative moves first
+   * Each unit chooses:
+
+     * Move
+     * Wait
+   * Facing locked after movement
+
+3. Action Phase
+
+   * Highest initiative acts first
+   * Actions include:
+
+     * Attack
+     * Items
+     * Abilities (future)
+
+4. End Round → Re-roll initiative
+
+---
+
+# Core Mechanics
+
+### Facing System ✅
+
+* Directional facing after movement
+* No backward facing
+* Visual indicator (top stripe)
+
+---
+
+### Attack System 🔜 (Prototype Phase)
+
+* Tile-based targeting
+* Range validation
+* LOS validation
+* No damage system initially
+* Goal: validate targeting + interaction first
+
+---
+
+# Dual-Scale Gameplay (CORE FEATURE)
+
+### Mech Layer
+
+* Controls space
+* High durability
+* Direct combat
+* Limited precision
+
+### Pilot Layer
+
+* Controls interaction
+* Fragile (AoE = instant death)
+* Cannot engage mech directly
+* Gains advantage through:
+
+  * positioning
+  * environment
+  * timing
+
+---
+
+### Scale Transition
+
+* Same battlefield at all times
+* No separate maps
+* Camera zoom used to change scale context
+
+#### Mech View
+
+* Strategic positioning
+* Tile-level movement
+* Large-scale awareness
+
+#### Pilot View
+
+* Zoomed-in battlefield
+* Sub-tile navigation
+* Interaction visibility:
+
+  * doors
+  * alleys
+  * structures
+
+---
+
+# Environment System (FOUNDATION)
+
+### Structure Types
+
+#### Light Structures (Half-Tile Walls)
+
+* Sized for pilot-scale readability
+* Pilot:
+
+  * blocks movement
+  * blocks LOS
+* Mech:
+
+  * breakable
+  * can move through or destroy
+* Purpose:
+
+  * interior layout
+  * cover system
+  * destructible environment
+
+---
+
+#### Heavy Structures
+
+* Pilot:
+
+  * blocks movement
+  * blocks LOS
+* Mech:
+
+  * blocks movement
+  * requires destruction
+
+---
+
+#### Fortified Structures (Bunkers / Turrets)
+
+* Pilot:
+
+  * can enter / operate
+* Mech:
+
+  * cannot pass
+  * must destroy or avoid
+
+---
+
+### Interaction Rules (PLANNED)
+
+Pilot can:
+
+* Enter / exit mech
+* Use structures (turrets, bunkers)
+* Sabotage mech
+
+---
+
+### Sabotage System (PLANNED)
+
+* Close-range pilot interaction
+* Effects may include:
+
+  * disable mech for 1 turn
+  * reduce armor
+  * disable weapons
+  * delayed damage
+
+---
+
+### Core Combat Rule
+
+* Pilot hit by mech-scale AoE → immediate death
+* Ensures:
+
+  * pilot risk
+  * no direct combat parity
+  * tactical use only
+
+---
+
+# Terrain Interaction Model (FOUNDATION)
+
+All terrain should support:
+
+* blocksPilotMovement
+* blocksMechMovement
+* blocksLOS
+* destructibleByMech
+
+(No implementation required yet — structure defined to prevent future refactor)
 
 ---
 
 # Roadmap
 
-## Phase 1 – Core Combat Loop (IN PROGRESS)
+## Phase 1 – Core Combat Loop (ACTIVE)
 
-### Facing System ✅
+* Facing system ✅
+* Movement system ✅
+* HUD/menu system ✅
 
-* Directional facing after movement
-* Limited facing options (no backward turn)
-* Visual indicator (stripe / arrow system)
+### Next Steps
 
-### Turn Flow 🔜
-
-* Move → Facing → End Turn
-* Multi-unit turn order
-* Initiative system (low moves first, high acts first)
-
-### Action Menu System ✅
-
-* Select unit → menu → move / wait
-* Structured interaction flow
-* Attack reserved for next phase
-
-### Attack System (Prototype) 🔜
-
-* Basic targeting system (no damage yet)
-* Range + LOS validation
-* Tile-based selection
-* Goal: validate targeting before damage systems
+* Multi-unit turn system
+* Initiative queue
+* Move phase sequencing
+* Action phase sequencing
 
 ---
 
-## Phase 2 – Tactical Combat Expansion
+## Phase 2 – Combat Validation
 
-### Attack Shapes 🔜
-
-* Line, cone, AoE, arc, cross
-* Shape preview before confirm
-* Tile-based targeting system
-
-### Hit Chance Visualization 🔜
-
-* Color-based system:
-
-  * Green = High probability
-  * Yellow = Medium
-  * Red = Low
-* Distance-based falloff
-* Center tile strongest
-
-### Line of Sight (LOS) 🔜
-
-* Blocking terrain removes tiles from attack preview
-* Cover reduces hit probability (future)
-* Visual-first feedback (no hidden math)
+* Targeting system
+* Attack shapes (AoE, line, cone)
+* LOS system
+* Hit validation (no damage yet)
 
 ---
 
-## Phase 3 – Terrain & Map Systems
+## Phase 3 – Terrain Expansion
 
-### Slopes & Terrain Types 🔜
-
-* Slopes remove elevation movement penalty
-* Directional slope logic
-* Terrain cost modifiers
-
-### Map Building 🔜
-
-* Block-based map construction (cubes, slopes, partials)
-* Internal map editor tools
+* Slopes
+* Terrain types
+* Structure placement
+* Map editor expansion
 
 ---
 
-## Phase 4 – Unit Identity
+## Phase 4 – Pilot Integration (SYSTEM READY)
 
-### Mech Roles 🔜
-
-* Movement differences (cost, constraints)
-* Weapon loadouts define playstyle
-
-### Pilot System 🧱 (FOUNDATION ONLY)
-
-* Pilot exists as separate entity from mech
-* Initiative tied to pilot
-* Pilot is fragile (AoE = death rule)
-* Pilot not designed for direct combat
+* Sub-tile grid (2×2 per tile)
+* Pilot movement
+* Zoom-based interaction
+* Structure interaction
 
 ---
 
-## Phase 5 – Dual Scale Gameplay (CORE FEATURE)
-
-### Scale System 🧱
-
-* Battlefield supports multiple scales:
-
-  * Mech scale (1 tile)
-  * Pilot scale (future: 2x2 per tile)
-* Camera zoom transitions between scales
-
-### On-Foot Mode 🔜
-
-* Pilot operates within mech tile space
-* Fine movement inside tiles
-* Access to locations unreachable by mechs
-
-### Mech ↔ Pilot Interaction 🔜
+## Phase 5 – Mech/Pilot Interaction
 
 * Enter / exit mech
-* Mech acts as physical object (blocking, cover)
-* Pilot interacts with environment
-
-### Environment Interaction 🔜
-
-* Bunkers / turrets usable by pilots
-* Structures provide anti-mech capability
-* Sabotage mechanics (disable, disrupt, weaken mechs)
+* Mixed-scale combat
+* Sabotage system
+* Environmental gameplay
 
 ---
 
-## Phase 6 – Visual & UX Polish
+## Phase 6 – Visual Layer
 
-### Camera Improvements 🔜
-
-* Zoom system (tile-scale multiplier implemented)
-* Pilot zoom-in mode (same unit scale visually)
-* Improved depth readability
-
-### UI/UX 🔜
-
-* Cleaner overlays
-* Damage preview
-* Expanded action menus
-
-### Animation (Optional Layer)
-
-* Movement animation
-* Attack effects
-* Camera transitions
+* Sprite replacement for cubes
+* Animation layer
+* Camera polish
 
 ---
 
 ## Phase 7 – Production Direction
 
-### Rendering Options 🔜
-
-* Continue SVG (optimized)
-* OR migrate to WebGL / 3D renderer
-
-### Content Expansion 🔜
-
-* Maps
-* Mechs
-* Weapons
+* Rendering decision (SVG vs WebGL)
+* Content expansion
 * Campaign structure
 
 ---
 
 # Long-Term Vision
 
-Ars Caelorum aims to combine:
-
-* FFT-style positioning and clarity
-* Battletech-inspired mech combat depth
-* Multi-scale tactical gameplay (mech + pilot interaction)
-
-The goal is a tactics system where:
-Every decision is visible, understandable, and intentional.
-
----
-
-# Core Differentiator
-
-Ars Caelorum is not just a mech tactics game.
-
-It is a **dual-scale tactical system** where:
+Ars Caelorum is a **dual-scale tactics system** where:
 
 * Mechs control space
 * Pilots control interaction
-* The battlefield changes meaning depending on scale
+* Terrain changes meaning depending on scale
 
-This creates:
+The goal is a system where:
 
-* asymmetric gameplay
+* Every action is visible
+* Every outcome is understandable
+* Every decision is intentional
+
+---
+
+# Core Identity
+
+This is not just a mech tactics game.
+
+It is a **multi-scale tactical system** built on:
+
+* positioning
+* interaction
 * environmental problem solving
-* high-risk, high-reward tactical decisions
+
+Fun must exist **before visuals**.
