@@ -415,8 +415,10 @@ function styleMoveCostLabel(label) {
 
 function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   const group = svgEl("g");
+  const tile = getTile(state.map, mech.x, mech.y);
   const worldFacing = getWorldFacing(state, mech);
-  const screenFacing = worldFacingToScreenFacing(worldFacing, state);
+
+  if (!tile) return;
 
   if (state.ui.viewMode === "top") {
     const cellX = screenX + (TOPDOWN_CONFIG.cellSize / 2);
@@ -431,14 +433,12 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
     body.setAttribute("rx", "3");
     body.setAttribute("class", getTopMechBodyClass(state, mech, isActive));
 
-    const facingMark = svgEl("rect");
-    const facingOffset = getTopFacingOffset(screenFacing, size - 4);
-    facingMark.setAttribute("x", cellX - 4 + facingOffset.x);
-    facingMark.setAttribute("y", cellY - 4 + facingOffset.y);
-    facingMark.setAttribute("width", 8);
-    facingMark.setAttribute("height", 8);
-    facingMark.setAttribute("rx", "2");
-    facingMark.setAttribute("class", getTopFacingClass(state, mech));
+    const facingMark = makePolygon(
+      getTopFacingStripePointsFromWorld(state, mech, tile.elevation, cellX, cellY),
+      getTopFacingClass(state, mech),
+      "currentColor"
+    );
+    facingMark.removeAttribute("fill");
 
     const label = makeText(
       cellX,
@@ -489,18 +489,10 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   shadow.setAttribute("ry", 8);
   shadow.setAttribute("class", "mech-shadow");
 
-  const leftPoly = makePolygon(
-    left,
-    getIsoLeftClass(state, mech, screenFacing),
-    "currentColor"
-  );
+  const leftPoly = makePolygon(left, "mech-cube-left", "currentColor");
   leftPoly.removeAttribute("fill");
 
-  const rightPoly = makePolygon(
-    right,
-    getIsoRightClass(state, mech, screenFacing),
-    "currentColor"
-  );
+  const rightPoly = makePolygon(right, "mech-cube-right", "currentColor");
   rightPoly.removeAttribute("fill");
 
   const topPoly = makePolygon(
@@ -511,7 +503,7 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   topPoly.removeAttribute("fill");
 
   const stripe = makePolygon(
-    getIsoTopStripePoints(screenX, topY, halfW, halfH, screenFacing),
+    getIsoTopStripePointsFromWorld(state, mech, tile.elevation, screenX, topY, halfH),
     getIsoTopStripeClass(state, mech),
     "currentColor"
   );
@@ -543,9 +535,19 @@ function getWorldFacing(state, mech) {
   return isPreviewing ? state.ui.facingPreview : mech.facing;
 }
 
-function worldFacingToScreenFacing(worldFacing, state) {
-  const turns = normalizedTurns(state);
-  return ((worldFacing - turns) % 4 + 4) % 4;
+function facingToWorldDelta(facing) {
+  switch (facing) {
+    case 0:
+      return { dx: 0, dy: -1 };
+    case 1:
+      return { dx: 1, dy: 0 };
+    case 2:
+      return { dx: 0, dy: 1 };
+    case 3:
+      return { dx: -1, dy: 0 };
+    default:
+      return { dx: 0, dy: -1 };
+  }
 }
 
 function getTopMechBodyClass(state, mech, isActive) {
@@ -575,21 +577,6 @@ function getTopFacingClass(state, mech) {
   return isPreviewing ? "mech-top-facing-preview" : "mech-top-facing";
 }
 
-function getTopFacingOffset(facing, distance) {
-  switch (facing) {
-    case 0:
-      return { x: 0, y: -distance };
-    case 1:
-      return { x: distance, y: 0 };
-    case 2:
-      return { x: 0, y: distance };
-    case 3:
-      return { x: -distance, y: 0 };
-    default:
-      return { x: 0, y: -distance };
-  }
-}
-
 function getIsoTopClass(state, mech, isActive) {
   const classes = ["mech-cube-top"];
 
@@ -617,75 +604,72 @@ function getIsoTopStripeClass(state, mech) {
   return isPreviewing ? "mech-cube-top-stripe-preview" : "mech-cube-top-stripe";
 }
 
-function getIsoLeftClass(state, mech, screenFacing) {
-  const classes = [];
+function getTopFacingStripePointsFromWorld(state, mech, elevation, centerX, centerY) {
+  const facing = getWorldFacing(state, mech);
+  const { dx, dy } = facingToWorldDelta(facing);
 
-  const isPreviewing =
-    state.ui.mode === "face" &&
-    mech.instanceId === state.turn.activeMechId &&
-    state.ui.facingPreview !== null;
+  const from = projectScene(state, mech.x, mech.y, elevation);
+  const to = projectScene(state, mech.x + dx, mech.y + dy, elevation);
 
-  if (screenFacing === 3) {
-    classes.push(
-      isPreviewing ? "mech-cube-left-facing-preview" : "mech-cube-left-facing"
-    );
-  } else {
-    classes.push(isPreviewing ? "mech-cube-left-preview" : "mech-cube-left");
-  }
-
-  return classes.join(" ");
-}
-
-function getIsoRightClass(state, mech, screenFacing) {
-  const classes = [];
-
-  const isPreviewing =
-    state.ui.mode === "face" &&
-    mech.instanceId === state.turn.activeMechId &&
-    state.ui.facingPreview !== null;
-
-  if (screenFacing === 1) {
-    classes.push(
-      isPreviewing ? "mech-cube-right-facing-preview" : "mech-cube-right-facing"
-    );
-  } else {
-    classes.push(isPreviewing ? "mech-cube-right-preview" : "mech-cube-right");
-  }
-
-  return classes.join(" ");
-}
-
-function getIsoTopStripePoints(cx, topY, halfW, halfH, screenFacing) {
-  const center = { x: cx, y: topY + halfH };
-  const inset = 4;
-
-  let tip;
-  switch (screenFacing) {
-    case 0:
-      tip = { x: cx, y: topY + inset };
-      break;
-    case 1:
-      tip = { x: cx + halfW - inset, y: topY + halfH };
-      break;
-    case 2:
-      tip = { x: cx, y: topY + (halfH * 2) - inset };
-      break;
-    case 3:
-      tip = { x: cx - halfW + inset, y: topY + halfH };
-      break;
-    default:
-      tip = { x: cx, y: topY + inset };
-      break;
-  }
-
-  const dx = tip.x - center.x;
-  const dy = tip.y - center.y;
-  const length = Math.hypot(dx, dy) || 1;
-  const ux = dx / length;
-  const uy = dy / length;
-
+  const vx = to.x - from.x;
+  const vy = to.y - from.y;
+  const length = Math.hypot(vx, vy) || 1;
+  const ux = vx / length;
+  const uy = vy / length;
   const px = -uy;
   const py = ux;
+
+  const start = {
+    x: centerX - (ux * 4),
+    y: centerY - (uy * 4)
+  };
+
+  const end = {
+    x: centerX + (ux * 10),
+    y: centerY + (uy * 10)
+  };
+
+  const halfThickness = 2.8;
+
+  return [
+    {
+      x: start.x + (px * halfThickness),
+      y: start.y + (py * halfThickness)
+    },
+    {
+      x: end.x + (px * halfThickness),
+      y: end.y + (py * halfThickness)
+    },
+    {
+      x: end.x - (px * halfThickness),
+      y: end.y - (py * halfThickness)
+    },
+    {
+      x: start.x - (px * halfThickness),
+      y: start.y - (py * halfThickness)
+    }
+  ];
+}
+
+function getIsoTopStripePointsFromWorld(state, mech, elevation, centerX, topY, halfH) {
+  const facing = getWorldFacing(state, mech);
+  const { dx, dy } = facingToWorldDelta(facing);
+
+  const from = projectScene(state, mech.x, mech.y, elevation);
+  const to = projectScene(state, mech.x + dx, mech.y + dy, elevation);
+
+  const vx = to.x - from.x;
+  const vy = to.y - from.y;
+  const length = Math.hypot(vx, vy) || 1;
+  const ux = vx / length;
+  const uy = vy / length;
+  const px = -uy;
+  const py = ux;
+
+  const center = {
+    x: centerX,
+    y: topY + halfH
+  };
 
   const start = {
     x: center.x - (ux * 3),
@@ -693,8 +677,8 @@ function getIsoTopStripePoints(cx, topY, halfW, halfH, screenFacing) {
   };
 
   const end = {
-    x: tip.x,
-    y: tip.y
+    x: center.x + (ux * 12),
+    y: center.y + (uy * 12)
   };
 
   const halfThickness = 2.4;
