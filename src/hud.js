@@ -55,16 +55,16 @@ function renderActivePanel(state) {
     <div class="hud-unit-name">${escapeHtml(activeMech.name)}</div>
     <div class="hud-subline">Prototype Command Feed · Round ${state.turn.round}</div>
 
-    <div class="hud-stat-grid">
-      ${renderStat("Armor", activeMech.armor)}
-      ${renderStat("Structure", activeMech.structure)}
-      ${renderStat("Move", activeMech.move)}
-      ${renderStat("Facing", facingLabel(getDisplayedFacing(state, activeMech)))}
+    <div class="hud-stat-row">
+      ${statInline("ARM", activeMech.armor)}
+      ${statInline("STR", activeMech.structure)}
+      ${statInline("MOV", activeMech.move)}
+      ${statInline("FAC", facingShort(getDisplayedFacing(state, activeMech)))}
     </div>
 
     <div class="hud-context-card">
       <div class="hud-tag">Player Unit</div>
-      <div class="hud-context-sub" style="margin-top:8px;">
+      <div class="hud-context-sub" style="margin-top:6px;">
         Position ${activeMech.x}, ${activeMech.y} · Footprint ${activeMech.footprint}
       </div>
     </div>
@@ -155,11 +155,11 @@ function renderContextPanel(state) {
         <div class="hud-context-sub">Potential target unit</div>
       </div>
 
-      <div class="hud-context-grid">
-        ${renderStat("Armor", focusMech.armor)}
-        ${renderStat("Structure", focusMech.structure)}
-        ${renderStat("Move", focusMech.move)}
-        ${renderStat("Facing", facingLabel(getDisplayedFacing(state, focusMech)))}
+      <div class="hud-context-row">
+        ${contextInline("ARM", focusMech.armor)}
+        ${contextInline("STR", focusMech.structure)}
+        ${contextInline("MOV", focusMech.move)}
+        ${contextInline("FAC", facingShort(getDisplayedFacing(state, focusMech)))}
       </div>
     `;
   }
@@ -174,11 +174,13 @@ function renderContextPanel(state) {
         <div class="hud-context-sub">Focused board position</div>
       </div>
 
-      <div class="hud-context-grid">
-        ${renderStat("Elevation", focusTile.elevation)}
-        ${renderStat("Terrain", terrainLabel(terrain))}
-        ${renderStat("Mode", modeLabel(state.ui.mode))}
-        ${renderStat("View", state.ui.viewMode === "iso" ? "Iso" : "Tactical")}
+      <div class="hud-context-row">
+        ${contextInline("X", focusTile.x)}
+        ${contextInline("Y", focusTile.y)}
+        ${contextInline("Z", focusTile.elevation)}
+        ${contextInline("T", terrainShort(terrain))}
+        ${contextInline("MODE", modeShort(state.ui.mode))}
+        ${contextInline("VIEW", state.ui.viewMode === "iso" ? "ISO" : "TOP")}
       </div>
     `;
   }
@@ -190,20 +192,29 @@ function renderContextPanel(state) {
       <div class="hud-context-sub">Movement, camera rotation, facing, and HUD validation pass.</div>
     </div>
 
-    <div class="hud-context-grid">
-      ${renderStat("Objective", "Test")}
-      ${renderStat("Enemy", "None")}
-      ${renderStat("Phase", "Command")}
-      ${renderStat("Build", "Proto")}
+    <div class="hud-context-row">
+      ${contextInline("OBJ", "TEST")}
+      ${contextInline("ENEMY", "NONE")}
+      ${contextInline("PHASE", "CMD")}
+      ${contextInline("BUILD", "PROTO")}
     </div>
   `;
 }
 
-function renderStat(label, value) {
+function statInline(label, value) {
   return `
-    <div class="hud-stat">
-      <div class="hud-stat-label">${escapeHtml(String(label))}</div>
-      <div class="hud-stat-value">${escapeHtml(String(value))}</div>
+    <div class="hud-stat-inline">
+      <span class="hud-stat-label">${escapeHtml(String(label))}</span>
+      <span class="hud-stat-value">${escapeHtml(String(value))}</span>
+    </div>
+  `;
+}
+
+function contextInline(label, value) {
+  return `
+    <div class="hud-context-item">
+      <span class="hud-stat-label">${escapeHtml(String(label))}</span>
+      <span class="hud-stat-value">${escapeHtml(String(value))}</span>
     </div>
   `;
 }
@@ -230,40 +241,40 @@ function getModeText(mode) {
   }
 }
 
-function modeLabel(mode) {
+function modeShort(mode) {
   switch (mode) {
     case "move":
-      return "Move";
+      return "MOVE";
     case "face":
-      return "Facing";
+      return "FACE";
     default:
-      return "Idle";
+      return "IDLE";
   }
 }
 
-function facingLabel(facing) {
+function facingShort(facing) {
   switch (facing) {
     case 0:
-      return "North";
+      return "N";
     case 1:
-      return "East";
+      return "E";
     case 2:
-      return "South";
+      return "S";
     case 3:
-      return "West";
+      return "W";
     default:
-      return "Unknown";
+      return "?";
   }
 }
 
-function terrainLabel(terrain) {
+function terrainShort(terrain) {
   switch (terrain) {
     case "peak":
-      return "Peak";
+      return "PEAK";
     case "high":
-      return "High";
+      return "HIGH";
     default:
-      return "Ground";
+      return "GRND";
   }
 }
 
