@@ -137,16 +137,20 @@ function handleModeKeys(key, state, actions) {
 }
 
 function handleFocusKeys(key, state, actions) {
-  let dx = 0;
-  let dy = 0;
+  let direction = null;
 
-  if (key === "arrowup" || key === "w") dy = -1;
-  else if (key === "arrowdown" || key === "s") dy = 1;
-  else if (key === "arrowleft" || key === "a") dx = -1;
-  else if (key === "arrowright" || key === "d") dx = 1;
+  if (key === "arrowup" || key === "w") direction = "up";
+  else if (key === "arrowdown" || key === "s") direction = "down";
+  else if (key === "arrowleft" || key === "a") direction = "left";
+  else if (key === "arrowright" || key === "d") direction = "right";
   else return false;
 
-  const next = clampFocusToBoard(state.focus.x + dx, state.focus.y + dy);
+  const delta = getScreenRelativeBoardDelta(state, direction);
+  const next = clampFocusToBoard(
+    state.focus.x + delta.dx,
+    state.focus.y + delta.dy
+  );
+
   state.focus.x = next.x;
   state.focus.y = next.y;
 
@@ -204,6 +208,83 @@ function handleConfirmCancelKeys(key, state, actions) {
   }
 
   return false;
+}
+
+function getScreenRelativeBoardDelta(state, direction) {
+  const turns = ((Math.round(state.camera.angle / 90) % 4) + 4) % 4;
+
+  switch (turns) {
+    case 0:
+      return deltaForRotation0(direction);
+    case 1:
+      return deltaForRotation90(direction);
+    case 2:
+      return deltaForRotation180(direction);
+    case 3:
+      return deltaForRotation270(direction);
+    default:
+      return { dx: 0, dy: 0 };
+  }
+}
+
+function deltaForRotation0(direction) {
+  switch (direction) {
+    case "up":
+      return { dx: 0, dy: -1 };
+    case "right":
+      return { dx: 1, dy: 0 };
+    case "down":
+      return { dx: 0, dy: 1 };
+    case "left":
+      return { dx: -1, dy: 0 };
+    default:
+      return { dx: 0, dy: 0 };
+  }
+}
+
+function deltaForRotation90(direction) {
+  switch (direction) {
+    case "up":
+      return { dx: -1, dy: 0 };
+    case "right":
+      return { dx: 0, dy: -1 };
+    case "down":
+      return { dx: 1, dy: 0 };
+    case "left":
+      return { dx: 0, dy: 1 };
+    default:
+      return { dx: 0, dy: 0 };
+  }
+}
+
+function deltaForRotation180(direction) {
+  switch (direction) {
+    case "up":
+      return { dx: 0, dy: 1 };
+    case "right":
+      return { dx: -1, dy: 0 };
+    case "down":
+      return { dx: 0, dy: -1 };
+    case "left":
+      return { dx: 1, dy: 0 };
+    default:
+      return { dx: 0, dy: 0 };
+  }
+}
+
+function deltaForRotation270(direction) {
+  switch (direction) {
+    case "up":
+      return { dx: 1, dy: 0 };
+    case "right":
+      return { dx: 0, dy: 1 };
+    case "down":
+      return { dx: -1, dy: 0 };
+    case "left":
+      return { dx: 0, dy: -1 };
+    default:
+      return { dx: 0, dy: 0 };
+  }
 }
 
 function snapFocusToActiveMech(state) {
