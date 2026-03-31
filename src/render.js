@@ -414,52 +414,108 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   const facing = getDisplayedFacing(state, mech);
 
   if (state.ui.viewMode === "top") {
-    const cx = screenX + (TOPDOWN_CONFIG.cellSize / 2);
-    const cy = screenY + (TOPDOWN_CONFIG.cellSize / 2);
+    const cellX = screenX + (TOPDOWN_CONFIG.cellSize / 2);
+    const cellY = screenY + (TOPDOWN_CONFIG.cellSize / 2);
+    const size = 14;
 
-    const arrow = makePolygon(
-      getArrowPoints(cx, cy, facing, 16, state.ui.viewMode),
-      getMechArrowClass(state, mech, isActive),
-      "currentColor"
-    );
-    arrow.removeAttribute("fill");
+    const body = svgEl("rect");
+    body.setAttribute("x", cellX - size);
+    body.setAttribute("y", cellY - size);
+    body.setAttribute("width", size * 2);
+    body.setAttribute("height", size * 2);
+    body.setAttribute("rx", "3");
+    body.setAttribute("class", getTopMechBodyClass(state, mech, isActive));
+
+    const facingMark = svgEl("rect");
+    const facingOffset = getTopFacingOffset(facing, size - 4);
+    facingMark.setAttribute("x", cellX - 4 + facingOffset.x);
+    facingMark.setAttribute("y", cellY - 4 + facingOffset.y);
+    facingMark.setAttribute("width", 8);
+    facingMark.setAttribute("height", 8);
+    facingMark.setAttribute("rx", "2");
+    facingMark.setAttribute("class", getTopFacingClass(state, mech));
 
     const label = makeText(
-      cx,
-      cy + 24,
+      cellX,
+      cellY + 24,
       mech.name,
       "mech-label"
     );
 
-    group.appendChild(arrow);
+    group.appendChild(body);
+    group.appendChild(facingMark);
     group.appendChild(label);
     parent.appendChild(group);
     return;
   }
 
+  const halfW = 18;
+  const halfH = 10;
+  const height = 18;
+
+  const topY = screenY + 2;
+  const baseY = topY + height;
+
+  const top = [
+    { x: screenX, y: topY },
+    { x: screenX + halfW, y: topY + halfH },
+    { x: screenX, y: topY + (halfH * 2) },
+    { x: screenX - halfW, y: topY + halfH }
+  ];
+
+  const left = [
+    top[3],
+    top[2],
+    { x: top[2].x, y: top[2].y + height },
+    { x: top[3].x, y: top[3].y + height }
+  ];
+
+  const right = [
+    top[1],
+    top[2],
+    { x: top[2].x, y: top[2].y + height },
+    { x: top[1].x, y: top[1].y + height }
+  ];
+
   const shadow = svgEl("ellipse");
   shadow.setAttribute("cx", screenX);
-  shadow.setAttribute("cy", screenY + 24);
+  shadow.setAttribute("cy", baseY + 12);
   shadow.setAttribute("rx", 18);
   shadow.setAttribute("ry", 8);
   shadow.setAttribute("class", "mech-shadow");
 
-  const arrow = makePolygon(
-    getArrowPoints(screenX, screenY + 4, facing, 16, state.ui.viewMode),
-    getMechArrowClass(state, mech, isActive),
+  const leftPoly = makePolygon(
+    left,
+    getIsoLeftClass(state, mech, facing),
     "currentColor"
   );
-  arrow.removeAttribute("fill");
+  leftPoly.removeAttribute("fill");
+
+  const rightPoly = makePolygon(
+    right,
+    getIsoRightClass(state, mech, facing),
+    "currentColor"
+  );
+  rightPoly.removeAttribute("fill");
+
+  const topPoly = makePolygon(
+    top,
+    getIsoTopClass(state, mech, isActive),
+    "currentColor"
+  );
+  topPoly.removeAttribute("fill");
 
   const label = makeText(
     screenX,
-    screenY + 8,
+    topY + halfH + 6,
     mech.name,
     "mech-label"
   );
 
   group.appendChild(shadow);
-  group.appendChild(arrow);
+  group.appendChild(leftPoly);
+  group.appendChild(rightPoly);
+  group.appendChild(topPoly);
   group.appendChild(label);
 
   parent.appendChild(group);
@@ -474,11 +530,11 @@ function getDisplayedFacing(state, mech) {
   return isPreviewing ? state.ui.facingPreview : mech.facing;
 }
 
-function getMechArrowClass(state, mech, isActive) {
-  const classes = ["mech-arrow"];
+function getTopMechBodyClass(state, mech, isActive) {
+  const classes = ["mech-top-body"];
 
   if (isActive) {
-    classes.push("mech-arrow-active");
+    classes.push("mech-top-body-active");
   }
 
   if (
@@ -486,74 +542,86 @@ function getMechArrowClass(state, mech, isActive) {
     mech.instanceId === state.turn.activeMechId &&
     state.ui.facingPreview !== null
   ) {
-    classes.push("mech-arrow-preview");
+    classes.push("mech-top-body-preview");
   }
 
   return classes.join(" ");
 }
 
-function getArrowPoints(cx, cy, facing, size, viewMode) {
-  const dir = facingToScreenVector(facing, viewMode);
-  const length = Math.hypot(dir.x, dir.y) || 1;
-  const ux = dir.x / length;
-  const uy = dir.y / length;
+function getTopFacingClass(state, mech) {
+  const isPreviewing =
+    state.ui.mode === "face" &&
+    mech.instanceId === state.turn.activeMechId &&
+    state.ui.facingPreview !== null;
 
-  const px = -uy;
-  const py = ux;
-
-  const tip = {
-    x: cx + (ux * size),
-    y: cy + (uy * size)
-  };
-
-  const backCenter = {
-    x: cx - (ux * (size * 0.55)),
-    y: cy - (uy * (size * 0.55))
-  };
-
-  const halfWidth = size * 0.55;
-
-  const left = {
-    x: backCenter.x + (px * halfWidth),
-    y: backCenter.y + (py * halfWidth)
-  };
-
-  const right = {
-    x: backCenter.x - (px * halfWidth),
-    y: backCenter.y - (py * halfWidth)
-  };
-
-  return [tip, left, right];
+  return isPreviewing ? "mech-top-facing-preview" : "mech-top-facing";
 }
 
-function facingToScreenVector(facing, viewMode) {
-  if (viewMode === "top") {
-    switch (facing) {
-      case 0:
-        return { x: 0, y: -1 };
-      case 1:
-        return { x: 1, y: 0 };
-      case 2:
-        return { x: 0, y: 1 };
-      case 3:
-        return { x: -1, y: 0 };
-      default:
-        return { x: 0, y: -1 };
-    }
-  }
-
+function getTopFacingOffset(facing, distance) {
   switch (facing) {
     case 0:
-      return { x: 0, y: -1.1 };
+      return { x: 0, y: -distance };
     case 1:
-      return { x: 1, y: -0.15 };
+      return { x: distance, y: 0 };
     case 2:
-      return { x: 0, y: 1.1 };
+      return { x: 0, y: distance };
     case 3:
-      return { x: -1, y: -0.15 };
+      return { x: -distance, y: 0 };
     default:
-      return { x: 0, y: -1.1 };
+      return { x: 0, y: -distance };
   }
+}
+
+function getIsoTopClass(state, mech, isActive) {
+  const classes = ["mech-cube-top"];
+
+  if (isActive) {
+    classes.push("mech-cube-top-active");
+  }
+
+  if (
+    state.ui.mode === "face" &&
+    mech.instanceId === state.turn.activeMechId &&
+    state.ui.facingPreview !== null
+  ) {
+    classes.push("mech-cube-top-preview");
+  }
+
+  return classes.join(" ");
+}
+
+function getIsoLeftClass(state, mech, facing) {
+  const classes = [];
+
+  const isPreviewing =
+    state.ui.mode === "face" &&
+    mech.instanceId === state.turn.activeMechId &&
+    state.ui.facingPreview !== null;
+
+  if (facing === 3) {
+    classes.push(isPreviewing ? "mech-cube-left-facing-preview" : "mech-cube-left-facing");
+  } else {
+    classes.push(isPreviewing ? "mech-cube-left-preview" : "mech-cube-left");
+  }
+
+  return classes.join(" ");
+}
+
+function getIsoRightClass(state, mech, facing) {
+  const classes = [];
+
+  const isPreviewing =
+    state.ui.mode === "face" &&
+    mech.instanceId === state.turn.activeMechId &&
+    state.ui.facingPreview !== null;
+
+  if (facing === 1) {
+    classes.push(isPreviewing ? "mech-cube-right-facing-preview" : "mech-cube-right-facing");
+  } else {
+    classes.push(isPreviewing ? "mech-cube-right-preview" : "mech-cube-right");
+  }
+
+  return classes.join(" ");
 }
 
 function drawOverlayDiamond(screenX, screenY, className, fill, stroke, parent) {
