@@ -87,7 +87,7 @@ export function renderIso(state, refs) {
 
   renderFocusTile(state, worldUi);
 
-  const snappedRotation = Math.round(state.camera.angle / 90) % 4;
+  const snappedRotation = normalizedTurns(state);
   rotationLabel.textContent =
     state.ui.viewMode === "top"
       ? `View: Tactical · Rotation: ${snappedRotation * 90}°`
@@ -544,7 +544,8 @@ function getWorldFacing(state, mech) {
 }
 
 function worldFacingToScreenFacing(worldFacing, state) {
-  return (worldFacing + normalizedTurns(state)) % 4;
+  const turns = normalizedTurns(state);
+  return ((worldFacing - turns) % 4 + 4) % 4;
 }
 
 function getTopMechBodyClass(state, mech, isActive) {
