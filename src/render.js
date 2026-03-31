@@ -3,6 +3,12 @@ import { getTile, rotateCoord, tileTypeFromElevation } from "./map.js";
 import { getReachableTiles } from "./movement.js";
 import { svgEl, makePolygon, makeText } from "./utils.js";
 
+const TOPDOWN_CONFIG = {
+  cellSize: 56,
+  originX: 460,
+  originY: 130
+};
+
 export function renderAll(state, refs) {
   renderIso(state, refs);
   renderEditor(state, refs);
@@ -10,7 +16,7 @@ export function renderAll(state, refs) {
 
 export function renderIso(state, refs) {
   const { worldScene, worldUi, rotationLabel } = refs;
-  const { map, mechs, rotation } = state;
+  const { map, mechs } = state;
 
   worldScene.innerHTML = "";
   worldUi.innerHTML = "";
@@ -27,14 +33,7 @@ export function renderIso(state, refs) {
   for (let y = 0; y < MAP_CONFIG.mechHeight; y++) {
     for (let x = 0; x < MAP_CONFIG.mechWidth; x++) {
       const tile = getTile(map, x, y);
-      const rotated = rotateCoord(
-        x,
-        y,
-        MAP_CONFIG.mechWidth,
-        MAP_CONFIG.mechHeight,
-        rotation
-      );
-      const projected = isoProject(rotated.x, rotated.y, tile.elevation);
+      const projected = projectScene(state, x, y, tile.elevation);
 
       sceneItems.push({
         kind: "tile",
@@ -43,7 +42,7 @@ export function renderIso(state, refs) {
         elevation: tile.elevation,
         screenX: projected.x,
         screenY: projected.y,
-        sortKey: (rotated.x + rotated.y) * 100 + tile.elevation,
+        sortKey: getSceneSortKey(state, x, y, tile.elevation),
         reachableCost: reachableMap.get(`${x},${y}`) ?? null
       });
     }
@@ -51,14 +50,7 @@ export function renderIso(state, refs) {
 
   for (const mech of mechs) {
     const tile = getTile(map, mech.x, mech.y);
-    const rotated = rotateCoord(
-      mech.x,
-      mech.y,
-      MAP_CONFIG.mechWidth,
-      MAP_CONFIG.mechHeight,
-      rotation
-    );
-    const projected = isoProject(rotated.x, rotated.y, tile.elevation);
+    const projected = projectScene(state, mech.x, mech.y, tile.elevation);
 
     sceneItems.push({
       kind: "mech",
@@ -66,7 +58,7 @@ export function renderIso(state, refs) {
       elevation: tile.elevation,
       screenX: projected.x,
       screenY: projected.y,
-      sortKey: (rotated.x + rotated.y) * 100 + tile.elevation + 60
+      sortKey: getSceneSortKey(state, mech.x, mech.y, tile.elevation) + 60
     });
   }
 
@@ -74,14 +66,18 @@ export function renderIso(state, refs) {
 
   for (const item of sceneItems) {
     if (item.kind === "tile") {
-      drawIsoTile(item, worldScene);
+      if (state.ui.viewMode === "top") {
+        drawTopTile(item, worldScene);
+      } else {
+        drawIsoTile(item, worldScene);
+      }
 
       if (state.ui.mode === "move" && item.reachableCost !== null) {
-        drawSceneMoveOverlay(item, worldScene, String(item.reachableCost));
+        drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost));
       }
-    } else if (item.kind === "mech") {
+    } else {
       const isActive = item.mech.instanceId === state.turn.activeMechId;
-      drawMech(item.mech, item.screenX, item.screenY, worldScene, isActive);
+      drawMech(state, item.mech, item.screenX, item.screenY, worldScene, isActive);
     }
   }
 
@@ -91,7 +87,11 @@ export function renderIso(state, refs) {
 
   renderFocusTile(state, worldUi);
 
-  rotationLabel.textContent = `Rotation: ${rotation * 90}°`;
+  const snappedRotation = Math.round(state.camera.angle / 90) % 4;
+  rotationLabel.textContent =
+    state.ui.viewMode === "top"
+      ? `View: Tactical · Rotation: ${snappedRotation * 90}°`
+      : `View: Iso · Rotation: ${Math.round(state.camera.angle) % 360}°`;
 }
 
 export function renderEditor(state, refs) {
@@ -136,6 +136,69 @@ export function renderEditor(state, refs) {
   }
 }
 
+function projectScene(state, x, y, elevation) {
+  if (state.ui.viewMode === "top") {
+    const snappedTurns = Math.round(state.camera.angle / 90) % 4;
+    const rotated = rotateCoord(
+      x,
+      y,
+      MAP_CONFIG.mechWidth,
+      MAP_CONFIG.mechHeight,
+      snappedTurns
+    );
+
+    return {
+      x: TOPDOWN_CONFIG.originX + (rotated.x * TOPDOWN_CONFIG.cellSize),
+      y: TOPDOWN_CONFIG.originY + (rotated.y * TOPDOWN_CONFIG.cellSize)
+    };
+  }
+
+  const startTurns = Math.floor(state.camera.angle / 90) % 4;
+  const nextTurns = (startTurns + 1) % 4;
+  const blend = (state.camera.angle % 90) / 90;
+
+  const startRot = rotateCoord(
+    x,
+    y,
+    MAP_CONFIG.mechWidth,
+    MAP_CONFIG.mechHeight,
+    startTurns
+  );
+
+  const nextRot = rotateCoord(
+    x,
+    y,
+    MAP_CONFIG.mechWidth,
+    MAP_CONFIG.mechHeight,
+    nextTurns
+  );
+
+  const p0 = isoProject(startRot.x, startRot.y, elevation);
+  const p1 = isoProject(nextRot.x, nextRot.y, elevation);
+
+  return {
+    x: lerp(p0.x, p1.x, blend),
+    y: lerp(p0.y, p1.y, blend)
+  };
+}
+
+function getSceneSortKey(state, x, y, elevation) {
+  const turns =
+    state.ui.viewMode === "top"
+      ? Math.round(state.camera.angle / 90) % 4
+      : Math.round(state.camera.angle / 90) % 4;
+
+  const rotated = rotateCoord(
+    x,
+    y,
+    MAP_CONFIG.mechWidth,
+    MAP_CONFIG.mechHeight,
+    turns
+  );
+
+  return (rotated.x + rotated.y) * 100 + elevation;
+}
+
 function renderPreviewPath(state, parent) {
   const path = state.ui.previewPath || [];
   if (!path.length) return;
@@ -144,24 +207,26 @@ function renderPreviewPath(state, parent) {
     const mapTile = getTile(state.map, step.x, step.y);
     if (!mapTile) continue;
 
-    const rotated = rotateCoord(
-      step.x,
-      step.y,
-      MAP_CONFIG.mechWidth,
-      MAP_CONFIG.mechHeight,
-      state.rotation
-    );
+    const projected = projectScene(state, step.x, step.y, mapTile.elevation);
 
-    const projected = isoProject(rotated.x, rotated.y, mapTile.elevation);
-
-    drawOverlayDiamond(
-      projected.x,
-      projected.y,
-      "move-path-tile",
-      "rgba(240, 176, 0, 0.10)",
-      "rgba(240, 176, 0, 0.85)",
-      parent
-    );
+    if (state.ui.viewMode === "top") {
+      drawTopOverlayBox(
+        projected.x,
+        projected.y,
+        "rgba(240, 176, 0, 0.10)",
+        "rgba(240, 176, 0, 0.90)",
+        parent
+      );
+    } else {
+      drawOverlayDiamond(
+        projected.x,
+        projected.y,
+        "move-path-tile",
+        "rgba(240, 176, 0, 0.10)",
+        "rgba(240, 176, 0, 0.85)",
+        parent
+      );
+    }
   }
 }
 
@@ -169,24 +234,26 @@ function renderFocusTile(state, parent) {
   const tile = getTile(state.map, state.focus.x, state.focus.y);
   if (!tile) return;
 
-  const rotated = rotateCoord(
-    state.focus.x,
-    state.focus.y,
-    MAP_CONFIG.mechWidth,
-    MAP_CONFIG.mechHeight,
-    state.rotation
-  );
+  const projected = projectScene(state, state.focus.x, state.focus.y, tile.elevation);
 
-  const projected = isoProject(rotated.x, rotated.y, tile.elevation);
-
-  drawOverlayDiamond(
-    projected.x,
-    projected.y,
-    "focus-tile",
-    "rgba(240, 176, 0, 0.04)",
-    "rgba(240, 176, 0, 0.95)",
-    parent
-  );
+  if (state.ui.viewMode === "top") {
+    drawTopOverlayBox(
+      projected.x,
+      projected.y,
+      "rgba(240, 176, 0, 0.04)",
+      "rgba(240, 176, 0, 0.95)",
+      parent
+    );
+  } else {
+    drawOverlayDiamond(
+      projected.x,
+      projected.y,
+      "focus-tile",
+      "rgba(240, 176, 0, 0.04)",
+      "rgba(240, 176, 0, 0.95)",
+      parent
+    );
+  }
 }
 
 function isoProject(x, y, elevation) {
@@ -199,6 +266,10 @@ function isoProject(x, y, elevation) {
     (elevation * RENDER_CONFIG.elevationStepPx);
 
   return { x: screenX, y: screenY };
+}
+
+function lerp(a, b, t) {
+  return a + ((b - a) * t);
 }
 
 function drawIsoTile(item, parent) {
@@ -260,7 +331,59 @@ function drawIsoTile(item, parent) {
   parent.appendChild(group);
 }
 
-function drawSceneMoveOverlay(item, parent, text) {
+function drawTopTile(item, parent) {
+  const { x, y, elevation, screenX, screenY } = item;
+  const type = tileTypeFromElevation(elevation);
+  const colors = tileColors(type);
+
+  const rect = svgEl("rect");
+  rect.setAttribute("x", screenX);
+  rect.setAttribute("y", screenY);
+  rect.setAttribute("width", TOPDOWN_CONFIG.cellSize);
+  rect.setAttribute("height", TOPDOWN_CONFIG.cellSize);
+  rect.setAttribute("fill", colors.top);
+  rect.setAttribute("stroke", "rgba(255,255,255,0.08)");
+  rect.setAttribute("stroke-width", "1");
+  rect.dataset.x = String(x);
+  rect.dataset.y = String(y);
+
+  parent.appendChild(rect);
+
+  if (elevation > 0) {
+    const label = makeText(
+      screenX + TOPDOWN_CONFIG.cellSize - 8,
+      screenY + 14,
+      String(elevation),
+      "top-elevation-label"
+    );
+    label.setAttribute("text-anchor", "end");
+    label.setAttribute("fill", "rgba(255,255,255,0.9)");
+    label.setAttribute("font-size", "12");
+    parent.appendChild(label);
+  }
+}
+
+function drawSceneMoveOverlay(state, item, parent, text) {
+  if (state.ui.viewMode === "top") {
+    drawTopOverlayBox(
+      item.screenX,
+      item.screenY,
+      "rgba(80, 180, 255, 0.10)",
+      "rgba(80, 180, 255, 0.35)",
+      parent
+    );
+
+    const label = makeText(
+      item.screenX + (TOPDOWN_CONFIG.cellSize / 2),
+      item.screenY + (TOPDOWN_CONFIG.cellSize / 2),
+      text,
+      "move-cost-label"
+    );
+    styleMoveCostLabel(label);
+    parent.appendChild(label);
+    return;
+  }
+
   drawOverlayDiamond(
     item.screenX,
     item.screenY,
@@ -276,19 +399,44 @@ function drawSceneMoveOverlay(item, parent, text) {
     text,
     "move-cost-label"
   );
+  styleMoveCostLabel(label);
+  parent.appendChild(label);
+}
 
+function styleMoveCostLabel(label) {
   label.setAttribute("fill", "#dceeff");
   label.setAttribute("font-size", "13");
   label.setAttribute("font-weight", "700");
   label.setAttribute("stroke", "rgba(0,0,0,0.65)");
   label.setAttribute("stroke-width", "3");
   label.setAttribute("paint-order", "stroke fill");
-
-  parent.appendChild(label);
 }
 
-function drawMech(mech, screenX, screenY, parent, isActive = false) {
+function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   const group = svgEl("g");
+
+  if (state.ui.viewMode === "top") {
+    const cx = screenX + (TOPDOWN_CONFIG.cellSize / 2);
+    const cy = screenY + (TOPDOWN_CONFIG.cellSize / 2);
+
+    const body = svgEl("circle");
+    body.setAttribute("cx", cx);
+    body.setAttribute("cy", cy);
+    body.setAttribute("r", isActive ? 16 : 14);
+    body.setAttribute("class", "mech-body");
+
+    const label = makeText(
+      cx,
+      cy + 24,
+      mech.name,
+      "mech-label"
+    );
+
+    group.appendChild(body);
+    group.appendChild(label);
+    parent.appendChild(group);
+    return;
+  }
 
   const shadow = svgEl("ellipse");
   shadow.setAttribute("cx", screenX);
@@ -332,6 +480,19 @@ function drawOverlayDiamond(screenX, screenY, className, fill, stroke, parent) {
   poly.setAttribute("stroke", stroke);
   poly.setAttribute("stroke-width", "1.5");
   parent.appendChild(poly);
+}
+
+function drawTopOverlayBox(screenX, screenY, fill, stroke, parent) {
+  const rect = svgEl("rect");
+  rect.setAttribute("x", screenX + 3);
+  rect.setAttribute("y", screenY + 3);
+  rect.setAttribute("width", TOPDOWN_CONFIG.cellSize - 6);
+  rect.setAttribute("height", TOPDOWN_CONFIG.cellSize - 6);
+  rect.setAttribute("rx", "8");
+  rect.setAttribute("fill", fill);
+  rect.setAttribute("stroke", stroke);
+  rect.setAttribute("stroke-width", "1.5");
+  parent.appendChild(rect);
 }
 
 function tileColors(type) {
