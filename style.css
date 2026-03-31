@@ -151,10 +151,21 @@ button:hover {
   fill: rgba(0, 0, 0, 0.22);
 }
 
-.mech-body {
+.mech-arrow {
   fill: #c84d4d;
   stroke: #581d1d;
   stroke-width: 1.5;
+}
+
+.mech-arrow-active {
+  stroke: rgba(240, 176, 0, 0.95);
+  stroke-width: 2.5;
+}
+
+.mech-arrow-preview {
+  fill: rgba(240, 176, 0, 0.88);
+  stroke: rgba(0, 0, 0, 0.70);
+  stroke-width: 2.5;
 }
 
 .mech-label {
