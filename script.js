@@ -1,9 +1,16 @@
 import { createState } from "./src/state.js";
 import { createInitialMap, resetMap } from "./src/map.js";
-import { instantiateTestMechs } from "./src/mechs.js";
+import {
+  instantiateTestMechs,
+  getMechById,
+  moveMechTo,
+  setMechFacing
+} from "./src/mechs.js";
 import { renderAll } from "./src/render.js";
 import { bindInput } from "./src/input.js";
 import { loadGameData } from "./src/dataLoader.js";
+import { canMoveActiveMechTo, getPathToTile } from "./src/movement.js";
+import { renderHud, bindHudInput } from "./src/hud.js";
 
 const refs = {
   editor: document.getElementById("editor"),
@@ -14,7 +21,11 @@ const refs = {
   rotateRightButton: document.getElementById("rotateRight"),
   toggleViewButton: document.getElementById("toggleView"),
   resetMapButton: document.getElementById("resetMap"),
-  rotationLabel: document.getElementById("rotationLabel")
+  rotationLabel: document.getElementById("rotationLabel"),
+  hudRoot: document.getElementById("hudRoot"),
+  hudLeft: document.getElementById("hudLeft"),
+  hudCenter: document.getElementById("hudCenter"),
+  hudRight: document.getElementById("hudRight")
 };
 
 async function init() {
@@ -29,6 +40,144 @@ async function init() {
 
   function render() {
     renderAll(state, refs);
+    renderHud(state, refs);
+  }
+
+  function snapFocusToActiveMech() {
+    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+    if (!activeMech) return;
+
+    state.focus.x = activeMech.x;
+    state.focus.y = activeMech.y;
+  }
+
+  function getDefaultFacingFromPath(path, fallbackFacing) {
+    if (!path || path.length < 2) return fallbackFacing;
+
+    const last = path[path.length - 1];
+    const prev = path[path.length - 2];
+    const dx = last.x - prev.x;
+    const dy = last.y - prev.y;
+
+    if (dx === 0 && dy === -1) return 0;
+    if (dx === 1 && dy === 0) return 1;
+    if (dx === 0 && dy === 1) return 2;
+    if (dx === -1 && dy === 0) return 3;
+
+    return fallbackFacing;
+  }
+
+  function startMove() {
+    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+    if (!activeMech) return;
+
+    state.ui.preMove = {
+      mechId: activeMech.instanceId,
+      x: activeMech.x,
+      y: activeMech.y,
+      facing: activeMech.facing
+    };
+
+    state.ui.mode = "move";
+    state.selection.action = "move";
+    state.ui.facingPreview = null;
+    state.ui.previewPath = [];
+    snapFocusToActiveMech();
+    render();
+  }
+
+  function startAttack() {
+    state.ui.mode = "idle";
+    state.selection.action = null;
+    render();
+  }
+
+  function waitTurn() {
+    state.ui.mode = "idle";
+    state.selection.action = null;
+    state.ui.previewPath = [];
+    state.ui.facingPreview = null;
+    render();
+  }
+
+  function confirmAction() {
+    if (state.ui.mode === "move") {
+      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+      if (!activeMech) return;
+
+      if (canMoveActiveMechTo(state, state.focus.x, state.focus.y)) {
+        const defaultFacing = getDefaultFacingFromPath(
+          state.ui.previewPath,
+          activeMech.facing
+        );
+
+        moveMechTo(
+          state.mechs,
+          activeMech.instanceId,
+          state.focus.x,
+          state.focus.y
+        );
+
+        state.ui.mode = "face";
+        state.selection.action = "face";
+        state.ui.previewPath = [];
+        state.ui.facingPreview = defaultFacing;
+        snapFocusToActiveMech();
+        render();
+      }
+
+      return;
+    }
+
+    if (state.ui.mode === "face") {
+      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+      if (!activeMech) return;
+
+      if (state.ui.facingPreview !== null) {
+        setMechFacing(
+          state.mechs,
+          activeMech.instanceId,
+          state.ui.facingPreview
+        );
+      }
+
+      state.ui.mode = "idle";
+      state.selection.action = null;
+      state.ui.previewPath = [];
+      state.ui.facingPreview = null;
+      state.ui.preMove = null;
+      snapFocusToActiveMech();
+      render();
+    }
+  }
+
+  function cancelAction() {
+    if (state.ui.mode === "move") {
+      state.ui.mode = "idle";
+      state.selection.action = null;
+      state.ui.previewPath = [];
+      state.ui.facingPreview = null;
+      state.ui.preMove = null;
+      snapFocusToActiveMech();
+      render();
+      return;
+    }
+
+    if (state.ui.mode === "face") {
+      const snap = state.ui.preMove;
+
+      if (snap) {
+        moveMechTo(state.mechs, snap.mechId, snap.x, snap.y);
+        setMechFacing(state.mechs, snap.mechId, snap.facing);
+      }
+
+      state.ui.mode = "move";
+      state.selection.action = "move";
+      state.ui.facingPreview = null;
+      state.ui.previewPath = getPathToTile(state, state.focus.x, state.focus.y);
+      snapFocusToActiveMech();
+      render();
+    }
   }
 
   function animateRotation(direction) {
@@ -94,6 +243,12 @@ async function init() {
 
       toggleView,
 
+      startMove,
+      startAttack,
+      waitTurn,
+      confirmAction,
+      cancelAction,
+
       resetMap() {
         state.map = resetMap();
         state.mechs = instantiateTestMechs(state.content);
@@ -103,8 +258,11 @@ async function init() {
 
         state.selection.mechId = state.turn.activeMechId;
         state.selection.action = null;
+
         state.ui.mode = "idle";
         state.ui.previewPath = [];
+        state.ui.facingPreview = null;
+        state.ui.preMove = null;
 
         state.rotation = 0;
         state.camera.angle = 0;
@@ -124,7 +282,10 @@ async function init() {
     };
   }
 
-  bindInput(state, refs, actions());
+  const boundActions = actions();
+
+  bindInput(state, refs, boundActions);
+  bindHudInput(state, refs, boundActions);
   render();
 }
 
