@@ -7,7 +7,7 @@ import {
   setMechFacing
 } from "./src/mechs.js";
 import { renderAll } from "./src/render.js";
-import { bindInput } from "./src/input.js";
+import { bindInput, snapFocusToActiveMech as snapFocusHelper } from "./src/input.js";
 import { loadGameData } from "./src/dataLoader.js";
 import { canMoveActiveMechTo, getPathToTile } from "./src/movement.js";
 import { renderHud, bindHudInput } from "./src/hud.js";
@@ -44,11 +44,51 @@ async function init() {
   }
 
   function snapFocusToActiveMech() {
-    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-    if (!activeMech) return;
+    snapFocusHelper(state);
+  }
 
-    state.focus.x = activeMech.x;
-    state.focus.y = activeMech.y;
+  function openCommandMenu() {
+    if (state.ui.mode !== "idle") return;
+
+    snapFocusToActiveMech();
+    state.ui.commandMenu.open = true;
+    state.ui.commandMenu.index = 0;
+    state.selection.action = null;
+    render();
+  }
+
+  function closeCommandMenu() {
+    state.ui.commandMenu.open = false;
+    state.ui.commandMenu.index = 0;
+    render();
+  }
+
+  function moveMenuSelection(delta) {
+    const menu = state.ui.commandMenu;
+    if (!menu.open) return;
+
+    const count = menu.items.length;
+    menu.index = (menu.index + delta + count) % count;
+    render();
+  }
+
+  function confirmMenuSelection() {
+    const menu = state.ui.commandMenu;
+    if (!menu.open) return;
+
+    const action = menu.items[menu.index];
+    selectMenuAction(action);
+  }
+
+  function selectMenuAction(action) {
+    if (action === "move") {
+      startMove();
+      return;
+    }
+
+    if (action === "wait") {
+      waitTurn();
+    }
   }
 
   function getDefaultFacingFromPath(path, fallbackFacing) {
@@ -71,6 +111,8 @@ async function init() {
     const activeMech = getMechById(state.mechs, state.turn.activeMechId);
     if (!activeMech) return;
 
+    state.ui.commandMenu.open = false;
+
     state.ui.preMove = {
       mechId: activeMech.instanceId,
       x: activeMech.x,
@@ -89,6 +131,7 @@ async function init() {
   function startAttack() {
     state.ui.mode = "idle";
     state.selection.action = null;
+    state.ui.commandMenu.open = false;
     render();
   }
 
@@ -97,6 +140,12 @@ async function init() {
     state.selection.action = null;
     state.ui.previewPath = [];
     state.ui.facingPreview = null;
+    state.ui.preMove = null;
+    state.ui.commandMenu.open = false;
+    state.ui.commandMenu.index = 0;
+
+    // Placeholder until turn order is built.
+    snapFocusToActiveMech();
     render();
   }
 
@@ -146,6 +195,8 @@ async function init() {
       state.ui.previewPath = [];
       state.ui.facingPreview = null;
       state.ui.preMove = null;
+      state.ui.commandMenu.open = false;
+      state.ui.commandMenu.index = 0;
       snapFocusToActiveMech();
       render();
     }
@@ -158,6 +209,8 @@ async function init() {
       state.ui.previewPath = [];
       state.ui.facingPreview = null;
       state.ui.preMove = null;
+      state.ui.commandMenu.open = true;
+      state.ui.commandMenu.index = 0;
       snapFocusToActiveMech();
       render();
       return;
@@ -174,9 +227,14 @@ async function init() {
       state.ui.mode = "move";
       state.selection.action = "move";
       state.ui.facingPreview = null;
-      state.ui.previewPath = getPathToTile(state, state.focus.x, state.focus.y);
       snapFocusToActiveMech();
+      state.ui.previewPath = getPathToTile(state, state.focus.x, state.focus.y);
       render();
+      return;
+    }
+
+    if (state.ui.mode === "idle" && state.ui.commandMenu.open) {
+      closeCommandMenu();
     }
   }
 
@@ -232,6 +290,12 @@ async function init() {
   function actions() {
     return {
       render,
+      snapFocusToActiveMech,
+      openCommandMenu,
+      closeCommandMenu,
+      moveMenuSelection,
+      confirmMenuSelection,
+      selectMenuAction,
 
       rotateLeft() {
         animateRotation(-1);
@@ -263,6 +327,9 @@ async function init() {
         state.ui.previewPath = [];
         state.ui.facingPreview = null;
         state.ui.preMove = null;
+        state.ui.commandMenu.open = false;
+        state.ui.commandMenu.index = 0;
+        state.ui.commandMenu.items = ["move", "wait"];
 
         state.rotation = 0;
         state.camera.angle = 0;
