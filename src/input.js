@@ -1,8 +1,7 @@
 import { changeElevation } from "./map.js";
-import { getMechById, moveMechTo, setMechFacing } from "./mechs.js";
+import { getMechById } from "./mechs.js";
 import {
   clampFocusToBoard,
-  canMoveActiveMechTo,
   getPathToTile
 } from "./movement.js";
 
@@ -128,26 +127,8 @@ function handleModeKeys(key, state, actions) {
   }
 
   if (key === "m") {
-    if (state.turn.activeMechId) {
-      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-
-      if (activeMech) {
-        state.ui.preMove = {
-          mechId: activeMech.instanceId,
-          x: activeMech.x,
-          y: activeMech.y,
-          facing: activeMech.facing
-        };
-      }
-
-      state.ui.mode = "move";
-      state.selection.action = "move";
-      state.ui.facingPreview = null;
-      snapFocusToActiveMech(state);
-      state.ui.previewPath = [];
-      actions.render();
-      return true;
-    }
+    actions.startMove();
+    return true;
   }
 
   return false;
@@ -207,87 +188,12 @@ function handleConfirmCancelKeys(key, state, actions) {
   const isCancel = key === "escape" || key === "backspace";
 
   if (isConfirm) {
-    if (state.ui.mode === "move") {
-      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-      if (!activeMech) return true;
-
-      if (canMoveActiveMechTo(state, state.focus.x, state.focus.y)) {
-        const defaultFacing = facingFromPath(
-          state.ui.previewPath,
-          activeMech.facing
-        );
-
-        moveMechTo(
-          state.mechs,
-          activeMech.instanceId,
-          state.focus.x,
-          state.focus.y
-        );
-
-        state.ui.mode = "face";
-        state.selection.action = "face";
-        state.ui.previewPath = [];
-        state.ui.facingPreview = defaultFacing;
-        snapFocusToActiveMech(state);
-        actions.render();
-      }
-
-      return true;
-    }
-
-    if (state.ui.mode === "face") {
-      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-
-      if (activeMech && state.ui.facingPreview !== null) {
-        setMechFacing(
-          state.mechs,
-          activeMech.instanceId,
-          state.ui.facingPreview
-        );
-      }
-
-      state.ui.mode = "idle";
-      state.selection.action = null;
-      state.ui.previewPath = [];
-      state.ui.facingPreview = null;
-      state.ui.preMove = null;
-      snapFocusToActiveMech(state);
-      actions.render();
-      return true;
-    }
-
+    actions.confirmAction();
     return true;
   }
 
   if (isCancel) {
-    if (state.ui.mode === "move") {
-      state.ui.mode = "idle";
-      state.selection.action = null;
-      state.ui.previewPath = [];
-      state.ui.facingPreview = null;
-      state.ui.preMove = null;
-      snapFocusToActiveMech(state);
-      actions.render();
-      return true;
-    }
-
-    if (state.ui.mode === "face") {
-      const snap = state.ui.preMove;
-
-      if (snap) {
-        moveMechTo(state.mechs, snap.mechId, snap.x, snap.y);
-        setMechFacing(state.mechs, snap.mechId, snap.facing);
-      }
-
-      state.ui.mode = "move";
-      state.selection.action = "move";
-      state.ui.facingPreview = null;
-      state.ui.previewPath = [];
-      snapFocusToActiveMech(state);
-      actions.render();
-      return true;
-    }
-
+    actions.cancelAction();
     return true;
   }
 
@@ -377,17 +283,6 @@ function facingFromDelta(dx, dy) {
   if (dx === 0 && dy === 1) return 2;
   if (dx === -1 && dy === 0) return 3;
   return null;
-}
-
-function facingFromPath(path, fallbackFacing) {
-  if (!path || path.length < 2) return fallbackFacing;
-
-  const last = path[path.length - 1];
-  const prev = path[path.length - 2];
-  const dx = last.x - prev.x;
-  const dy = last.y - prev.y;
-
-  return facingFromDelta(dx, dy) ?? fallbackFacing;
 }
 
 function snapFocusToActiveMech(state) {
