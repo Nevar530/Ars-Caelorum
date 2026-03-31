@@ -15,7 +15,8 @@ export function createState({
 
     turn: {
       activeMechId,
-      round: 1
+      round: 1,
+      phase: "move"
     },
 
     selection: {
@@ -35,7 +36,13 @@ export function createState({
       previewPath: [],
       viewMode: "iso",
       facingPreview: null,
-      preMove: null
+      preMove: null,
+
+      commandMenu: {
+        open: false,
+        index: 0,
+        items: ["move", "wait"]
+      }
     },
 
     camera: {
