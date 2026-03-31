@@ -12,6 +12,7 @@ const refs = {
   worldUi: document.getElementById("world-ui"),
   rotateLeftButton: document.getElementById("rotateLeft"),
   rotateRightButton: document.getElementById("rotateRight"),
+  toggleViewButton: document.getElementById("toggleView"),
   resetMapButton: document.getElementById("resetMap"),
   rotationLabel: document.getElementById("rotationLabel")
 };
@@ -30,17 +31,69 @@ async function init() {
     renderAll(state, refs);
   }
 
+  function animateRotation(direction) {
+    if (state.ui.viewMode !== "iso") return;
+    if (state.camera.isTurning) return;
+
+    state.camera.isTurning = true;
+
+    const startAngle = state.camera.angle;
+    const endAngle = startAngle + (direction * 90);
+    const durationMs = 320;
+    const startTime = performance.now();
+
+    function easeInOutQuad(t) {
+      return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
+
+    function tick(now) {
+      const elapsed = now - startTime;
+      const rawT = Math.min(1, elapsed / durationMs);
+      const easedT = easeInOutQuad(rawT);
+
+      state.camera.angle = startAngle + ((endAngle - startAngle) * easedT);
+      render();
+
+      if (rawT < 1) {
+        requestAnimationFrame(tick);
+        return;
+      }
+
+      state.camera.angle = ((endAngle % 360) + 360) % 360;
+      state.rotation = Math.round(state.camera.angle / 90) % 4;
+      state.camera.isTurning = false;
+      render();
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  function toggleView() {
+    state.ui.viewMode = state.ui.viewMode === "iso" ? "top" : "iso";
+
+    if (state.ui.viewMode === "top") {
+      state.camera.angle = Math.round(state.camera.angle / 90) * 90;
+      state.rotation = Math.round(state.camera.angle / 90) % 4;
+      state.camera.isTurning = false;
+    }
+
+    render();
+  }
+
   function actions() {
     return {
       render,
+
       rotateLeft() {
-        state.rotation = (state.rotation + 3) % 4;
-        render();
+        animateRotation(-1);
       },
+
       rotateRight() {
-        state.rotation = (state.rotation + 1) % 4;
-        render();
+        animateRotation(1);
       },
+
+      toggleView,
+
       resetMap() {
         state.map = resetMap();
         state.mechs = instantiateTestMechs(state.content);
@@ -52,6 +105,11 @@ async function init() {
         state.selection.action = null;
         state.ui.mode = "idle";
         state.ui.previewPath = [];
+
+        state.rotation = 0;
+        state.camera.angle = 0;
+        state.camera.isTurning = false;
+        state.ui.viewMode = "iso";
 
         if (state.mechs.length > 0) {
           state.focus.x = state.mechs[0].x;
