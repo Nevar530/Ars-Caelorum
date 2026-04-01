@@ -109,14 +109,8 @@ export function updateActionTargetPreview(state) {
 
   const fireArcTiles = getFireArcTiles(activeMech, profile.fireArcRange ?? 10);
   const candidateTiles = getWeaponCandidateTiles(activeMech, profile);
-
-  const fireArcSet = toTileKeySet(fireArcTiles);
-
-  const inArcCandidates = candidateTiles.filter((tile) =>
-    fireArcSet.has(tileKey(tile.x, tile.y))
-  );
-
-  const validTiles = applyLosFilter(state, activeMech, profile, inArcCandidates);
+  const arcFilteredCandidates = applyFireArcFilter(activeMech, profile, candidateTiles, fireArcTiles);
+  const validTiles = applyLosFilter(state, activeMech, profile, arcFilteredCandidates);
 
   state.ui.action.fireArcTiles = fireArcTiles;
   state.ui.action.validTargetTiles = validTiles;
@@ -205,6 +199,22 @@ function snapFocusToFirstValidTarget(state) {
     profile,
     first.x,
     first.y
+  );
+}
+
+function applyFireArcFilter(mech, profile, candidateTiles, fireArcTiles) {
+  if (profile.kind === "melee") {
+    return candidateTiles;
+  }
+
+  if (profile.kind === "machine_gun") {
+    return candidateTiles;
+  }
+
+  const fireArcSet = toTileKeySet(fireArcTiles);
+
+  return candidateTiles.filter((tile) =>
+    fireArcSet.has(tileKey(tile.x, tile.y))
   );
 }
 
