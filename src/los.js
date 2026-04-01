@@ -43,11 +43,7 @@ export function getLineTiles(x0, y0, x1, y1) {
   return tiles;
 }
 
-export function hasLineOfSight(state, fromX, fromY, toX, toY, options = {}) {
-  const {
-    allowTargetTileBlock = true
-  } = options;
-
+export function hasLineOfSight(state, fromX, fromY, toX, toY) {
   if (!isTileOnBoard(fromX, fromY) || !isTileOnBoard(toX, toY)) {
     return false;
   }
@@ -56,35 +52,29 @@ export function hasLineOfSight(state, fromX, fromY, toX, toY, options = {}) {
 
   if (line.length <= 1) return true;
 
+  // Hill rule:
+  // - flat tiles do not block
+  // - the first elevated tile along the line is targetable
+  // - anything beyond that elevated tile is blocked
   for (let i = 1; i < line.length; i++) {
     const step = line[i];
-    const isTargetTile = step.x === toX && step.y === toY;
+    const tile = getTile(state.map, step.x, step.y);
+    if (!tile) return false;
 
-    if (isTargetTile && allowTargetTileBlock) {
-      return true;
+    if (tile.blocksLOS === true) {
+      return step.x === toX && step.y === toY;
     }
 
-    if (isTileLosBlocking(state, step.x, step.y)) {
-      return false;
+    if (tile.elevation > 0) {
+      return step.x === toX && step.y === toY;
     }
   }
 
   return true;
 }
 
-export function filterTilesByLineOfSight(state, origin, tiles, options = {}) {
+export function filterTilesByLineOfSight(state, origin, tiles) {
   return tiles.filter((tile) =>
-    hasLineOfSight(state, origin.x, origin.y, tile.x, tile.y, options)
+    hasLineOfSight(state, origin.x, origin.y, tile.x, tile.y)
   );
-}
-
-export function isTileLosBlocking(state, x, y) {
-  const tile = getTile(state.map, x, y);
-  if (!tile) return true;
-
-  if (tile.blocksLOS === true) return true;
-
-  // First-pass prototype rule:
-  // any elevated tile between attacker and target blocks direct LOS.
-  return tile.elevation > 0;
 }
