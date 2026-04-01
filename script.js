@@ -89,22 +89,27 @@ async function init() {
     selectMenuAction(action);
   }
 
-  function selectMenuAction(action) {
-    if (action === "move") {
-      startMove();
-      return;
-    }
-
-    if (action === "brace") {
-      waitTurn();
-      return;
-    }
-
-    if (action === "attack") {
-      startAttack();
-      return;
-    }
+function selectMenuAction(action) {
+  if (action === "move") {
+    startMove();
+    return;
   }
+
+  if (action === "brace") {
+    waitTurn();
+    return;
+  }
+
+  if (action === "attack") {
+    startAttack();
+    return;
+  }
+
+  if (action === "end_turn") {
+    waitTurn();
+    return;
+  }
+}
 
   function getDefaultFacingFromPath(path, fallbackFacing) {
     if (!path || path.length < 2) return fallbackFacing;
