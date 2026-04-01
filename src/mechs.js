@@ -29,6 +29,8 @@ export function createMechInstance(definition, overrides = {}) {
     move: definition.move ?? 4,
     armor: definition.armor ?? 10,
     structure: definition.structure ?? 6,
+    weapons: definition.weapons ?? [],
+    attackProfileIds: definition.attackProfileIds ?? definition.weapons ?? [],
     render: definition.render ?? {}
   };
 }
