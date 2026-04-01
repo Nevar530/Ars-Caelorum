@@ -616,3 +616,39 @@ button:disabled {
     padding: 6px 8px;
   }
 }
+
+/* =========================================
+   TARGET STATUS (HUD CONTEXT)
+========================================= */
+
+.hud-context-sub.status {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Available (clean shot) */
+.hud-status-available {
+  color: #4fd1a5; /* teal green */
+}
+
+/* Half cover */
+.hud-status-half {
+  color: #f6ad55; /* amber */
+}
+
+/* Full cover / blocked */
+.hud-status-blocked {
+  color: #f56565; /* red */
+}
+
+/* Out of range / arc */
+.hud-status-out {
+  color: #a0aec0; /* muted gray */
+}
+
+/* Optional: subtle glow for readability */
+.hud-status-available,
+.hud-status-half,
+.hud-status-blocked {
+  text-shadow: 0 0 6px rgba(0,0,0,0.6);
+}
