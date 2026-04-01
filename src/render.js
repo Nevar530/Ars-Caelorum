@@ -76,18 +76,17 @@ export function renderIso(state, refs) {
         drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost));
       }
 
+      drawScenePathOverlayForTile(state, item, worldScene);
       drawSceneActionOverlayForTile(state, item, worldScene);
+      drawSceneFocusOverlayForTile(state, item, worldScene);
+      
     } else {
       const isActive = item.mech.instanceId === state.turn.activeMechId;
       drawMech(state, item.mech, item.screenX, item.screenY, worldScene, isActive);
     }
   }
 
-  if (state.ui.mode === "move") {
-    renderPreviewPath(state, worldUi);
-  }
-
-  renderFocusTile(state, worldUi);
+  
 
   const snappedRotation = normalizedTurns(state);
   rotationLabel.textContent =
@@ -198,37 +197,6 @@ function getSceneSortKey(state, x, y, elevation) {
   return (rotated.x + rotated.y) * 100 + elevation;
 }
 
-function renderPreviewPath(state, parent) {
-  const path = state.ui.previewPath || [];
-  if (!path.length) return;
-
-  for (const step of path) {
-    const mapTile = getTile(state.map, step.x, step.y);
-    if (!mapTile) continue;
-
-    const projected = projectScene(state, step.x, step.y, mapTile.elevation);
-
-    if (state.ui.viewMode === "top") {
-      drawTopOverlayBox(
-        projected.x,
-        projected.y,
-        "rgba(240, 176, 0, 0.10)",
-        "rgba(240, 176, 0, 0.90)",
-        parent
-      );
-    } else {
-      drawOverlayDiamond(
-        projected.x,
-        projected.y,
-        "move-path-tile",
-        "rgba(240, 176, 0, 0.10)",
-        "rgba(240, 176, 0, 0.85)",
-        parent
-      );
-    }
-  }
-}
-
 function drawSceneActionOverlayForTile(state, item, parent) {
   if (state.ui.mode !== "action-target") return;
 
@@ -265,38 +233,90 @@ function drawSceneActionOverlayForTile(state, item, parent) {
   drawOverlayDiamond(item.screenX, item.screenY, "action-preview-tile", fill, stroke, parent);
 }
 
+function drawSceneFocusOverlayForTile(state, item, parent) {
+  if (item.x !== state.focus.x || item.y !== state.focus.y) return;
+
+  if (state.ui.viewMode === "top") {
+    drawTopOverlayBox(
+      item.screenX,
+      item.screenY,
+      "rgba(240, 176, 0, 0.04)",
+      "rgba(240, 176, 0, 0.95)",
+      parent
+    );
+    return;
+  }
+
+  drawOverlayDiamond(
+    item.screenX,
+    item.screenY,
+    "focus-tile",
+    "rgba(240, 176, 0, 0.04)",
+    "rgba(240, 176, 0, 0.95)",
+    parent
+  );
+}
+
+function drawScenePathOverlayForTile(state, item, parent) {
+  if (state.ui.mode !== "move") return;
+
+  const path = state.ui.previewPath || [];
+  if (!path.length) return;
+
+  const step = path.find((p) => p.x === item.x && p.y === item.y);
+  if (!step) return;
+
+  if (state.ui.viewMode === "top") {
+    drawTopOverlayBox(
+      item.screenX,
+      item.screenY,
+      "rgba(240, 176, 0, 0.10)",
+      "rgba(240, 176, 0, 0.90)",
+      parent
+    );
+
+    if (step.cost !== undefined && step.cost !== null) {
+      const label = makeText(
+        item.screenX + (TOPDOWN_CONFIG.cellSize / 2),
+        item.screenY + (TOPDOWN_CONFIG.cellSize / 2),
+        String(step.cost),
+        "move-cost-label"
+      );
+      styleMoveCostLabel(label);
+      parent.appendChild(label);
+    }
+
+    return;
+  }
+
+  drawOverlayDiamond(
+    item.screenX,
+    item.screenY,
+    "move-path-tile",
+    "rgba(240, 176, 0, 0.10)",
+    "rgba(240, 176, 0, 0.85)",
+    parent
+  );
+
+  if (step.cost !== undefined && step.cost !== null) {
+    const label = makeText(
+      item.screenX,
+      item.screenY + (RENDER_CONFIG.isoTileHeight * 0.62),
+      String(step.cost),
+      "move-cost-label"
+    );
+    styleMoveCostLabel(label);
+    parent.appendChild(label);
+  }
+}
+
+
 function tileSetFromList(tiles) {
   const set = new Set();
   for (const tile of tiles) {
     set.add(`${tile.x},${tile.y}`);
   }
   return set;
-}
-
-function renderFocusTile(state, parent) {
-  const tile = getTile(state.map, state.focus.x, state.focus.y);
-  if (!tile) return;
-
-  const projected = projectScene(state, state.focus.x, state.focus.y, tile.elevation);
-
-  if (state.ui.viewMode === "top") {
-    drawTopOverlayBox(
-      projected.x,
-      projected.y,
-      "rgba(240, 176, 0, 0.04)",
-      "rgba(240, 176, 0, 0.95)",
-      parent
-    );
-  } else {
-    drawOverlayDiamond(
-      projected.x,
-      projected.y,
-      "focus-tile",
-      "rgba(240, 176, 0, 0.04)",
-      "rgba(240, 176, 0, 0.95)",
-      parent
-    );
-  }
 }
 
 function isoProject(x, y, elevation) {
