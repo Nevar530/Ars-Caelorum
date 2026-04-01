@@ -1,6 +1,7 @@
 import { getTile, tileTypeFromElevation } from "./map.js";
 import { getMechAt, getMechById } from "./mechs.js";
 import { getSelectedAttackMenuItems } from "./action.js";
+import { getLineOfSightResult } from "./los.js";
 
 export function bindHudInput(state, refs, actions) {
   refs.hudRoot.addEventListener("click", (event) => {
@@ -210,6 +211,7 @@ function renderContextPanel(state) {
   const focusTile = getTile(state.map, state.focus.x, state.focus.y);
   const focusMech = getMechAt(state.mechs, state.focus.x, state.focus.y);
   const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+  const targetStatus = getFocusedTileTargetStatus(state);
 
   if (focusMech && activeMech && focusMech.instanceId !== activeMech.instanceId) {
     return `
@@ -218,6 +220,7 @@ function renderContextPanel(state) {
       <div class="hud-mini-card">
         <div class="hud-context-title">${escapeHtml(focusMech.name)}</div>
         <div class="hud-context-sub">Focused hostile / target candidate</div>
+        ${targetStatus ? `<div class="hud-context-sub">${escapeHtml(targetStatus)}</div>` : ""}
       </div>
 
       <div class="hud-stat-row">
@@ -238,6 +241,7 @@ function renderContextPanel(state) {
       <div class="hud-mini-card">
         <div class="hud-context-title">Tile ${focusTile.x}, ${focusTile.y}</div>
         <div class="hud-context-sub">${terrainLabel(terrain)} · Elevation ${focusTile.elevation}</div>
+        ${targetStatus ? `<div class="hud-context-sub">${escapeHtml(targetStatus)}</div>` : ""}
       </div>
 
       <div class="hud-stat-row">
@@ -254,6 +258,79 @@ function renderContextPanel(state) {
       <div class="hud-context-sub">Move phase flow and facing validation.</div>
     </div>
   `;
+}
+
+function getFocusedTileTargetStatus(state) {
+  if (state.ui.mode !== "action-target") {
+    return "";
+  }
+
+  const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+  const profile = state.ui.action.selectedAction;
+  const focusX = state.focus.x;
+  const focusY = state.focus.y;
+
+  if (!activeMech || !profile) {
+    return "";
+  }
+
+  const fireArcTiles = state.ui.action.fireArcTiles || [];
+  const validTargetTiles = state.ui.action.validTargetTiles || [];
+
+  const validTarget = validTargetTiles.find(
+    (tile) => tile.x === focusX && tile.y === focusY
+  );
+
+  if (validTarget) {
+    if (validTarget.cover === "half") {
+      return "Target - Available · Half Cover";
+    }
+
+    return "Target - Available";
+  }
+
+  const targetingKind = profile.targeting?.kind;
+  if (targetingKind === "cardinal_adjacent") {
+    return "Target - Out of Range";
+  }
+
+  const inFireArc = fireArcTiles.some(
+    (tile) => tile.x === focusX && tile.y === focusY
+  );
+
+  if (!inFireArc) {
+    return "Target - Out of Arc";
+  }
+
+  const minRange = profile.targeting?.minRange ?? 1;
+  const maxRange = profile.targeting?.maxRange ?? 1;
+  const dist = Math.abs(focusX - activeMech.x) + Math.abs(focusY - activeMech.y);
+
+  if (dist < minRange || dist > maxRange) {
+    return "Target - Out of Range";
+  }
+
+  const los = getLineOfSightResult(
+    state,
+    activeMech.x,
+    activeMech.y,
+    focusX,
+    focusY
+  );
+
+  if (!los.visible) {
+    if (los.cover === "full") {
+      return "Target - Full Cover / Blocked";
+    }
+
+    return "Target - Blocked";
+  }
+
+  if (los.cover === "half") {
+    return "Target - Available · Half Cover";
+  }
+
+  return "Target - Available";
 }
 
 function renderInlineStat(label, value) {
