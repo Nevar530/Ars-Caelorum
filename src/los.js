@@ -55,24 +55,37 @@ export function hasLineOfSight(state, fromX, fromY, toX, toY) {
 
   if (line.length <= 1) return true;
 
+  // Skip origin tile. Walk toward target.
+  // First raised / LOS-blocking tile is visible itself,
+  // but blocks anything beyond it.
+  let firstBlockerIndex = -1;
+
   for (let i = 1; i < line.length; i++) {
     const step = line[i];
     const tile = getTile(state.map, step.x, step.y);
 
     if (!tile) return false;
 
-    const isTargetTile = step.x === toX && step.y === toY;
+    const blocks =
+      tile.blocksLOS === true ||
+      tile.elevation > 0;
 
-    if (tile.blocksLOS === true) {
-      return isTargetTile;
-    }
-
-    if (tile.elevation > 0) {
-      return isTargetTile;
+    if (blocks) {
+      firstBlockerIndex = i;
+      break;
     }
   }
 
-  return true;
+  // No blocker found, target is visible.
+  if (firstBlockerIndex === -1) {
+    return true;
+  }
+
+  const blocker = line[firstBlockerIndex];
+
+  // You may target the blocking hill/wall tile itself,
+  // but nothing beyond it.
+  return blocker.x === toX && blocker.y === toY;
 }
 
 export function filterTilesByLineOfSight(state, origin, tiles) {
