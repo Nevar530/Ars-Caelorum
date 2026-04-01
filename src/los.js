@@ -1,6 +1,10 @@
 import { MAP_CONFIG } from "./config.js";
 import { getTile } from "./map.js";
 
+const HALF_COVER_THRESHOLD = 1;
+const FULL_BLOCK_THRESHOLD = 2;
+const EPSILON = 0.0001;
+
 export function isTileOnBoard(x, y) {
   return (
     x >= 0 &&
@@ -46,50 +50,163 @@ export function getLineTiles(x0, y0, x1, y1) {
   return tiles;
 }
 
-export function hasLineOfSight(state, fromX, fromY, toX, toY) {
+export function getLineOfSightResult(state, fromX, fromY, toX, toY) {
   if (!isTileOnBoard(fromX, fromY) || !isTileOnBoard(toX, toY)) {
-    return false;
+    return {
+      visible: false,
+      blocked: true,
+      cover: "full",
+      reason: "out_of_bounds",
+      line: [],
+      blockingTile: null,
+      maxTerrainOverLine: 0
+    };
+  }
+
+  const fromTile = getTile(state.map, fromX, fromY);
+  const toTile = getTile(state.map, toX, toY);
+
+  if (!fromTile || !toTile) {
+    return {
+      visible: false,
+      blocked: true,
+      cover: "full",
+      reason: "missing_tile",
+      line: [],
+      blockingTile: null,
+      maxTerrainOverLine: 0
+    };
   }
 
   const line = getLineTiles(fromX, fromY, toX, toY);
 
-  if (line.length <= 1) return true;
+  if (line.length <= 1) {
+    return {
+      visible: true,
+      blocked: false,
+      cover: "none",
+      reason: "same_tile",
+      line,
+      blockingTile: null,
+      maxTerrainOverLine: 0
+    };
+  }
 
-  // Skip origin tile. Walk toward target.
-  // First raised / LOS-blocking tile is visible itself,
-  // but blocks anything beyond it.
-  let firstBlockerIndex = -1;
+  const fromElevation = fromTile.elevation ?? 0;
+  const toElevation = toTile.elevation ?? 0;
+  const lastIndex = line.length - 1;
 
-  for (let i = 1; i < line.length; i++) {
+  let maxTerrainOverLine = 0;
+  let blockingTile = null;
+  let reason = "clear";
+
+  // Only intermediate tiles matter for LOS blocking.
+  // The target tile itself does not block its own visibility.
+  for (let i = 1; i < lastIndex; i++) {
     const step = line[i];
     const tile = getTile(state.map, step.x, step.y);
 
-    if (!tile) return false;
+    if (!tile) {
+      return {
+        visible: false,
+        blocked: true,
+        cover: "full",
+        reason: "missing_tile",
+        line,
+        blockingTile: step,
+        maxTerrainOverLine
+      };
+    }
 
-    const blocks =
-      tile.blocksLOS === true ||
-      tile.elevation > 0;
+    // Hard LOS blockers always fully block anything behind them.
+    if (tile.blocksLOS === true) {
+      return {
+        visible: false,
+        blocked: true,
+        cover: "full",
+        reason: "hard_blocker",
+        line,
+        blockingTile: step,
+        maxTerrainOverLine: FULL_BLOCK_THRESHOLD
+      };
+    }
 
-    if (blocks) {
-      firstBlockerIndex = i;
-      break;
+    const t = i / lastIndex;
+    const losHeight = lerp(fromElevation, toElevation, t);
+    const terrainHeight = tile.elevation ?? 0;
+    const terrainOverLine = terrainHeight - losHeight;
+
+    if (terrainOverLine > maxTerrainOverLine) {
+      maxTerrainOverLine = terrainOverLine;
+      blockingTile = step;
     }
   }
 
-  // No blocker found, target is visible.
-  if (firstBlockerIndex === -1) {
-    return true;
+  if (maxTerrainOverLine >= FULL_BLOCK_THRESHOLD - EPSILON) {
+    reason = "full_cover";
+    return {
+      visible: false,
+      blocked: true,
+      cover: "full",
+      reason,
+      line,
+      blockingTile,
+      maxTerrainOverLine
+    };
   }
 
-  const blocker = line[firstBlockerIndex];
+  if (maxTerrainOverLine >= HALF_COVER_THRESHOLD - EPSILON) {
+    reason = "half_cover";
+    return {
+      visible: true,
+      blocked: false,
+      cover: "half",
+      reason,
+      line,
+      blockingTile,
+      maxTerrainOverLine
+    };
+  }
 
-  // You may target the blocking hill/wall tile itself,
-  // but nothing beyond it.
-  return blocker.x === toX && blocker.y === toY;
+  return {
+    visible: true,
+    blocked: false,
+    cover: "none",
+    reason,
+    line,
+    blockingTile: null,
+    maxTerrainOverLine
+  };
+}
+
+export function hasLineOfSight(state, fromX, fromY, toX, toY) {
+  return getLineOfSightResult(state, fromX, fromY, toX, toY).visible;
 }
 
 export function filterTilesByLineOfSight(state, origin, tiles) {
-  return tiles.filter((tile) =>
-    hasLineOfSight(state, origin.x, origin.y, tile.x, tile.y)
-  );
+  return tiles.flatMap((tile) => {
+    const los = getLineOfSightResult(
+      state,
+      origin.x,
+      origin.y,
+      tile.x,
+      tile.y
+    );
+
+    if (!los.visible) {
+      return [];
+    }
+
+    return [
+      {
+        ...tile,
+        cover: los.cover,
+        los
+      }
+    ];
+  });
+}
+
+function lerp(a, b, t) {
+  return a + ((b - a) * t);
 }
