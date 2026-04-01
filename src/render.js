@@ -87,7 +87,7 @@ export function renderIso(state, refs) {
   if (state.ui.mode === "move") {
     renderPreviewPath(state, worldUi);
   }
-
+renderActionPreview(state, worldUi);
   renderFocusTile(state, worldUi);
 
   const snappedRotation = normalizedTurns(state);
@@ -228,6 +228,44 @@ function renderPreviewPath(state, parent) {
       );
     }
   }
+}
+
+function renderActionPreview(state, parent) {
+  if (state.ui.mode !== "action-target") return;
+
+  const fireArc = state.ui.action.fireArcTiles || [];
+  const validTiles = state.ui.action.validTargetTiles || [];
+  const effectTiles = state.ui.action.effectTiles || [];
+
+  for (const tile of fireArc) {
+    const mapTile = getTile(state.map, tile.x, tile.y);
+    if (!mapTile) continue;
+    const projected = projectScene(state, tile.x, tile.y, mapTile.elevation);
+    drawPreviewTile(state, projected, "rgba(255, 176, 0, 0.06)", "rgba(255, 176, 0, 0.22)", parent);
+  }
+
+  for (const tile of validTiles) {
+    const mapTile = getTile(state.map, tile.x, tile.y);
+    if (!mapTile) continue;
+    const projected = projectScene(state, tile.x, tile.y, mapTile.elevation);
+    drawPreviewTile(state, projected, "rgba(82, 208, 146, 0.12)", "rgba(82, 208, 146, 0.55)", parent);
+  }
+
+  for (const tile of effectTiles) {
+    const mapTile = getTile(state.map, tile.x, tile.y);
+    if (!mapTile) continue;
+    const projected = projectScene(state, tile.x, tile.y, mapTile.elevation);
+    drawPreviewTile(state, projected, "rgba(255, 74, 74, 0.14)", "rgba(255, 74, 74, 0.70)", parent);
+  }
+}
+
+function drawPreviewTile(state, projected, fill, stroke, parent) {
+  if (state.ui.viewMode === "top") {
+    drawTopOverlayBox(projected.x, projected.y, fill, stroke, parent);
+    return;
+  }
+
+  drawOverlayDiamond(projected.x, projected.y, "action-preview-tile", fill, stroke, parent);
 }
 
 function renderFocusTile(state, parent) {
