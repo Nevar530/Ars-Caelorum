@@ -1,5 +1,5 @@
 import { getMechById } from "./mechs.js";
-import { filterTilesByLineOfSight } from "./los.js";
+import { getLineOfSightResult } from "./los.js";
 
 export function createActionUiState() {
   return {
@@ -116,16 +116,16 @@ export function updateActionTargetPreview(state) {
   state.ui.action.fireArcTiles = fireArcTiles;
   state.ui.action.validTargetTiles = validTiles;
 
-  const focusedIsValid = validTiles.some(
+  const focusedTile = validTiles.find(
     (tile) => tile.x === state.focus.x && tile.y === state.focus.y
   );
 
-  if (focusedIsValid) {
+  if (focusedTile) {
     state.ui.action.effectTiles = getEffectTilesForTarget(
       activeMech,
       profile,
-      state.focus.x,
-      state.focus.y
+      focusedTile.x,
+      focusedTile.y
     );
   } else {
     state.ui.action.effectTiles = [];
@@ -138,16 +138,18 @@ export function confirmActionTarget(state) {
   const profile = state.ui.action.selectedAction;
   if (!profile) return false;
 
-  const isValid = state.ui.action.validTargetTiles.some(
+  const chosenTarget = state.ui.action.validTargetTiles.find(
     (tile) => tile.x === state.focus.x && tile.y === state.focus.y
   );
 
-  if (!isValid) return false;
+  if (!chosenTarget) return false;
 
   state.ui.action.lastConfirmed = {
     attackId: profile.id,
     attackName: profile.name,
-    target: { x: state.focus.x, y: state.focus.y },
+    target: { x: chosenTarget.x, y: chosenTarget.y },
+    targetCover: chosenTarget.cover ?? "none",
+    targetLos: chosenTarget.los ?? null,
     effectTiles: [...state.ui.action.effectTiles]
   };
 
@@ -223,25 +225,37 @@ function applyFireArcFilter(profile, fireArcTiles, candidateTiles) {
 
 function applyLosFilter(state, mech, profile, candidateTiles) {
   const targetingKind = profile.targeting?.kind;
-  const effectKind = profile.effect?.kind;
 
+  // Melee / adjacent attacks do not use ranged LOS rules.
   if (targetingKind === "cardinal_adjacent") {
-    return candidateTiles;
+    return candidateTiles.map((tile) => ({
+      ...tile,
+      cover: "none",
+      los: null
+    }));
   }
 
-  if (effectKind === "cone") {
-    return candidateTiles;
-  }
+  return candidateTiles.flatMap((tile) => {
+    const los = getLineOfSightResult(
+      state,
+      mech.x,
+      mech.y,
+      tile.x,
+      tile.y
+    );
 
-  if (effectKind === "circle") {
-    return candidateTiles;
-  }
+    if (!los.visible) {
+      return [];
+    }
 
-  return filterTilesByLineOfSight(
-    state,
-    { x: mech.x, y: mech.y },
-    candidateTiles
-  );
+    return [
+      {
+        ...tile,
+        cover: los.cover,
+        los
+      }
+    ];
+  });
 }
 
 function getWeaponCandidateTiles(mech, profile) {
