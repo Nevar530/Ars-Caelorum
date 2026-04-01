@@ -90,15 +90,6 @@ export function confirmAttackSelection(state) {
   state.ui.action.selectedAction = chosen.profile;
   state.ui.mode = "action-target";
 
-  const activeMech = getActiveMech(state);
-  if (!activeMech) return false;
-
-  const mechX = activeMech.x;
-  const mechY = activeMech.y;
-
-  state.focus.x = mechX;
-  state.focus.y = mechY;
-
   updateActionTargetPreview(state);
   snapFocusToFirstValidTarget(state);
 
@@ -120,20 +111,21 @@ export function updateActionTargetPreview(state) {
   const candidateTiles = getWeaponCandidateTiles(activeMech, profile);
 
   const fireArcSet = toTileKeySet(fireArcTiles);
+
   const inArcCandidates = candidateTiles.filter((tile) =>
     fireArcSet.has(tileKey(tile.x, tile.y))
   );
 
-  const losFilteredCandidates = applyLosFilter(state, activeMech, profile, inArcCandidates);
+  const validTiles = applyLosFilter(state, activeMech, profile, inArcCandidates);
 
   state.ui.action.fireArcTiles = fireArcTiles;
-  state.ui.action.validTargetTiles = losFilteredCandidates;
+  state.ui.action.validTargetTiles = validTiles;
 
-  const isFocusedValid = losFilteredCandidates.some(
+  const focusedIsValid = validTiles.some(
     (tile) => tile.x === state.focus.x && tile.y === state.focus.y
   );
 
-  if (isFocusedValid) {
+  if (focusedIsValid) {
     state.ui.action.effectTiles = getEffectTilesForTarget(
       activeMech,
       profile,
@@ -204,9 +196,13 @@ function snapFocusToFirstValidTarget(state) {
 
   state.focus.x = first.x;
   state.focus.y = first.y;
+
+  const activeMech = getActiveMech(state);
+  const profile = state.ui.action.selectedAction;
+
   state.ui.action.effectTiles = getEffectTilesForTarget(
-    getActiveMech(state),
-    state.ui.action.selectedAction,
+    activeMech,
+    profile,
     first.x,
     first.y
   );
