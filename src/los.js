@@ -25,7 +25,10 @@ export function getLineTiles(x0, y0, x1, y1) {
 
   while (true) {
     tiles.push({ x, y });
-    if (x === x1 && y === y1) break;
+
+    if (x === x1 && y === y1) {
+      break;
+    }
 
     const e2 = err * 2;
 
@@ -52,21 +55,20 @@ export function hasLineOfSight(state, fromX, fromY, toX, toY) {
 
   if (line.length <= 1) return true;
 
-  // Hill rule:
-  // - flat tiles do not block
-  // - the first elevated tile along the line is targetable
-  // - anything beyond that elevated tile is blocked
   for (let i = 1; i < line.length; i++) {
     const step = line[i];
     const tile = getTile(state.map, step.x, step.y);
+
     if (!tile) return false;
 
+    const isTargetTile = step.x === toX && step.y === toY;
+
     if (tile.blocksLOS === true) {
-      return step.x === toX && step.y === toY;
+      return isTargetTile;
     }
 
     if (tile.elevation > 0) {
-      return step.x === toX && step.y === toY;
+      return isTargetTile;
     }
   }
 
