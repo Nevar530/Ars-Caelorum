@@ -10,6 +10,12 @@
     "structure": 6,
     "pilotSlots": 1,
     "weapons": ["rifle_01"],
+    "attackProfileIds": [
+      "melee_cardinal_01",
+      "missile_aoe_01",
+      "rifle_band_01",
+      "machine_gun_cone_01"
+    ],
     "render": {
       "sprite": "",
       "offsetX": 0,
