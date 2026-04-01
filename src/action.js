@@ -1,168 +1,184 @@
-import { MAP_CONFIG } from "./config.js";
 import { getMechById } from "./mechs.js";
+import { filterTilesByLineOfSight } from "./los.js";
 
 export function createActionUiState() {
   return {
-    stage: null,
-    selectedActionId: null,
-    selectedAction: null,
     menuIndex: 0,
+    selectedAction: null,
+    fireArcTiles: [],
     validTargetTiles: [],
     effectTiles: [],
-    fireArcTiles: [],
-    targetTile: null,
     lastConfirmed: null
   };
 }
 
 export function resetActionUiState(state) {
-  state.ui.action = createActionUiState();
-  state.selection.targetTile = null;
-  state.selection.targetMechId = null;
+  state.ui.action.menuIndex = 0;
+  state.ui.action.selectedAction = null;
+  state.ui.action.fireArcTiles = [];
+  state.ui.action.validTargetTiles = [];
+  state.ui.action.effectTiles = [];
 }
 
 export function getCommandMenuItemsForPhase(phase) {
+  if (phase === "move") {
+    return ["move", "brace"];
+  }
+
   if (phase === "action") {
     return ["attack", "ability", "item"];
   }
 
-  return ["move", "brace"];
-}
-
-export function startAttackSelection(state) {
-  const mech = getMechById(state.mechs, state.turn.activeMechId);
-  if (!mech) return false;
-
-  const attacks = getAvailableAttackProfiles(state, mech);
-  if (!attacks.length) return false;
-
-  state.ui.commandMenu.open = false;
-  state.ui.mode = "action-attack-select";
-  state.selection.action = "attack";
-  state.ui.action.stage = "select";
-  state.ui.action.menuIndex = 0;
-  state.ui.action.selectedActionId = null;
-  state.ui.action.selectedAction = null;
-  state.ui.action.validTargetTiles = [];
-  state.ui.action.effectTiles = [];
-  state.ui.action.fireArcTiles = [];
-  state.ui.action.targetTile = null;
-  return true;
-}
-
-export function getAvailableAttackProfiles(state, mech) {
-  const ids = mech.attackProfileIds ?? mech.weapons ?? [];
-  const profiles = state.content.attacks ?? [];
-  return ids
-    .map((id) => profiles.find((entry) => entry.id === id))
-    .filter(Boolean);
+  return [];
 }
 
 export function getSelectedAttackMenuItems(state) {
-  const mech = getMechById(state.mechs, state.turn.activeMechId);
-  if (!mech) return [];
-  return getAvailableAttackProfiles(state, mech).map((profile) => ({
-    id: profile.id,
-    label: profile.name
-  }));
+  const activeMech = getActiveMech(state);
+  if (!activeMech) return [];
+
+  const ids = activeMech.attackProfileIds || [];
+  const allAttacks = state.content.attacks || [];
+
+  return ids
+    .map((id) => allAttacks.find((attack) => attack.id === id))
+    .filter(Boolean)
+    .map((attack) => ({
+      id: attack.id,
+      label: attack.name,
+      profile: attack
+    }));
 }
 
 export function moveAttackSelection(state, delta) {
   const items = getSelectedAttackMenuItems(state);
-  if (!items.length) return false;
+  if (!items.length) return;
+
   const count = items.length;
-  state.ui.action.menuIndex = (state.ui.action.menuIndex + delta + count) % count;
+  state.ui.action.menuIndex =
+    (state.ui.action.menuIndex + delta + count) % count;
+}
+
+export function startAttackSelection(state) {
+  if (state.turn.phase !== "action") return false;
+
+  const items = getSelectedAttackMenuItems(state);
+  if (!items.length) return false;
+
+  state.ui.commandMenu.open = false;
+  state.ui.commandMenu.index = 0;
+
+  state.ui.mode = "action-attack-select";
+  state.selection.action = "attack";
+  state.ui.action.menuIndex = 0;
+  state.ui.action.selectedAction = null;
+  state.ui.action.fireArcTiles = [];
+  state.ui.action.validTargetTiles = [];
+  state.ui.action.effectTiles = [];
+
   return true;
 }
 
 export function confirmAttackSelection(state) {
-  const mech = getMechById(state.mechs, state.turn.activeMechId);
-  const items = getAvailableAttackProfiles(state, mech);
+  if (state.ui.mode !== "action-attack-select") return false;
+
+  const items = getSelectedAttackMenuItems(state);
   if (!items.length) return false;
 
-  const profile = items[state.ui.action.menuIndex] ?? null;
-  if (!profile) return false;
+  const chosen = items[state.ui.action.menuIndex];
+  if (!chosen) return false;
 
-  enterActionTargeting(state, profile);
-  return true;
-}
-
-export function enterActionTargeting(state, profile) {
-  const mech = getMechById(state.mechs, state.turn.activeMechId);
-  if (!mech) return false;
-
+  state.ui.action.selectedAction = chosen.profile;
   state.ui.mode = "action-target";
-  state.ui.action.stage = "target";
-  state.ui.action.selectedActionId = profile.id;
-  state.ui.action.selectedAction = profile;
-  state.ui.action.fireArcTiles = getFireArcTiles(mech, profile.fireArc);
-  state.ui.action.validTargetTiles = getValidTargetTiles(state, mech, profile);
 
-  if (state.ui.action.validTargetTiles.length) {
-    const first = state.ui.action.validTargetTiles[0];
-    state.focus.x = first.x;
-    state.focus.y = first.y;
-    updateActionTargetPreview(state);
-  } else {
-    state.ui.action.effectTiles = [];
-    state.ui.action.targetTile = null;
-  }
+  const activeMech = getActiveMech(state);
+  if (!activeMech) return false;
+
+  const mechX = activeMech.x;
+  const mechY = activeMech.y;
+
+  state.focus.x = mechX;
+  state.focus.y = mechY;
+
+  updateActionTargetPreview(state);
+  snapFocusToFirstValidTarget(state);
 
   return true;
 }
 
 export function updateActionTargetPreview(state) {
+  const activeMech = getActiveMech(state);
   const profile = state.ui.action.selectedAction;
-  const mech = getMechById(state.mechs, state.turn.activeMechId);
-  if (!profile || !mech) return;
 
-  const match = state.ui.action.validTargetTiles.find(
-    (tile) => tile.x === state.focus.x && tile.y === state.focus.y
-  );
-
-  if (!match) {
-    state.ui.action.targetTile = null;
+  if (!activeMech || !profile) {
+    state.ui.action.fireArcTiles = [];
+    state.ui.action.validTargetTiles = [];
     state.ui.action.effectTiles = [];
-    state.selection.targetTile = null;
     return;
   }
 
-  state.ui.action.targetTile = { x: match.x, y: match.y };
-  state.selection.targetTile = { x: match.x, y: match.y };
-  state.ui.action.effectTiles = getEffectTiles(profile.effect, mech, match);
+  const fireArcTiles = getFireArcTiles(activeMech, profile.fireArcRange ?? 10);
+  const candidateTiles = getWeaponCandidateTiles(activeMech, profile);
+
+  const fireArcSet = toTileKeySet(fireArcTiles);
+  const inArcCandidates = candidateTiles.filter((tile) =>
+    fireArcSet.has(tileKey(tile.x, tile.y))
+  );
+
+  const losFilteredCandidates = applyLosFilter(state, activeMech, profile, inArcCandidates);
+
+  state.ui.action.fireArcTiles = fireArcTiles;
+  state.ui.action.validTargetTiles = losFilteredCandidates;
+
+  const isFocusedValid = losFilteredCandidates.some(
+    (tile) => tile.x === state.focus.x && tile.y === state.focus.y
+  );
+
+  if (isFocusedValid) {
+    state.ui.action.effectTiles = getEffectTilesForTarget(
+      activeMech,
+      profile,
+      state.focus.x,
+      state.focus.y
+    );
+  } else {
+    state.ui.action.effectTiles = [];
+  }
 }
 
 export function confirmActionTarget(state) {
-  const mech = getMechById(state.mechs, state.turn.activeMechId);
+  if (state.ui.mode !== "action-target") return false;
+
   const profile = state.ui.action.selectedAction;
-  const target = state.ui.action.targetTile;
-  if (!mech || !profile || !target) return false;
+  if (!profile) return false;
+
+  const isValid = state.ui.action.validTargetTiles.some(
+    (tile) => tile.x === state.focus.x && tile.y === state.focus.y
+  );
+
+  if (!isValid) return false;
 
   state.ui.action.lastConfirmed = {
-    attackerId: mech.instanceId,
     attackId: profile.id,
-    targetTile: { ...target },
-    effectTiles: state.ui.action.effectTiles.map((tile) => ({ ...tile }))
+    attackName: profile.name,
+    target: { x: state.focus.x, y: state.focus.y },
+    effectTiles: [...state.ui.action.effectTiles]
   };
 
   state.ui.mode = "idle";
   state.selection.action = null;
   state.ui.commandMenu.open = false;
   state.ui.commandMenu.index = 0;
+
   return true;
 }
 
 export function cancelActionState(state) {
   if (state.ui.mode === "action-target") {
     state.ui.mode = "action-attack-select";
-    state.ui.action.stage = "select";
-    state.ui.action.selectedActionId = null;
     state.ui.action.selectedAction = null;
+    state.ui.action.fireArcTiles = [];
     state.ui.action.validTargetTiles = [];
     state.ui.action.effectTiles = [];
-    state.ui.action.fireArcTiles = [];
-    state.ui.action.targetTile = null;
-    state.selection.targetTile = null;
     return true;
   }
 
@@ -178,138 +194,222 @@ export function cancelActionState(state) {
   return false;
 }
 
-export function getValidTargetTiles(state, mech, profile) {
-  const candidates = profile.targeting?.kind === "cardinal_adjacent"
-    ? getCardinalAdjacentTiles(mech)
-    : state.ui.action.fireArcTiles.slice();
-
-  return dedupeTiles(candidates.filter((tile) => {
-    if (!isInBounds(tile.x, tile.y)) return false;
-    const distance = manhattanDistance(mech.x, mech.y, tile.x, tile.y);
-    const min = profile.targeting?.minRange ?? 0;
-    const max = profile.targeting?.maxRange ?? 0;
-
-    if (distance < min || distance > max) return false;
-
-    if (profile.targeting?.kind === "range_band") {
-      return distance >= min && distance <= max;
-    }
-
-    if (profile.targeting?.kind === "fire_arc_tile") {
-      return true;
-    }
-
-    if (profile.targeting?.kind === "cardinal_adjacent") {
-      return true;
-    }
-
-    return false;
-  }));
+function getActiveMech(state) {
+  return getMechById(state.mechs, state.turn.activeMechId);
 }
 
-export function getFireArcTiles(mech, fireArc = { kind: "fan", range: 10 }) {
-  if (!fireArc || fireArc.kind !== "fan") return [];
+function snapFocusToFirstValidTarget(state) {
+  const first = state.ui.action.validTargetTiles[0];
+  if (!first) return;
 
-  const results = [];
-  const range = fireArc.range ?? 10;
+  state.focus.x = first.x;
+  state.focus.y = first.y;
+  state.ui.action.effectTiles = getEffectTilesForTarget(
+    getActiveMech(state),
+    state.ui.action.selectedAction,
+    first.x,
+    first.y
+  );
+}
 
-  for (let depth = 1; depth <= range; depth += 1) {
-    for (let lateral = -(depth - 1); lateral <= (depth - 1); lateral += 1) {
-      const tile = projectFacingOffset(mech, depth, lateral);
-      if (!isInBounds(tile.x, tile.y)) continue;
-      results.push(tile);
-    }
+function applyLosFilter(state, mech, profile, candidateTiles) {
+  if (profile.kind === "melee") {
+    return candidateTiles;
   }
 
-  return dedupeTiles(results);
+  return filterTilesByLineOfSight(
+    state,
+    { x: mech.x, y: mech.y },
+    candidateTiles
+  );
 }
 
-export function getEffectTiles(effect, mech, targetTile) {
-  if (!effect) return [{ x: targetTile.x, y: targetTile.y }];
+function getWeaponCandidateTiles(mech, profile) {
+  switch (profile.kind) {
+    case "melee":
+      return getCardinalAdjacentTiles(mech.x, mech.y);
 
-  switch (effect.kind) {
-    case "single":
-      return [{ x: targetTile.x, y: targetTile.y }];
-    case "circle":
-      return getCircleTiles(targetTile.x, targetTile.y, effect.radius ?? 0);
-    case "cone":
-      return getConeTiles(mech, effect.length ?? 1, effect.width ?? 1);
+    case "missile":
+      return getTilesInRangeBand(mech.x, mech.y, 1, profile.rangeMax ?? 6);
+
+    case "rifle":
+      return getTilesInRangeBand(
+        mech.x,
+        mech.y,
+        profile.rangeMin ?? 6,
+        profile.rangeMax ?? 8
+      );
+
+    case "machine_gun":
+      return getConeTargetTiles(
+        mech.x,
+        mech.y,
+        mech.facing,
+        profile.rangeMax ?? 5,
+        profile.coneWidth ?? 3
+      );
+
     default:
-      return [{ x: targetTile.x, y: targetTile.y }];
+      return [];
   }
 }
 
-function getConeTiles(mech, length, width) {
-  const halfSpan = Math.floor(width / 2);
-  const results = [];
+function getEffectTilesForTarget(mech, profile, targetX, targetY) {
+  switch (profile.kind) {
+    case "melee":
+      return [{ x: targetX, y: targetY }];
 
-  for (let depth = 1; depth <= length; depth += 1) {
-    const spread = Math.min(halfSpan, depth - 1 + halfSpan);
-    for (let lateral = -spread; lateral <= spread; lateral += 1) {
-      const tile = projectFacingOffset(mech, depth, lateral);
-      if (!isInBounds(tile.x, tile.y)) continue;
-      results.push(tile);
-    }
+    case "rifle":
+      return [{ x: targetX, y: targetY }];
+
+    case "missile":
+      return getCircleTiles(targetX, targetY, profile.aoeRadius ?? 3);
+
+    case "machine_gun":
+      return getConeTargetTiles(
+        mech.x,
+        mech.y,
+        mech.facing,
+        profile.rangeMax ?? 5,
+        profile.coneWidth ?? 3
+      );
+
+    default:
+      return [];
   }
-
-  return dedupeTiles(results);
 }
 
-function getCircleTiles(centerX, centerY, radius) {
+function getFireArcTiles(mech, range) {
   const results = [];
-  for (let y = centerY - radius; y <= centerY + radius; y += 1) {
-    for (let x = centerX - radius; x <= centerX + radius; x += 1) {
-      if (!isInBounds(x, y)) continue;
-      const dx = x - centerX;
-      const dy = y - centerY;
-      if ((dx * dx) + (dy * dy) <= radius * radius) {
-        results.push({ x, y });
+  const facing = mech.facing;
+
+  for (let dx = -range; dx <= range; dx++) {
+    for (let dy = -range; dy <= range; dy++) {
+      if (dx === 0 && dy === 0) continue;
+
+      const dist = Math.abs(dx) + Math.abs(dy);
+      if (dist > range) continue;
+
+      if (isInForwardFan(dx, dy, facing)) {
+        results.push({ x: mech.x + dx, y: mech.y + dy });
       }
     }
   }
-  return dedupeTiles(results);
+
+  return uniqueBoardTiles(results);
 }
 
-function getCardinalAdjacentTiles(mech) {
-  return [
-    { x: mech.x, y: mech.y - 1 },
-    { x: mech.x + 1, y: mech.y },
-    { x: mech.x, y: mech.y + 1 },
-    { x: mech.x - 1, y: mech.y }
-  ].filter((tile) => isInBounds(tile.x, tile.y));
-}
-
-function projectFacingOffset(mech, forward, lateral) {
-  switch (mech.facing) {
+function isInForwardFan(dx, dy, facing) {
+  switch (facing) {
     case 0:
-      return { x: mech.x + lateral, y: mech.y - forward };
+      return dy < 0 && Math.abs(dx) <= Math.abs(dy);
     case 1:
-      return { x: mech.x + forward, y: mech.y + lateral };
+      return dx > 0 && Math.abs(dy) <= Math.abs(dx);
     case 2:
-      return { x: mech.x - lateral, y: mech.y + forward };
+      return dy > 0 && Math.abs(dx) <= Math.abs(dy);
     case 3:
-      return { x: mech.x - forward, y: mech.y - lateral };
+      return dx < 0 && Math.abs(dy) <= Math.abs(dx);
     default:
-      return { x: mech.x, y: mech.y };
+      return false;
   }
 }
 
-function dedupeTiles(tiles) {
+function getCardinalAdjacentTiles(x, y) {
+  return uniqueBoardTiles([
+    { x, y: y - 1 },
+    { x: x + 1, y },
+    { x, y: y + 1 },
+    { x: x - 1, y }
+  ]);
+}
+
+function getTilesInRangeBand(x, y, minRange, maxRange) {
+  const results = [];
+
+  for (let dx = -maxRange; dx <= maxRange; dx++) {
+    for (let dy = -maxRange; dy <= maxRange; dy++) {
+      const dist = Math.abs(dx) + Math.abs(dy);
+      if (dist < minRange || dist > maxRange) continue;
+      results.push({ x: x + dx, y: y + dy });
+    }
+  }
+
+  return uniqueBoardTiles(results);
+}
+
+function getCircleTiles(cx, cy, radius) {
+  const results = [];
+
+  for (let dx = -radius; dx <= radius; dx++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      const distSq = (dx * dx) + (dy * dy);
+      if (distSq <= radius * radius) {
+        results.push({ x: cx + dx, y: cy + dy });
+      }
+    }
+  }
+
+  return uniqueBoardTiles(results);
+}
+
+function getConeTargetTiles(x, y, facing, range, width) {
+  const results = [];
+  const half = Math.floor(width / 2);
+
+  for (let step = 1; step <= range; step++) {
+    for (let lateral = -half; lateral <= half; lateral++) {
+      let tx = x;
+      let ty = y;
+
+      switch (facing) {
+        case 0:
+          tx = x + lateral;
+          ty = y - step;
+          break;
+        case 1:
+          tx = x + step;
+          ty = y + lateral;
+          break;
+        case 2:
+          tx = x + lateral;
+          ty = y + step;
+          break;
+        case 3:
+          tx = x - step;
+          ty = y + lateral;
+          break;
+      }
+
+      results.push({ x: tx, y: ty });
+    }
+  }
+
+  return uniqueBoardTiles(results);
+}
+
+function uniqueBoardTiles(tiles) {
   const seen = new Set();
   const results = [];
+
   for (const tile of tiles) {
-    const key = `${tile.x},${tile.y}`;
+    if (tile.x < 0 || tile.y < 0) continue;
+    const key = tileKey(tile.x, tile.y);
     if (seen.has(key)) continue;
     seen.add(key);
-    results.push({ x: tile.x, y: tile.y });
+    results.push(tile);
   }
+
   return results;
 }
 
-function isInBounds(x, y) {
-  return x >= 0 && y >= 0 && x < MAP_CONFIG.mechWidth && y < MAP_CONFIG.mechHeight;
+function toTileKeySet(tiles) {
+  const set = new Set();
+  for (const tile of tiles) {
+    set.add(tileKey(tile.x, tile.y));
+  }
+  return set;
 }
 
-function manhattanDistance(ax, ay, bx, by) {
-  return Math.abs(ax - bx) + Math.abs(ay - by);
+function tileKey(x, y) {
+  return `${x},${y}`;
 }
