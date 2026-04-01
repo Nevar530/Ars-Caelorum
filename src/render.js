@@ -87,7 +87,7 @@ export function renderIso(state, refs) {
   if (state.ui.mode === "move") {
     renderPreviewPath(state, worldUi);
   }
-renderActionPreview(state, worldUi);
+  renderActionPreview(state, worldScene);
   renderFocusTile(state, worldUi);
 
   const snappedRotation = normalizedTurns(state);
