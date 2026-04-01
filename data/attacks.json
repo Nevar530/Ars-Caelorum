@@ -1,0 +1,50 @@
+[
+  {
+    "id": "melee_cardinal_01",
+    "name": "Melee",
+    "scale": "mech",
+    "fireArc": { "kind": "fan", "range": 10 },
+    "targeting": {
+      "kind": "cardinal_adjacent",
+      "minRange": 1,
+      "maxRange": 1
+    },
+    "effect": { "kind": "single" }
+  },
+  {
+    "id": "missile_aoe_01",
+    "name": "Missile",
+    "scale": "mech",
+    "fireArc": { "kind": "fan", "range": 10 },
+    "targeting": {
+      "kind": "fire_arc_tile",
+      "minRange": 1,
+      "maxRange": 6
+    },
+    "effect": { "kind": "circle", "radius": 3 }
+  },
+  {
+    "id": "rifle_band_01",
+    "name": "Rifle",
+    "scale": "mech",
+    "fireArc": { "kind": "fan", "range": 10 },
+    "targeting": {
+      "kind": "range_band",
+      "minRange": 6,
+      "maxRange": 8
+    },
+    "effect": { "kind": "single" }
+  },
+  {
+    "id": "machine_gun_cone_01",
+    "name": "Machine Gun",
+    "scale": "mech",
+    "fireArc": { "kind": "fan", "range": 10 },
+    "targeting": {
+      "kind": "fire_arc_tile",
+      "minRange": 1,
+      "maxRange": 5
+    },
+    "effect": { "kind": "cone", "length": 5, "width": 3 }
+  }
+]
