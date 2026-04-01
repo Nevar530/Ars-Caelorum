@@ -1,5 +1,6 @@
 import { getTile, tileTypeFromElevation } from "./map.js";
 import { getMechAt, getMechById } from "./mechs.js";
+import { getSelectedAttackMenuItems } from "./action.js";
 
 export function bindHudInput(state, refs, actions) {
   refs.hudRoot.addEventListener("click", (event) => {
@@ -16,8 +17,11 @@ export function bindHudInput(state, refs, actions) {
       case "move":
         actions.startMove();
         break;
-      case "wait":
+      case "brace":
         actions.waitTurn();
+        break;
+      case "attack":
+        actions.startAttack();
         break;
       case "confirm":
         actions.confirmAction();
@@ -101,6 +105,52 @@ function renderCenterPanel(state) {
             </button>
           `;
         }).join("")}
+      </div>
+    `;
+  }
+
+  if (mode === "action-attack-select") {
+    const items = getSelectedAttackMenuItems(state);
+    return `
+      <div class="hud-section-title">Attack</div>
+
+      <div class="hud-mode-box compact">
+        <div class="hud-mode-title">Select Weapon</div>
+        <div class="hud-mode-text">Up / Down choose attack · Enter confirm · Esc back</div>
+      </div>
+
+      <div class="hud-menu-list" role="menu" aria-label="Attack selection menu">
+        ${items.map((item, index) => {
+          const selected = index === state.ui.action.menuIndex;
+          return `
+            <button
+              class="hud-menu-button ${selected ? "is-selected" : ""}"
+              type="button"
+              data-hud-action="confirm"
+            >
+              <span class="hud-menu-caret">${selected ? "▶" : "&nbsp;"}</span>
+              <span>${escapeHtml(item.label)}</span>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  if (mode === "action-target") {
+    const profile = state.ui.action.selectedAction;
+    return `
+      <div class="hud-section-title">Targeting</div>
+
+      <div class="hud-mode-box compact">
+        <div class="hud-mode-title">${escapeHtml(profile?.name ?? "Attack")}</div>
+        <div class="hud-mode-text">Move cursor to valid tile · Enter confirm · Esc back</div>
+      </div>
+
+      <div class="hud-step-row">
+        <div class="hud-step is-active">1. Command</div>
+        <div class="hud-step is-active">2. Weapon</div>
+        <div class="hud-step is-active">3. Target</div>
       </div>
     `;
   }
@@ -219,8 +269,14 @@ function menuLabel(item) {
   switch (item) {
     case "move":
       return "Move";
-    case "wait":
-      return "Wait";
+    case "brace":
+      return "Brace";
+    case "attack":
+      return "Attack";
+    case "ability":
+      return "Ability";
+    case "item":
+      return "Item";
     default:
       return capitalize(item);
   }
@@ -232,6 +288,10 @@ function modeLabel(mode) {
       return "Move";
     case "face":
       return "Facing";
+    case "action-attack-select":
+      return "Attack";
+    case "action-target":
+      return "Target";
     default:
       return "Idle";
   }
