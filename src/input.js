@@ -4,6 +4,7 @@ import {
   clampFocusToBoard,
   getPathToTile
 } from "./movement.js";
+import { moveAttackSelection, updateActionTargetPreview } from "./action.js";
 
 export function bindInput(state, refs, actions) {
   bindEditorInput(state, refs, actions);
@@ -125,6 +126,22 @@ function handleViewKeys(key, actions) {
 }
 
 function handleMenuNavigationKeys(key, state, actions) {
+  if (state.ui.mode === "action-attack-select") {
+    if (key === "arrowup" || key === "w") {
+      moveAttackSelection(state, -1);
+      actions.render();
+      return true;
+    }
+
+    if (key === "arrowdown" || key === "s") {
+      moveAttackSelection(state, 1);
+      actions.render();
+      return true;
+    }
+
+    return false;
+  }
+
   if (!state.ui.commandMenu.open || state.ui.mode !== "idle") return false;
 
   if (key === "arrowup" || key === "w") {
@@ -187,6 +204,10 @@ function handleFocusKeys(key, state, actions) {
     return false;
   }
 
+  if (state.ui.mode === "action-attack-select") {
+    return false;
+  }
+
   let direction = null;
 
   if (key === "arrowup" || key === "w") direction = "up";
@@ -210,6 +231,10 @@ function handleFocusKeys(key, state, actions) {
     state.ui.previewPath = [];
   }
 
+  if (state.ui.mode === "action-target") {
+    updateActionTargetPreview(state);
+  }
+
   actions.render();
   return true;
 }
@@ -218,7 +243,12 @@ function handleConfirmCancelKeys(key, state, actions) {
   const isConfirm = key === "enter" || key === " ";
   const isCancel = key === "escape" || key === "backspace";
 
-  if (state.ui.mode === "move" || state.ui.mode === "face") {
+  if (
+    state.ui.mode === "move" ||
+    state.ui.mode === "face" ||
+    state.ui.mode === "action-attack-select" ||
+    state.ui.mode === "action-target"
+  ) {
     if (isConfirm) {
       actions.confirmAction();
       return true;
