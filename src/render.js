@@ -58,9 +58,6 @@ export function renderIso(state, refs) {
       elevation: tile.elevation,
       screenX: projected.x,
       screenY: projected.y,
-
-      // Draw after its own tile, but before neighboring raised tiles
-      // that should visually occlude it.
       sortKey: getSceneSortKey(state, mech.x, mech.y, tile.elevation) + 0.25
     });
   }
@@ -78,6 +75,8 @@ export function renderIso(state, refs) {
       if (state.ui.mode === "move" && item.reachableCost !== null) {
         drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost));
       }
+
+      drawSceneActionOverlayForTile(state, item, worldScene);
     } else {
       const isActive = item.mech.instanceId === state.turn.activeMechId;
       drawMech(state, item.mech, item.screenX, item.screenY, worldScene, isActive);
@@ -87,7 +86,7 @@ export function renderIso(state, refs) {
   if (state.ui.mode === "move") {
     renderPreviewPath(state, worldUi);
   }
-  renderActionPreview(state, worldScene);
+
   renderFocusTile(state, worldUi);
 
   const snappedRotation = normalizedTurns(state);
@@ -230,42 +229,48 @@ function renderPreviewPath(state, parent) {
   }
 }
 
-function renderActionPreview(state, parent) {
+function drawSceneActionOverlayForTile(state, item, parent) {
   if (state.ui.mode !== "action-target") return;
 
-  const fireArc = state.ui.action.fireArcTiles || [];
-  const validTiles = state.ui.action.validTargetTiles || [];
-  const effectTiles = state.ui.action.effectTiles || [];
+  const key = `${item.x},${item.y}`;
+  const fireArc = tileSetFromList(state.ui.action.fireArcTiles || []);
+  const validTiles = tileSetFromList(state.ui.action.validTargetTiles || []);
+  const effectTiles = tileSetFromList(state.ui.action.effectTiles || []);
 
-  for (const tile of fireArc) {
-    const mapTile = getTile(state.map, tile.x, tile.y);
-    if (!mapTile) continue;
-    const projected = projectScene(state, tile.x, tile.y, mapTile.elevation);
-    drawPreviewTile(state, projected, "rgba(255, 176, 0, 0.06)", "rgba(255, 176, 0, 0.22)", parent);
+  let fill = null;
+  let stroke = null;
+
+  if (fireArc.has(key)) {
+    fill = "rgba(255, 176, 0, 0.06)";
+    stroke = "rgba(255, 176, 0, 0.22)";
   }
 
-  for (const tile of validTiles) {
-    const mapTile = getTile(state.map, tile.x, tile.y);
-    if (!mapTile) continue;
-    const projected = projectScene(state, tile.x, tile.y, mapTile.elevation);
-    drawPreviewTile(state, projected, "rgba(82, 208, 146, 0.12)", "rgba(82, 208, 146, 0.55)", parent);
+  if (validTiles.has(key)) {
+    fill = "rgba(82, 208, 146, 0.12)";
+    stroke = "rgba(82, 208, 146, 0.55)";
   }
 
-  for (const tile of effectTiles) {
-    const mapTile = getTile(state.map, tile.x, tile.y);
-    if (!mapTile) continue;
-    const projected = projectScene(state, tile.x, tile.y, mapTile.elevation);
-    drawPreviewTile(state, projected, "rgba(255, 74, 74, 0.14)", "rgba(255, 74, 74, 0.70)", parent);
+  if (effectTiles.has(key)) {
+    fill = "rgba(255, 74, 74, 0.14)";
+    stroke = "rgba(255, 74, 74, 0.70)";
   }
-}
 
-function drawPreviewTile(state, projected, fill, stroke, parent) {
+  if (!fill || !stroke) return;
+
   if (state.ui.viewMode === "top") {
-    drawTopOverlayBox(projected.x, projected.y, fill, stroke, parent);
+    drawTopOverlayBox(item.screenX, item.screenY, fill, stroke, parent);
     return;
   }
 
-  drawOverlayDiamond(projected.x, projected.y, "action-preview-tile", fill, stroke, parent);
+  drawOverlayDiamond(item.screenX, item.screenY, "action-preview-tile", fill, stroke, parent);
+}
+
+function tileSetFromList(tiles) {
+  const set = new Set();
+  for (const tile of tiles) {
+    set.add(`${tile.x},${tile.y}`);
+  }
+  return set;
 }
 
 function renderFocusTile(state, parent) {
@@ -498,8 +503,6 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   const halfH = 10;
   const height = 18;
 
-  // Anchor point:
-  // bottom-center of mech cube aligns to center of tile top face.
   const anchorX = screenX;
   const anchorY = screenY + (RENDER_CONFIG.isoTileHeight / 2);
 
