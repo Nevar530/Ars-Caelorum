@@ -1,8 +1,10 @@
+import { createActionUiState, getCommandMenuItemsForPhase } from "./action.js";
+
 export function createState({
   map,
   mechs = [],
   rotation = 0,
-  content = { mechs: [], weapons: [], sigils: [] }
+  content = { mechs: [], weapons: [], sigils: [], attacks: [] }
 }) {
   const activeMechId = mechs.length > 0 ? mechs[0].instanceId : null;
   const activeMech = mechs.length > 0 ? mechs[0] : null;
@@ -38,10 +40,12 @@ export function createState({
       facingPreview: null,
       preMove: null,
 
+      action: createActionUiState(),
+
       commandMenu: {
         open: false,
         index: 0,
-        items: ["move", "wait"]
+        items: getCommandMenuItemsForPhase("move")
       }
     },
 
