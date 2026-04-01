@@ -26,7 +26,7 @@ export function getCommandMenuItemsForPhase(phase) {
   }
 
   if (phase === "action") {
-    return ["attack", "ability", "item"];
+    return ["attack", "ability", "item", "end_turn"];
   }
 
   return [];
