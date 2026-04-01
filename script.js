@@ -11,6 +11,14 @@ import { bindInput, snapFocusToActiveMech as snapFocusHelper } from "./src/input
 import { loadGameData } from "./src/dataLoader.js";
 import { canMoveActiveMechTo, getPathToTile } from "./src/movement.js";
 import { renderHud, bindHudInput } from "./src/hud.js";
+import {
+  getCommandMenuItemsForPhase,
+  resetActionUiState,
+  startAttackSelection,
+  confirmAttackSelection,
+  confirmActionTarget,
+  cancelActionState
+} from "./src/action.js";
 
 const refs = {
   editor: document.getElementById("editor"),
@@ -53,6 +61,7 @@ async function init() {
     snapFocusToActiveMech();
     state.ui.commandMenu.open = true;
     state.ui.commandMenu.index = 0;
+    state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
     state.selection.action = null;
     render();
   }
@@ -86,8 +95,14 @@ async function init() {
       return;
     }
 
-    if (action === "wait") {
+    if (action === "brace") {
       waitTurn();
+      return;
+    }
+
+    if (action === "attack") {
+      startAttack();
+      return;
     }
   }
 
@@ -129,9 +144,7 @@ async function init() {
   }
 
   function startAttack() {
-    state.ui.mode = "idle";
-    state.selection.action = null;
-    state.ui.commandMenu.open = false;
+    if (!startAttackSelection(state)) return;
     render();
   }
 
@@ -141,10 +154,18 @@ async function init() {
     state.ui.previewPath = [];
     state.ui.facingPreview = null;
     state.ui.preMove = null;
+    resetActionUiState(state);
     state.ui.commandMenu.open = false;
     state.ui.commandMenu.index = 0;
 
-    // Placeholder until turn order is built.
+    if (state.turn.phase === "move") {
+      state.turn.phase = "action";
+    } else {
+      state.turn.phase = "move";
+      state.turn.round += 1;
+    }
+
+    state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
     snapFocusToActiveMech();
     render();
   }
@@ -178,6 +199,25 @@ async function init() {
       return;
     }
 
+    if (state.ui.mode === "action-attack-select") {
+      if (confirmAttackSelection(state)) {
+        render();
+      }
+      return;
+    }
+
+    if (state.ui.mode === "action-target") {
+      if (confirmActionTarget(state)) {
+        resetActionUiState(state);
+        state.turn.phase = "move";
+        state.turn.round += 1;
+        state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
+        snapFocusToActiveMech();
+        render();
+      }
+      return;
+    }
+
     if (state.ui.mode === "face") {
       const activeMech = getMechById(state.mechs, state.turn.activeMechId);
       if (!activeMech) return;
@@ -197,12 +237,19 @@ async function init() {
       state.ui.preMove = null;
       state.ui.commandMenu.open = false;
       state.ui.commandMenu.index = 0;
+      state.turn.phase = "action";
+      state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
       snapFocusToActiveMech();
       render();
     }
   }
 
   function cancelAction() {
+    if (cancelActionState(state)) {
+      render();
+      return;
+    }
+
     if (state.ui.mode === "move") {
       state.ui.mode = "idle";
       state.selection.action = null;
@@ -327,9 +374,10 @@ async function init() {
         state.ui.previewPath = [];
         state.ui.facingPreview = null;
         state.ui.preMove = null;
+        resetActionUiState(state);
         state.ui.commandMenu.open = false;
         state.ui.commandMenu.index = 0;
-        state.ui.commandMenu.items = ["move", "wait"];
+        state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
 
         state.rotation = 0;
         state.camera.angle = 0;
