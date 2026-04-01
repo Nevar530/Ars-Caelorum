@@ -107,7 +107,8 @@ export function updateActionTargetPreview(state) {
     return;
   }
 
-  const fireArcTiles = getFireArcTiles(activeMech, profile.fireArcRange ?? 10);
+  const fireArcRange = profile.fireArc?.range ?? 10;
+  const fireArcTiles = getFireArcTiles(activeMech, fireArcRange);
   const candidateTiles = getWeaponCandidateTiles(activeMech, profile);
   const arcFilteredTiles = applyFireArcFilter(profile, fireArcTiles, candidateTiles);
   const validTiles = applyLosFilter(state, activeMech, profile, arcFilteredTiles);
@@ -203,11 +204,13 @@ function snapFocusToFirstValidTarget(state) {
 }
 
 function applyFireArcFilter(profile, fireArcTiles, candidateTiles) {
-  if (profile.kind === "melee") {
+  const targetingKind = profile.targeting?.kind;
+
+  if (targetingKind === "cardinal_adjacent") {
     return candidateTiles;
   }
 
-  if (profile.kind === "machine_gun") {
+  if (profile.effect?.kind === "cone") {
     return candidateTiles;
   }
 
@@ -219,15 +222,18 @@ function applyFireArcFilter(profile, fireArcTiles, candidateTiles) {
 }
 
 function applyLosFilter(state, mech, profile, candidateTiles) {
-  if (profile.kind === "melee") {
+  const targetingKind = profile.targeting?.kind;
+  const effectKind = profile.effect?.kind;
+
+  if (targetingKind === "cardinal_adjacent") {
     return candidateTiles;
   }
 
-  if (profile.kind === "missile") {
+  if (effectKind === "cone") {
     return candidateTiles;
   }
 
-  if (profile.kind === "machine_gun") {
+  if (effectKind === "circle") {
     return candidateTiles;
   }
 
@@ -239,28 +245,40 @@ function applyLosFilter(state, mech, profile, candidateTiles) {
 }
 
 function getWeaponCandidateTiles(mech, profile) {
-  switch (profile.kind) {
-    case "melee":
+  const targetingKind = profile.targeting?.kind;
+  const minRange = profile.targeting?.minRange ?? 1;
+  const maxRange = profile.targeting?.maxRange ?? 1;
+
+  switch (targetingKind) {
+    case "cardinal_adjacent":
       return getCardinalAdjacentTiles(mech.x, mech.y);
 
-    case "missile":
-      return getTilesInRangeBand(mech.x, mech.y, 1, profile.rangeMax ?? 6);
-
-    case "rifle":
+    case "range_band":
       return getTilesInRangeBand(
         mech.x,
         mech.y,
-        profile.rangeMin ?? 6,
-        profile.rangeMax ?? 8
+        minRange,
+        maxRange
       );
 
-    case "machine_gun":
-      return getConeTargetTiles(
+    case "fire_arc_tile":
+      if (profile.effect?.kind === "cone") {
+        const length = profile.effect?.length ?? maxRange ?? 5;
+        const width = profile.effect?.width ?? 3;
+        return getConeTargetTiles(
+          mech.x,
+          mech.y,
+          mech.facing,
+          length,
+          width
+        );
+      }
+
+      return getTilesInRangeBand(
         mech.x,
         mech.y,
-        mech.facing,
-        profile.rangeMax ?? 5,
-        profile.coneWidth ?? 3
+        minRange,
+        maxRange
       );
 
     default:
@@ -269,23 +287,22 @@ function getWeaponCandidateTiles(mech, profile) {
 }
 
 function getEffectTilesForTarget(mech, profile, targetX, targetY) {
-  switch (profile.kind) {
-    case "melee":
+  const effectKind = profile.effect?.kind;
+
+  switch (effectKind) {
+    case "single":
       return [{ x: targetX, y: targetY }];
 
-    case "rifle":
-      return [{ x: targetX, y: targetY }];
+    case "circle":
+      return getCircleTiles(targetX, targetY, profile.effect?.radius ?? 3);
 
-    case "missile":
-      return getCircleTiles(targetX, targetY, profile.aoeRadius ?? 3);
-
-    case "machine_gun":
+    case "cone":
       return getConeTargetTiles(
         mech.x,
         mech.y,
         mech.facing,
-        profile.rangeMax ?? 5,
-        profile.coneWidth ?? 3
+        profile.effect?.length ?? profile.targeting?.maxRange ?? 5,
+        profile.effect?.width ?? 3
       );
 
     default:
