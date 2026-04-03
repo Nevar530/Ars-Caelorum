@@ -1,14 +1,13 @@
 // dev/devMenu.js
 //
 // Dev menu for the live Ars Caelorum app.
-// This version is built to fit the CURRENT app structure.
+// This version fits the CURRENT app structure and moves the existing
+// map editor sidebar into a Map tab inside the dev menu.
 //
 // Source of truth:
 // - state.mechs
 // - state.content
-//
-// It does NOT fetch content itself.
-// It does NOT keep a fake parallel runtime unit list.
+// - existing DOM refs from script.js
 //
 // Toggle key: `
 
@@ -22,6 +21,7 @@ import {
 
 const DEFAULT_DEV_STATE = {
   isOpen: false,
+  activeTab: "units",
   selectedMechId: "",
   selectedPilotId: "",
   selectedSpawnId: "",
@@ -84,9 +84,16 @@ class DevMenu {
 
     this.appState = null;
     this.renderApp = null;
+    this.refs = null;
 
     this.rootEl = null;
     this.panelEl = null;
+
+    this.unitsTabButtonEl = null;
+    this.mapTabButtonEl = null;
+    this.unitsTabEl = null;
+    this.mapTabEl = null;
+
     this.logListEl = null;
     this.unitListEl = null;
     this.phaseOrderEl = null;
@@ -98,13 +105,17 @@ class DevMenu {
     this.controlSelectEl = null;
     this.teamSelectEl = null;
 
+    this.editorSidebarOriginalParent = null;
+    this.editorSidebarOriginalNextSibling = null;
+    this.editorSidebarEl = null;
+
     this.initialized = false;
     this.unsubscribeLog = null;
 
     this.handleKeyDown = this.handleKeyDown.bind(this);
   }
 
-  init({ state, render }) {
+  init({ state, render, refs }) {
     if (this.initialized) return this;
 
     if (!state) {
@@ -115,12 +126,19 @@ class DevMenu {
       throw new Error("DevMenu.init requires a render function.");
     }
 
+    if (!refs) {
+      throw new Error("DevMenu.init requires DOM refs.");
+    }
+
     this.appState = state;
     this.renderApp = render;
+    this.refs = refs;
 
+    this.captureExistingSidebar();
     this.buildDom();
     this.bindEvents();
     this.populateSelectors();
+    this.mountExistingMapEditorIntoTab();
     this.render();
 
     this.unsubscribeLog = subscribeToDevLog(() => {
@@ -141,17 +159,62 @@ class DevMenu {
       this.unsubscribeLog = null;
     }
 
+    this.restoreExistingSidebar();
+
     if (this.rootEl && this.rootEl.parentNode) {
       this.rootEl.parentNode.removeChild(this.rootEl);
     }
 
     this.rootEl = null;
     this.panelEl = null;
-    this.logListEl = null;
-    this.unitListEl = null;
-    this.phaseOrderEl = null;
-    this.roundPhaseEl = null;
     this.initialized = false;
+  }
+
+  captureExistingSidebar() {
+    const sidebar = document.querySelector(".sidebar");
+    this.editorSidebarEl = sidebar ?? null;
+
+    if (sidebar) {
+      this.editorSidebarOriginalParent = sidebar.parentNode;
+      this.editorSidebarOriginalNextSibling = sidebar.nextSibling;
+    }
+  }
+
+  mountExistingMapEditorIntoTab() {
+    if (!this.editorSidebarEl || !this.mapTabEl) return;
+
+    this.editorSidebarEl.style.width = "100%";
+    this.editorSidebarEl.style.maxWidth = "100%";
+    this.editorSidebarEl.style.height = "auto";
+    this.editorSidebarEl.style.margin = "0";
+    this.editorSidebarEl.style.background = "transparent";
+    this.editorSidebarEl.style.border = "0";
+    this.editorSidebarEl.style.padding = "0";
+    this.editorSidebarEl.style.boxShadow = "none";
+
+    this.mapTabEl.appendChild(this.editorSidebarEl);
+  }
+
+  restoreExistingSidebar() {
+    if (!this.editorSidebarEl || !this.editorSidebarOriginalParent) return;
+
+    this.editorSidebarEl.style.width = "";
+    this.editorSidebarEl.style.maxWidth = "";
+    this.editorSidebarEl.style.height = "";
+    this.editorSidebarEl.style.margin = "";
+    this.editorSidebarEl.style.background = "";
+    this.editorSidebarEl.style.border = "";
+    this.editorSidebarEl.style.padding = "";
+    this.editorSidebarEl.style.boxShadow = "";
+
+    if (this.editorSidebarOriginalNextSibling) {
+      this.editorSidebarOriginalParent.insertBefore(
+        this.editorSidebarEl,
+        this.editorSidebarOriginalNextSibling
+      );
+    } else {
+      this.editorSidebarOriginalParent.appendChild(this.editorSidebarEl);
+    }
   }
 
   getContent() {
@@ -186,7 +249,7 @@ class DevMenu {
 
     const panel = document.createElement("div");
     panel.id = "ac-dev-panel";
-    panel.style.width = "360px";
+    panel.style.width = "420px";
     panel.style.height = "100%";
     panel.style.background = "rgba(10, 12, 18, 0.96)";
     panel.style.color = "#d8e1ea";
@@ -198,6 +261,7 @@ class DevMenu {
     panel.style.pointerEvents = "auto";
     panel.style.overflowY = "auto";
     panel.style.padding = "12px";
+    panel.style.boxSizing = "border-box";
 
     panel.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -205,63 +269,72 @@ class DevMenu {
         <button id="ac-dev-close-btn" type="button">Close</button>
       </div>
 
-      <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-        <div style="font-weight:bold; margin-bottom:8px;">Spawn Unit</div>
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <button id="ac-dev-tab-units" type="button">Units</button>
+        <button id="ac-dev-tab-map" type="button">Map</button>
+      </div>
 
-        <label style="display:block; margin-bottom:6px;">
-          <div>Mech</div>
-          <select id="ac-dev-mech-select" style="width:100%;"></select>
-        </label>
+      <div id="ac-dev-tab-panel-units">
+        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+          <div style="font-weight:bold; margin-bottom:8px;">Spawn Unit</div>
 
-        <label style="display:block; margin-bottom:6px;">
-          <div>Pilot</div>
-          <select id="ac-dev-pilot-select" style="width:100%;"></select>
-        </label>
+          <label style="display:block; margin-bottom:6px;">
+            <div>Mech</div>
+            <select id="ac-dev-mech-select" style="width:100%;"></select>
+          </label>
 
-        <label style="display:block; margin-bottom:6px;">
-          <div>Spawn</div>
-          <select id="ac-dev-spawn-select" style="width:100%;"></select>
-        </label>
+          <label style="display:block; margin-bottom:6px;">
+            <div>Pilot</div>
+            <select id="ac-dev-pilot-select" style="width:100%;"></select>
+          </label>
 
-        <label style="display:block; margin-bottom:6px;">
-          <div>Control Type</div>
-          <select id="ac-dev-control-select" style="width:100%;">
-            <option value="PC">PC</option>
-            <option value="CPU">CPU</option>
-          </select>
-        </label>
+          <label style="display:block; margin-bottom:6px;">
+            <div>Spawn</div>
+            <select id="ac-dev-spawn-select" style="width:100%;"></select>
+          </label>
 
-        <label style="display:block; margin-bottom:10px;">
-          <div>Team</div>
-          <select id="ac-dev-team-select" style="width:100%;">
-            <option value="player">player</option>
-            <option value="enemy">enemy</option>
-          </select>
-        </label>
+          <label style="display:block; margin-bottom:6px;">
+            <div>Control Type</div>
+            <select id="ac-dev-control-select" style="width:100%;">
+              <option value="PC">PC</option>
+              <option value="CPU">CPU</option>
+            </select>
+          </label>
 
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button id="ac-dev-spawn-btn" type="button">Spawn / Replace</button>
-          <button id="ac-dev-reset-btn" type="button">Reset Units</button>
-          <button id="ac-dev-reroll-btn" type="button">Reroll Initiative</button>
-          <button id="ac-dev-clearlog-btn" type="button">Clear Log</button>
+          <label style="display:block; margin-bottom:10px;">
+            <div>Team</div>
+            <select id="ac-dev-team-select" style="width:100%;">
+              <option value="player">player</option>
+              <option value="enemy">enemy</option>
+            </select>
+          </label>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="ac-dev-spawn-btn" type="button">Spawn / Replace</button>
+            <button id="ac-dev-reset-btn" type="button">Reset Units</button>
+            <button id="ac-dev-reroll-btn" type="button">Reroll Initiative</button>
+            <button id="ac-dev-clearlog-btn" type="button">Clear Log</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+          <div style="font-weight:bold; margin-bottom:8px;">Combat State</div>
+          <div id="ac-dev-round-phase"></div>
+          <div id="ac-dev-phase-order" style="margin-top:8px;"></div>
+        </div>
+
+        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+          <div style="font-weight:bold; margin-bottom:8px;">Units On Map</div>
+          <div id="ac-dev-unit-list"></div>
+        </div>
+
+        <div>
+          <div style="font-weight:bold; margin-bottom:8px;">Debug Log</div>
+          <div id="ac-dev-log-list"></div>
         </div>
       </div>
 
-      <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-        <div style="font-weight:bold; margin-bottom:8px;">Combat State</div>
-        <div id="ac-dev-round-phase"></div>
-        <div id="ac-dev-phase-order" style="margin-top:8px;"></div>
-      </div>
-
-      <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-        <div style="font-weight:bold; margin-bottom:8px;">Units On Map</div>
-        <div id="ac-dev-unit-list"></div>
-      </div>
-
-      <div>
-        <div style="font-weight:bold; margin-bottom:8px;">Debug Log</div>
-        <div id="ac-dev-log-list"></div>
-      </div>
+      <div id="ac-dev-tab-panel-map" style="display:none;"></div>
     `;
 
     root.appendChild(panel);
@@ -269,6 +342,12 @@ class DevMenu {
 
     this.rootEl = root;
     this.panelEl = panel;
+
+    this.unitsTabButtonEl = panel.querySelector("#ac-dev-tab-units");
+    this.mapTabButtonEl = panel.querySelector("#ac-dev-tab-map");
+    this.unitsTabEl = panel.querySelector("#ac-dev-tab-panel-units");
+    this.mapTabEl = panel.querySelector("#ac-dev-tab-panel-map");
+
     this.logListEl = panel.querySelector("#ac-dev-log-list");
     this.unitListEl = panel.querySelector("#ac-dev-unit-list");
     this.phaseOrderEl = panel.querySelector("#ac-dev-phase-order");
@@ -286,6 +365,14 @@ class DevMenu {
 
     this.panelEl.querySelector("#ac-dev-close-btn").addEventListener("click", () => {
       this.toggle(false);
+    });
+
+    this.unitsTabButtonEl.addEventListener("click", () => {
+      this.setActiveTab("units");
+    });
+
+    this.mapTabButtonEl.addEventListener("click", () => {
+      this.setActiveTab("map");
     });
 
     this.panelEl.querySelector("#ac-dev-spawn-btn").addEventListener("click", () => {
@@ -373,12 +460,29 @@ class DevMenu {
     this.teamSelectEl.value = this.state.selectedTeam;
   }
 
+  setActiveTab(tabName) {
+    this.state.activeTab = tabName === "map" ? "map" : "units";
+
+    const isUnits = this.state.activeTab === "units";
+
+    this.unitsTabEl.style.display = isUnits ? "block" : "none";
+    this.mapTabEl.style.display = isUnits ? "none" : "block";
+
+    this.unitsTabButtonEl.style.opacity = isUnits ? "1" : "0.65";
+    this.mapTabButtonEl.style.opacity = isUnits ? "0.65" : "1";
+  }
+
   toggle(force) {
     const nextState =
       typeof force === "boolean" ? force : !this.state.isOpen;
 
     this.state.isOpen = nextState;
     this.panelEl.style.display = nextState ? "block" : "none";
+
+    if (nextState) {
+      this.setActiveTab(this.state.activeTab);
+    }
+
     this.render();
 
     logDev(`Dev menu ${nextState ? "opened" : "closed"}.`);
@@ -458,7 +562,6 @@ class DevMenu {
       facing: mechDef.defaultFacing
     });
 
-    // attach pilot/runtime metadata without breaking current app expectations
     newUnit.spawnId = spawn.id;
     newUnit.spawnLabel = spawn.label ?? spawn.id;
     newUnit.controlType = normalizeControlType(this.state.selectedControlType);
@@ -563,6 +666,7 @@ class DevMenu {
     this.renderPhaseOrder();
     this.renderUnits();
     this.renderLog();
+    this.setActiveTab(this.state.activeTab);
   }
 
   renderRoundPhase() {
@@ -662,8 +766,8 @@ const devMenu = new DevMenu();
 
 export default devMenu;
 
-export function initializeDevMenu({ state, render }) {
-  return devMenu.init({ state, render });
+export function initializeDevMenu({ state, render, refs }) {
+  return devMenu.init({ state, render, refs });
 }
 
 export function toggleDevMenu(force) {
