@@ -410,7 +410,8 @@ async function init() {
 
   initializeDevMenu({
     state,
-    render
+    render,
+    refs
   });
 
   render();
