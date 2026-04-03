@@ -19,6 +19,7 @@ import {
   confirmActionTarget,
   cancelActionState
 } from "./src/action.js";
+import { initializeDevMenu } from "./dev/devMenu.js";
 
 const refs = {
   editor: document.getElementById("editor"),
@@ -89,27 +90,27 @@ async function init() {
     selectMenuAction(action);
   }
 
-function selectMenuAction(action) {
-  if (action === "move") {
-    startMove();
-    return;
-  }
+  function selectMenuAction(action) {
+    if (action === "move") {
+      startMove();
+      return;
+    }
 
-  if (action === "brace") {
-    waitTurn();
-    return;
-  }
+    if (action === "brace") {
+      waitTurn();
+      return;
+    }
 
-  if (action === "attack") {
-    startAttack();
-    return;
-  }
+    if (action === "attack") {
+      startAttack();
+      return;
+    }
 
-  if (action === "end_turn") {
-    waitTurn();
-    return;
+    if (action === "end_turn") {
+      waitTurn();
+      return;
+    }
   }
-}
 
   function getDefaultFacingFromPath(path, fallbackFacing) {
     if (!path || path.length < 2) return fallbackFacing;
@@ -406,6 +407,12 @@ function selectMenuAction(action) {
 
   bindInput(state, refs, boundActions);
   bindHudInput(state, refs, boundActions);
+
+  initializeDevMenu({
+    state,
+    render
+  });
+
   render();
 }
 
