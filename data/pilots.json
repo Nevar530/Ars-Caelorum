@@ -1,0 +1,58 @@
+[
+  {
+    "id": "pilot_biggs",
+    "name": "Biggs",
+    "role": "balanced",
+    "core": 8,
+    "shield": 2,
+    "aether": 2,
+    "move": 4,
+    "reaction": 2,
+    "targeting": 2,
+    "abilityPoints": 0,
+    "tabs": [],
+    "image": null
+  },
+  {
+    "id": "pilot_wedge",
+    "name": "Wedge",
+    "role": "shooter",
+    "core": 7,
+    "shield": 1,
+    "aether": 2,
+    "move": 4,
+    "reaction": 2,
+    "targeting": 3,
+    "abilityPoints": 0,
+    "tabs": [],
+    "image": null
+  },
+  {
+    "id": "pilot_tom",
+    "name": "Tom",
+    "role": "reactive",
+    "core": 7,
+    "shield": 1,
+    "aether": 3,
+    "move": 5,
+    "reaction": 3,
+    "targeting": 1,
+    "abilityPoints": 0,
+    "tabs": [],
+    "image": null
+  },
+  {
+    "id": "pilot_jerri",
+    "name": "Jerri",
+    "role": "support",
+    "core": 6,
+    "shield": 2,
+    "aether": 4,
+    "move": 4,
+    "reaction": 1,
+    "targeting": 2,
+    "abilityPoints": 0,
+    "tabs": [],
+    "image": null
+  }
+]
