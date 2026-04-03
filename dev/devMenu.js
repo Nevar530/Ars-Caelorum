@@ -1,44 +1,18 @@
 // dev/devMenu.js
 //
-// Dev menu hub for Ars Caelorum.
-// This file owns:
-// - dev menu open/close state
-// - spawn form state
-// - spawned runtime unit list
-// - dev actions (spawn/remove/reroll/reset/etc.)
-// - simple DOM rendering for a dev sidebar
+// Dev menu for the live Ars Caelorum app.
+// This version is built to fit the CURRENT app structure.
 //
-// This file depends on:
-// - ./dataStore.js
-// - ./runtimeUnitFactory.js
-// - ./devLogger.js
+// Source of truth:
+// - state.mechs
+// - state.content
 //
-// It does NOT own:
-// - core render loop
-// - combat math
-// - LOS logic
-// - map movement rules
+// It does NOT fetch content itself.
+// It does NOT keep a fake parallel runtime unit list.
 //
 // Toggle key: `
 
-import {
-  initializeDataStore,
-  getAllPilots,
-  getAllMechs,
-  getAllSpawnPoints
-} from "./dataStore.js";
-
-import {
-  createRuntimeUnit,
-  replaceUnitAtSpawn,
-  removeUnitByRuntimeId,
-  getUnitAtSpawn,
-  resetUnitRoundFlags,
-  rollAllInitiative,
-  sortMovePhaseOrder,
-  sortActionPhaseOrder
-} from "./runtimeUnitFactory.js";
-
+import { createMechInstance } from "../src/mechs.js";
 import {
   logDev,
   clearDevLog,
@@ -46,33 +20,77 @@ import {
   subscribeToDevLog
 } from "./devLogger.js";
 
-const DEFAULT_STATE = {
+const DEFAULT_DEV_STATE = {
   isOpen: false,
   selectedMechId: "",
   selectedPilotId: "",
   selectedSpawnId: "",
   selectedControlType: "PC",
-  selectedTeam: "player",
-  runtimeUnits: [],
-  movePhaseOrder: [],
-  actionPhaseOrder: [],
-  currentPhase: "MOVE",
-  round: 1
+  selectedTeam: "player"
 };
+
+let generatedDevUnitCounter = 0;
+
+function nextDevUnitId() {
+  generatedDevUnitCounter += 1;
+  return `dev_unit_${String(generatedDevUnitCounter).padStart(4, "0")}`;
+}
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function normalizeControlType(value) {
+  return value === "CPU" ? "CPU" : "PC";
+}
+
+function normalizeTeam(value) {
+  return value === "enemy" ? "enemy" : "player";
+}
+
+function rollD6() {
+  return Math.floor(Math.random() * 6) + 1;
+}
+
+function sortMovePhaseOrder(units) {
+  return [...units].sort((a, b) => {
+    const aInit = a.initiative ?? -999;
+    const bInit = b.initiative ?? -999;
+
+    if (aInit !== bInit) {
+      return aInit - bInit;
+    }
+
+    return String(a.instanceId).localeCompare(String(b.instanceId));
+  });
+}
+
+function sortActionPhaseOrder(units) {
+  return [...units].sort((a, b) => {
+    const aInit = a.initiative ?? -999;
+    const bInit = b.initiative ?? -999;
+
+    if (aInit !== bInit) {
+      return bInit - aInit;
+    }
+
+    return String(a.instanceId).localeCompare(String(b.instanceId));
+  });
+}
+
 class DevMenu {
   constructor() {
-    this.state = clone(DEFAULT_STATE);
+    this.state = clone(DEFAULT_DEV_STATE);
+
+    this.appState = null;
+    this.renderApp = null;
 
     this.rootEl = null;
     this.panelEl = null;
     this.logListEl = null;
     this.unitListEl = null;
     this.phaseOrderEl = null;
+    this.roundPhaseEl = null;
 
     this.mechSelectEl = null;
     this.pilotSelectEl = null;
@@ -86,10 +104,19 @@ class DevMenu {
     this.handleKeyDown = this.handleKeyDown.bind(this);
   }
 
-  async init() {
+  init({ state, render }) {
     if (this.initialized) return this;
 
-    await initializeDataStore();
+    if (!state) {
+      throw new Error("DevMenu.init requires app state.");
+    }
+
+    if (typeof render !== "function") {
+      throw new Error("DevMenu.init requires a render function.");
+    }
+
+    this.appState = state;
+    this.renderApp = render;
 
     this.buildDom();
     this.bindEvents();
@@ -123,7 +150,28 @@ class DevMenu {
     this.logListEl = null;
     this.unitListEl = null;
     this.phaseOrderEl = null;
+    this.roundPhaseEl = null;
     this.initialized = false;
+  }
+
+  getContent() {
+    return this.appState?.content ?? {};
+  }
+
+  getMechDefinitions() {
+    return Array.isArray(this.getContent().mechs) ? this.getContent().mechs : [];
+  }
+
+  getPilotDefinitions() {
+    return Array.isArray(this.getContent().pilots) ? this.getContent().pilots : [];
+  }
+
+  getSpawnPoints() {
+    return Array.isArray(this.getContent().spawnPoints) ? this.getContent().spawnPoints : [];
+  }
+
+  getRuntimeUnits() {
+    return Array.isArray(this.appState?.mechs) ? this.appState.mechs : [];
   }
 
   buildDom() {
@@ -206,7 +254,7 @@ class DevMenu {
       </div>
 
       <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-        <div style="font-weight:bold; margin-bottom:8px;">Spawned Units</div>
+        <div style="font-weight:bold; margin-bottom:8px;">Units On Map</div>
         <div id="ac-dev-unit-list"></div>
       </div>
 
@@ -224,6 +272,7 @@ class DevMenu {
     this.logListEl = panel.querySelector("#ac-dev-log-list");
     this.unitListEl = panel.querySelector("#ac-dev-unit-list");
     this.phaseOrderEl = panel.querySelector("#ac-dev-phase-order");
+    this.roundPhaseEl = panel.querySelector("#ac-dev-round-phase");
 
     this.mechSelectEl = panel.querySelector("#ac-dev-mech-select");
     this.pilotSelectEl = panel.querySelector("#ac-dev-pilot-select");
@@ -244,7 +293,7 @@ class DevMenu {
     });
 
     this.panelEl.querySelector("#ac-dev-reset-btn").addEventListener("click", () => {
-      this.resetRuntimeUnits();
+      this.resetUnits();
     });
 
     this.panelEl.querySelector("#ac-dev-reroll-btn").addEventListener("click", () => {
@@ -278,47 +327,48 @@ class DevMenu {
   }
 
   handleKeyDown(event) {
-    if (event.key === "`") {
-      event.preventDefault();
-      this.toggle();
-    }
+    if (event.key !== "`") return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    this.toggle();
   }
 
   populateSelectors() {
-    const mechs = getAllMechs();
-    const pilots = getAllPilots();
-    const spawnPoints = getAllSpawnPoints();
+    const mechs = this.getMechDefinitions();
+    const pilots = this.getPilotDefinitions();
+    const spawnPoints = this.getSpawnPoints();
 
     this.mechSelectEl.innerHTML = mechs
       .map(
         (mech) =>
-          `<option value="${mech.id}">${mech.name} [${mech.variant}]</option>`
+          `<option value="${mech.id}">${mech.name} [${mech.variant ?? ""}]</option>`
       )
       .join("");
 
     this.pilotSelectEl.innerHTML = pilots
       .map(
         (pilot) =>
-          `<option value="${pilot.id}">${pilot.name} (${pilot.role})</option>`
+          `<option value="${pilot.id}">${pilot.name} (${pilot.role ?? "pilot"})</option>`
       )
       .join("");
 
     this.spawnSelectEl.innerHTML = spawnPoints
       .map(
         (spawn) =>
-          `<option value="${spawn.id}">${spawn.label} (${spawn.x},${spawn.y})</option>`
+          `<option value="${spawn.id}">${spawn.label ?? spawn.id} (${spawn.x},${spawn.y})</option>`
       )
       .join("");
 
-    this.state.selectedMechId = mechs[0]?.id || "";
-    this.state.selectedPilotId = pilots[0]?.id || "";
-    this.state.selectedSpawnId = spawnPoints[0]?.id || "";
+    this.state.selectedMechId = mechs[0]?.id ?? "";
+    this.state.selectedPilotId = pilots[0]?.id ?? "";
+    this.state.selectedSpawnId = spawnPoints[0]?.id ?? "";
     this.state.selectedControlType = "PC";
     this.state.selectedTeam = "player";
 
-    this.mechSelectEl.value = this.state.selectedMechId;
-    this.pilotSelectEl.value = this.state.selectedPilotId;
-    this.spawnSelectEl.value = this.state.selectedSpawnId;
+    if (this.state.selectedMechId) this.mechSelectEl.value = this.state.selectedMechId;
+    if (this.state.selectedPilotId) this.pilotSelectEl.value = this.state.selectedPilotId;
+    if (this.state.selectedSpawnId) this.spawnSelectEl.value = this.state.selectedSpawnId;
     this.controlSelectEl.value = this.state.selectedControlType;
     this.teamSelectEl.value = this.state.selectedTeam;
   }
@@ -329,136 +379,186 @@ class DevMenu {
 
     this.state.isOpen = nextState;
     this.panelEl.style.display = nextState ? "block" : "none";
+    this.render();
 
     logDev(`Dev menu ${nextState ? "opened" : "closed"}.`);
   }
 
-  spawnSelectedUnit() {
-    try {
-      const existingUnit = getUnitAtSpawn(
-        this.state.runtimeUnits,
-        this.state.selectedSpawnId
-      );
-
-      const newUnit = createRuntimeUnit({
-        mechId: this.state.selectedMechId,
-        pilotId: this.state.selectedPilotId,
-        spawnId: this.state.selectedSpawnId,
-        controlType: this.state.selectedControlType,
-        team: this.state.selectedTeam
-      });
-
-      this.state.runtimeUnits = replaceUnitAtSpawn(
-        this.state.runtimeUnits,
-        newUnit
-      );
-
-      if (existingUnit) {
-        logDev(
-          `Replaced ${existingUnit.mechName} / ${existingUnit.pilotName} at ${existingUnit.spawnId} with ${newUnit.mechName} / ${newUnit.pilotName}.`
-        );
-      } else {
-        logDev(
-          `${newUnit.mechName} / ${newUnit.pilotName} spawned at ${newUnit.spawnId} (${newUnit.x},${newUnit.y}).`
-        );
-      }
-
-      this.render();
-    } catch (error) {
-      console.error(error);
-      logDev(`Spawn failed: ${error.message}`);
-    }
+  getMechDefinitionById(id) {
+    return this.getMechDefinitions().find((mech) => mech.id === id) ?? null;
   }
 
-  removeRuntimeUnit(runtimeUnitId) {
-    const unit = this.state.runtimeUnits.find(
-      (entry) => entry.runtimeUnitId === runtimeUnitId
-    );
-
-    this.state.runtimeUnits = removeUnitByRuntimeId(
-      this.state.runtimeUnits,
-      runtimeUnitId
-    );
-
-    if (unit) {
-      logDev(`${unit.mechName} / ${unit.pilotName} removed from map.`);
-    }
-
-    this.refreshPhaseOrders();
-    this.render();
+  getPilotDefinitionById(id) {
+    return this.getPilotDefinitions().find((pilot) => pilot.id === id) ?? null;
   }
 
-  resetRuntimeUnits() {
-    this.state.runtimeUnits = [];
-    this.state.movePhaseOrder = [];
-    this.state.actionPhaseOrder = [];
-    this.state.round = 1;
-    this.state.currentPhase = "MOVE";
-
-    logDev("All runtime units cleared.");
-    this.render();
+  getSpawnPointById(id) {
+    return this.getSpawnPoints().find((spawn) => spawn.id === id) ?? null;
   }
 
-  rerollInitiative() {
-    if (this.state.runtimeUnits.length === 0) {
-      logDev("Initiative reroll skipped: no runtime units.");
+  getUnitAtSpawn(spawnId) {
+    return this.getRuntimeUnits().find((unit) => unit.spawnId === spawnId) ?? null;
+  }
+
+  replaceUnitAtSpawn(newUnit) {
+    this.appState.mechs = [
+      ...this.getRuntimeUnits().filter((unit) => unit.spawnId !== newUnit.spawnId),
+      newUnit
+    ];
+  }
+
+  syncActiveMechAfterMutation(preferredInstanceId = null) {
+    const mechs = this.getRuntimeUnits();
+
+    if (mechs.length === 0) {
+      this.appState.turn.activeMechId = null;
+      this.appState.selection.mechId = null;
+      this.appState.focus.x = 0;
+      this.appState.focus.y = 0;
       return;
     }
 
-    this.state.runtimeUnits = rollAllInitiative(
-      this.state.runtimeUnits.map(resetUnitRoundFlags)
+    const preferred =
+      mechs.find((mech) => mech.instanceId === preferredInstanceId) ??
+      mechs.find((mech) => mech.instanceId === this.appState.turn.activeMechId) ??
+      mechs[0];
+
+    this.appState.turn.activeMechId = preferred.instanceId;
+    this.appState.selection.mechId = preferred.instanceId;
+    this.appState.focus.x = preferred.x;
+    this.appState.focus.y = preferred.y;
+  }
+
+  spawnSelectedUnit() {
+    const mechDef = this.getMechDefinitionById(this.state.selectedMechId);
+    const pilotDef = this.getPilotDefinitionById(this.state.selectedPilotId);
+    const spawn = this.getSpawnPointById(this.state.selectedSpawnId);
+
+    if (!mechDef) {
+      logDev("Spawn failed: selected mech definition not found.");
+      return;
+    }
+
+    if (!pilotDef) {
+      logDev("Spawn failed: selected pilot definition not found.");
+      return;
+    }
+
+    if (!spawn) {
+      logDev("Spawn failed: selected spawn point not found.");
+      return;
+    }
+
+    const existingUnit = this.getUnitAtSpawn(spawn.id);
+
+    const newUnit = createMechInstance(mechDef, {
+      instanceId: nextDevUnitId(),
+      x: spawn.x,
+      y: spawn.y,
+      facing: mechDef.defaultFacing
+    });
+
+    // attach pilot/runtime metadata without breaking current app expectations
+    newUnit.spawnId = spawn.id;
+    newUnit.spawnLabel = spawn.label ?? spawn.id;
+    newUnit.controlType = normalizeControlType(this.state.selectedControlType);
+    newUnit.team = normalizeTeam(this.state.selectedTeam);
+
+    newUnit.pilotId = pilotDef.id;
+    newUnit.pilotName = pilotDef.name;
+    newUnit.pilotRole = pilotDef.role ?? "pilot";
+    newUnit.reaction = pilotDef.reaction ?? 0;
+    newUnit.targeting = pilotDef.targeting ?? 0;
+    newUnit.pilotCore = pilotDef.core ?? 0;
+    newUnit.pilotShield = pilotDef.shield ?? 0;
+    newUnit.pilotAether = pilotDef.aether ?? 0;
+    newUnit.pilotMove = pilotDef.move ?? 0;
+    newUnit.abilityPoints = pilotDef.abilityPoints ?? 0;
+
+    newUnit.hasMoved = false;
+    newUnit.hasActed = false;
+    newUnit.isBraced = false;
+    newUnit.initiative = null;
+    newUnit.status = "operational";
+
+    this.replaceUnitAtSpawn(newUnit);
+    this.syncActiveMechAfterMutation(newUnit.instanceId);
+
+    if (existingUnit) {
+      logDev(
+        `Replaced ${existingUnit.name} / ${existingUnit.pilotName ?? "No Pilot"} at ${existingUnit.spawnId} with ${newUnit.name} / ${newUnit.pilotName}.`
+      );
+    } else {
+      logDev(
+        `${newUnit.name} / ${newUnit.pilotName} spawned at ${newUnit.spawnId} (${newUnit.x},${newUnit.y}).`
+      );
+    }
+
+    this.render();
+    this.renderApp();
+  }
+
+  removeUnit(instanceId) {
+    const unit = this.getRuntimeUnits().find((entry) => entry.instanceId === instanceId);
+    if (!unit) return;
+
+    this.appState.mechs = this.getRuntimeUnits().filter(
+      (entry) => entry.instanceId !== instanceId
     );
 
-    this.refreshPhaseOrders();
+    logDev(`${unit.name} / ${unit.pilotName ?? "No Pilot"} removed from map.`);
 
-    logDev(`Initiative rerolled for Round ${this.state.round}.`);
-    for (const unit of this.state.runtimeUnits) {
+    this.syncActiveMechAfterMutation();
+    this.render();
+    this.renderApp();
+  }
+
+  resetUnits() {
+    this.appState.mechs = [];
+    this.appState.turn.round = 1;
+    this.appState.turn.phase = "move";
+    this.appState.ui.mode = "idle";
+    this.appState.ui.previewPath = [];
+    this.appState.ui.facingPreview = null;
+    this.appState.ui.preMove = null;
+    this.appState.ui.commandMenu.open = false;
+    this.appState.ui.commandMenu.index = 0;
+
+    this.syncActiveMechAfterMutation();
+
+    logDev("All units removed from map.");
+    this.render();
+    this.renderApp();
+  }
+
+  rerollInitiative() {
+    const units = this.getRuntimeUnits();
+
+    if (!units.length) {
+      logDev("Initiative reroll skipped: no units on map.");
+      return;
+    }
+
+    for (const unit of units) {
+      unit.hasMoved = false;
+      unit.hasActed = false;
+      unit.isBraced = false;
+      unit.initiative = rollD6() + rollD6() + (unit.reaction ?? 0);
+    }
+
+    logDev(`Initiative rerolled for Round ${this.appState.turn.round}.`);
+
+    for (const unit of units) {
       logDev(
-        `${unit.mechName} / ${unit.pilotName} initiative = ${unit.initiative}`
+        `${unit.name} / ${unit.pilotName ?? "No Pilot"} initiative = ${unit.initiative}`
       );
     }
 
     this.render();
-  }
-
-  nextRound() {
-    this.state.round += 1;
-    this.state.currentPhase = "MOVE";
-
-    if (this.state.runtimeUnits.length > 0) {
-      this.state.runtimeUnits = rollAllInitiative(
-        this.state.runtimeUnits.map(resetUnitRoundFlags)
-      );
-      this.refreshPhaseOrders();
-    }
-
-    logDev(`Advanced to Round ${this.state.round}.`);
-    this.render();
-  }
-
-  setPhase(phaseName) {
-    this.state.currentPhase = phaseName === "ACTION" ? "ACTION" : "MOVE";
-    logDev(`Phase set to ${this.state.currentPhase}.`);
-    this.render();
-  }
-
-  refreshPhaseOrders() {
-    this.state.movePhaseOrder = sortMovePhaseOrder(this.state.runtimeUnits);
-    this.state.actionPhaseOrder = sortActionPhaseOrder(this.state.runtimeUnits);
-  }
-
-  getRuntimeUnits() {
-    return [...this.state.runtimeUnits];
-  }
-
-  setRuntimeUnits(units) {
-    this.state.runtimeUnits = Array.isArray(units) ? [...units] : [];
-    this.refreshPhaseOrders();
-    this.render();
+    this.renderApp();
   }
 
   render() {
-    this.refreshPhaseOrders();
     this.renderRoundPhase();
     this.renderPhaseOrder();
     this.renderUnits();
@@ -466,49 +566,34 @@ class DevMenu {
   }
 
   renderRoundPhase() {
-    const el = this.panelEl.querySelector("#ac-dev-round-phase");
-    el.innerHTML = `
-      <div>Round: <strong>${this.state.round}</strong></div>
-      <div>Phase: <strong>${this.state.currentPhase}</strong></div>
-      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-        <button id="ac-dev-phase-move-btn" type="button">Set MOVE</button>
-        <button id="ac-dev-phase-action-btn" type="button">Set ACTION</button>
-        <button id="ac-dev-next-round-btn" type="button">Next Round</button>
-      </div>
+    this.roundPhaseEl.innerHTML = `
+      <div>Round: <strong>${this.appState.turn.round}</strong></div>
+      <div>Phase: <strong>${String(this.appState.turn.phase).toUpperCase()}</strong></div>
     `;
-
-    el.querySelector("#ac-dev-phase-move-btn").addEventListener("click", () => {
-      this.setPhase("MOVE");
-    });
-
-    el.querySelector("#ac-dev-phase-action-btn").addEventListener("click", () => {
-      this.setPhase("ACTION");
-    });
-
-    el.querySelector("#ac-dev-next-round-btn").addEventListener("click", () => {
-      this.nextRound();
-    });
   }
 
   renderPhaseOrder() {
-    const order =
-      this.state.currentPhase === "ACTION"
-        ? this.state.actionPhaseOrder
-        : this.state.movePhaseOrder;
+    const units = this.getRuntimeUnits();
 
-    if (!order.length) {
-      this.phaseOrderEl.innerHTML = `<div style="opacity:0.7;">No units in phase order.</div>`;
+    if (!units.length) {
+      this.phaseOrderEl.innerHTML = `<div style="opacity:0.7;">No units on map.</div>`;
       return;
     }
 
-    this.phaseOrderEl.innerHTML = order
+    const currentPhase = this.appState.turn.phase;
+    const ordered =
+      currentPhase === "action"
+        ? sortActionPhaseOrder(units)
+        : sortMovePhaseOrder(units);
+
+    this.phaseOrderEl.innerHTML = ordered
       .map(
         (unit, index) => `
           <div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.06);">
-            ${index + 1}. ${unit.mechName} / ${unit.pilotName}
+            ${index + 1}. ${unit.name} / ${unit.pilotName ?? "No Pilot"}
             <span style="opacity:0.7;">| Init ${unit.initiative ?? "-"}</span>
-            <span style="opacity:0.7;">| ${unit.team}</span>
-            <span style="opacity:0.7;">| ${unit.controlType}</span>
+            <span style="opacity:0.7;">| ${unit.team ?? "-"}</span>
+            <span style="opacity:0.7;">| ${unit.controlType ?? "-"}</span>
           </div>
         `
       )
@@ -516,20 +601,22 @@ class DevMenu {
   }
 
   renderUnits() {
-    if (!this.state.runtimeUnits.length) {
-      this.unitListEl.innerHTML = `<div style="opacity:0.7;">No units spawned.</div>`;
+    const units = this.getRuntimeUnits();
+
+    if (!units.length) {
+      this.unitListEl.innerHTML = `<div style="opacity:0.7;">No units on map.</div>`;
       return;
     }
 
-    this.unitListEl.innerHTML = this.state.runtimeUnits
+    this.unitListEl.innerHTML = units
       .map(
         (unit) => `
-          <div data-runtime-unit-id="${unit.runtimeUnitId}" style="padding:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.08);">
-            <div><strong>${unit.mechName}</strong> / ${unit.pilotName}</div>
-            <div style="opacity:0.8;">${unit.team} | ${unit.controlType} | ${unit.spawnId}</div>
+          <div data-instance-id="${unit.instanceId}" style="padding:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.08);">
+            <div><strong>${unit.name}</strong> / ${unit.pilotName ?? "No Pilot"}</div>
+            <div style="opacity:0.8;">${unit.team ?? "-"} | ${unit.controlType ?? "-"} | ${unit.spawnId ?? "-"}</div>
             <div style="opacity:0.8;">Pos (${unit.x},${unit.y}) | Facing ${unit.facing}</div>
-            <div style="opacity:0.8;">Core ${unit.core} | Shield ${unit.shield} | Aether ${unit.aether} | Move ${unit.move}</div>
-            <div style="opacity:0.8;">Reaction ${unit.reaction} | Targeting ${unit.targeting}</div>
+            <div style="opacity:0.8;">ARM ${unit.armor} | STR ${unit.structure} | MV ${unit.move}</div>
+            <div style="opacity:0.8;">Reaction ${unit.reaction ?? "-"} | Targeting ${unit.targeting ?? "-"}</div>
             <div style="opacity:0.8;">Init ${unit.initiative ?? "-"}</div>
             <div style="margin-top:6px;">
               <button type="button" class="ac-dev-remove-unit-btn">Remove</button>
@@ -542,10 +629,10 @@ class DevMenu {
     const buttons = this.unitListEl.querySelectorAll(".ac-dev-remove-unit-btn");
     buttons.forEach((button) => {
       button.addEventListener("click", (event) => {
-        const parent = event.target.closest("[data-runtime-unit-id]");
-        const runtimeUnitId = parent?.getAttribute("data-runtime-unit-id");
-        if (runtimeUnitId) {
-          this.removeRuntimeUnit(runtimeUnitId);
+        const card = event.target.closest("[data-instance-id]");
+        const instanceId = card?.getAttribute("data-instance-id");
+        if (instanceId) {
+          this.removeUnit(instanceId);
         }
       });
     });
@@ -575,18 +662,10 @@ const devMenu = new DevMenu();
 
 export default devMenu;
 
-export async function initializeDevMenu() {
-  return devMenu.init();
+export function initializeDevMenu({ state, render }) {
+  return devMenu.init({ state, render });
 }
 
 export function toggleDevMenu(force) {
   devMenu.toggle(force);
-}
-
-export function getDevMenuRuntimeUnits() {
-  return devMenu.getRuntimeUnits();
-}
-
-export function setDevMenuRuntimeUnits(units) {
-  devMenu.setRuntimeUnits(units);
 }
