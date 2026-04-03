@@ -1,16 +1,20 @@
 export async function loadGameData() {
-  const [mechs, weapons, sigils, attacks] = await Promise.all([
+  const [mechs, weapons, sigils, attacks, pilots, spawnPoints] = await Promise.all([
     loadJson("./data/mechs.json"),
     loadJson("./data/weapons.json"),
     loadJson("./data/sigils.json"),
-    loadJson("./data/attacks.json")
+    loadJson("./data/attacks.json"),
+    loadJson("./data/pilots.json"),
+    loadJson("./data/spawnPoints.json")
   ]);
 
   return {
     mechs,
     weapons,
     sigils,
-    attacks
+    attacks,
+    pilots,
+    spawnPoints
   };
 }
 
