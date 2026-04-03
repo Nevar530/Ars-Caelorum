@@ -1,14 +1,67 @@
 [
   {
-    "id": "rifle_01",
-    "name": "Combat Rifle",
-    "type": "direct",
-    "rangeBands": {
-      "close": 0,
-      "medium": 1,
-      "long": 3
+    "id": "melee_01",
+    "name": "Blade",
+    "category": "weapon",
+    "type": "melee",
+    "shape": "adjacent",
+    "range": {
+      "min": 1,
+      "max": 1
     },
-    "damage": 2,
-    "sigil": null
+    "losType": "direct",
+    "fireArc": "cardinal",
+    "aoeRadius": 0,
+    "damage": 0,
+    "notes": "Validation only. Used for adjacent cardinal melee attacks."
+  },
+  {
+    "id": "machinegun_01",
+    "name": "Machine Gun",
+    "category": "weapon",
+    "type": "cone",
+    "shape": "cone",
+    "range": {
+      "min": 1,
+      "max": 5
+    },
+    "losType": "direct",
+    "fireArc": "forward",
+    "coneWidth": 3,
+    "aoeRadius": 0,
+    "damage": 0,
+    "notes": "Validation only. 3-tile wide cone up to 5 tiles."
+  },
+  {
+    "id": "rifle_01",
+    "name": "Rifle",
+    "category": "weapon",
+    "type": "direct",
+    "shape": "single",
+    "range": {
+      "min": 6,
+      "max": 8
+    },
+    "losType": "direct",
+    "fireArc": "forward",
+    "aoeRadius": 0,
+    "damage": 0,
+    "notes": "Validation only. Single-target direct-fire rifle."
+  },
+  {
+    "id": "missile_01",
+    "name": "Missile Pod",
+    "category": "weapon",
+    "type": "missile",
+    "shape": "aoe",
+    "range": {
+      "min": 1,
+      "max": 6
+    },
+    "losType": "missile",
+    "fireArc": "forward",
+    "aoeRadius": 3,
+    "damage": 0,
+    "notes": "Validation only. Missile targeting uses missile LOS rules and 3-tile AOE."
   }
 ]
