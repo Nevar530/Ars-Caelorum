@@ -1,25 +1,66 @@
 [
   {
-    "id": "hero_standard_01",
-    "name": "A1",
-    "class": "standard",
-    "footprint": 1,
-    "humanScaleSize": 4,
+    "id": "mech_a",
+    "name": "Mech A",
+    "variant": "A",
+    "class": "balanced",
+    "role": "line",
+    "core": 18,
+    "shield": 6,
+    "aether": 3,
     "move": 5,
-    "armor": 10,
-    "structure": 6,
-    "pilotSlots": 1,
-    "weapons": ["rifle_01"],
-    "attackProfileIds": [
-      "melee_cardinal_01",
-      "missile_aoe_01",
-      "rifle_band_01",
-      "machine_gun_cone_01"
-    ],
-    "render": {
-      "sprite": "",
-      "offsetX": 0,
-      "offsetY": -24
-    }
+    "weapons": ["rifle_01", "melee_01"],
+    "abilities": [],
+    "tubes": [],
+    "defaultFacing": "S",
+    "image": null
+  },
+  {
+    "id": "mech_b",
+    "name": "Mech B",
+    "variant": "B",
+    "class": "light",
+    "role": "flanker",
+    "core": 14,
+    "shield": 4,
+    "aether": 2,
+    "move": 6,
+    "weapons": ["machinegun_01", "melee_01"],
+    "abilities": [],
+    "tubes": [],
+    "defaultFacing": "S",
+    "image": null
+  },
+  {
+    "id": "mech_c",
+    "name": "Mech C",
+    "variant": "C",
+    "class": "heavy",
+    "role": "siege",
+    "core": 22,
+    "shield": 8,
+    "aether": 2,
+    "move": 4,
+    "weapons": ["missile_01", "rifle_01"],
+    "abilities": [],
+    "tubes": [],
+    "defaultFacing": "S",
+    "image": null
+  },
+  {
+    "id": "mech_d",
+    "name": "Mech D",
+    "variant": "D",
+    "class": "arcane",
+    "role": "hybrid",
+    "core": 16,
+    "shield": 5,
+    "aether": 6,
+    "move": 5,
+    "weapons": ["rifle_01", "missile_01"],
+    "abilities": [],
+    "tubes": [],
+    "defaultFacing": "S",
+    "image": null
   }
 ]
