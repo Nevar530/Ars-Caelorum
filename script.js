@@ -3,6 +3,7 @@ import { createInitialMap, resetMap } from "./src/map.js";
 import {
   instantiateTestMechs,
   getMechById,
+  getMechAt,
   moveMechTo,
   setMechFacing
 } from "./src/mechs.js";
@@ -20,6 +21,7 @@ import {
   cancelActionState
 } from "./src/action.js";
 import { initializeDevMenu } from "./dev/devMenu.js";
+import { logDev } from "./dev/devLogger.js";
 
 const refs = {
   editor: document.getElementById("editor"),
@@ -36,6 +38,21 @@ const refs = {
   hudCenter: document.getElementById("hudCenter"),
   hudRight: document.getElementById("hudRight")
 };
+
+function facingToLabel(facing) {
+  switch (facing) {
+    case 0:
+      return "N";
+    case 1:
+      return "E";
+    case 2:
+      return "S";
+    case 3:
+      return "W";
+    default:
+      return "?";
+  }
+}
 
 async function init() {
   const content = await loadGameData();
@@ -56,10 +73,33 @@ async function init() {
     snapFocusHelper(state);
   }
 
+  function selectFocusedMechIfPresent() {
+    if (state.ui.mode !== "idle") return false;
+    if (state.ui.commandMenu.open) return false;
+
+    const hoveredMech = getMechAt(state.mechs, state.focus.x, state.focus.y);
+    if (!hoveredMech) return false;
+
+    if (state.turn.activeMechId === hoveredMech.instanceId) {
+      return true;
+    }
+
+    state.turn.activeMechId = hoveredMech.instanceId;
+    state.selection.mechId = hoveredMech.instanceId;
+
+    logDev(
+      `${hoveredMech.name} selected at (${hoveredMech.x},${hoveredMech.y}).`
+    );
+
+    return true;
+  }
+
   function openCommandMenu() {
     if (state.ui.mode !== "idle") return;
 
+    selectFocusedMechIfPresent();
     snapFocusToActiveMech();
+
     state.ui.commandMenu.open = true;
     state.ui.commandMenu.index = 0;
     state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
@@ -146,15 +186,29 @@ async function init() {
     state.ui.facingPreview = null;
     state.ui.previewPath = [];
     snapFocusToActiveMech();
+
+    logDev(
+      `${activeMech.name} started movement from (${activeMech.x},${activeMech.y}).`
+    );
+
     render();
   }
 
   function startAttack() {
+    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+    if (!activeMech) return;
+
     if (!startAttackSelection(state)) return;
+
+    logDev(`${activeMech.name} entered attack selection.`);
     render();
   }
 
   function waitTurn() {
+    const previousPhase = state.turn.phase;
+    const previousRound = state.turn.round;
+    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+
     state.ui.mode = "idle";
     state.selection.action = null;
     state.ui.previewPath = [];
@@ -173,6 +227,21 @@ async function init() {
 
     state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
     snapFocusToActiveMech();
+
+    if (activeMech) {
+      logDev(
+        `${activeMech.name} ended ${previousPhase.toUpperCase()} phase action.`
+      );
+    }
+
+    if (previousPhase !== state.turn.phase) {
+      logDev(`Phase changed to ${state.turn.phase.toUpperCase()}.`);
+    }
+
+    if (state.turn.round !== previousRound) {
+      logDev(`Round advanced to ${state.turn.round}.`);
+    }
+
     render();
   }
 
@@ -182,6 +251,9 @@ async function init() {
       if (!activeMech) return;
 
       if (canMoveActiveMechTo(state, state.focus.x, state.focus.y)) {
+        const fromX = activeMech.x;
+        const fromY = activeMech.y;
+
         const defaultFacing = getDefaultFacingFromPath(
           state.ui.previewPath,
           activeMech.facing
@@ -192,6 +264,10 @@ async function init() {
           activeMech.instanceId,
           state.focus.x,
           state.focus.y
+        );
+
+        logDev(
+          `${activeMech.name} moved from (${fromX},${fromY}) to (${state.focus.x},${state.focus.y}).`
         );
 
         state.ui.mode = "face";
@@ -206,19 +282,51 @@ async function init() {
     }
 
     if (state.ui.mode === "action-attack-select") {
+      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+
       if (confirmAttackSelection(state)) {
+        const selectedAttack = state.ui.action.selectedAction;
+        if (activeMech && selectedAttack) {
+          logDev(`${activeMech.name} selected attack ${selectedAttack.name}.`);
+        }
         render();
       }
       return;
     }
 
     if (state.ui.mode === "action-target") {
+      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+      const selectedAttack = state.ui.action.selectedAction;
+      const targetX = state.focus.x;
+      const targetY = state.focus.y;
+      const targetMech = getMechAt(state.mechs, targetX, targetY);
+      const previousRound = state.turn.round;
+
       if (confirmActionTarget(state)) {
+        if (activeMech && selectedAttack) {
+          if (targetMech) {
+            logDev(
+              `${activeMech.name} targeted ${targetMech.name} with ${selectedAttack.name}.`
+            );
+          } else {
+            logDev(
+              `${activeMech.name} targeted tile (${targetX},${targetY}) with ${selectedAttack.name}.`
+            );
+          }
+        }
+
         resetActionUiState(state);
         state.turn.phase = "move";
         state.turn.round += 1;
         state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
         snapFocusToActiveMech();
+
+        logDev(`Phase changed to ${state.turn.phase.toUpperCase()}.`);
+
+        if (state.turn.round !== previousRound) {
+          logDev(`Round advanced to ${state.turn.round}.`);
+        }
+
         render();
       }
       return;
@@ -234,6 +342,10 @@ async function init() {
           activeMech.instanceId,
           state.ui.facingPreview
         );
+
+        logDev(
+          `${activeMech.name} facing set to ${facingToLabel(state.ui.facingPreview)}.`
+        );
       }
 
       state.ui.mode = "idle";
@@ -246,6 +358,9 @@ async function init() {
       state.turn.phase = "action";
       state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
       snapFocusToActiveMech();
+
+      logDev(`Phase changed to ${state.turn.phase.toUpperCase()}.`);
+
       render();
     }
   }
@@ -398,6 +513,7 @@ async function init() {
           state.focus.y = 0;
         }
 
+        logDev("Map reset and test mechs reloaded.");
         render();
       }
     };
