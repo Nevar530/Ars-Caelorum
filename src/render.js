@@ -738,31 +738,11 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
 
   const halfW = 18;
   const halfH = 10;
-  const height = 18;
+  const cubeHeight = 18;
+  const mechLevels = 2;
 
   const anchorX = screenX;
   const anchorY = screenY + (RENDER_CONFIG.isoTileHeight / 2);
-
-  const top = [
-    { x: anchorX,         y: anchorY - height - halfH },
-    { x: anchorX + halfW, y: anchorY - height },
-    { x: anchorX,         y: anchorY - height + halfH },
-    { x: anchorX - halfW, y: anchorY - height }
-  ];
-
-  const left = [
-    top[3],
-    top[2],
-    { x: top[2].x, y: top[2].y + height },
-    { x: top[3].x, y: top[3].y + height }
-  ];
-
-  const right = [
-    top[1],
-    top[2],
-    { x: top[2].x, y: top[2].y + height },
-    { x: top[1].x, y: top[1].y + height }
-  ];
 
   const shadow = svgEl("ellipse");
   shadow.setAttribute("cx", anchorX);
@@ -770,41 +750,77 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
   shadow.setAttribute("rx", 18);
   shadow.setAttribute("ry", 8);
   shadow.setAttribute("class", "mech-shadow");
+  group.appendChild(shadow);
 
-  const leftPoly = makePolygon(left, "mech-cube-left", "currentColor");
-  leftPoly.removeAttribute("fill");
+  for (let level = 0; level < mechLevels; level++) {
+    const levelOffset = level * cubeHeight;
 
-  const rightPoly = makePolygon(right, "mech-cube-right", "currentColor");
-  rightPoly.removeAttribute("fill");
+    const top = [
+      { x: anchorX,         y: anchorY - cubeHeight - halfH - levelOffset },
+      { x: anchorX + halfW, y: anchorY - cubeHeight - levelOffset },
+      { x: anchorX,         y: anchorY - cubeHeight + halfH - levelOffset },
+      { x: anchorX - halfW, y: anchorY - cubeHeight - levelOffset }
+    ];
 
-  const topPoly = makePolygon(
-    top,
-    getIsoTopClass(state, mech, isActive),
-    "currentColor"
-  );
-  topPoly.removeAttribute("fill");
+    const left = [
+      top[3],
+      top[2],
+      { x: top[2].x, y: top[2].y + cubeHeight },
+      { x: top[3].x, y: top[3].y + cubeHeight }
+    ];
 
-  const stripe = makePolygon(
-    getIsoTopStripePointsFromWorld(state, mech, tile.elevation, anchorX, anchorY, height, halfH),
-    getIsoTopStripeClass(state, mech),
-    "currentColor"
-  );
-  stripe.removeAttribute("fill");
+    const right = [
+      top[1],
+      top[2],
+      { x: top[2].x, y: top[2].y + cubeHeight },
+      { x: top[1].x, y: top[1].y + cubeHeight }
+    ];
+
+    const leftPoly = makePolygon(left, "mech-cube-left", "currentColor");
+    leftPoly.removeAttribute("fill");
+
+    const rightPoly = makePolygon(right, "mech-cube-right", "currentColor");
+    rightPoly.removeAttribute("fill");
+
+    const topPoly = makePolygon(
+      top,
+      getIsoTopClass(state, mech, isActive),
+      "currentColor"
+    );
+    topPoly.removeAttribute("fill");
+
+    group.appendChild(leftPoly);
+    group.appendChild(rightPoly);
+    group.appendChild(topPoly);
+
+    // Only draw the facing stripe on the very top cube
+    if (level === mechLevels - 1) {
+      const stripe = makePolygon(
+        getIsoTopStripePointsFromWorld(
+          state,
+          mech,
+          tile.elevation + level,
+          anchorX,
+          anchorY - levelOffset,
+          cubeHeight,
+          halfH
+        ),
+        getIsoTopStripeClass(state, mech),
+        "currentColor"
+      );
+      stripe.removeAttribute("fill");
+      group.appendChild(stripe);
+    }
+  }
 
   const label = makeText(
     anchorX,
-    anchorY - height + 6,
+    anchorY - (cubeHeight * mechLevels) + 6,
     mech.name,
     "mech-label"
   );
 
-  group.appendChild(shadow);
-  group.appendChild(leftPoly);
-  group.appendChild(rightPoly);
-  group.appendChild(topPoly);
-  group.appendChild(stripe);
   group.appendChild(label);
-
   parent.appendChild(group);
 }
 
