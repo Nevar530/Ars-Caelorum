@@ -206,11 +206,44 @@ function drawSceneLosPreview(state, parent) {
   );
 
   if (isMissile) {
-    const headColor = headRay.blocked ? "#ff4a4a" : "#52d092";
+    const isValid = focusedTarget.visible === true;
+    const missileColor = isValid ? "#52d092" : "#ff4a4a";
 
-    drawLosLine(parent, attackerFirePoint, headEndPoint, headColor, 3.5, true);
-    drawLosEndpoint(parent, attackerFirePoint, headColor);
-    drawLosEndpoint(parent, headEndPoint, headColor);
+    let sourceFirePoint = attackerFirePoint;
+
+    if (
+      focusedTarget.missileSource === "spotter" &&
+      focusedTarget.spotterPosition
+    ) {
+      const spotterTile = getTile(
+        state.map,
+        focusedTarget.spotterPosition.x,
+        focusedTarget.spotterPosition.y
+      );
+
+      if (spotterTile) {
+        const spotterHeights = getLosHeights(
+          spotterTile.elevation,
+          profile.scale ?? "mech"
+        );
+
+        sourceFirePoint = projectLosPoint(
+          state,
+          focusedTarget.spotterPosition.x,
+          focusedTarget.spotterPosition.y,
+          spotterHeights.fire
+        );
+      }
+    }
+
+    // Straight dotted LOS proof line from source (shooter or spotter)
+    drawLosLine(parent, sourceFirePoint, headEndPoint, missileColor, 3.5, true);
+
+    // Arc always comes from shooter
+    drawArcLine(parent, attackerFirePoint, headEndPoint, missileColor);
+
+    drawLosEndpoint(parent, sourceFirePoint, missileColor);
+    drawLosEndpoint(parent, headEndPoint, missileColor);
     return;
   }
 
@@ -316,6 +349,41 @@ function drawLosLine(parent, from, to, color, width = 3, dashed = false) {
 
   parent.appendChild(glow);
   parent.appendChild(line);
+}
+
+function drawArcLine(parent, from, to, color) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const curveLift = Math.max(36, Math.min(90, Math.abs(dx) * 0.18 + Math.abs(dy) * 0.12));
+
+  const controlX = (from.x + to.x) / 2;
+  const controlY = Math.min(from.y, to.y) - curveLift;
+
+  const glow = svgEl("path");
+  glow.setAttribute(
+    "d",
+    `M ${from.x} ${from.y} Q ${controlX} ${controlY} ${to.x} ${to.y}`
+  );
+  glow.setAttribute("fill", "none");
+  glow.setAttribute("stroke", color);
+  glow.setAttribute("stroke-width", "7");
+  glow.setAttribute("stroke-linecap", "round");
+  glow.setAttribute("stroke-dasharray", "8 6");
+  glow.setAttribute("opacity", "0.18");
+
+  const path = svgEl("path");
+  path.setAttribute(
+    "d",
+    `M ${from.x} ${from.y} Q ${controlX} ${controlY} ${to.x} ${to.y}`
+  );
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", color);
+  path.setAttribute("stroke-width", "3");
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-dasharray", "8 6");
+
+  parent.appendChild(glow);
+  parent.appendChild(path);
 }
 
 function drawLosEndpoint(parent, point, color) {
