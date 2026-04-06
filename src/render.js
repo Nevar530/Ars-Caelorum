@@ -241,8 +241,13 @@ function drawSceneLosPreview(state, parent) {
 
     // Arc always comes from shooter
    const arcColor = isValid ? "#ffffff" : "#111111";
-drawArcLine(parent, attackerFirePoint, headEndPoint, arcColor);
-
+        const impactPoint = projectLosPoint(
+      state,
+      focusedTarget.x,
+      focusedTarget.y,
+      targetTile.elevation
+    );
+ drawArcLine(parent, attackerFirePoint, impactPoint, arcColor);
     drawLosEndpoint(parent, sourceFirePoint, missileColor);
     drawLosEndpoint(parent, headEndPoint, missileColor);
     return;
