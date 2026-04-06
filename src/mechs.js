@@ -1,3 +1,5 @@
+// src/mechs.js
+
 const DEFAULT_ATTACK_PROFILE_MAP = {
   melee_01: "melee_cardinal_01",
   missile_01: "missile_aoe_01",
@@ -79,6 +81,9 @@ export function createMechInstance(definition, overrides = {}) {
     humanScaleSize: definition.humanScaleSize ?? 4,
 
     move: definition.move ?? 4,
+
+    // LOS / scale system
+    scale: overrides.scale ?? definition.scale ?? "mech",
 
     // Compatibility with existing app code
     armor: shield,
