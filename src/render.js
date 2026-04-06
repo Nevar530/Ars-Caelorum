@@ -183,48 +183,54 @@ function drawSceneLosPreview(state, parent) {
     attackerHeights.fire
   );
 
-  const targetChestPoint = projectLosPoint(
+  const los = focusedTarget.los;
+  const isMissile = isMissileProfile(profile);
+
+  const chestRay = los.rays?.chest ?? { blocked: false };
+  const headRay = los.rays?.head ?? { blocked: false };
+
+  const chestEndPoint = getLosRayEndPoint(
     state,
+    chestRay,
     focusedTarget.x,
     focusedTarget.y,
     targetHeights.chest
   );
 
-  const targetHeadPoint = projectLosPoint(
+  const headEndPoint = getLosRayEndPoint(
     state,
+    headRay,
     focusedTarget.x,
     focusedTarget.y,
     targetHeights.head
   );
 
-  const isMissile = isMissileProfile(profile);
-  const los = focusedTarget.los;
-
   if (isMissile) {
-    const headColor = los.rays?.head?.blocked ? "#ff4a4a" : "#52d092";
-    drawLosLine(parent, attackerFirePoint, targetHeadPoint, headColor, 3.5, true);
+    const headColor = headRay.blocked ? "#ff4a4a" : "#52d092";
+
+    drawLosLine(parent, attackerFirePoint, headEndPoint, headColor, 3.5, true);
     drawLosEndpoint(parent, attackerFirePoint, headColor);
-    drawLosEndpoint(parent, targetHeadPoint, headColor);
+    drawLosEndpoint(parent, headEndPoint, headColor);
     return;
   }
 
   let chestColor = "#52d092";
   let headColor = "#52d092";
 
-  if (los.rays?.head?.blocked) {
+  if (headRay.blocked) {
     chestColor = "#ff4a4a";
     headColor = "#ff4a4a";
-  } else if (los.rays?.chest?.blocked) {
+  } else if (chestRay.blocked) {
     chestColor = "#f0b000";
     headColor = "#52d092";
   }
 
-  drawLosLine(parent, attackerFirePoint, targetChestPoint, chestColor, 3, false);
-  drawLosLine(parent, attackerFirePoint, targetHeadPoint, headColor, 3.5, true);
+  drawLosLine(parent, attackerFirePoint, chestEndPoint, chestColor, 3, false);
+  drawLosLine(parent, attackerFirePoint, headEndPoint, headColor, 3.5, true);
 
   drawLosEndpoint(parent, attackerFirePoint, headColor);
-  drawLosEndpoint(parent, targetChestPoint, chestColor);
-  drawLosEndpoint(parent, targetHeadPoint, headColor);
+  drawLosEndpoint(parent, chestEndPoint, chestColor);
+  drawLosEndpoint(parent, headEndPoint, headColor);
 }
 
 function getFocusedEvaluatedTargetTile(state) {
@@ -243,6 +249,20 @@ function getLosHeights(baseElevation, scale = "mech") {
     head: baseElevation + profile.head
   };
 }
+
+function getLosRayEndPoint(state, ray, fallbackX, fallbackY, fallbackHeight) {
+  if (ray?.blocked && ray.blockingTile) {
+    return projectLosPoint(
+      state,
+      ray.blockingTile.x,
+      ray.blockingTile.y,
+      ray.stopHeight ?? ray.rayHeight ?? fallbackHeight
+    );
+  }
+
+  return projectLosPoint(state, fallbackX, fallbackY, fallbackHeight);
+}
+
 
 function projectLosPoint(state, x, y, elevation) {
   if (state.ui.viewMode === "top") {
