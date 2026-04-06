@@ -6,6 +6,14 @@ import {
   getMissileLineOfSightResult
 } from "./los.js";
 
+const RANGE_BAND_THRESHOLDS = {
+  pointBlank: { min: 1, max: 1 },
+  close: { min: 2, max: 4 },
+  mid: { min: 5, max: 10 },
+  far: { min: 11, max: 20 },
+  extreme: { min: 21, max: Infinity }
+};
+
 export function createActionUiState() {
   return {
     menuIndex: 0,
@@ -41,17 +49,21 @@ export function getSelectedAttackMenuItems(state) {
   const activeMech = getActiveMech(state);
   if (!activeMech) return [];
 
-  const ids = activeMech.attackProfileIds || [];
-  const allAttacks = state.content.attacks || [];
+  const weaponIds = Array.isArray(activeMech.weapons) ? activeMech.weapons : [];
+  const allWeapons = Array.isArray(state.content.weapons) ? state.content.weapons : [];
 
-  return ids
-    .map((id) => allAttacks.find((attack) => attack.id === id))
+  return weaponIds
+    .map((weaponId) => allWeapons.find((weapon) => weapon.id === weaponId))
     .filter(Boolean)
-    .map((attack) => ({
-      id: attack.id,
-      label: attack.name,
-      profile: attack
-    }));
+    .map((weapon) => {
+      const profile = normalizeWeaponToActionProfile(weapon);
+
+      return {
+        id: profile.id,
+        label: profile.name,
+        profile
+      };
+    });
 }
 
 export function moveAttackSelection(state, delta) {
@@ -152,9 +164,13 @@ export function confirmActionTarget(state) {
   state.ui.action.lastConfirmed = {
     attackId: profile.id,
     attackName: profile.name,
+    weaponType: profile.weaponType,
     target: { x: chosenTarget.x, y: chosenTarget.y },
     targetCover: chosenTarget.cover ?? "none",
     targetLos: chosenTarget.los ?? null,
+    targetDistance: chosenTarget.distance ?? null,
+    targetRangeBand: chosenTarget.rangeBand ?? null,
+    targetRangeModifier: chosenTarget.rangeModifier ?? null,
     effectTiles: [...state.ui.action.effectTiles]
   };
 
@@ -188,8 +204,88 @@ export function cancelActionState(state) {
   return false;
 }
 
+export function getRangeBandForDistance(distance) {
+  if (!Number.isFinite(distance) || distance < 1) return null;
+
+  for (const [band, rule] of Object.entries(RANGE_BAND_THRESHOLDS)) {
+    if (distance >= rule.min && distance <= rule.max) {
+      return band;
+    }
+  }
+
+  return "extreme";
+}
+
 function getActiveMech(state) {
   return getMechById(state.mechs, state.turn.activeMechId);
+}
+
+function normalizeWeaponToActionProfile(weapon) {
+  const type = weapon.type ?? "direct";
+  const scale = weapon.scale ?? "mech";
+  const range = weapon.range ?? { min: 1, max: 1 };
+
+  if (type === "melee") {
+    return {
+      id: weapon.id,
+      name: weapon.name,
+      scale,
+      weaponType: "melee",
+      fireArc: weapon.fireArc ?? { kind: "fan", range: 10 },
+      targeting: {
+        kind: "cardinal_adjacent",
+        minRange: 1,
+        maxRange: 1
+      },
+      effect: weapon.effect ?? { kind: "single" },
+      losType: "direct",
+      rangeBands: weapon.rangeBands ?? {
+        pointBlank: 0,
+        close: 0,
+        mid: 0,
+        far: 0,
+        extreme: 0
+      },
+      damage: weapon.damage ?? 0
+    };
+  }
+
+  if (type === "missile") {
+    return {
+      id: weapon.id,
+      name: weapon.name,
+      scale,
+      weaponType: "missile",
+      fireArc: weapon.fireArc ?? { kind: "fan", range: 10 },
+      targeting: {
+        kind: "fire_arc_tile",
+        minRange: range.min ?? 1,
+        maxRange: range.max ?? 6
+      },
+      effect: weapon.effect ?? { kind: "circle", radius: 3 },
+      losType: weapon.losType ?? "missile",
+      rangeBands: weapon.rangeBands ?? {},
+      splashTn: weapon.splashTn ?? {},
+      damage: weapon.damage ?? 0
+    };
+  }
+
+  return {
+    id: weapon.id,
+    name: weapon.name,
+    scale,
+    weaponType: "direct",
+    fireArc: weapon.fireArc ?? { kind: "fan", range: 10 },
+    targeting: {
+      kind: "range_band",
+      minRange: range.min ?? 1,
+      maxRange: range.max ?? 20
+    },
+    effect: weapon.effect ?? { kind: "single" },
+    losType: weapon.losType ?? "direct",
+    rangeBands: weapon.rangeBands ?? {},
+    damage: weapon.damage ?? 0
+  };
 }
 
 function snapFocusToFirstValidTarget(state) {
@@ -217,10 +313,6 @@ function applyFireArcFilter(profile, fireArcTiles, candidateTiles) {
     return candidateTiles;
   }
 
-  if (profile.effect?.kind === "cone") {
-    return candidateTiles;
-  }
-
   const fireArcSet = toTileKeySet(fireArcTiles);
 
   return candidateTiles.filter((tile) =>
@@ -230,17 +322,24 @@ function applyFireArcFilter(profile, fireArcTiles, candidateTiles) {
 
 function applyLosFilter(state, mech, profile, candidateTiles) {
   const targetingKind = profile.targeting?.kind;
-  const isMissile = isMissileProfile(profile);
+  const isMissile = profile.weaponType === "missile";
 
   if (targetingKind === "cardinal_adjacent") {
     return candidateTiles.map((tile) => ({
       ...tile,
       cover: "none",
-      los: null
+      los: null,
+      distance: manhattanDistance(mech.x, mech.y, tile.x, tile.y),
+      rangeBand: "pointBlank",
+      rangeModifier: profile.rangeBands?.pointBlank ?? 0
     }));
   }
 
   return candidateTiles.flatMap((tile) => {
+    const distance = manhattanDistance(mech.x, mech.y, tile.x, tile.y);
+    const rangeBand = getRangeBandForDistance(distance);
+    const rangeModifier = getRangeModifier(profile, rangeBand);
+
     const los = isMissile
       ? getMissileLineOfSightResult(
           state,
@@ -273,17 +372,18 @@ function applyLosFilter(state, mech, profile, candidateTiles) {
       {
         ...tile,
         cover: isMissile ? "none" : los.cover,
-        los
+        los,
+        distance,
+        rangeBand,
+        rangeModifier
       }
     ];
   });
 }
 
-function isMissileProfile(profile) {
-  return (
-    profile?.targeting?.kind === "fire_arc_tile" &&
-    profile?.effect?.kind === "circle"
-  );
+function getRangeModifier(profile, rangeBand) {
+  if (!rangeBand) return 0;
+  return profile.rangeBands?.[rangeBand] ?? 0;
 }
 
 function getWeaponCandidateTiles(mech, profile) {
@@ -293,24 +393,12 @@ function getWeaponCandidateTiles(mech, profile) {
 
   switch (targetingKind) {
     case "cardinal_adjacent":
-      return getCardinalAdjacentTiles(mech.x, mech.y);
+      return getCardinalAdjacentTilesForFacing(mech.x, mech.y, mech.facing);
 
     case "range_band":
       return getTilesInRangeBand(mech.x, mech.y, minRange, maxRange);
 
     case "fire_arc_tile":
-      if (profile.effect?.kind === "cone") {
-        const length = profile.effect?.length ?? maxRange ?? 5;
-        const width = profile.effect?.width ?? 3;
-        return getConeTargetTiles(
-          mech.x,
-          mech.y,
-          mech.facing,
-          length,
-          width
-        );
-      }
-
       return getTilesInRangeBand(mech.x, mech.y, minRange, maxRange);
 
     default:
@@ -328,17 +416,8 @@ function getEffectTilesForTarget(mech, profile, targetX, targetY) {
     case "circle":
       return getCircleTiles(targetX, targetY, profile.effect?.radius ?? 3);
 
-    case "cone":
-      return getConeTargetTiles(
-        mech.x,
-        mech.y,
-        mech.facing,
-        profile.effect?.length ?? profile.targeting?.maxRange ?? 5,
-        profile.effect?.width ?? 3
-      );
-
     default:
-      return [];
+      return [{ x: targetX, y: targetY }];
   }
 }
 
@@ -377,13 +456,39 @@ function isInForwardFan(dx, dy, facing) {
   }
 }
 
-function getCardinalAdjacentTiles(x, y) {
-  return uniqueBoardTiles([
-    { x, y: y - 1 },
-    { x: x + 1, y },
-    { x, y: y + 1 },
-    { x: x - 1, y }
-  ]);
+function getCardinalAdjacentTilesForFacing(x, y, facing) {
+  switch (facing) {
+    case 0:
+      return uniqueBoardTiles([
+        { x, y: y - 1 },
+        { x: x - 1, y },
+        { x: x + 1, y }
+      ]);
+    case 1:
+      return uniqueBoardTiles([
+        { x: x + 1, y },
+        { x, y: y - 1 },
+        { x, y: y + 1 }
+      ]);
+    case 2:
+      return uniqueBoardTiles([
+        { x, y: y + 1 },
+        { x: x - 1, y },
+        { x: x + 1, y }
+      ]);
+    case 3:
+      return uniqueBoardTiles([
+        { x: x - 1, y },
+        { x, y: y - 1 },
+        { x, y: y + 1 }
+      ]);
+    default:
+      return uniqueBoardTiles([
+        { x, y: y - 1 },
+        { x: x - 1, y },
+        { x: x + 1, y }
+      ]);
+  }
 }
 
 function getTilesInRangeBand(x, y, minRange, maxRange) {
@@ -415,41 +520,6 @@ function getCircleTiles(cx, cy, radius) {
   return uniqueBoardTiles(results);
 }
 
-function getConeTargetTiles(x, y, facing, range, width) {
-  const results = [];
-  const half = Math.floor(width / 2);
-
-  for (let step = 1; step <= range; step++) {
-    for (let lateral = -half; lateral <= half; lateral++) {
-      let tx = x;
-      let ty = y;
-
-      switch (facing) {
-        case 0:
-          tx = x + lateral;
-          ty = y - step;
-          break;
-        case 1:
-          tx = x + step;
-          ty = y + lateral;
-          break;
-        case 2:
-          tx = x + lateral;
-          ty = y + step;
-          break;
-        case 3:
-          tx = x - step;
-          ty = y + lateral;
-          break;
-      }
-
-      results.push({ x: tx, y: ty });
-    }
-  }
-
-  return uniqueBoardTiles(results);
-}
-
 function uniqueBoardTiles(tiles) {
   const seen = new Set();
   const results = [];
@@ -475,4 +545,8 @@ function toTileKeySet(tiles) {
 
 function tileKey(x, y) {
   return `${x},${y}`;
+}
+
+function manhattanDistance(x0, y0, x1, y1) {
+  return Math.abs(x1 - x0) + Math.abs(y1 - y0);
 }
