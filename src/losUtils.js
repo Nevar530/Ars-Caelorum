@@ -33,13 +33,21 @@ export function traceRay(z1, z2, sampledTiles, state) {
 
   for (let i = 0; i < totalSteps; i++) {
     const pos = sampledTiles[i];
+
+    // Sample the ray at the CENTER of each crossed tile step.
+    const t = (i + 1) / (totalSteps + 1);
+    const rayHeight = z1 + (z2 - z1) * t;
+
     const tile = state.map[pos.y]?.[pos.x];
 
     if (!tile) {
       return {
         blocked: true,
         blockingTile: pos,
-        reason: "invalid_tile"
+        reason: "invalid_tile",
+        terrainHeight: null,
+        rayHeight,
+        stopHeight: rayHeight
       };
     }
 
@@ -47,14 +55,13 @@ export function traceRay(z1, z2, sampledTiles, state) {
       return {
         blocked: true,
         blockingTile: pos,
-        reason: "hard_blocker"
+        reason: "hard_blocker",
+        terrainHeight: tile.elevation ?? 0,
+        rayHeight,
+        stopHeight: rayHeight
       };
     }
 
-    // Sample the ray at the CENTER of each crossed tile step.
-    // This is the key fix. Using i / totalSteps samples too low/early.
-    const t = (i + 1) / (totalSteps + 1);
-    const rayHeight = z1 + (z2 - z1) * t;
     const terrainHeight = tile.elevation ?? 0;
 
     // White sheet rule: touching counts as blocked.
@@ -64,7 +71,8 @@ export function traceRay(z1, z2, sampledTiles, state) {
         blockingTile: pos,
         reason: "terrain_blocked",
         terrainHeight,
-        rayHeight
+        rayHeight,
+        stopHeight: rayHeight
       };
     }
   }
@@ -72,6 +80,9 @@ export function traceRay(z1, z2, sampledTiles, state) {
   return {
     blocked: false,
     blockingTile: null,
-    reason: "clear"
+    reason: "clear",
+    terrainHeight: null,
+    rayHeight: null,
+    stopHeight: null
   };
 }
