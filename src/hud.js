@@ -275,18 +275,26 @@ function getFocusedTileTargetStatus(state) {
   }
 
   const fireArcTiles = state.ui.action.fireArcTiles || [];
-  const validTargetTiles = state.ui.action.validTargetTiles || [];
+  const evaluatedTargetTiles = state.ui.action.evaluatedTargetTiles || [];
 
-  const validTarget = validTargetTiles.find(
+  const focusedTarget = evaluatedTargetTiles.find(
     (tile) => tile.x === focusX && tile.y === focusY
   );
 
-  if (validTarget) {
-    if (validTarget.cover === "half") {
-      return "Target - Available · Half Cover";
+  if (focusedTarget) {
+    if (focusedTarget.visible) {
+      if (focusedTarget.cover === "half") {
+        return "Target - Available · Half Cover";
+      }
+
+      return "Target - Available";
     }
 
-    return "Target - Available";
+    if (focusedTarget.cover === "full") {
+      return "Target - Full Cover / Blocked";
+    }
+
+    return "Target - Blocked";
   }
 
   const targetingKind = profile.targeting?.kind;
