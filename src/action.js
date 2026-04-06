@@ -177,6 +177,10 @@ export function confirmActionTarget(state) {
     targetDistance: chosenTarget.distance ?? null,
     targetRangeBand: chosenTarget.rangeBand ?? null,
     targetRangeModifier: chosenTarget.rangeModifier ?? null,
+    missileSource: chosenTarget.missileSource ?? "shooter",
+    spotterId: chosenTarget.spotterId ?? null,
+    spotterPosition: chosenTarget.spotterPosition ?? null,
+    validationReason: chosenTarget.validationReason ?? null,
     effectTiles: [...state.ui.action.effectTiles]
   };
 
@@ -348,34 +352,46 @@ function evaluateLosForTargets(state, mech, profile, candidateTiles) {
     const rangeBand = getRangeBandForDistance(distance);
     const rangeModifier = getRangeModifier(profile, rangeBand);
 
-    const los = isMissile
-      ? getMissileLineOfSightResult(
-          state,
-          mech.x,
-          mech.y,
-          tile.x,
-          tile.y,
-          {
-            attackerScale: mech.scale ?? "mech",
-            targetScale: profile.scale ?? "mech"
-          }
-        )
-      : getLineOfSightResult(
-          state,
-          mech.x,
-          mech.y,
-          tile.x,
-          tile.y,
-          {
-            attackerScale: mech.scale ?? "mech",
-            targetScale: profile.scale ?? "mech"
-          }
-        );
+    if (isMissile) {
+      const missileTarget = evaluateMissileTargetWithSpotter(
+        state,
+        mech,
+        profile,
+        tile.x,
+        tile.y
+      );
+
+      return {
+        ...tile,
+        visible: missileTarget.visible,
+        cover: "none",
+        los: missileTarget.los,
+        distance,
+        rangeBand,
+        rangeModifier,
+        missileSource: missileTarget.missileSource,
+        spotterId: missileTarget.spotterId,
+        spotterPosition: missileTarget.spotterPosition,
+        validationReason: missileTarget.validationReason
+      };
+    }
+
+    const los = getLineOfSightResult(
+      state,
+      mech.x,
+      mech.y,
+      tile.x,
+      tile.y,
+      {
+        attackerScale: mech.scale ?? "mech",
+        targetScale: profile.scale ?? "mech"
+      }
+    );
 
     return {
       ...tile,
       visible: los.visible === true,
-      cover: isMissile ? "none" : los.cover,
+      cover: los.cover,
       los,
       distance,
       rangeBand,
@@ -383,6 +399,88 @@ function evaluateLosForTargets(state, mech, profile, candidateTiles) {
     };
   });
 }
+
+function evaluateMissileTargetWithSpotter(state, mech, profile, targetX, targetY) {
+  const shooterLos = getMissileLineOfSightResult(
+    state,
+    mech.x,
+    mech.y,
+    targetX,
+    targetY,
+    {
+      attackerScale: mech.scale ?? "mech",
+      targetScale: profile.scale ?? "mech"
+    }
+  );
+
+  // Shooter has valid missile LOS
+  if (shooterLos.visible === true) {
+    return {
+      visible: true,
+      los: shooterLos,
+      missileSource: "shooter",
+      spotterId: null,
+      spotterPosition: null,
+      validationReason: "shooter_los"
+    };
+  }
+
+  // Shooter is blocked, check same-team spotters closest -> farthest
+  const minRange = profile.targeting?.minRange ?? 1;
+  const maxRange = profile.targeting?.maxRange ?? 6;
+
+  const spotters = state.mechs
+    .filter((unit) => {
+      if (!unit) return false;
+      if (unit.instanceId === mech.instanceId) return false;
+      if (unit.team !== mech.team) return false;
+      if (unit.status === "disabled") return false;
+
+      const distToTarget = manhattanDistance(unit.x, unit.y, targetX, targetY);
+      return distToTarget >= minRange && distToTarget <= maxRange;
+    })
+    .sort((a, b) => {
+      const aDist = manhattanDistance(a.x, a.y, targetX, targetY);
+      const bDist = manhattanDistance(b.x, b.y, targetX, targetY);
+      return aDist - bDist;
+    });
+
+  for (const spotter of spotters) {
+    const spotterLos = getMissileLineOfSightResult(
+      state,
+      spotter.x,
+      spotter.y,
+      targetX,
+      targetY,
+      {
+        attackerScale: spotter.scale ?? "mech",
+        targetScale: profile.scale ?? "mech"
+      }
+    );
+
+    if (spotterLos.visible === true) {
+      return {
+        visible: true,
+        los: spotterLos,
+        missileSource: "spotter",
+        spotterId: spotter.instanceId,
+        spotterPosition: { x: spotter.x, y: spotter.y },
+        validationReason: "spotter_los"
+      };
+    }
+  }
+
+  // No valid spotter found, keep shooter LOS so render can show red proof
+  return {
+    visible: false,
+    los: shooterLos,
+    missileSource: "shooter",
+    spotterId: null,
+    spotterPosition: null,
+    validationReason: "blocked_no_spotter"
+  };
+}
+
 
 function getRangeModifier(profile, rangeBand) {
   if (!rangeBand) return 0;
