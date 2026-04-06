@@ -1,5 +1,10 @@
+// src/action.js
+
 import { getMechById } from "./mechs.js";
-import { getLineOfSightResult } from "./los.js";
+import {
+  getLineOfSightResult,
+  getMissileLineOfSightResult
+} from "./los.js";
 
 export function createActionUiState() {
   return {
@@ -225,8 +230,8 @@ function applyFireArcFilter(profile, fireArcTiles, candidateTiles) {
 
 function applyLosFilter(state, mech, profile, candidateTiles) {
   const targetingKind = profile.targeting?.kind;
+  const isMissile = isMissileProfile(profile);
 
-  // Melee / adjacent attacks do not use ranged LOS rules.
   if (targetingKind === "cardinal_adjacent") {
     return candidateTiles.map((tile) => ({
       ...tile,
@@ -236,13 +241,29 @@ function applyLosFilter(state, mech, profile, candidateTiles) {
   }
 
   return candidateTiles.flatMap((tile) => {
-    const los = getLineOfSightResult(
-      state,
-      mech.x,
-      mech.y,
-      tile.x,
-      tile.y
-    );
+    const los = isMissile
+      ? getMissileLineOfSightResult(
+          state,
+          mech.x,
+          mech.y,
+          tile.x,
+          tile.y,
+          {
+            attackerScale: mech.scale ?? profile.scale ?? "mech",
+            targetScale: profile.scale ?? "mech"
+          }
+        )
+      : getLineOfSightResult(
+          state,
+          mech.x,
+          mech.y,
+          tile.x,
+          tile.y,
+          {
+            attackerScale: mech.scale ?? profile.scale ?? "mech",
+            targetScale: profile.scale ?? "mech"
+          }
+        );
 
     if (!los.visible) {
       return [];
@@ -251,11 +272,18 @@ function applyLosFilter(state, mech, profile, candidateTiles) {
     return [
       {
         ...tile,
-        cover: los.cover,
+        cover: isMissile ? "none" : los.cover,
         los
       }
     ];
   });
+}
+
+function isMissileProfile(profile) {
+  return (
+    profile?.targeting?.kind === "fire_arc_tile" &&
+    profile?.effect?.kind === "circle"
+  );
 }
 
 function getWeaponCandidateTiles(mech, profile) {
@@ -268,12 +296,7 @@ function getWeaponCandidateTiles(mech, profile) {
       return getCardinalAdjacentTiles(mech.x, mech.y);
 
     case "range_band":
-      return getTilesInRangeBand(
-        mech.x,
-        mech.y,
-        minRange,
-        maxRange
-      );
+      return getTilesInRangeBand(mech.x, mech.y, minRange, maxRange);
 
     case "fire_arc_tile":
       if (profile.effect?.kind === "cone") {
@@ -288,12 +311,7 @@ function getWeaponCandidateTiles(mech, profile) {
         );
       }
 
-      return getTilesInRangeBand(
-        mech.x,
-        mech.y,
-        minRange,
-        maxRange
-      );
+      return getTilesInRangeBand(mech.x, mech.y, minRange, maxRange);
 
     default:
       return [];
