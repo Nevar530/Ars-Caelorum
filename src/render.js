@@ -228,7 +228,7 @@ function drawSceneLosPreview(state, parent) {
 }
 
 function getFocusedEvaluatedTargetTile(state) {
-  const targets = state.ui.action.validTargetTiles || [];
+  const targets = state.ui.action.evaluatedTargetTiles || [];
   return (
     targets.find((tile) => tile.x === state.focus.x && tile.y === state.focus.y) ??
     null
@@ -385,8 +385,10 @@ function drawSceneActionOverlayForTile(state, item, parent) {
 
   const key = `${item.x},${item.y}`;
   const fireArc = tileSetFromList(state.ui.action.fireArcTiles || []);
-  const validTargetTiles = state.ui.action.validTargetTiles || [];
-  const targetMap = new Map(validTargetTiles.map((tile) => [`${tile.x},${tile.y}`, tile]));
+  const evaluatedTargetTiles = state.ui.action.evaluatedTargetTiles || [];
+  const targetMap = new Map(
+    evaluatedTargetTiles.map((tile) => [`${tile.x},${tile.y}`, tile])
+  );
   const effectTiles = tileSetFromList(state.ui.action.effectTiles || []);
 
   let fill = null;
