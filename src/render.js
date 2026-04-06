@@ -240,7 +240,8 @@ function drawSceneLosPreview(state, parent) {
     drawLosLine(parent, sourceFirePoint, headEndPoint, missileColor, 3.5, true);
 
     // Arc always comes from shooter
-    drawArcLine(parent, attackerFirePoint, headEndPoint, missileColor);
+   const arcColor = isValid ? "#ffffff" : "#111111";
+drawArcLine(parent, attackerFirePoint, headEndPoint, arcColor);
 
     drawLosEndpoint(parent, sourceFirePoint, missileColor);
     drawLosEndpoint(parent, headEndPoint, missileColor);
@@ -354,7 +355,10 @@ function drawLosLine(parent, from, to, color, width = 3, dashed = false) {
 function drawArcLine(parent, from, to, color) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-  const curveLift = Math.max(36, Math.min(90, Math.abs(dx) * 0.18 + Math.abs(dy) * 0.12));
+  const distance = Math.hypot(dx, dy);
+
+  // More dramatic lift than before
+  const curveLift = Math.max(70, Math.min(150, distance * 0.45));
 
   const controlX = (from.x + to.x) / 2;
   const controlY = Math.min(from.y, to.y) - curveLift;
@@ -366,10 +370,10 @@ function drawArcLine(parent, from, to, color) {
   );
   glow.setAttribute("fill", "none");
   glow.setAttribute("stroke", color);
-  glow.setAttribute("stroke-width", "7");
+  glow.setAttribute("stroke-width", "8");
   glow.setAttribute("stroke-linecap", "round");
-  glow.setAttribute("stroke-dasharray", "8 6");
-  glow.setAttribute("opacity", "0.18");
+  glow.setAttribute("stroke-dasharray", "10 7");
+  glow.setAttribute("opacity", color === "#111111" ? "0.22" : "0.2");
 
   const path = svgEl("path");
   path.setAttribute(
@@ -378,9 +382,9 @@ function drawArcLine(parent, from, to, color) {
   );
   path.setAttribute("fill", "none");
   path.setAttribute("stroke", color);
-  path.setAttribute("stroke-width", "3");
+  path.setAttribute("stroke-width", "3.5");
   path.setAttribute("stroke-linecap", "round");
-  path.setAttribute("stroke-dasharray", "8 6");
+  path.setAttribute("stroke-dasharray", "10 7");
 
   parent.appendChild(glow);
   parent.appendChild(path);
