@@ -249,7 +249,7 @@ function applyLosFilter(state, mech, profile, candidateTiles) {
           tile.x,
           tile.y,
           {
-            attackerScale: mech.scale ?? profile.scale ?? "mech",
+            attackerScale: mech.scale ?? "mech",
             targetScale: profile.scale ?? "mech"
           }
         )
@@ -260,7 +260,7 @@ function applyLosFilter(state, mech, profile, candidateTiles) {
           tile.x,
           tile.y,
           {
-            attackerScale: mech.scale ?? profile.scale ?? "mech",
+            attackerScale: mech.scale ?? "mech",
             targetScale: profile.scale ?? "mech"
           }
         );
