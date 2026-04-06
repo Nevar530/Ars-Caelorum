@@ -1,12 +1,28 @@
+// src/render.js
+
 import { MAP_CONFIG, RENDER_CONFIG } from "./config.js";
 import { getTile, rotateCoord, tileTypeFromElevation } from "./map.js";
 import { getReachableTiles } from "./movement.js";
+import { getMechById } from "./mechs.js";
 import { svgEl, makePolygon, makeText } from "./utils.js";
 
 const TOPDOWN_CONFIG = {
   cellSize: 56,
   originX: 460,
   originY: 130
+};
+
+const LOS_HEIGHT_PROFILES = {
+  mech: {
+    fire: 1,
+    chest: 1,
+    head: 2
+  },
+  pilot: {
+    fire: 0.25,
+    chest: 0.125,
+    head: 0.25
+  }
 };
 
 export function renderAll(state, refs) {
@@ -79,14 +95,13 @@ export function renderIso(state, refs) {
       drawScenePathOverlayForTile(state, item, worldScene);
       drawSceneActionOverlayForTile(state, item, worldScene);
       drawSceneFocusOverlayForTile(state, item, worldScene);
-      
     } else {
       const isActive = item.mech.instanceId === state.turn.activeMechId;
       drawMech(state, item.mech, item.screenX, item.screenY, worldScene, isActive);
     }
   }
 
-  
+  drawSceneLosPreview(state, worldUi);
 
   const snappedRotation = normalizedTurns(state);
   rotationLabel.textContent =
@@ -135,6 +150,170 @@ export function renderEditor(state, refs) {
       editor.appendChild(group);
     }
   }
+}
+
+function drawSceneLosPreview(state, parent) {
+  if (state.ui.mode !== "action-target") return;
+
+  const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+  const profile = state.ui.action.selectedAction;
+
+  if (!activeMech || !profile) return;
+
+  const focusedTarget = (state.ui.action.validTargetTiles || []).find(
+    (tile) => tile.x === state.focus.x && tile.y === state.focus.y
+  );
+
+  if (!focusedTarget || !focusedTarget.los) return;
+
+  const attackerTile = getTile(state.map, activeMech.x, activeMech.y);
+  const targetTile = getTile(state.map, focusedTarget.x, focusedTarget.y);
+
+  if (!attackerTile || !targetTile) return;
+
+  const attackerScale = activeMech.scale ?? "mech";
+  const targetScale = profile.scale ?? "mech";
+
+  const attackerHeights = getLosHeights(attackerTile.elevation, attackerScale);
+  const targetHeights = getLosHeights(targetTile.elevation, targetScale);
+
+  const attackerFirePoint = projectLosPoint(
+    state,
+    activeMech.x,
+    activeMech.y,
+    attackerHeights.fire
+  );
+
+  const targetChestPoint = projectLosPoint(
+    state,
+    focusedTarget.x,
+    focusedTarget.y,
+    targetHeights.chest
+  );
+
+  const targetHeadPoint = projectLosPoint(
+    state,
+    focusedTarget.x,
+    focusedTarget.y,
+    targetHeights.head
+  );
+
+  const isMissile = isMissileProfile(profile);
+  const los = focusedTarget.los;
+
+  if (isMissile) {
+    const headColor = los.rays?.head?.blocked ? "#ff4a4a" : "#52d092";
+    drawLosLine(parent, attackerFirePoint, targetHeadPoint, headColor, 3.5, true);
+    drawLosEndpoint(parent, attackerFirePoint, headColor);
+    drawLosEndpoint(parent, targetHeadPoint, headColor);
+    return;
+  }
+
+  let chestColor = "#52d092";
+  let headColor = "#52d092";
+
+  if (los.rays?.head?.blocked) {
+    chestColor = "#ff4a4a";
+    headColor = "#ff4a4a";
+  } else if (los.rays?.chest?.blocked) {
+    chestColor = "#f0b000";
+    headColor = "#52d092";
+  }
+
+  drawLosLine(parent, attackerFirePoint, targetChestPoint, chestColor, 3, false);
+  drawLosLine(parent, attackerFirePoint, targetHeadPoint, headColor, 3.5, true);
+
+  drawLosEndpoint(parent, attackerFirePoint, headColor);
+  drawLosEndpoint(parent, targetChestPoint, chestColor);
+  drawLosEndpoint(parent, targetHeadPoint, headColor);
+}
+
+function getLosHeights(baseElevation, scale = "mech") {
+  const profile = LOS_HEIGHT_PROFILES[scale] ?? LOS_HEIGHT_PROFILES.mech;
+  return {
+    fire: baseElevation + profile.fire,
+    chest: baseElevation + profile.chest,
+    head: baseElevation + profile.head
+  };
+}
+
+function projectLosPoint(state, x, y, elevation) {
+  if (state.ui.viewMode === "top") {
+    const snappedTurns = normalizedTurns(state);
+    const rotated = rotateCoord(
+      x,
+      y,
+      MAP_CONFIG.mechWidth,
+      MAP_CONFIG.mechHeight,
+      snappedTurns
+    );
+
+    return {
+      x: TOPDOWN_CONFIG.originX + (rotated.x * TOPDOWN_CONFIG.cellSize) + (TOPDOWN_CONFIG.cellSize / 2),
+      y: TOPDOWN_CONFIG.originY + (rotated.y * TOPDOWN_CONFIG.cellSize) + (TOPDOWN_CONFIG.cellSize / 2)
+    };
+  }
+
+  const projected = projectScene(state, x, y, elevation);
+  return {
+    x: projected.x,
+    y: projected.y + (RENDER_CONFIG.isoTileHeight * 0.5)
+  };
+}
+
+function drawLosLine(parent, from, to, color, width = 3, dashed = false) {
+  const glow = svgEl("line");
+  glow.setAttribute("x1", from.x);
+  glow.setAttribute("y1", from.y);
+  glow.setAttribute("x2", to.x);
+  glow.setAttribute("y2", to.y);
+  glow.setAttribute("stroke", color);
+  glow.setAttribute("stroke-width", String(width + 4));
+  glow.setAttribute("stroke-linecap", "round");
+  glow.setAttribute("opacity", "0.18");
+  if (dashed) {
+    glow.setAttribute("stroke-dasharray", "8 6");
+  }
+
+  const line = svgEl("line");
+  line.setAttribute("x1", from.x);
+  line.setAttribute("y1", from.y);
+  line.setAttribute("x2", to.x);
+  line.setAttribute("y2", to.y);
+  line.setAttribute("stroke", color);
+  line.setAttribute("stroke-width", String(width));
+  line.setAttribute("stroke-linecap", "round");
+  if (dashed) {
+    line.setAttribute("stroke-dasharray", "8 6");
+  }
+
+  parent.appendChild(glow);
+  parent.appendChild(line);
+}
+
+function drawLosEndpoint(parent, point, color) {
+  const outer = svgEl("circle");
+  outer.setAttribute("cx", point.x);
+  outer.setAttribute("cy", point.y);
+  outer.setAttribute("r", "6");
+  outer.setAttribute("fill", color);
+  outer.setAttribute("opacity", "0.22");
+
+  const inner = svgEl("circle");
+  inner.setAttribute("cx", point.x);
+  inner.setAttribute("cy", point.y);
+  inner.setAttribute("r", "2.75");
+  inner.setAttribute("fill", color);
+
+  parent.appendChild(outer);
+  parent.appendChild(inner);
+}
+
+function isMissileProfile(profile) {
+  return (
+    profile?.targeting?.kind === "fire_arc_tile" &&
+    profile?.effect?.kind === "circle"
+  );
 }
 
 function projectScene(state, x, y, elevation) {
@@ -309,7 +488,6 @@ function drawScenePathOverlayForTile(state, item, parent) {
     parent.appendChild(label);
   }
 }
-
 
 function tileSetFromList(tiles) {
   const set = new Set();
