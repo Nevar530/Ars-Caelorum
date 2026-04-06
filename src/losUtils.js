@@ -51,7 +51,9 @@ export function traceRay(z1, z2, sampledTiles, state) {
       };
     }
 
-    const t = i / totalSteps;
+    // Sample the ray at the CENTER of each crossed tile step.
+    // This is the key fix. Using i / totalSteps samples too low/early.
+    const t = (i + 1) / (totalSteps + 1);
     const rayHeight = z1 + (z2 - z1) * t;
     const terrainHeight = tile.elevation ?? 0;
 
