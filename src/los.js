@@ -100,7 +100,8 @@ function getLosResultInternal(state, fromX, fromY, toX, toY, options = {}) {
     return buildSameTileResult(line);
   }
 
-  // Never let origin or destination tile block the shot.
+  // Ignore origin and destination tiles completely.
+  // Only crossed tiles matter for blocking.
   const sampledTiles = line.slice(1, -1);
 
   const chestTrace = traceRay(
@@ -142,22 +143,10 @@ function getLosResultInternal(state, fromX, fromY, toX, toY, options = {}) {
   };
 }
 
-/**
- * Direct fire:
- * - head blocked => invalid / full block
- * - chest blocked only => half cover
- * - neither blocked => clear
- */
 export function getLineOfSightResult(state, fromX, fromY, toX, toY, options = {}) {
   return getLosResultInternal(state, fromX, fromY, toX, toY, options);
 }
 
-/**
- * Missile targeting:
- * - head blocked => invalid
- * - chest blocked only => still valid
- * - cover is still returned for downstream systems/debug
- */
 export function getMissileLineOfSightResult(
   state,
   fromX,
@@ -184,7 +173,7 @@ export function hasLineOfSight(state, fromX, fromY, toX, toY, options = {}) {
 }
 
 export function filterTilesByLineOfSight(state, origin, tiles, options = {}) {
-  return tiles.flatMap((tile) => {
+  return tiles.map((tile) => {
     const los = getLineOfSightResult(
       state,
       origin.x,
@@ -194,14 +183,11 @@ export function filterTilesByLineOfSight(state, origin, tiles, options = {}) {
       options
     );
 
-    if (!los.visible) return [];
-
-    return [
-      {
-        ...tile,
-        cover: los.cover,
-        los
-      }
-    ];
+    return {
+      ...tile,
+      cover: los.cover,
+      los,
+      visible: los.visible
+    };
   });
 }
