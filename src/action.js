@@ -19,6 +19,7 @@ export function createActionUiState() {
     menuIndex: 0,
     selectedAction: null,
     fireArcTiles: [],
+    evaluatedTargetTiles: [],
     validTargetTiles: [],
     effectTiles: [],
     lastConfirmed: null
@@ -29,6 +30,7 @@ export function resetActionUiState(state) {
   state.ui.action.menuIndex = 0;
   state.ui.action.selectedAction = null;
   state.ui.action.fireArcTiles = [];
+  state.ui.action.evaluatedTargetTiles = [];
   state.ui.action.validTargetTiles = [];
   state.ui.action.effectTiles = [];
 }
@@ -89,6 +91,7 @@ export function startAttackSelection(state) {
   state.ui.action.menuIndex = 0;
   state.ui.action.selectedAction = null;
   state.ui.action.fireArcTiles = [];
+  state.ui.action.evaluatedTargetTiles = [];
   state.ui.action.validTargetTiles = [];
   state.ui.action.effectTiles = [];
 
@@ -119,6 +122,7 @@ export function updateActionTargetPreview(state) {
 
   if (!activeMech || !profile) {
     state.ui.action.fireArcTiles = [];
+    state.ui.action.evaluatedTargetTiles = [];
     state.ui.action.validTargetTiles = [];
     state.ui.action.effectTiles = [];
     return;
@@ -128,12 +132,14 @@ export function updateActionTargetPreview(state) {
   const fireArcTiles = getFireArcTiles(activeMech, fireArcRange);
   const candidateTiles = getWeaponCandidateTiles(activeMech, profile);
   const arcFilteredTiles = applyFireArcFilter(profile, fireArcTiles, candidateTiles);
-  const validTiles = applyLosFilter(state, activeMech, profile, arcFilteredTiles);
+  const evaluatedTiles = evaluateLosForTargets(state, activeMech, profile, arcFilteredTiles);
+  const validTiles = evaluatedTiles.filter((tile) => tile.visible === true);
 
   state.ui.action.fireArcTiles = fireArcTiles;
+  state.ui.action.evaluatedTargetTiles = evaluatedTiles;
   state.ui.action.validTargetTiles = validTiles;
 
-  const focusedTile = validTiles.find(
+  const focusedTile = evaluatedTiles.find(
     (tile) => tile.x === state.focus.x && tile.y === state.focus.y
   );
 
@@ -187,6 +193,7 @@ export function cancelActionState(state) {
     state.ui.mode = "action-attack-select";
     state.ui.action.selectedAction = null;
     state.ui.action.fireArcTiles = [];
+    state.ui.action.evaluatedTargetTiles = [];
     state.ui.action.validTargetTiles = [];
     state.ui.action.effectTiles = [];
     return true;
@@ -320,13 +327,14 @@ function applyFireArcFilter(profile, fireArcTiles, candidateTiles) {
   );
 }
 
-function applyLosFilter(state, mech, profile, candidateTiles) {
+function evaluateLosForTargets(state, mech, profile, candidateTiles) {
   const targetingKind = profile.targeting?.kind;
   const isMissile = profile.weaponType === "missile";
 
   if (targetingKind === "cardinal_adjacent") {
     return candidateTiles.map((tile) => ({
       ...tile,
+      visible: true,
       cover: "none",
       los: null,
       distance: manhattanDistance(mech.x, mech.y, tile.x, tile.y),
@@ -335,7 +343,7 @@ function applyLosFilter(state, mech, profile, candidateTiles) {
     }));
   }
 
-  return candidateTiles.flatMap((tile) => {
+  return candidateTiles.map((tile) => {
     const distance = manhattanDistance(mech.x, mech.y, tile.x, tile.y);
     const rangeBand = getRangeBandForDistance(distance);
     const rangeModifier = getRangeModifier(profile, rangeBand);
@@ -364,20 +372,15 @@ function applyLosFilter(state, mech, profile, candidateTiles) {
           }
         );
 
-    if (!los.visible) {
-      return [];
-    }
-
-    return [
-      {
-        ...tile,
-        cover: isMissile ? "none" : los.cover,
-        los,
-        distance,
-        rangeBand,
-        rangeModifier
-      }
-    ];
+    return {
+      ...tile,
+      visible: los.visible === true,
+      cover: isMissile ? "none" : los.cover,
+      los,
+      distance,
+      rangeBand,
+      rangeModifier
+    };
   });
 }
 
