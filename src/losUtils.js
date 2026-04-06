@@ -1,6 +1,5 @@
 // src/losUtils.js
 
-// Height profiles are DATA, not logic
 const HEIGHT_PROFILES = {
   mech: {
     fire: 1,
@@ -12,42 +11,65 @@ const HEIGHT_PROFILES = {
     chest: 0.125,
     head: 0.25
   }
+};
+
+export function getScaleProfile(scale = "mech") {
+  return HEIGHT_PROFILES[scale] ?? HEIGHT_PROFILES.mech;
 }
 
-export function getUnitHeightProfile(unit, tile) {
-  const base = tile?.elevation ?? 0
-
-  const profile = HEIGHT_PROFILES[unit?.scale || "mech"]
+export function getHeightsForScale(tile, scale = "mech") {
+  const base = tile?.elevation ?? 0;
+  const profile = getScaleProfile(scale);
 
   return {
     fire: base + profile.fire,
     chest: base + profile.chest,
     head: base + profile.head
-  }
+  };
 }
 
-// Pure ray vs terrain
-export function traceRay(z1, z2, tiles, state) {
-  const D = tiles.length
+export function traceRay(z1, z2, sampledTiles, state) {
+  const totalSteps = sampledTiles.length;
 
-  for (let i = 0; i < D; i++) {
-    const t = i / D
-    const rayHeight = z1 + (z2 - z1) * t
+  for (let i = 0; i < totalSteps; i++) {
+    const pos = sampledTiles[i];
+    const tile = state.map[pos.y]?.[pos.x];
 
-    const pos = tiles[i]
-    const tile = state.map[pos.y]?.[pos.x]
+    if (!tile) {
+      return {
+        blocked: true,
+        blockingTile: pos,
+        reason: "invalid_tile"
+      };
+    }
 
-    if (!tile) return true
+    if (tile.blocksLOS === true) {
+      return {
+        blocked: true,
+        blockingTile: pos,
+        reason: "hard_blocker"
+      };
+    }
 
-    // hard blockers (walls / buildings)
-    if (tile.blocksLOS) return true
+    const t = i / totalSteps;
+    const rayHeight = z1 + (z2 - z1) * t;
+    const terrainHeight = tile.elevation ?? 0;
 
-    const terrain = tile.elevation ?? 0
-
-    if (terrain >= rayHeight) {
-      return true
+    // White sheet rule: touching counts as blocked.
+    if (terrainHeight >= rayHeight) {
+      return {
+        blocked: true,
+        blockingTile: pos,
+        reason: "terrain_blocked",
+        terrainHeight,
+        rayHeight
+      };
     }
   }
 
-  return false
+  return {
+    blocked: false,
+    blockingTile: null,
+    reason: "clear"
+  };
 }
