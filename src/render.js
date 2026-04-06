@@ -66,6 +66,8 @@ export function renderIso(state, refs) {
 
   for (const mech of mechs) {
     const tile = getTile(map, mech.x, mech.y);
+    if (!tile) continue;
+
     const projected = projectScene(state, mech.x, mech.y, tile.elevation);
 
     sceneItems.push({
@@ -160,10 +162,7 @@ function drawSceneLosPreview(state, parent) {
 
   if (!activeMech || !profile) return;
 
-  const focusedTarget = (state.ui.action.validTargetTiles || []).find(
-    (tile) => tile.x === state.focus.x && tile.y === state.focus.y
-  );
-
+  const focusedTarget = getFocusedEvaluatedTargetTile(state);
   if (!focusedTarget || !focusedTarget.los) return;
 
   const attackerTile = getTile(state.map, activeMech.x, activeMech.y);
@@ -226,6 +225,14 @@ function drawSceneLosPreview(state, parent) {
   drawLosEndpoint(parent, attackerFirePoint, headColor);
   drawLosEndpoint(parent, targetChestPoint, chestColor);
   drawLosEndpoint(parent, targetHeadPoint, headColor);
+}
+
+function getFocusedEvaluatedTargetTile(state) {
+  const targets = state.ui.action.validTargetTiles || [];
+  return (
+    targets.find((tile) => tile.x === state.focus.x && tile.y === state.focus.y) ??
+    null
+  );
 }
 
 function getLosHeights(baseElevation, scale = "mech") {
@@ -310,10 +317,7 @@ function drawLosEndpoint(parent, point, color) {
 }
 
 function isMissileProfile(profile) {
-  return (
-    profile?.targeting?.kind === "fire_arc_tile" &&
-    profile?.effect?.kind === "circle"
-  );
+  return profile?.weaponType === "missile";
 }
 
 function projectScene(state, x, y, elevation) {
@@ -381,25 +385,38 @@ function drawSceneActionOverlayForTile(state, item, parent) {
 
   const key = `${item.x},${item.y}`;
   const fireArc = tileSetFromList(state.ui.action.fireArcTiles || []);
-  const validTiles = tileSetFromList(state.ui.action.validTargetTiles || []);
+  const validTargetTiles = state.ui.action.validTargetTiles || [];
+  const targetMap = new Map(validTargetTiles.map((tile) => [`${tile.x},${tile.y}`, tile]));
   const effectTiles = tileSetFromList(state.ui.action.effectTiles || []);
 
   let fill = null;
   let stroke = null;
 
   if (fireArc.has(key)) {
-    fill = "rgba(255, 176, 0, 0.06)";
-    stroke = "rgba(255, 176, 0, 0.22)";
+    fill = "rgba(255, 176, 0, 0.05)";
+    stroke = "rgba(255, 176, 0, 0.18)";
   }
 
-  if (validTiles.has(key)) {
-    fill = "rgba(82, 208, 146, 0.12)";
-    stroke = "rgba(82, 208, 146, 0.55)";
+  const evaluatedTarget = targetMap.get(key);
+  if (evaluatedTarget) {
+    const cover = evaluatedTarget.cover ?? "none";
+    const visible = evaluatedTarget.visible ?? evaluatedTarget.los?.visible ?? false;
+
+    if (visible && cover === "none") {
+      fill = "rgba(82, 208, 146, 0.12)";
+      stroke = "rgba(82, 208, 146, 0.60)";
+    } else if (visible && cover === "half") {
+      fill = "rgba(240, 176, 0, 0.14)";
+      stroke = "rgba(240, 176, 0, 0.75)";
+    } else {
+      fill = "rgba(255, 74, 74, 0.14)";
+      stroke = "rgba(255, 74, 74, 0.72)";
+    }
   }
 
   if (effectTiles.has(key)) {
     fill = "rgba(255, 74, 74, 0.14)";
-    stroke = "rgba(255, 74, 74, 0.70)";
+    stroke = "rgba(255, 74, 74, 0.82)";
   }
 
   if (!fill || !stroke) return;
