@@ -3,8 +3,8 @@ export const GAME_CONFIG = {
 };
 
 export const MAP_CONFIG = {
-  mechWidth: 12,
-  mechHeight: 12,
+  mechWidth: 20,
+  mechHeight: 20,
   minElevation: 0,
   maxElevation: 6
 };
