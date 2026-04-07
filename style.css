@@ -855,3 +855,7 @@ button:disabled {
   font-size: 11px;
   color: var(--muted);
 }
+
+#devToolbar {
+  display: none;
+}
