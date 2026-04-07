@@ -12,6 +12,7 @@
 // Toggle key: `
 
 import { createMechInstance } from "../src/mechs.js";
+import { rebuildRoundOrder } from "../src/initiative.js";
 import {
   logDev,
   clearDevLog,
@@ -46,36 +47,6 @@ function normalizeControlType(value) {
 
 function normalizeTeam(value) {
   return value === "enemy" ? "enemy" : "player";
-}
-
-function rollD6() {
-  return Math.floor(Math.random() * 6) + 1;
-}
-
-function sortMovePhaseOrder(units) {
-  return [...units].sort((a, b) => {
-    const aInit = a.initiative ?? -999;
-    const bInit = b.initiative ?? -999;
-
-    if (aInit !== bInit) {
-      return aInit - bInit;
-    }
-
-    return String(a.instanceId).localeCompare(String(b.instanceId));
-  });
-}
-
-function sortActionPhaseOrder(units) {
-  return [...units].sort((a, b) => {
-    const aInit = a.initiative ?? -999;
-    const bInit = b.initiative ?? -999;
-
-    if (aInit !== bInit) {
-      return bInit - aInit;
-    }
-
-    return String(a.instanceId).localeCompare(String(b.instanceId));
-  });
 }
 
 class DevMenu {
@@ -609,25 +580,82 @@ class DevMenu {
       (entry) => entry.instanceId !== instanceId
     );
 
+    this.appState.turn.moveOrder = this.appState.turn.moveOrder.filter(
+      (id) => id !== instanceId
+    );
+    this.appState.turn.actionOrder = this.appState.turn.actionOrder.filter(
+      (id) => id !== instanceId
+    );
+
+    if (this.appState.turn.activeMechId === instanceId) {
+      this.appState.turn.activeMechId = null;
+    }
+
     logDev(`${unit.name} / ${unit.pilotName ?? "No Pilot"} removed from map.`);
 
-    this.syncActiveMechAfterMutation();
+    if (this.getRuntimeUnits().length === 0) {
+      this.appState.turn.activeMechId = null;
+      this.appState.turn.round = 1;
+      this.appState.turn.phase = "setup";
+      this.appState.turn.combatStarted = false;
+      this.appState.turn.moveOrder = [];
+      this.appState.turn.actionOrder = [];
+      this.appState.turn.moveIndex = -1;
+      this.appState.turn.actionIndex = -1;
+      this.appState.turn.lastInitiativeRolls = [];
+      this.appState.turn.splashText = "";
+      this.appState.turn.splashVisible = false;
+      this.appState.turn.splashKind = null;
+
+      this.appState.selection.mechId = null;
+      this.appState.selection.action = null;
+
+      this.appState.ui.mode = "idle";
+      this.appState.ui.previewPath = [];
+      this.appState.ui.facingPreview = null;
+      this.appState.ui.preMove = null;
+      this.appState.ui.commandMenu.open = false;
+      this.appState.ui.commandMenu.index = 0;
+      this.appState.ui.commandMenu.items = [];
+
+      this.appState.focus.x = 0;
+      this.appState.focus.y = 0;
+    } else {
+      this.syncActiveMechAfterMutation();
+    }
+
     this.render();
     this.renderApp();
   }
 
   resetUnits() {
     this.appState.mechs = [];
+    this.appState.turn.activeMechId = null;
     this.appState.turn.round = 1;
-    this.appState.turn.phase = "move";
+    this.appState.turn.phase = "setup";
+    this.appState.turn.combatStarted = false;
+    this.appState.turn.moveOrder = [];
+    this.appState.turn.actionOrder = [];
+    this.appState.turn.moveIndex = -1;
+    this.appState.turn.actionIndex = -1;
+    this.appState.turn.lastInitiativeRolls = [];
+    this.appState.turn.splashText = "";
+    this.appState.turn.splashVisible = false;
+    this.appState.turn.splashKind = null;
+
+    this.appState.selection.mechId = null;
+    this.appState.selection.action = null;
+
     this.appState.ui.mode = "idle";
     this.appState.ui.previewPath = [];
     this.appState.ui.facingPreview = null;
     this.appState.ui.preMove = null;
     this.appState.ui.commandMenu.open = false;
     this.appState.ui.commandMenu.index = 0;
+    this.appState.ui.commandMenu.items = [];
 
-    this.syncActiveMechAfterMutation();
+    this.appState.focus.x = 0;
+    this.appState.focus.y = 0;
 
     logDev("All units removed from map.");
     this.render();
@@ -642,12 +670,7 @@ class DevMenu {
       return;
     }
 
-    for (const unit of units) {
-      unit.hasMoved = false;
-      unit.hasActed = false;
-      unit.isBraced = false;
-      unit.initiative = rollD6() + rollD6() + (unit.reaction ?? 0);
-    }
+    rebuildRoundOrder(this.appState);
 
     logDev(`Initiative rerolled for Round ${this.appState.turn.round}.`);
 
@@ -673,6 +696,7 @@ class DevMenu {
     this.roundPhaseEl.innerHTML = `
       <div>Round: <strong>${this.appState.turn.round}</strong></div>
       <div>Phase: <strong>${String(this.appState.turn.phase).toUpperCase()}</strong></div>
+      <div>Combat Started: <strong>${this.appState.turn.combatStarted ? "YES" : "NO"}</strong></div>
     `;
   }
 
@@ -684,24 +708,68 @@ class DevMenu {
       return;
     }
 
-    const currentPhase = this.appState.turn.phase;
-    const ordered =
-      currentPhase === "action"
-        ? sortActionPhaseOrder(units)
-        : sortMovePhaseOrder(units);
+    const moveOrder = Array.isArray(this.appState.turn.moveOrder)
+      ? this.appState.turn.moveOrder
+      : [];
+    const actionOrder = Array.isArray(this.appState.turn.actionOrder)
+      ? this.appState.turn.actionOrder
+      : [];
 
-    this.phaseOrderEl.innerHTML = ordered
-      .map(
-        (unit, index) => `
-          <div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.06);">
-            ${index + 1}. ${unit.name} / ${unit.pilotName ?? "No Pilot"}
-            <span style="opacity:0.7;">| Init ${unit.initiative ?? "-"}</span>
-            <span style="opacity:0.7;">| ${unit.team ?? "-"}</span>
-            <span style="opacity:0.7;">| ${unit.controlType ?? "-"}</span>
+    const resolveRow = (label, order, currentIndex, isCurrentPhase) => {
+      const orderedUnits = order
+        .map((instanceId) => units.find((unit) => unit.instanceId === instanceId))
+        .filter(Boolean);
+
+      if (!orderedUnits.length) {
+        return `
+          <div style="margin-bottom:8px;">
+            <div style="font-weight:700; margin-bottom:4px;">${label}</div>
+            <div style="opacity:0.7;">No order built.</div>
           </div>
-        `
-      )
-      .join("");
+        `;
+      }
+
+      return `
+        <div style="margin-bottom:8px;">
+          <div style="font-weight:700; margin-bottom:4px;">
+            ${label} ${isCurrentPhase ? "(current)" : ""}
+          </div>
+          ${orderedUnits.map((unit, index) => {
+            const isActive = isCurrentPhase && index === currentIndex;
+            const isComplete = isCurrentPhase && index < currentIndex;
+
+            return `
+              <div style="
+                padding:4px 0;
+                border-bottom:1px solid rgba(255,255,255,0.06);
+                opacity:${isComplete ? "0.45" : isCurrentPhase ? "1" : "0.7"};
+                color:${isActive ? "#f0b000" : "inherit"};
+              ">
+                ${index + 1}. ${unit.name} / ${unit.pilotName ?? "No Pilot"}
+                <span style="opacity:0.7;">| Init ${unit.initiative ?? "-"}</span>
+                <span style="opacity:0.7;">| ${unit.team ?? "-"}</span>
+                <span style="opacity:0.7;">| ${unit.controlType ?? "-"}</span>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+    };
+
+    this.phaseOrderEl.innerHTML = `
+      ${resolveRow(
+        "Move",
+        moveOrder,
+        this.appState.turn.moveIndex,
+        this.appState.turn.phase === "move"
+      )}
+      ${resolveRow(
+        "Action",
+        actionOrder,
+        this.appState.turn.actionIndex,
+        this.appState.turn.phase === "action"
+      )}
+    `;
   }
 
   renderUnits() {
@@ -719,9 +787,11 @@ class DevMenu {
             <div><strong>${unit.name}</strong> / ${unit.pilotName ?? "No Pilot"}</div>
             <div style="opacity:0.8;">${unit.team ?? "-"} | ${unit.controlType ?? "-"} | ${unit.spawnId ?? "-"}</div>
             <div style="opacity:0.8;">Pos (${unit.x},${unit.y}) | Facing ${unit.facing}</div>
-            <div style="opacity:0.8;">ARM ${unit.armor} | STR ${unit.structure} | MV ${unit.move}</div>
+            <div style="opacity:0.8;">SHD ${unit.shield ?? unit.armor ?? "-"} | CORE ${unit.core ?? unit.structure ?? "-"} | MV ${unit.move}</div>
             <div style="opacity:0.8;">Reaction ${unit.reaction ?? "-"} | Targeting ${unit.targeting ?? "-"}</div>
             <div style="opacity:0.8;">Init ${unit.initiative ?? "-"}</div>
+            <div style="opacity:0.8;">Moved ${unit.hasMoved ? "Y" : "N"} | Acted ${unit.hasActed ? "Y" : "N"} | Braced ${unit.isBraced ? "Y" : "N"}</div>
+            <div style="opacity:0.8;">Status ${unit.status ?? "operational"}</div>
             <div style="margin-top:6px;">
               <button type="button" class="ac-dev-remove-unit-btn">Remove</button>
             </div>
