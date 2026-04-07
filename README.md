@@ -1,235 +1,218 @@
-# Ars-Caelorum
+# Ars Caelorum
 
-Ars Caelorum is an FFT-inspired isometric mech tactics prototype built to validate combat systems before full production. The current build is focused on movement, targeting flow, debug tooling, and multi-mech testing rather than damage math or content depth.
+A deterministic, system-first tactical mech strategy game.
 
-Live build: https://nevar530.github.io/Ars-Caelorum/
-
----
-
-## Current State
-
-The prototype currently supports:
-
-- isometric SVG map rendering
-- elevation-based movement and path preview
-- mech movement confirmation
-- facing confirmation after movement
-- action phase attack selection and target confirmation
-- multiple mechs on the map for testing
-- dev menu with unit spawning and debug tools
-- map editor housed inside the dev menu
-- debug log for movement, facing, attack flow, phase changes, and round changes
-
-The game is **not yet on full multi-unit initiative order**.  
-It is currently in the bridge phase between single-active-mech combat flow and true initiative-driven turn order.
+## ▶ Play the Game
+https://nevar530.github.io/Ars-Caelorum/
 
 ---
 
-## Controls
+## Overview
 
-### General
-- **Arrow Keys / WASD**: Move board focus
-- **Enter / Space**: Confirm / Open Menu
-- **Escape / Backspace**: Cancel
-- **Q / E**: Rotate map
-- **R**: Toggle Tactical View
-- **Tab**: Snap focus to active mech
-- **`**: Toggle Dev Menu
+Ars Caelorum is a turn-based tactics engine built around:
 
-### Map Editor
-The map editor is now housed inside the **Map** tab of the dev menu.
+- clear, explainable mechanics  
+- deterministic outcomes  
+- positioning-driven gameplay  
+- layered system design  
 
-- **Left Click**: Raise elevation
-- **Right Click**: Lower elevation
+The game combines:
+- mech-based combat  
+- pilot-driven stats  
+- terrain and elevation tactics  
+- future dual-scale gameplay (mech ↔ pilot)  
 
 ---
 
-## Current Gameplay Flow
+## Core Systems (Current Build)
 
-### Move Phase
-- Select active mech
-- Open command menu
-- Choose **Move** or **Brace**
-- Confirm destination
-- Confirm facing
+### Movement
+- tile-based movement
+- elevation-aware pathing
+- preview → confirm → facing lock
 
-### Action Phase
-- Open command menu
-- Choose **Attack**
-- Select attack profile
-- Confirm target tile or mech
-- Advance round
+### Facing
+- 4-direction system (N, E, S, W)
+- locked after movement
+- affects **damage**, not hit chance
 
-This flow is currently validated around one active mech at a time, even though multiple mechs can now be placed on the field for testing.
+### LOS (Line of Sight) — COMPLETE
+- dual-ray system (chest + head)
+- deterministic terrain blocking
+- outputs:
+  - clear
+  - half cover
+  - full block
 
----
+Rules:
+- half cover = valid target (+TN)
+- full block = invalid target
 
-## Dev Menu
+### Targeting — COMPLETE (Validation Layer)
+Flow:
+1. fire arc check  
+2. range check  
+3. LOS check  
+4. valid target  
 
-The dev menu is now a core testing tool.
+Weapons:
+- melee
+- rifle (direct)
+- missile (tile + splash)
+- machine gun (cone)
 
-### Units Tab
-- spawn mech
-- assign pilot
-- assign team
-- assign PC / CPU ownership
-- select spawn slot
-- replace unit already occupying that spawn slot
-- remove units
-- reroll initiative for testing
-- reset units
-- view debug log
+### Initiative & Turn System — COMPLETE
+- roll: 2d6 + reaction
+- Move Phase: low → high
+- Action Phase: high → low
+- full round loop implemented
 
-### Map Tab
-- contains the current map editor
-- keeps terrain editing inside the same dev workflow as unit testing
-
----
-
-## Debug Logging
-
-The debug log currently records:
-
-- mech selection
-- movement start
-- movement confirm
-- facing confirm
-- attack entry
-- attack selection
-- target confirmation
-- phase change
-- round advancement
-- dev spawn / remove / reset actions
-
-This is intended to support combat validation before damage resolution is added.
+### Dev Systems — COMPLETE
+- dev menu (spawn, assign, test)
+- map editor (integrated)
+- debug log (last actions)
 
 ---
 
-## Data Structure
+## Systems Designed (Next Layer)
 
-### `data/`
-Holds JSON content:
+### To-Hit System (V2 — Locked Design)
+- 2d6 roll ≥ Target Number (TN)
+- TN based on:
+  - range
+  - cover (from LOS)
+  - height difference
+  - pilot stats (reaction / targeting)
+  - brace modifiers
 
-- `mechs.json`
-- `weapons.json`
-- `attacks.json`
-- `sigils.json`
-- `pilots.json`
-- `spawnPoints.json`
+Important:
+- LOS = VALIDITY  
+- TN = DIFFICULTY  
 
-### `src/`
-Holds core gameplay systems:
+### Damage System (V1 — Locked Design)
+- fixed damage (no randomness)
+- applied on hit only
 
-- state
-- map
-- movement
-- rendering
-- HUD
-- input
-- actions
-- LOS
-- data loading
-
-### `dev/`
-Holds dev-only tools:
-
-- dev menu
-- logger
-- runtime helpers
-- data store helpers
+Features:
+- shield → core system
+- side hits: +2 damage
+- rear hits: bypass shield
+- brace: -2 damage taken
+- missile splash with falloff
+- shield recharge (delayed to next round)
 
 ---
 
-## Current Design Rules
+## Architecture Principles
 
-Locked naming:
+- validation is separate from resolution  
+- no hidden systems  
+- no conflicting mechanics  
+- everything must be explainable  
 
-### Mech-side stats
-- `core`
-- `shield`
-- `aether`
-- `move`
+Combat layers:
 
-### Pilot-side stats
-- `reaction`
-- `targeting`
-
-Other locked rules:
-- one pilot per mech
-- code overrules notes if notes fall behind
-- Move / Brace is the forward wording
-- dev tools stay separated from core systems
+1. Validation (LOS, targeting)  
+2. Hit Resolution (To-Hit)  
+3. Damage Resolution  
 
 ---
 
-## Current Technical Status
+## Scale System (Planned — Critical)
 
-### Working
-- map rendering
-- camera rotation
-- top-down tactical toggle
-- movement preview
-- move confirmation
-- facing confirmation
-- attack profile selection
-- target confirmation
-- multiple mech spawning
-- cursor mech selection while idle
-- dev menu + map tab integration
-- logging instrumentation
+The game uses a **single consistent grid**.
 
-### In Progress
-- initiative and turn order
-- multi-unit phase sequencing
-- full LOS code lock against latest design notes
-- hit validation polish
+Scale differences are handled by:
+- footprint (tile occupancy)
+- height profiles (LOS)
+- interaction rules
 
-### Not Done Yet
-- damage resolution
-- status effects
-- abilities / item systems
-- AI turn behavior
-- pilot-scale gameplay
-- mixed-scale combat
-- campaign content
+NOT by changing grid size.
+
+### Planned Scale
+
+- Mech → standard unit  
+- Pilot → smaller unit (on-foot gameplay)  
+- Structures → multi-tile (2x2, 4x4, etc.)  
+
+### Implementation Order (Important)
+
+1. Footprint / multi-tile occupancy  
+2. Structure placement  
+3. Pilot unit type  
+4. Exit / enter mech  
+
+This prevents:
+- LOS inconsistencies  
+- targeting bugs  
+- movement conflicts  
 
 ---
 
-## Next Priority
+## Roadmap (Current State)
 
-### 1. Initiative + Turn Order
-- initiative roll per mech / pilot pair
-- move phase order: low to high
-- action phase order: high to low
-- active unit advance
-- round reset / reroll
+### Engine
+✔ Movement, facing, LOS  
+✔ Multi-unit system  
+✔ Initiative + round flow  
 
-### 2. LOS + Target Validation Lock
-- align code to latest LOS design
-- clean cover state handling
-- improve target feedback
+### Combat (Next)
+→ To-Hit system  
+→ Damage system  
 
-### 3. Hit Validation
-- reaction / targeting integration
-- brace modifiers
-- facing modifiers
-- target info polish
+### Architecture
+→ Footprint / multi-tile support  
+→ Unit abstraction (mech + pilot)  
 
-### 4. Damage Layer
-- shield / core interaction
-- disable states
-- status hooks
+### Tools
+→ Map editor expansion  
+→ Save / load / export  
+
+### Systems
+→ Abilities & items  
+→ AI behavior  
+
+### Content
+→ factions  
+→ missions  
+→ campaign  
+
+### Final
+→ sprites & layering  
+→ animation & VFX  
+→ UI polish  
 
 ---
 
-## Project Goal
+## Key Design Rule
 
-Ars Caelorum is being built as a readable tactical system first.
+The engine is built in layers:
 
-The goal is:
+**Engine → Validation → Resolution → Scale → Content → Art**
 
-- every action is visible
-- every outcome is understandable
-- every decision is intentional
+Nothing skips layers.
 
-Fun and clarity come before polish.
+---
+
+## Project Status
+
+The core tactical engine is stable and functional.
+
+Current focus:
+- implementing To-Hit  
+- implementing Damage  
+- preparing for scale expansion  
+
+---
+
+## Goal
+
+Build a complete, fully functional tactics engine first.
+
+Then layer:
+- systems  
+- scale  
+- content  
+- art  
+
+In that order.
