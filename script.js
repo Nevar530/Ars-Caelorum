@@ -20,6 +20,10 @@ import {
   confirmActionTarget,
   cancelActionState
 } from "./src/action.js";
+import {
+  rebuildRoundOrder,
+  getActiveUnitFromPhaseOrder
+} from "./src/initiative.js";
 import { initializeDevMenu } from "./dev/devMenu.js";
 import { logDev } from "./dev/devLogger.js";
 
@@ -36,7 +40,9 @@ const refs = {
   hudRoot: document.getElementById("hudRoot"),
   hudLeft: document.getElementById("hudLeft"),
   hudCenter: document.getElementById("hudCenter"),
-  hudRight: document.getElementById("hudRight")
+  hudRight: document.getElementById("hudRight"),
+  combatRibbon: document.getElementById("combatRibbon"),
+  combatOverlay: document.getElementById("combatOverlay")
 };
 
 function facingToLabel(facing) {
@@ -64,27 +70,191 @@ async function init() {
     content
   });
 
+  let splashTimer = null;
+
   function render() {
     renderAll(state, refs);
     renderHud(state, refs);
+  }
+
+  function hideSplash() {
+    state.turn.splashVisible = false;
+    state.turn.splashText = "";
+    state.turn.splashKind = null;
+  }
+
+  function showSplash(text, kind = "round-phase", durationMs = 1200) {
+    state.turn.splashText = text;
+    state.turn.splashVisible = true;
+    state.turn.splashKind = kind;
+
+    if (splashTimer) {
+      clearTimeout(splashTimer);
+      splashTimer = null;
+    }
+
+    splashTimer = window.setTimeout(() => {
+      hideSplash();
+      render();
+    }, durationMs);
+  }
+
+  function clearTransientUi() {
+    state.ui.mode = "idle";
+    state.selection.action = null;
+    state.ui.previewPath = [];
+    state.ui.facingPreview = null;
+    state.ui.preMove = null;
+    resetActionUiState(state);
+    state.ui.commandMenu.open = false;
+    state.ui.commandMenu.index = 0;
+    state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
   }
 
   function snapFocusToActiveMech() {
     snapFocusHelper(state);
   }
 
+  function setPreviewSelectionFromFirstMech() {
+    if (state.mechs.length > 0) {
+      state.selection.mechId = state.mechs[0].instanceId;
+      state.focus.x = state.mechs[0].x;
+      state.focus.y = state.mechs[0].y;
+      return;
+    }
+
+    state.selection.mechId = null;
+    state.focus.x = 0;
+    state.focus.y = 0;
+  }
+
+  function setActiveMechByCurrentTurnIndex() {
+    const activeMechId = getActiveUnitFromPhaseOrder(state);
+
+    state.turn.activeMechId = activeMechId ?? null;
+    state.selection.mechId = activeMechId ?? null;
+
+    if (activeMechId) {
+      snapFocusToActiveMech();
+    }
+  }
+
+  function logRoundInitiative() {
+    for (const roll of state.turn.lastInitiativeRolls) {
+      logDev(
+        `${roll.name} / ${roll.pilotName || "No Pilot"} initiative = ${roll.initiative} (${roll.dice[0]}+${roll.dice[1]}+${roll.reaction})`
+      );
+    }
+  }
+
+  function rebuildOrdersAndLog() {
+    rebuildRoundOrder(state);
+    logDev(`Initiative rerolled for Round ${state.turn.round}.`);
+    logRoundInitiative();
+  }
+
+  function startCombat() {
+    if (state.turn.combatStarted) return;
+    if (!state.mechs.length) return;
+
+    clearTransientUi();
+    state.turn.combatStarted = true;
+    state.turn.round = 1;
+    state.turn.phase = "move";
+
+    rebuildOrdersAndLog();
+
+    state.turn.moveIndex = 0;
+    state.turn.actionIndex = -1;
+    setActiveMechByCurrentTurnIndex();
+
+    logDev("Combat started.");
+    logDev("Phase changed to MOVE.");
+    showSplash(`ROUND ${state.turn.round} — MOVEMENT PHASE`);
+
+    render();
+  }
+
+  function beginActionPhase() {
+    state.turn.phase = "action";
+    state.turn.actionIndex = 0;
+    state.turn.moveIndex = state.turn.moveOrder.length;
+
+    clearTransientUi();
+    setActiveMechByCurrentTurnIndex();
+
+    logDev("Phase changed to ACTION.");
+    showSplash(`ROUND ${state.turn.round} — ACTION PHASE`);
+
+    render();
+  }
+
+  function endRoundAndBeginNext() {
+    state.turn.round += 1;
+    state.turn.phase = "move";
+
+    clearTransientUi();
+    rebuildOrdersAndLog();
+
+    state.turn.moveIndex = 0;
+    state.turn.actionIndex = -1;
+    setActiveMechByCurrentTurnIndex();
+
+    logDev(`Round advanced to ${state.turn.round}.`);
+    logDev("Phase changed to MOVE.");
+    showSplash(`ROUND ${state.turn.round} — MOVEMENT PHASE`);
+
+    render();
+  }
+
+  function advanceMoveTurn() {
+    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+    if (activeMech) {
+      activeMech.hasMoved = true;
+    }
+
+    state.turn.moveIndex += 1;
+
+    if (state.turn.moveIndex < state.turn.moveOrder.length) {
+      clearTransientUi();
+      setActiveMechByCurrentTurnIndex();
+      render();
+      return;
+    }
+
+    beginActionPhase();
+  }
+
+  function advanceActionTurn() {
+    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+    if (activeMech) {
+      activeMech.hasActed = true;
+    }
+
+    state.turn.actionIndex += 1;
+
+    if (state.turn.actionIndex < state.turn.actionOrder.length) {
+      clearTransientUi();
+      setActiveMechByCurrentTurnIndex();
+      render();
+      return;
+    }
+
+    endRoundAndBeginNext();
+  }
+
   function selectFocusedMechIfPresent() {
+    if (state.turn.combatStarted) return false;
     if (state.ui.mode !== "idle") return false;
     if (state.ui.commandMenu.open) return false;
 
     const hoveredMech = getMechAt(state.mechs, state.focus.x, state.focus.y);
     if (!hoveredMech) return false;
 
-    if (state.turn.activeMechId === hoveredMech.instanceId) {
+    if (state.selection.mechId === hoveredMech.instanceId) {
       return true;
     }
 
-    state.turn.activeMechId = hoveredMech.instanceId;
     state.selection.mechId = hoveredMech.instanceId;
 
     logDev(
@@ -95,15 +265,16 @@ async function init() {
   }
 
   function openCommandMenu() {
+    if (!state.turn.combatStarted) return;
     if (state.ui.mode !== "idle") return;
 
-    selectFocusedMechIfPresent();
     snapFocusToActiveMech();
 
     state.ui.commandMenu.open = true;
     state.ui.commandMenu.index = 0;
     state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
     state.selection.action = null;
+
     render();
   }
 
@@ -130,6 +301,34 @@ async function init() {
     selectMenuAction(action);
   }
 
+  function completeBraceForCurrentUnit() {
+    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+    if (!activeMech) return;
+
+    activeMech.isBraced = true;
+    logDev(`${activeMech.name} braced.`);
+
+    clearTransientUi();
+
+    if (state.turn.phase === "move") {
+      advanceMoveTurn();
+      return;
+    }
+
+    if (state.turn.phase === "action") {
+      advanceActionTurn();
+    }
+  }
+
+  function completeEndTurnForCurrentUnit() {
+    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+    if (!activeMech) return;
+
+    logDev(`${activeMech.name} ended action turn.`);
+    clearTransientUi();
+    advanceActionTurn();
+  }
+
   function selectMenuAction(action) {
     if (action === "move") {
       startMove();
@@ -137,7 +336,7 @@ async function init() {
     }
 
     if (action === "brace") {
-      waitTurn();
+      completeBraceForCurrentUnit();
       return;
     }
 
@@ -147,8 +346,19 @@ async function init() {
     }
 
     if (action === "end_turn") {
-      waitTurn();
+      completeEndTurnForCurrentUnit();
       return;
+    }
+
+    if (action === "ability") {
+      logDev("Ability menu not implemented yet.");
+      render();
+      return;
+    }
+
+    if (action === "item") {
+      logDev("Item menu not implemented yet.");
+      render();
     }
   }
 
@@ -169,6 +379,8 @@ async function init() {
   }
 
   function startMove() {
+    if (!state.turn.combatStarted || state.turn.phase !== "move") return;
+
     const activeMech = getMechById(state.mechs, state.turn.activeMechId);
     if (!activeMech) return;
 
@@ -195,6 +407,8 @@ async function init() {
   }
 
   function startAttack() {
+    if (!state.turn.combatStarted || state.turn.phase !== "action") return;
+
     const activeMech = getMechById(state.mechs, state.turn.activeMechId);
     if (!activeMech) return;
 
@@ -205,44 +419,14 @@ async function init() {
   }
 
   function waitTurn() {
-    const previousPhase = state.turn.phase;
-    const previousRound = state.turn.round;
-    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-
-    state.ui.mode = "idle";
-    state.selection.action = null;
-    state.ui.previewPath = [];
-    state.ui.facingPreview = null;
-    state.ui.preMove = null;
-    resetActionUiState(state);
-    state.ui.commandMenu.open = false;
-    state.ui.commandMenu.index = 0;
-
     if (state.turn.phase === "move") {
-      state.turn.phase = "action";
-    } else {
-      state.turn.phase = "move";
-      state.turn.round += 1;
+      completeBraceForCurrentUnit();
+      return;
     }
 
-    state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
-    snapFocusToActiveMech();
-
-    if (activeMech) {
-      logDev(
-        `${activeMech.name} ended ${previousPhase.toUpperCase()} phase action.`
-      );
+    if (state.turn.phase === "action") {
+      completeEndTurnForCurrentUnit();
     }
-
-    if (previousPhase !== state.turn.phase) {
-      logDev(`Phase changed to ${state.turn.phase.toUpperCase()}.`);
-    }
-
-    if (state.turn.round !== previousRound) {
-      logDev(`Round advanced to ${state.turn.round}.`);
-    }
-
-    render();
   }
 
   function confirmAction() {
@@ -300,7 +484,6 @@ async function init() {
       const targetX = state.focus.x;
       const targetY = state.focus.y;
       const targetMech = getMechAt(state.mechs, targetX, targetY);
-      const previousRound = state.turn.round;
 
       if (confirmActionTarget(state)) {
         if (activeMech && selectedAttack) {
@@ -315,19 +498,8 @@ async function init() {
           }
         }
 
-        resetActionUiState(state);
-        state.turn.phase = "move";
-        state.turn.round += 1;
-        state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
-        snapFocusToActiveMech();
-
-        logDev(`Phase changed to ${state.turn.phase.toUpperCase()}.`);
-
-        if (state.turn.round !== previousRound) {
-          logDev(`Round advanced to ${state.turn.round}.`);
-        }
-
-        render();
+        clearTransientUi();
+        advanceActionTurn();
       }
       return;
     }
@@ -348,20 +520,8 @@ async function init() {
         );
       }
 
-      state.ui.mode = "idle";
-      state.selection.action = null;
-      state.ui.previewPath = [];
-      state.ui.facingPreview = null;
-      state.ui.preMove = null;
-      state.ui.commandMenu.open = false;
-      state.ui.commandMenu.index = 0;
-      state.turn.phase = "action";
-      state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
-      snapFocusToActiveMech();
-
-      logDev(`Phase changed to ${state.turn.phase.toUpperCase()}.`);
-
-      render();
+      clearTransientUi();
+      advanceMoveTurn();
     }
   }
 
@@ -455,15 +615,38 @@ async function init() {
     render();
   }
 
+  function resetCombatToSetup() {
+    clearTransientUi();
+    hideSplash();
+
+    state.turn.activeMechId = null;
+    state.turn.round = 1;
+    state.turn.phase = "setup";
+    state.turn.combatStarted = false;
+    state.turn.moveOrder = [];
+    state.turn.actionOrder = [];
+    state.turn.moveIndex = -1;
+    state.turn.actionIndex = -1;
+    state.turn.lastInitiativeRolls = [];
+
+    setPreviewSelectionFromFirstMech();
+  }
+
   function actions() {
     return {
       render,
       snapFocusToActiveMech,
+      selectFocusedMechIfPresent,
       openCommandMenu,
       closeCommandMenu,
       moveMenuSelection,
       confirmMenuSelection,
       selectMenuAction,
+      startCombat,
+      clearTransientUi,
+      setActiveMechByCurrentTurnIndex,
+      rebuildOrdersAndLog,
+      resetCombatToSetup,
 
       rotateLeft() {
         animateRotation(-1);
@@ -485,39 +668,20 @@ async function init() {
         state.map = resetMap();
         state.mechs = instantiateTestMechs(state.content);
 
-        state.turn.activeMechId =
-          state.mechs.length > 0 ? state.mechs[0].instanceId : null;
-
-        state.selection.mechId = state.turn.activeMechId;
-        state.selection.action = null;
-
-        state.ui.mode = "idle";
-        state.ui.previewPath = [];
-        state.ui.facingPreview = null;
-        state.ui.preMove = null;
-        resetActionUiState(state);
-        state.ui.commandMenu.open = false;
-        state.ui.commandMenu.index = 0;
-        state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
-
         state.rotation = 0;
         state.camera.angle = 0;
         state.camera.isTurning = false;
         state.ui.viewMode = "iso";
 
-        if (state.mechs.length > 0) {
-          state.focus.x = state.mechs[0].x;
-          state.focus.y = state.mechs[0].y;
-        } else {
-          state.focus.x = 0;
-          state.focus.y = 0;
-        }
+        resetCombatToSetup();
 
-        logDev("Map reset and test mechs reloaded.");
+        logDev("Map reset and 4 test mechs reloaded.");
         render();
       }
     };
   }
+
+  resetCombatToSetup();
 
   const boundActions = actions();
 
