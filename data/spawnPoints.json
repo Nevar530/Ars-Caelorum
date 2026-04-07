@@ -2,25 +2,25 @@
   {
     "id": "spawn_1",
     "label": "Spawn 1",
-    "x": 2,
+    "x": 1,
     "y": 2
   },
   {
     "id": "spawn_2",
     "label": "Spawn 2",
-    "x": 5,
-    "y": 2
+    "x": 2,
+    "y": 1
   },
   {
     "id": "spawn_3",
     "label": "Spawn 3",
-    "x": 2,
-    "y": 6
+    "x": 19,
+    "y": 17
   },
   {
     "id": "spawn_4",
     "label": "Spawn 4",
-    "x": 5,
-    "y": 6
+    "x": 17,
+    "y": 19
   }
 ]
