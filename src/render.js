@@ -33,6 +33,8 @@ const LOS_HEIGHT_PROFILES = {
 };
 
 export function renderAll(state, refs) {
+  ensureCameraState(state);
+  updateCameraFraming(state, refs);
   renderIso(state, refs);
   renderEditor(state, refs);
 }
@@ -155,6 +157,141 @@ export function renderEditor(state, refs) {
   }
 }
 
+function ensureCameraState(state) {
+  if (!state.camera) {
+    state.camera = { angle: 0 };
+  }
+
+  if (typeof state.camera.offsetX !== "number") {
+    state.camera.offsetX = 0;
+  }
+
+  if (typeof state.camera.offsetY !== "number") {
+    state.camera.offsetY = 0;
+  }
+}
+
+function updateCameraFraming(state, refs) {
+  const viewport = getSceneViewport(refs);
+  const rawBounds = getMapScreenBoundsRaw(state);
+  const offsetLimits = getCameraOffsetLimits(rawBounds, viewport);
+
+  const focusTile = getTile(state.map, state.focus.x, state.focus.y);
+  const focusElevation = focusTile ? focusTile.elevation : 0;
+  const focusScreen = projectScene(state, state.focus.x, state.focus.y, focusElevation);
+
+  const deadZone = {
+    left: viewport.width * 0.28,
+    right: viewport.width * 0.72,
+    top: viewport.height * 0.18,
+    bottom: viewport.height * 0.72
+  };
+
+  let dx = 0;
+  let dy = 0;
+
+  if (focusScreen.x < deadZone.left) {
+    dx = deadZone.left - focusScreen.x;
+  } else if (focusScreen.x > deadZone.right) {
+    dx = deadZone.right - focusScreen.x;
+  }
+
+  if (focusScreen.y < deadZone.top) {
+    dy = deadZone.top - focusScreen.y;
+  } else if (focusScreen.y > deadZone.bottom) {
+    dy = deadZone.bottom - focusScreen.y;
+  }
+
+  state.camera.offsetX += dx;
+  state.camera.offsetY += dy;
+
+  state.camera.offsetX = clamp(
+    state.camera.offsetX,
+    offsetLimits.minX,
+    offsetLimits.maxX
+  );
+
+  state.camera.offsetY = clamp(
+    state.camera.offsetY,
+    offsetLimits.minY,
+    offsetLimits.maxY
+  );
+}
+
+function getSceneViewport(refs) {
+  const svg = refs?.worldScene?.ownerSVGElement;
+
+  const vb = svg?.viewBox?.baseVal;
+  if (vb && vb.width > 0 && vb.height > 0) {
+    return { width: vb.width, height: vb.height };
+  }
+
+  const width = svg?.clientWidth || 1400;
+  const height = svg?.clientHeight || 760;
+
+  return { width, height };
+}
+
+function getCameraOffsetLimits(rawBounds, viewport) {
+  const marginX = 48;
+  const marginTop = 42;
+  const marginBottom = 54;
+
+  let minX = viewport.width - marginX - rawBounds.maxX;
+  let maxX = marginX - rawBounds.minX;
+
+  let minY = viewport.height - marginBottom - rawBounds.maxY;
+  let maxY = marginTop - rawBounds.minY;
+
+  if (minX > maxX) {
+    const centerX = (minX + maxX) / 2;
+    minX = centerX;
+    maxX = centerX;
+  }
+
+  if (minY > maxY) {
+    const centerY = (minY + maxY) / 2;
+    minY = centerY;
+    maxY = centerY;
+  }
+
+  return { minX, maxX, minY, maxY };
+}
+
+function getMapScreenBoundsRaw(state) {
+  const corners = [
+    { x: 0, y: 0 },
+    { x: MAP_CONFIG.mechWidth - 1, y: 0 },
+    { x: MAP_CONFIG.mechWidth - 1, y: MAP_CONFIG.mechHeight - 1 },
+    { x: 0, y: MAP_CONFIG.mechHeight - 1 }
+  ];
+
+  const points = corners.map((corner) =>
+    projectSceneBase(state, corner.x, corner.y, 0)
+  );
+
+  if (state.ui.viewMode === "top") {
+    return {
+      minX: Math.min(...points.map((p) => p.x)),
+      maxX: Math.max(...points.map((p) => p.x)) + TOPDOWN_CONFIG.cellSize,
+      minY: Math.min(...points.map((p) => p.y)),
+      maxY: Math.max(...points.map((p) => p.y)) + TOPDOWN_CONFIG.cellSize
+    };
+  }
+
+  const halfW = RENDER_CONFIG.isoTileWidth / 2;
+  const tileBottomPad =
+    RENDER_CONFIG.isoTileHeight +
+    (MAP_CONFIG.maxElevation * RENDER_CONFIG.elevationStepPx);
+
+  return {
+    minX: Math.min(...points.map((p) => p.x)) - halfW,
+    maxX: Math.max(...points.map((p) => p.x)) + halfW,
+    minY: Math.min(...points.map((p) => p.y)),
+    maxY: Math.max(...points.map((p) => p.y)) + tileBottomPad
+  };
+}
+
 function drawSceneLosPreview(state, parent) {
   if (state.ui.mode !== "action-target") return;
 
@@ -237,18 +374,17 @@ function drawSceneLosPreview(state, parent) {
       }
     }
 
-    // Straight dotted LOS proof line from source (shooter or spotter)
     drawLosLine(parent, sourceFirePoint, headEndPoint, missileColor, 3.5, true);
 
-    // Arc always comes from shooter
-   const arcColor = isValid ? "#ffffff" : "#111111";
-        const impactPoint = projectLosPoint(
+    const arcColor = isValid ? "#ffffff" : "#111111";
+    const impactPoint = projectLosPoint(
       state,
       focusedTarget.x,
       focusedTarget.y,
       targetTile.elevation
     );
- drawArcLine(parent, attackerFirePoint, impactPoint, arcColor);
+
+    drawArcLine(parent, attackerFirePoint, impactPoint, arcColor);
     drawLosEndpoint(parent, sourceFirePoint, missileColor);
     drawLosEndpoint(parent, headEndPoint, missileColor);
     return;
@@ -303,21 +439,27 @@ function getLosRayEndPoint(state, ray, fallbackX, fallbackY, fallbackHeight) {
   return projectLosPoint(state, fallbackX, fallbackY, fallbackHeight);
 }
 
-
 function projectLosPoint(state, x, y, elevation) {
   if (state.ui.viewMode === "top") {
-    const snappedTurns = normalizedTurns(state);
     const rotated = rotateCoord(
       x,
       y,
       MAP_CONFIG.mechWidth,
       MAP_CONFIG.mechHeight,
-      snappedTurns
+      normalizedTurns(state)
     );
 
     return {
-      x: TOPDOWN_CONFIG.originX + (rotated.x * TOPDOWN_CONFIG.cellSize) + (TOPDOWN_CONFIG.cellSize / 2),
-      y: TOPDOWN_CONFIG.originY + (rotated.y * TOPDOWN_CONFIG.cellSize) + (TOPDOWN_CONFIG.cellSize / 2)
+      x:
+        CAMERA_CENTER.topX +
+        state.camera.offsetX +
+        (rotated.x * TOPDOWN_CONFIG.cellSize) +
+        (TOPDOWN_CONFIG.cellSize / 2),
+      y:
+        CAMERA_CENTER.topY +
+        state.camera.offsetY +
+        (rotated.y * TOPDOWN_CONFIG.cellSize) +
+        (TOPDOWN_CONFIG.cellSize / 2)
     };
   }
 
@@ -363,7 +505,6 @@ function drawArcLine(parent, from, to, color) {
   const dy = to.y - from.y;
   const distance = Math.hypot(dx, dy);
 
-  // More dramatic lift than before
   const curveLift = Math.max(70, Math.min(150, distance * 0.45));
 
   const controlX = (from.x + to.x) / 2;
@@ -419,6 +560,15 @@ function isMissileProfile(profile) {
 }
 
 function projectScene(state, x, y, elevation) {
+  const base = projectSceneBase(state, x, y, elevation);
+
+  return {
+    x: base.x + state.camera.offsetX,
+    y: base.y + state.camera.offsetY
+  };
+}
+
+function projectSceneBase(state, x, y, elevation) {
   if (state.ui.viewMode === "top") {
     const snappedTurns = normalizedTurns(state);
 
@@ -430,17 +580,9 @@ function projectScene(state, x, y, elevation) {
       snappedTurns
     );
 
-    const focusRotated = rotateCoord(
-      state.focus.x,
-      state.focus.y,
-      MAP_CONFIG.mechWidth,
-      MAP_CONFIG.mechHeight,
-      snappedTurns
-    );
-
     return {
-      x: CAMERA_CENTER.topX - (TOPDOWN_CONFIG.cellSize / 2) + ((rotated.x - focusRotated.x) * TOPDOWN_CONFIG.cellSize),
-      y: CAMERA_CENTER.topY - (TOPDOWN_CONFIG.cellSize / 2) + ((rotated.y - focusRotated.y) * TOPDOWN_CONFIG.cellSize)
+      x: CAMERA_CENTER.topX + (rotated.x * TOPDOWN_CONFIG.cellSize),
+      y: CAMERA_CENTER.topY + (rotated.y * TOPDOWN_CONFIG.cellSize)
     };
   }
 
@@ -464,34 +606,12 @@ function projectScene(state, x, y, elevation) {
     nextTurns
   );
 
-  const focusStartRot = rotateCoord(
-    state.focus.x,
-    state.focus.y,
-    MAP_CONFIG.mechWidth,
-    MAP_CONFIG.mechHeight,
-    startTurns
-  );
-
-  const focusNextRot = rotateCoord(
-    state.focus.x,
-    state.focus.y,
-    MAP_CONFIG.mechWidth,
-    MAP_CONFIG.mechHeight,
-    nextTurns
-  );
-
   const p0 = isoProjectRaw(startRot.x, startRot.y, elevation);
   const p1 = isoProjectRaw(nextRot.x, nextRot.y, elevation);
 
-  const focusTile = getTile(state.map, state.focus.x, state.focus.y);
-  const focusElevation = focusTile ? focusTile.elevation : 0;
-
-  const fp0 = isoProjectRaw(focusStartRot.x, focusStartRot.y, focusElevation);
-  const fp1 = isoProjectRaw(focusNextRot.x, focusNextRot.y, focusElevation);
-
   return {
-    x: lerp(p0.x, p1.x, blend) - lerp(fp0.x, fp1.x, blend) + CAMERA_CENTER.isoX,
-    y: lerp(p0.y, p1.y, blend) - lerp(fp0.y, fp1.y, blend) + CAMERA_CENTER.isoY
+    x: lerp(p0.x, p1.x, blend) + CAMERA_CENTER.isoX,
+    y: lerp(p0.y, p1.y, blend) + CAMERA_CENTER.isoY
   };
 }
 
@@ -662,6 +782,10 @@ function lerp(a, b, t) {
 
 function normalizedTurns(state) {
   return ((Math.round(state.camera.angle / 90) % 4) + 4) % 4;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }
 
 function drawIsoTile(item, parent) {
@@ -901,7 +1025,6 @@ function drawMech(state, mech, screenX, screenY, parent, isActive = false) {
     group.appendChild(rightPoly);
     group.appendChild(topPoly);
 
-    // Only draw the facing stripe on the very top cube
     if (level === mechLevels - 1) {
       const stripe = makePolygon(
         getIsoTopStripePointsFromWorld(
