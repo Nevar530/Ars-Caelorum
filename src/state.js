@@ -4,10 +4,10 @@ export function createState({
   map,
   mechs = [],
   rotation = 0,
-  content = { mechs: [], weapons: [], sigils: [], attacks: [] }
+  content = { mechs: [], weapons: [], sigils: [], attacks: [], pilots: [], spawnPoints: [] }
 }) {
-  const activeMechId = mechs.length > 0 ? mechs[0].instanceId : null;
-  const activeMech = mechs.length > 0 ? mechs[0] : null;
+  const previewMech = mechs.length > 0 ? mechs[0] : null;
+  const previewMechId = previewMech?.instanceId ?? null;
 
   return {
     map,
@@ -16,21 +16,33 @@ export function createState({
     content,
 
     turn: {
-      activeMechId,
+      activeMechId: null,
       round: 1,
-      phase: "move"
+      phase: "setup", // "setup" | "move" | "action"
+      combatStarted: false,
+
+      moveOrder: [],
+      actionOrder: [],
+
+      moveIndex: -1,
+      actionIndex: -1,
+
+      splashText: "",
+      splashVisible: false,
+      splashKind: null,
+      lastInitiativeRolls: []
     },
 
     selection: {
-      mechId: activeMechId,
+      mechId: previewMechId,
       action: null,
       targetTile: null,
       targetMechId: null
     },
 
     focus: {
-      x: activeMech ? activeMech.x : 0,
-      y: activeMech ? activeMech.y : 0
+      x: previewMech ? previewMech.x : 0,
+      y: previewMech ? previewMech.y : 0
     },
 
     ui: {
@@ -45,7 +57,7 @@ export function createState({
       commandMenu: {
         open: false,
         index: 0,
-        items: getCommandMenuItemsForPhase("move")
+        items: getCommandMenuItemsForPhase("setup")
       }
     },
 
