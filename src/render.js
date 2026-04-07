@@ -31,7 +31,7 @@ export function renderAll(state, refs) {
 }
 
 export function renderIso(state, refs) {
-  const { worldScene, worldUi, rotationLabel } = refs;
+  const { worldScene, worldUi } = refs;
   const { map, mechs } = state;
 
   worldScene.innerHTML = "";
@@ -104,12 +104,6 @@ export function renderIso(state, refs) {
   }
 
   drawSceneLosPreview(state, worldUi);
-
-  const snappedRotation = normalizedTurns(state);
-  rotationLabel.textContent =
-    state.ui.viewMode === "top"
-      ? `View: Tactical · Rotation: ${snappedRotation * 90}°`
-      : `View: Iso · Rotation: ${Math.round(state.camera.angle) % 360}°`;
 }
 
 export function renderEditor(state, refs) {
