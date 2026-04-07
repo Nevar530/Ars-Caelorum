@@ -22,28 +22,31 @@
       ></svg>
     </aside>
 
-    <main class="main">
-      <div class="toolbar">
-        <button id="rotateLeft" type="button">⟲ Rotate Left</button>
-        <button id="rotateRight" type="button">⟳ Rotate Right</button>
-        <button id="toggleView" type="button">Toggle Tactical (R)</button>
-        <button id="resetMap" type="button">Reset Map</button>
-        <span id="rotationLabel">Rotation: 0°</span>
-      </div>
+<main class="main">
+  <div class="toolbar">
+    <button id="rotateLeft" type="button">⟲ Rotate Left</button>
+    <button id="rotateRight" type="button">⟳ Rotate Right</button>
+    <button id="toggleView" type="button">Toggle Tactical (R)</button>
+    <button id="resetMap" type="button">Reset Map</button>
+    <span id="rotationLabel">Rotation: 0°</span>
+  </div>
 
-      <div class="stage">
-        <svg id="board" viewBox="0 0 1400 900" aria-label="Isometric tactics board">
-          <g id="world-scene"></g>
-          <g id="world-ui"></g>
-        </svg>
-      </div>
+  <div id="combatRibbon" class="combat-ribbon" aria-label="Combat initiative ribbon"></div>
+  <div id="combatOverlay" class="combat-overlay" aria-label="Combat overlay"></div>
 
-      <section id="hudRoot" class="hud" aria-label="Tactical bottom HUD">
-        <div id="hudLeft" class="hud-panel hud-panel-left"></div>
-        <div id="hudCenter" class="hud-panel hud-panel-center"></div>
-        <div id="hudRight" class="hud-panel hud-panel-right"></div>
-      </section>
-    </main>
+  <div class="stage">
+    <svg id="board" viewBox="0 0 1400 900" aria-label="Isometric tactics board">
+      <g id="world-scene"></g>
+      <g id="world-ui"></g>
+    </svg>
+  </div>
+
+  <section id="hudRoot" class="hud" aria-label="Tactical bottom HUD">
+    <div id="hudLeft" class="hud-panel hud-panel-left"></div>
+    <div id="hudCenter" class="hud-panel hud-panel-center"></div>
+    <div id="hudRight" class="hud-panel hud-panel-right"></div>
+  </section>
+</main>
   </div>
 
   <script type="module" src="./script.js"></script>
