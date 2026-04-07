@@ -12,6 +12,13 @@ const TOPDOWN_CONFIG = {
   originY: 130
 };
 
+const CAMERA_CENTER = {
+  isoX: 700,
+  isoY: 320,
+  topX: 700,
+  topY: 360
+};
+
 const LOS_HEIGHT_PROFILES = {
   mech: {
     fire: 1,
@@ -414,6 +421,7 @@ function isMissileProfile(profile) {
 function projectScene(state, x, y, elevation) {
   if (state.ui.viewMode === "top") {
     const snappedTurns = normalizedTurns(state);
+
     const rotated = rotateCoord(
       x,
       y,
@@ -422,13 +430,21 @@ function projectScene(state, x, y, elevation) {
       snappedTurns
     );
 
+    const focusRotated = rotateCoord(
+      state.focus.x,
+      state.focus.y,
+      MAP_CONFIG.mechWidth,
+      MAP_CONFIG.mechHeight,
+      snappedTurns
+    );
+
     return {
-      x: TOPDOWN_CONFIG.originX + (rotated.x * TOPDOWN_CONFIG.cellSize),
-      y: TOPDOWN_CONFIG.originY + (rotated.y * TOPDOWN_CONFIG.cellSize)
+      x: CAMERA_CENTER.topX - (TOPDOWN_CONFIG.cellSize / 2) + ((rotated.x - focusRotated.x) * TOPDOWN_CONFIG.cellSize),
+      y: CAMERA_CENTER.topY - (TOPDOWN_CONFIG.cellSize / 2) + ((rotated.y - focusRotated.y) * TOPDOWN_CONFIG.cellSize)
     };
   }
 
-  const startTurns = Math.floor(state.camera.angle / 90) % 4;
+  const startTurns = ((Math.floor(state.camera.angle / 90) % 4) + 4) % 4;
   const nextTurns = (startTurns + 1) % 4;
   const blend = (state.camera.angle % 90) / 90;
 
@@ -448,12 +464,34 @@ function projectScene(state, x, y, elevation) {
     nextTurns
   );
 
-  const p0 = isoProject(startRot.x, startRot.y, elevation);
-  const p1 = isoProject(nextRot.x, nextRot.y, elevation);
+  const focusStartRot = rotateCoord(
+    state.focus.x,
+    state.focus.y,
+    MAP_CONFIG.mechWidth,
+    MAP_CONFIG.mechHeight,
+    startTurns
+  );
+
+  const focusNextRot = rotateCoord(
+    state.focus.x,
+    state.focus.y,
+    MAP_CONFIG.mechWidth,
+    MAP_CONFIG.mechHeight,
+    nextTurns
+  );
+
+  const p0 = isoProjectRaw(startRot.x, startRot.y, elevation);
+  const p1 = isoProjectRaw(nextRot.x, nextRot.y, elevation);
+
+  const focusTile = getTile(state.map, state.focus.x, state.focus.y);
+  const focusElevation = focusTile ? focusTile.elevation : 0;
+
+  const fp0 = isoProjectRaw(focusStartRot.x, focusStartRot.y, focusElevation);
+  const fp1 = isoProjectRaw(focusNextRot.x, focusNextRot.y, focusElevation);
 
   return {
-    x: lerp(p0.x, p1.x, blend),
-    y: lerp(p0.y, p1.y, blend)
+    x: lerp(p0.x, p1.x, blend) - lerp(fp0.x, fp1.x, blend) + CAMERA_CENTER.isoX,
+    y: lerp(p0.y, p1.y, blend) - lerp(fp0.y, fp1.y, blend) + CAMERA_CENTER.isoY
   };
 }
 
@@ -607,13 +645,12 @@ function tileSetFromList(tiles) {
   return set;
 }
 
-function isoProject(x, y, elevation) {
+function isoProjectRaw(x, y, elevation) {
   const screenX =
-    (x - y) * (RENDER_CONFIG.isoTileWidth / 2) + RENDER_CONFIG.originX;
+    (x - y) * (RENDER_CONFIG.isoTileWidth / 2);
 
   const screenY =
-    (x + y) * (RENDER_CONFIG.isoTileHeight / 2) +
-    RENDER_CONFIG.originY -
+    (x + y) * (RENDER_CONFIG.isoTileHeight / 2) -
     (elevation * RENDER_CONFIG.elevationStepPx);
 
   return { x: screenX, y: screenY };
