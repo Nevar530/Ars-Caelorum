@@ -178,19 +178,10 @@ function renderTurnSummary(state) {
   const order = isMove ? state.turn.moveOrder : state.turn.actionOrder;
   const index = isMove ? state.turn.moveIndex : state.turn.actionIndex;
 
-  const active = getMechById(state.mechs, order[index]);
-  const next = getMechById(state.mechs, order[index + 1]);
-
   return `
     <div class="hud-mode-box" style="margin-bottom:8px;">
       <div class="hud-mode-title">
         ROUND ${state.turn.round} — ${state.turn.phase.toUpperCase()}
-      </div>
-
-      <div class="hud-mode-text">
-        <strong>Active:</strong> ${active?.name ?? "-"} 
-        &nbsp;&nbsp;|&nbsp;&nbsp;
-        <strong>Next:</strong> ${next?.name ?? "—"}
       </div>
     </div>
 
@@ -204,8 +195,8 @@ function renderTurnSummary(state) {
           const unit = getMechById(state.mechs, id);
           if (!unit) return "";
 
-          const active = i === index;
-          const done = i < index;
+          const isActive = i === index;
+          const isDone = i < index;
 
           return `
             <div style="
@@ -214,9 +205,9 @@ function renderTurnSummary(state) {
               font-size:11px;
               font-weight:700;
               border:1px solid rgba(255,255,255,0.1);
-              background:${active ? "rgba(240,176,0,.2)" : "rgba(255,255,255,.05)"};
-              color:${active ? "#f0b000" : "#ddd"};
-              opacity:${done ? .4 : 1};
+              background:${isActive ? "rgba(240,176,0,.25)" : "rgba(255,255,255,.05)"};
+              color:${isActive ? "#f0b000" : "#ddd"};
+              opacity:${isDone ? .4 : 1};
             ">
               ${unit.name}
             </div>
