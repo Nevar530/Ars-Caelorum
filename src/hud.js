@@ -30,6 +30,9 @@ export function bindHudInput(state, refs, actions) {
       case "cancel":
         actions.cancelAction();
         break;
+      case "start-combat":
+        actions.startCombat();
+        break;
       case "menu-select":
         actions.selectMenuAction(button.dataset.menuAction);
         break;
@@ -37,43 +40,74 @@ export function bindHudInput(state, refs, actions) {
         break;
     }
   });
+
+  if (refs.combatOverlay) {
+    refs.combatOverlay.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-hud-action='start-combat']");
+      if (!button || button.disabled) return;
+      actions.startCombat();
+    });
+  }
 }
 
 export function renderHud(state, refs) {
   refs.hudLeft.innerHTML = renderActivePanel(state);
   refs.hudCenter.innerHTML = renderCenterPanel(state);
   refs.hudRight.innerHTML = renderContextPanel(state);
+
+  if (refs.combatRibbon) {
+    refs.combatRibbon.innerHTML = renderCombatRibbon(state);
+  }
+
+  if (refs.combatOverlay) {
+    refs.combatOverlay.innerHTML = renderCombatOverlay(state);
+    refs.combatOverlay.classList.toggle("is-visible", shouldShowOverlay(state));
+    refs.combatOverlay.classList.toggle("is-clickthrough", !shouldOverlayCapture(state));
+  }
 }
 
 function renderActivePanel(state) {
   const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+  const selectedMech = getMechById(state.mechs, state.selection.mechId);
+  const displayMech = activeMech ?? selectedMech ?? null;
 
-  if (!activeMech) {
+  if (!displayMech) {
     return `
       <div class="hud-section-title">Unit</div>
       <div class="hud-mini-card">
-        <div class="hud-context-title">No Active Mech</div>
-        <div class="hud-context-sub">Load a unit to begin.</div>
+        <div class="hud-context-title">No Unit</div>
+        <div class="hud-context-sub">Spawn a mech to begin.</div>
       </div>
     `;
   }
+
+  const statusLabel = state.turn.combatStarted ? "Active" : "Preview";
 
   return `
     <div class="hud-section-title">Unit</div>
 
     <div class="hud-unit-row">
       <div>
-        <div class="hud-unit-name">${escapeHtml(activeMech.name)}</div>
-        <div class="hud-subline">Round ${state.turn.round} · ${escapeHtml(capitalize(state.turn.phase))} Phase</div>
+        <div class="hud-unit-name">${escapeHtml(displayMech.name)}</div>
+        <div class="hud-subline">
+          ${escapeHtml(displayMech.pilotName ?? "No Pilot")} · ${escapeHtml(displayMech.team ?? "neutral")}
+        </div>
       </div>
-      <div class="hud-tag">Active</div>
+      <div class="hud-tag">${statusLabel}</div>
     </div>
 
     <div class="hud-stat-row">
-      ${renderInlineStat("ARM", activeMech.armor)}
-      ${renderInlineStat("STR", activeMech.structure)}
-      ${renderInlineStat("MV", activeMech.move)}
-      ${renderInlineStat("F", facingLabel(getDisplayedFacing(state, activeMech)))}
+      ${renderInlineStat("SHD", `${displayMech.shield}/${displayMech.maxShield ?? displayMech.shield}`)}
+      ${renderInlineStat("CORE", `${displayMech.core}/${displayMech.maxCore ?? displayMech.core}`)}
+      ${renderInlineStat("REACT", displayMech.reaction ?? 0)}
+      ${renderInlineStat("TARG", displayMech.targeting ?? 0)}
+    </div>
+
+    <div class="hud-stat-row">
+      ${renderInlineStat("MV", displayMech.move)}
+      ${renderInlineStat("INIT", displayMech.initiative ?? "-")}
+      ${renderInlineStat("F", facingLabel(getDisplayedFacing(state, displayMech)))}
+      ${renderInlineStat("CTRL", displayMech.controlType ?? "-")}
     </div>
   `;
 }
@@ -82,13 +116,31 @@ function renderCenterPanel(state) {
   const mode = state.ui.mode;
   const menu = state.ui.commandMenu;
 
+  if (!state.turn.combatStarted) {
+    return `
+      <div class="hud-section-title">Combat</div>
+
+      <div class="hud-mode-box compact">
+        <div class="hud-mode-title">Awaiting Combat Start</div>
+        <div class="hud-mode-text">Start Combat to roll initiative and begin the round loop.</div>
+      </div>
+
+      <div class="hud-idle-actions">
+        <button class="hud-command-button compact" type="button" data-hud-action="start-combat">
+          <span>Start Combat</span>
+          <span class="hud-command-key">Enter</span>
+        </button>
+      </div>
+    `;
+  }
+
   if (mode === "idle" && menu.open) {
     return `
       <div class="hud-section-title">Command</div>
 
       <div class="hud-mode-box compact">
         <div class="hud-mode-title">Select Action</div>
-        <div class="hud-mode-text">Up / Down to choose · Enter confirm · Esc back</div>
+        <div class="hud-mode-text">Up / Down choose · Enter confirm · Esc back</div>
       </div>
 
       <div class="hud-menu-list" role="menu" aria-label="Unit command menu">
@@ -112,6 +164,7 @@ function renderCenterPanel(state) {
 
   if (mode === "action-attack-select") {
     const items = getSelectedAttackMenuItems(state);
+
     return `
       <div class="hud-section-title">Attack</div>
 
@@ -140,6 +193,7 @@ function renderCenterPanel(state) {
 
   if (mode === "action-target") {
     const profile = state.ui.action.selectedAction;
+
     return `
       <div class="hud-section-title">Targeting</div>
 
@@ -195,7 +249,7 @@ function renderCenterPanel(state) {
 
     <div class="hud-mode-box compact">
       <div class="hud-mode-title">Awaiting Command</div>
-      <div class="hud-mode-text">Press Enter to open command menu for the active mech.</div>
+      <div class="hud-mode-text">Press Enter to open the command menu for the active mech.</div>
     </div>
 
     <div class="hud-idle-actions">
@@ -211,7 +265,6 @@ function renderContextPanel(state) {
   const focusTile = getTile(state.map, state.focus.x, state.focus.y);
   const focusMech = getMechAt(state.mechs, state.focus.x, state.focus.y);
   const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-  const targetStatus = getFocusedTileTargetStatus(state);
 
   if (focusMech && activeMech && focusMech.instanceId !== activeMech.instanceId) {
     return `
@@ -219,135 +272,168 @@ function renderContextPanel(state) {
 
       <div class="hud-mini-card">
         <div class="hud-context-title">${escapeHtml(focusMech.name)}</div>
-        <div class="hud-context-sub">Focused hostile / target candidate</div>
-        ${targetStatus ? `<div class="hud-context-sub">${escapeHtml(targetStatus)}</div>` : ""}
+        <div class="hud-context-sub">
+          ${escapeHtml(focusMech.pilotName ?? "No Pilot")} · ${escapeHtml(focusMech.team ?? "neutral")}
+        </div>
       </div>
 
       <div class="hud-stat-row">
-        ${renderInlineStat("ARM", focusMech.armor)}
-        ${renderInlineStat("STR", focusMech.structure)}
-        ${renderInlineStat("MV", focusMech.move)}
-        ${renderInlineStat("F", facingLabel(getDisplayedFacing(state, focusMech)))}
+        ${renderInlineStat("SHD", `${focusMech.shield}/${focusMech.maxShield ?? focusMech.shield}`)}
+        ${renderInlineStat("CORE", `${focusMech.core}/${focusMech.maxCore ?? focusMech.core}`)}
+        ${renderInlineStat("REACT", focusMech.reaction ?? 0)}
+        ${renderInlineStat("TARG", focusMech.targeting ?? 0)}
       </div>
     `;
   }
 
-  if (focusTile) {
-    const terrain = tileTypeFromElevation(focusTile.elevation);
+  const elevation = focusTile?.elevation ?? 0;
+  const tileType = tileTypeFromElevation(elevation);
 
-    return `
-      <div class="hud-section-title">Context</div>
+  let losText = "—";
+  if (activeMech && state.turn.combatStarted) {
+    const los = getLineOfSightResult(state, activeMech.x, activeMech.y, state.focus.x, state.focus.y, {
+      attackerScale: activeMech.scale ?? "mech",
+      targetScale: "mech"
+    });
 
-      <div class="hud-mini-card">
-        <div class="hud-context-title">Tile ${focusTile.x}, ${focusTile.y}</div>
-        <div class="hud-context-sub">${terrainLabel(terrain)} · Elevation ${focusTile.elevation}</div>
-        ${targetStatus ? `<div class="hud-context-sub">${escapeHtml(targetStatus)}</div>` : ""}
-      </div>
-
-      <div class="hud-stat-row">
-        ${renderInlineStat("Mode", modeLabel(state.ui.mode))}
-        ${renderInlineStat("View", state.ui.viewMode === "iso" ? "Iso" : "Top")}
-      </div>
-    `;
+    if (los.cover === "half") losText = "Half Cover";
+    else if (los.cover === "full") losText = "Blocked";
+    else if (los.visible) losText = "Clear";
   }
 
   return `
-    <div class="hud-section-title">Context</div>
+    <div class="hud-section-title">Tile</div>
+
     <div class="hud-mini-card">
-      <div class="hud-context-title">Prototype Skirmish</div>
-      <div class="hud-context-sub">Move phase flow and facing validation.</div>
+      <div class="hud-context-title">(${state.focus.x}, ${state.focus.y})</div>
+      <div class="hud-context-sub">${escapeHtml(tileType)}</div>
+    </div>
+
+    <div class="hud-stat-row">
+      ${renderInlineStat("ELEV", elevation)}
+      ${renderInlineStat("LOS", losText)}
+      ${renderInlineStat("ROUND", state.turn.round)}
+      ${renderInlineStat("PHASE", capitalize(state.turn.phase))}
     </div>
   `;
 }
 
-function getFocusedTileTargetStatus(state) {
-  if (state.ui.mode !== "action-target") {
-    return "";
+function renderCombatRibbon(state) {
+  const currentLabel = !state.turn.combatStarted
+    ? "Setup"
+    : `${capitalize(state.turn.phase)} Phase`;
+
+  return `
+    <div class="combat-ribbon-summary">
+      <div class="combat-ribbon-round">Round ${state.turn.round}</div>
+      <div class="combat-ribbon-phase">${escapeHtml(currentLabel)}</div>
+    </div>
+
+    <div class="combat-ribbon-rows">
+      ${renderRibbonRow(state, "Move", state.turn.moveOrder, state.turn.moveIndex, state.turn.phase === "move")}
+      ${renderRibbonRow(state, "Action", state.turn.actionOrder, state.turn.actionIndex, state.turn.phase === "action")}
+    </div>
+  `;
+}
+
+function renderRibbonRow(state, label, order, currentIndex, isCurrentPhase) {
+  const cells = (Array.isArray(order) ? order : []).map((instanceId, index) => {
+    const unit = getMechById(state.mechs, instanceId);
+    if (!unit) return "";
+
+    const isActive = isCurrentPhase && index === currentIndex;
+    const isComplete = isCurrentPhase && index < currentIndex;
+    const classes = [
+      "combat-ribbon-cell",
+      isCurrentPhase ? "is-phase-current" : "is-phase-dim",
+      isActive ? "is-active" : "",
+      isComplete ? "is-complete" : ""
+    ].join(" ");
+
+    return `
+      <div class="${classes}">
+        <div class="combat-ribbon-cell-name">${escapeHtml(unit.name)}</div>
+        <div class="combat-ribbon-cell-sub">
+          ${escapeHtml(unit.pilotName ?? "No Pilot")} · Init ${unit.initiative ?? "-"}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="combat-ribbon-row ${isCurrentPhase ? "is-current" : ""}">
+      <div class="combat-ribbon-row-label">${escapeHtml(label)}</div>
+      <div class="combat-ribbon-row-cells">
+        ${cells || `<div class="combat-ribbon-empty">No order</div>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderCombatOverlay(state) {
+  if (!state.turn.combatStarted) {
+    return `
+      <div class="combat-overlay-card">
+        <div class="combat-overlay-title">Combat Ready</div>
+        <div class="combat-overlay-text">
+          4 test mechs are loaded into the spawn points. Start Combat to roll initiative.
+        </div>
+        <button class="combat-start-button" type="button" data-hud-action="start-combat">
+          Start Combat
+        </button>
+      </div>
+    `;
   }
 
-  const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-  const profile = state.ui.action.selectedAction;
-  const focusX = state.focus.x;
-  const focusY = state.focus.y;
-
-  if (!activeMech || !profile) {
-    return "";
+  if (state.turn.splashVisible && state.turn.splashText) {
+    return `
+      <div class="combat-splash-banner">
+        ${escapeHtml(state.turn.splashText)}
+      </div>
+    `;
   }
 
-  const fireArcTiles = state.ui.action.fireArcTiles || [];
-  const evaluatedTargetTiles = state.ui.action.evaluatedTargetTiles || [];
+  return "";
+}
 
-  const focusedTarget = evaluatedTargetTiles.find(
-    (tile) => tile.x === focusX && tile.y === focusY
-  );
+function shouldShowOverlay(state) {
+  return !state.turn.combatStarted || (state.turn.splashVisible && !!state.turn.splashText);
+}
 
-  if (focusedTarget) {
-    if (focusedTarget.visible) {
-      if (focusedTarget.cover === "half") {
-        return "Target - Available · Half Cover";
-      }
-
-      return "Target - Available";
-    }
-
-    if (focusedTarget.cover === "full") {
-      return "Target - Full Cover / Blocked";
-    }
-
-    return "Target - Blocked";
-  }
-
-  const targetingKind = profile.targeting?.kind;
-  if (targetingKind === "cardinal_adjacent") {
-    return "Target - Out of Range";
-  }
-
-  const inFireArc = fireArcTiles.some(
-    (tile) => tile.x === focusX && tile.y === focusY
-  );
-
-  if (!inFireArc) {
-    return "Target - Out of Arc";
-  }
-
-  const minRange = profile.targeting?.minRange ?? 1;
-  const maxRange = profile.targeting?.maxRange ?? 1;
-  const dist = Math.abs(focusX - activeMech.x) + Math.abs(focusY - activeMech.y);
-
-  if (dist < minRange || dist > maxRange) {
-    return "Target - Out of Range";
-  }
-
-  const los = getLineOfSightResult(
-    state,
-    activeMech.x,
-    activeMech.y,
-    focusX,
-    focusY
-  );
-
-  if (!los.visible) {
-    if (los.cover === "full") {
-      return "Target - Full Cover / Blocked";
-    }
-
-    return "Target - Blocked";
-  }
-
-  if (los.cover === "half") {
-    return "Target - Available · Half Cover";
-  }
-
-  return "Target - Available";
+function shouldOverlayCapture(state) {
+  return !state.turn.combatStarted;
 }
 
 function renderInlineStat(label, value) {
   return `
     <div class="hud-inline-stat">
-      <span class="hud-inline-stat-label">${escapeHtml(String(label))}</span>
-      <span class="hud-inline-stat-value">${escapeHtml(String(value))}</span>
+      <div class="hud-inline-stat-label">${escapeHtml(String(label))}</div>
+      <div class="hud-inline-stat-value">${escapeHtml(String(value))}</div>
     </div>
   `;
+}
+
+function getDisplayedFacing(state, mech) {
+  if (state.ui.mode === "face" && state.ui.facingPreview !== null && mech.instanceId === state.turn.activeMechId) {
+    return state.ui.facingPreview;
+  }
+
+  return mech.facing;
+}
+
+function facingLabel(facing) {
+  switch (facing) {
+    case 0:
+      return "N";
+    case 1:
+      return "E";
+    case 2:
+      return "S";
+    case 3:
+      return "W";
+    default:
+      return "?";
+  }
 }
 
 function menuLabel(item) {
@@ -362,71 +448,23 @@ function menuLabel(item) {
       return "Ability";
     case "item":
       return "Item";
+    case "end_turn":
+      return "End Turn";
     default:
-      return capitalize(item);
+      return item;
   }
-}
-
-function modeLabel(mode) {
-  switch (mode) {
-    case "move":
-      return "Move";
-    case "face":
-      return "Facing";
-    case "action-attack-select":
-      return "Attack";
-    case "action-target":
-      return "Target";
-    default:
-      return "Idle";
-  }
-}
-
-function facingLabel(facing) {
-  switch (facing) {
-    case 0:
-      return "North";
-    case 1:
-      return "East";
-    case 2:
-      return "South";
-    case 3:
-      return "West";
-    default:
-      return "Unknown";
-  }
-}
-
-function terrainLabel(terrain) {
-  switch (terrain) {
-    case "peak":
-      return "Peak";
-    case "high":
-      return "High";
-    default:
-      return "Ground";
-  }
-}
-
-function getDisplayedFacing(state, mech) {
-  const isPreviewing =
-    state.ui.mode === "face" &&
-    mech.instanceId === state.turn.activeMechId &&
-    state.ui.facingPreview !== null;
-
-  return isPreviewing ? state.ui.facingPreview : mech.facing;
 }
 
 function capitalize(value) {
   if (!value) return "";
-  return value.charAt(0).toUpperCase() + value.slice(1);
+  return String(value).charAt(0).toUpperCase() + String(value).slice(1);
 }
 
 function escapeHtml(value) {
-  return value
+  return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
-    .replaceAll("\"", "&quot;")
+    .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 }
