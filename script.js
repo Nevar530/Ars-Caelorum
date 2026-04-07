@@ -45,40 +45,6 @@ const refs = {
   combatOverlay: document.getElementById("combatOverlay")
 };
 
-window.addEventListener("keydown", (e) => {
-  if (e.key === "Tab") {
-    e.preventDefault();
-
-    const active = state.units[state.activeUnitIndex];
-    if (!active) return;
-
-    state.camera.x = active.x;
-    state.camera.y = active.y;
-
-    render();
-  }
-});
-
-window.addEventListener("keydown", (e) => {
-  const speed = 1;
-
-  if (e.key === "ArrowUp") {
-    state.camera.y -= speed;
-  }
-  if (e.key === "ArrowDown") {
-    state.camera.y += speed;
-  }
-  if (e.key === "ArrowLeft") {
-    state.camera.x -= speed;
-  }
-  if (e.key === "ArrowRight") {
-    state.camera.x += speed;
-  }
-
-  render();
-});
-
-
 function facingToLabel(facing) {
   switch (facing) {
     case 0:
