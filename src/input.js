@@ -1,9 +1,6 @@
 import { changeElevation } from "./map.js";
 import { getMechById } from "./mechs.js";
-import {
-  clampFocusToBoard,
-  getPathToTile
-} from "./movement.js";
+import { clampFocusToBoard, getPathToTile } from "./movement.js";
 import { moveAttackSelection, updateActionTargetPreview } from "./action.js";
 
 export function bindInput(state, refs, actions) {
@@ -167,6 +164,11 @@ function handleIdleKeys(key, state, actions) {
   }
 
   if (key === "enter" || key === " ") {
+    if (!state.turn.combatStarted) {
+      actions.startCombat();
+      return true;
+    }
+
     if (state.ui.commandMenu.open) {
       actions.confirmMenuSelection();
     } else {
@@ -233,6 +235,10 @@ function handleFocusKeys(key, state, actions) {
 
   if (state.ui.mode === "action-target") {
     updateActionTargetPreview(state);
+  }
+
+  if (!state.turn.combatStarted && state.ui.mode === "idle") {
+    actions.selectFocusedMechIfPresent();
   }
 
   actions.render();
