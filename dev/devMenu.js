@@ -111,6 +111,7 @@ class DevMenu {
     this.populateSelectors();
     this.mountExistingMapEditorIntoTab();
     this.render();
+    this.syncToolbarVisibility();
 
     this.unsubscribeLog = subscribeToDevLog(() => {
       this.renderLog();
@@ -134,6 +135,10 @@ class DevMenu {
 
     if (this.rootEl && this.rootEl.parentNode) {
       this.rootEl.parentNode.removeChild(this.rootEl);
+    }
+
+    if (this.refs?.devToolbar) {
+      this.refs.devToolbar.style.display = "none";
     }
 
     this.rootEl = null;
@@ -454,6 +459,7 @@ class DevMenu {
       this.setActiveTab(this.state.activeTab);
     }
 
+    this.syncToolbarVisibility();
     this.render();
 
     logDev(`Dev menu ${nextState ? "opened" : "closed"}.`);
@@ -572,6 +578,13 @@ class DevMenu {
     this.renderApp();
   }
 
+  syncToolbarVisibility() {
+    const toolbar = this.refs?.devToolbar;
+    if (!toolbar) return;
+
+    toolbar.style.display = this.state.isOpen ? "flex" : "none";
+  }
+  
   removeUnit(instanceId) {
     const unit = this.getRuntimeUnits().find((entry) => entry.instanceId === instanceId);
     if (!unit) return;
