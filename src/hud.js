@@ -319,14 +319,39 @@ function renderContextPanel(state) {
 }
 
 function renderCombatRibbon(state) {
-  const currentLabel = !state.turn.combatStarted
-    ? "Setup"
-    : `${capitalize(state.turn.phase)} Phase`;
+  const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+
+  const currentOrder =
+    state.turn.phase === "move"
+      ? state.turn.moveOrder
+      : state.turn.actionOrder;
+
+  const currentIndex =
+    state.turn.phase === "move"
+      ? state.turn.moveIndex
+      : state.turn.actionIndex;
+
+  const activeUnit =
+    currentIndex >= 0 ? getMechById(state.mechs, currentOrder[currentIndex]) : null;
+
+  const nextUnit =
+    currentIndex + 1 < currentOrder.length
+      ? getMechById(state.mechs, currentOrder[currentIndex + 1])
+      : null;
 
   return `
     <div class="combat-ribbon-summary">
       <div class="combat-ribbon-round">Round ${state.turn.round}</div>
-      <div class="combat-ribbon-phase">${escapeHtml(currentLabel)}</div>
+      <div class="combat-ribbon-phase">${capitalize(state.turn.phase)} Phase</div>
+    </div>
+
+    <div style="display:flex; gap:16px; margin-bottom:6px;">
+      <div style="font-weight:700; color:#f0b000;">
+        ACTIVE: ${activeUnit ? activeUnit.name : "-"}
+      </div>
+      <div style="opacity:0.7;">
+        NEXT: ${nextUnit ? nextUnit.name : "—"}
+      </div>
     </div>
 
     <div class="combat-ribbon-rows">
