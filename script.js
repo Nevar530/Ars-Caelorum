@@ -25,7 +25,8 @@ import {
   getActiveUnitFromPhaseOrder
 } from "./src/initiative.js";
 import { initializeDevMenu } from "./dev/devMenu.js";
-import { logDev } from "./dev/devLogger.js";
+import { logDev, setDevLogSize } from "./dev/devLogger.js";
+import { resolveHit } from "./src/combat/hitResolver.js";
 
 const refs = {
   editor: document.getElementById("editor"),
@@ -71,6 +72,8 @@ async function init() {
   });
 
   let splashTimer = null;
+
+  setDevLogSize(25);
 
   function render() {
     renderAll(state, refs);
@@ -495,6 +498,27 @@ async function init() {
             logDev(
               `${activeMech.name} targeted tile (${targetX},${targetY}) with ${selectedAttack.name}.`
             );
+          }
+
+          const weapon = state.content.weapons.find(
+            (entry) => entry.id === state.ui.action.lastConfirmed?.attackId
+          );
+
+          const hitResult = resolveHit(
+            state,
+            activeMech,
+            weapon,
+            state.ui.action.lastConfirmed
+          );
+
+          for (const line of hitResult.logs) {
+            logDev(line);
+          }
+
+          for (const singleResult of hitResult.results) {
+            for (const line of singleResult.logs) {
+              logDev(line);
+            }
           }
         }
 
