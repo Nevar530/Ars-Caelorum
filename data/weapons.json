@@ -7,7 +7,7 @@
     "scale": "mech",
     "fireArc": {
       "kind": "fan",
-      "range": 10
+      "range": 20
     },
     "range": {
       "min": 1,
@@ -18,15 +18,8 @@
     "effect": {
       "kind": "single"
     },
-    "rangeBands": {
-      "pointBlank": 0,
-      "close": 0,
-      "mid": 0,
-      "far": 0,
-      "extreme": 0
-    },
     "damage": 10,
-    "notes": "Special case melee. Valid targets are forward, left, and right adjacent tiles."
+    "notes": "Melee attack. Valid targets are forward, left, and right adjacent tiles."
   },
   {
     "id": "machinegun_01",
@@ -36,26 +29,41 @@
     "scale": "mech",
     "fireArc": {
       "kind": "fan",
-      "range": 10
+      "range": 20
     },
     "range": {
       "min": 1,
       "max": 20
     },
     "losType": "direct",
-    "targetingMode": "range_band",
+    "targetingMode": "direct_tile",
     "effect": {
       "kind": "single"
     },
-    "rangeBands": {
-      "pointBlank": 0,
-      "close": 0,
-      "mid": 1,
-      "far": 2,
-      "extreme": 3
+    "damage": 10,
+    "notes": "Direct fire weapon."
+  },
+  {
+    "id": "pistol_01",
+    "name": "Pistol",
+    "category": "weapon",
+    "type": "direct",
+    "scale": "mech",
+    "fireArc": {
+      "kind": "fan",
+      "range": 20
     },
-    "damage": 8,
-    "notes": "Direct fire weapon. Uses fire arc + LOS + named range bands."
+    "range": {
+      "min": 1,
+      "max": 20
+    },
+    "losType": "direct",
+    "targetingMode": "direct_tile",
+    "effect": {
+      "kind": "single"
+    },
+    "damage": 5,
+    "notes": "Direct fire sidearm."
   },
   {
     "id": "rifle_01",
@@ -65,40 +73,55 @@
     "scale": "mech",
     "fireArc": {
       "kind": "fan",
-      "range": 10
+      "range": 20
     },
     "range": {
       "min": 1,
       "max": 20
     },
     "losType": "direct",
-    "targetingMode": "range_band",
+    "targetingMode": "direct_tile",
     "effect": {
       "kind": "single"
     },
-    "rangeBands": {
-      "pointBlank": 2,
-      "close": 1,
-      "mid": 0,
-      "far": 1,
-      "extreme": 2
-    },
     "damage": 15,
-    "notes": "Direct fire rifle. Uses fire arc + LOS + named range bands."
+    "notes": "Direct fire rifle."
   },
   {
-    "id": "missile_01",
-    "name": "Missile Pod",
+    "id": "cannon_01",
+    "name": "Cannon",
+    "category": "weapon",
+    "type": "direct",
+    "scale": "mech",
+    "fireArc": {
+      "kind": "fan",
+      "range": 20
+    },
+    "range": {
+      "min": 1,
+      "max": 20
+    },
+    "losType": "direct",
+    "targetingMode": "direct_tile",
+    "effect": {
+      "kind": "single"
+    },
+    "damage": 20,
+    "notes": "Heavy direct fire weapon."
+  },
+  {
+    "id": "srm_01",
+    "name": "SRM Pod",
     "category": "weapon",
     "type": "missile",
     "scale": "mech",
     "fireArc": {
       "kind": "fan",
-      "range": 10
+      "range": 20
     },
     "range": {
       "min": 1,
-      "max": 6
+      "max": 20
     },
     "losType": "missile",
     "targetingMode": "fire_arc_tile",
@@ -106,20 +129,65 @@
       "kind": "circle",
       "radius": 3
     },
-    "rangeBands": {
-      "pointBlank": 1,
-      "close": 0,
-      "mid": 0,
-      "far": 1,
-      "extreme": 2
+    "damage": 15,
+    "splashDamage": {
+      "center": 15,
+      "ring1": 10,
+      "ring2": 5,
+      "ring3": 0
     },
-    "damage": 12,
-    "splashTn": {
-      "center": 0,
-      "ring1": 1,
-      "ring2": 2,
-      "ring3": 3
+    "notes": "Targets a center tile. Fire arc checks center tile only. Splash radius 3 from center."
+  },
+  {
+    "id": "lrm_01",
+    "name": "LRM Pod",
+    "category": "weapon",
+    "type": "missile",
+    "scale": "mech",
+    "fireArc": {
+      "kind": "fan",
+      "range": 20
     },
-    "notes": "Missile targeting uses missile LOS rules. Targets a tile and previews circular effect area."
+    "range": {
+      "min": 1,
+      "max": 20
+    },
+    "losType": "missile",
+    "targetingMode": "fire_arc_tile",
+    "effect": {
+      "kind": "circle",
+      "radius": 4
+    },
+    "damage": 20,
+    "splashDamage": {
+      "center": 20,
+      "ring1": 15,
+      "ring2": 10,
+      "ring3": 5,
+      "ring4": 0
+    },
+    "notes": "Targets a center tile. Fire arc checks center tile only. Splash radius 4 from center."
+  },
+  {
+    "id": "sniper_01",
+    "name": "Sniper",
+    "category": "weapon",
+    "type": "direct",
+    "scale": "mech",
+    "fireArc": {
+      "kind": "fan",
+      "range": 20
+    },
+    "range": {
+      "min": 1,
+      "max": 20
+    },
+    "losType": "direct",
+    "targetingMode": "direct_tile",
+    "effect": {
+      "kind": "single"
+    },
+    "damage": 20,
+    "notes": "Long-range precision weapon."
   }
 ]
