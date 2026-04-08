@@ -27,6 +27,11 @@ import {
 import { initializeDevMenu } from "./dev/devMenu.js";
 import { logDev, setDevLogSize } from "./dev/devLogger.js";
 import { resolveHit } from "./src/combat/hitResolver.js";
+import {
+  addCombatTextMarker,
+  clearCombatTextMarkers,
+  renderCombatTextOverlay
+} from "./src/combat/combatTextOverlay.js";
 
 const refs = {
   editor: document.getElementById("editor"),
@@ -78,6 +83,7 @@ async function init() {
   function render() {
     renderAll(state, refs);
     renderHud(state, refs);
+    renderCombatTextOverlay(state, refs);
   }
 
   function hideSplash() {
@@ -161,6 +167,7 @@ async function init() {
     if (!state.mechs.length) return;
 
     clearTransientUi();
+    clearCombatTextMarkers(state);
     state.turn.combatStarted = true;
     state.turn.round = 1;
     state.turn.phase = "move";
@@ -193,6 +200,7 @@ async function init() {
   }
 
   function endRoundAndBeginNext() {
+    clearCombatTextMarkers(state);
     state.turn.round += 1;
     state.turn.phase = "move";
 
@@ -516,6 +524,13 @@ async function init() {
           }
 
           for (const singleResult of hitResult.results) {
+            addCombatTextMarker(
+              state,
+              singleResult.targetId,
+              singleResult.hit ? "HIT" : "MISS",
+              { tone: singleResult.hit ? "hit" : "miss" }
+            );
+
             for (const line of singleResult.logs) {
               logDev(line);
             }
@@ -642,6 +657,7 @@ async function init() {
   function resetCombatToSetup() {
     clearTransientUi();
     hideSplash();
+    clearCombatTextMarkers(state);
 
     state.turn.activeMechId = null;
     state.turn.round = 1;
