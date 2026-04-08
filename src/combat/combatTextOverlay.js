@@ -22,17 +22,11 @@ function ensureMarkerState(state) {
 export function addCombatTextMarker(state, targetId, text, options = {}) {
   ensureMarkerState(state);
 
-  const tone = options.tone ?? "neutral";
-
-  state.turn.combatTextMarkers = state.turn.combatTextMarkers.filter(
-    (marker) => marker.targetId !== targetId
-  );
-
   state.turn.combatTextMarkers.push({
-    id: `marker_${targetId}_${Date.now()}`,
+    id: `marker_${targetId}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     targetId,
     text,
-    tone
+    tone: options.tone ?? "neutral"
   });
 }
 
@@ -68,6 +62,8 @@ export function renderCombatTextOverlay(state, refs) {
   const boardOffsetX = boardRect.left - overlayRect.left;
   const boardOffsetY = boardRect.top - overlayRect.top;
 
+  const stackCounts = new Map();
+
   for (const marker of markers) {
     const mech = getMechById(state.mechs, marker.targetId);
     if (!mech) continue;
@@ -75,10 +71,21 @@ export function renderCombatTextOverlay(state, refs) {
     const tile = getTile(state.map, mech.x, mech.y);
     if (!tile) continue;
 
-    const projected = projectMarkerAnchor(state, mech.x, mech.y, tile.elevation);
+    const currentStack = stackCounts.get(marker.targetId) ?? 0;
+    stackCounts.set(marker.targetId, currentStack + 1);
 
-    const pixelX = boardOffsetX + ((projected.x / viewBox.width) * boardRect.width);
-    const pixelY = boardOffsetY + ((projected.y / viewBox.height) * boardRect.height);
+    const projected = projectMarkerAnchor(
+      state,
+      mech.x,
+      mech.y,
+      tile.elevation,
+      currentStack
+    );
+
+    const pixelX =
+      boardOffsetX + ((projected.x / viewBox.width) * boardRect.width);
+    const pixelY =
+      boardOffsetY + ((projected.y / viewBox.height) * boardRect.height);
 
     const el = document.createElement("div");
     el.textContent = marker.text;
@@ -104,6 +111,15 @@ export function renderCombatTextOverlay(state, refs) {
     } else if (marker.tone === "miss") {
       el.style.background = "rgba(200, 77, 77, 0.92)";
       el.style.color = "#ffffff";
+    } else if (marker.tone === "shield") {
+      el.style.background = "rgba(74, 154, 255, 0.92)";
+      el.style.color = "#08131f";
+    } else if (marker.tone === "core") {
+      el.style.background = "rgba(255, 170, 64, 0.92)";
+      el.style.color = "#1c1207";
+    } else if (marker.tone === "disabled") {
+      el.style.background = "rgba(120, 86, 196, 0.94)";
+      el.style.color = "#ffffff";
     } else {
       el.style.background = "rgba(240, 176, 0, 0.92)";
       el.style.color = "#17130a";
@@ -113,7 +129,9 @@ export function renderCombatTextOverlay(state, refs) {
   }
 }
 
-function projectMarkerAnchor(state, x, y, elevation) {
+function projectMarkerAnchor(state, x, y, elevation, stackIndex = 0) {
+  const stackOffset = stackIndex * 26;
+
   if (state.ui.viewMode === "top") {
     const turns = normalizedTurns(state);
     const rotated = rotateCoord(
@@ -134,7 +152,8 @@ function projectMarkerAnchor(state, x, y, elevation) {
         CAMERA_CENTER.topY +
         state.camera.offsetY +
         (rotated.y * TOPDOWN_CONFIG.cellSize) +
-        10
+        10 -
+        stackOffset
     };
   }
 
@@ -142,7 +161,7 @@ function projectMarkerAnchor(state, x, y, elevation) {
 
   return {
     x: base.x + state.camera.offsetX,
-    y: base.y + state.camera.offsetY - 34
+    y: base.y + state.camera.offsetY - 34 - stackOffset
   };
 }
 
