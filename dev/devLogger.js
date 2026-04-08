@@ -5,12 +5,12 @@
 // - spawn
 // - move
 // - targeting
-// - future combat math
+// - to-hit / damage debugging
 //
 // Does NOT depend on rendering.
 // UI can subscribe to it or poll it.
 
-const DEFAULT_MAX_ENTRIES = 10;
+const DEFAULT_MAX_ENTRIES = 25;
 
 class DevLogger {
   constructor(maxEntries = DEFAULT_MAX_ENTRIES) {
@@ -18,10 +18,6 @@ class DevLogger {
     this.entries = [];
     this.listeners = new Set();
   }
-
-  // -----------------------------
-  // Core logging
-  // -----------------------------
 
   log(message) {
     const entry = {
@@ -50,10 +46,6 @@ class DevLogger {
     this._notify();
   }
 
-  // -----------------------------
-  // Getters
-  // -----------------------------
-
   getEntries() {
     return [...this.entries];
   }
@@ -73,16 +65,10 @@ class DevLogger {
     });
   }
 
-  // -----------------------------
-  // Event subscription (UI hook)
-  // -----------------------------
-
   subscribe(callback) {
     if (typeof callback !== "function") return;
 
     this.listeners.add(callback);
-
-    // immediately send current state
     callback(this.getEntries());
 
     return () => {
@@ -101,17 +87,9 @@ class DevLogger {
   }
 }
 
-// -----------------------------
-// Singleton instance
-// -----------------------------
-
 const devLogger = new DevLogger();
 
 export default devLogger;
-
-// -----------------------------
-// Helper wrappers (clean usage)
-// -----------------------------
 
 export function logDev(message) {
   devLogger.log(message);
