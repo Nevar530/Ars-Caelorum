@@ -1,6 +1,6 @@
 // src/action.js
 
-import { getMechById } from "./mechs.js";
+import { getMechAt, getMechById } from "./mechs.js";
 import {
   getLineOfSightResult,
   getMissileLineOfSightResult
@@ -126,7 +126,7 @@ export function updateActionTargetPreview(state) {
 
   const fireArcRange = profile.fireArc?.range ?? DEFAULT_FIRE_ARC_RANGE;
   const fireArcTiles = getFireArcTiles(activeMech, fireArcRange);
-  const candidateTiles = getWeaponCandidateTiles(activeMech, profile);
+  const candidateTiles = getWeaponCandidateTiles(state, activeMech, profile);
   const arcFilteredTiles = applyFireArcFilter(profile, fireArcTiles, candidateTiles);
   const evaluatedTiles = evaluateLosForTargets(state, activeMech, profile, arcFilteredTiles);
   const validTiles = evaluatedTiles.filter((tile) => tile.visible === true);
@@ -168,6 +168,7 @@ export function confirmActionTarget(state) {
     attackName: profile.name,
     weaponType: profile.weaponType,
     target: { x: chosenTarget.x, y: chosenTarget.y },
+    targetMechId: chosenTarget.targetMechId ?? null,
     targetCover: chosenTarget.cover ?? "none",
     targetLos: chosenTarget.los ?? null,
     targetDistance: chosenTarget.distance ?? null,
@@ -443,16 +444,42 @@ function evaluateMissileTargetWithSpotter(state, mech, profile, targetX, targetY
   };
 }
 
-function getWeaponCandidateTiles(mech, profile) {
+function getWeaponCandidateTiles(state, mech, profile) {
   const targetingKind = profile.targeting?.kind;
   const minRange = profile.targeting?.minRange ?? 1;
   const maxRange = profile.targeting?.maxRange ?? 1;
 
   switch (targetingKind) {
     case "cardinal_adjacent":
-      return getCardinalAdjacentTilesForFacing(mech.x, mech.y, mech.facing);
+      return getCardinalAdjacentTilesForFacing(mech.x, mech.y, mech.facing)
+        .map((tile) => {
+          const targetMech = getMechAt(state.mechs, tile.x, tile.y);
+          if (!targetMech || targetMech.instanceId === mech.instanceId) return null;
+          if (targetMech.team === mech.team) return null;
+
+          return {
+            ...tile,
+            targetMechId: targetMech.instanceId
+          };
+        })
+        .filter(Boolean);
 
     case "direct_tile":
+      return state.mechs
+        .filter((unit) => {
+          if (!unit) return false;
+          if (unit.instanceId === mech.instanceId) return false;
+          if (unit.team === mech.team) return false;
+
+          const distance = manhattanDistance(mech.x, mech.y, unit.x, unit.y);
+          return distance >= minRange && distance <= maxRange;
+        })
+        .map((unit) => ({
+          x: unit.x,
+          y: unit.y,
+          targetMechId: unit.instanceId
+        }));
+
     case "fire_arc_tile":
       return getTilesInRangeBand(mech.x, mech.y, minRange, maxRange);
 
