@@ -6,13 +6,9 @@ import {
   getMissileLineOfSightResult
 } from "./los.js";
 
-const RANGE_BAND_THRESHOLDS = {
-  pointBlank: { min: 1, max: 1 },
-  close: { min: 2, max: 4 },
-  mid: { min: 5, max: 10 },
-  far: { min: 11, max: 20 },
-  extreme: { min: 21, max: Infinity }
-};
+const DEFAULT_FIRE_ARC_RANGE = 20;
+const DEFAULT_DIRECT_MAX_RANGE = 20;
+const DEFAULT_MISSILE_MAX_RANGE = 20;
 
 export function createActionUiState() {
   return {
@@ -128,7 +124,7 @@ export function updateActionTargetPreview(state) {
     return;
   }
 
-  const fireArcRange = profile.fireArc?.range ?? 10;
+  const fireArcRange = profile.fireArc?.range ?? DEFAULT_FIRE_ARC_RANGE;
   const fireArcTiles = getFireArcTiles(activeMech, fireArcRange);
   const candidateTiles = getWeaponCandidateTiles(activeMech, profile);
   const arcFilteredTiles = applyFireArcFilter(profile, fireArcTiles, candidateTiles);
@@ -175,8 +171,6 @@ export function confirmActionTarget(state) {
     targetCover: chosenTarget.cover ?? "none",
     targetLos: chosenTarget.los ?? null,
     targetDistance: chosenTarget.distance ?? null,
-    targetRangeBand: chosenTarget.rangeBand ?? null,
-    targetRangeModifier: chosenTarget.rangeModifier ?? null,
     missileSource: chosenTarget.missileSource ?? "shooter",
     spotterId: chosenTarget.spotterId ?? null,
     spotterPosition: chosenTarget.spotterPosition ?? null,
@@ -215,18 +209,6 @@ export function cancelActionState(state) {
   return false;
 }
 
-export function getRangeBandForDistance(distance) {
-  if (!Number.isFinite(distance) || distance < 1) return null;
-
-  for (const [band, rule] of Object.entries(RANGE_BAND_THRESHOLDS)) {
-    if (distance >= rule.min && distance <= rule.max) {
-      return band;
-    }
-  }
-
-  return "extreme";
-}
-
 function getActiveMech(state) {
   return getMechById(state.mechs, state.turn.activeMechId);
 }
@@ -242,7 +224,7 @@ function normalizeWeaponToActionProfile(weapon) {
       name: weapon.name,
       scale,
       weaponType: "melee",
-      fireArc: weapon.fireArc ?? { kind: "fan", range: 10 },
+      fireArc: weapon.fireArc ?? { kind: "fan", range: DEFAULT_FIRE_ARC_RANGE },
       targeting: {
         kind: "cardinal_adjacent",
         minRange: 1,
@@ -250,13 +232,6 @@ function normalizeWeaponToActionProfile(weapon) {
       },
       effect: weapon.effect ?? { kind: "single" },
       losType: "direct",
-      rangeBands: weapon.rangeBands ?? {
-        pointBlank: 0,
-        close: 0,
-        mid: 0,
-        far: 0,
-        extreme: 0
-      },
       damage: weapon.damage ?? 0
     };
   }
@@ -267,17 +242,16 @@ function normalizeWeaponToActionProfile(weapon) {
       name: weapon.name,
       scale,
       weaponType: "missile",
-      fireArc: weapon.fireArc ?? { kind: "fan", range: 10 },
+      fireArc: weapon.fireArc ?? { kind: "fan", range: DEFAULT_FIRE_ARC_RANGE },
       targeting: {
         kind: "fire_arc_tile",
         minRange: range.min ?? 1,
-        maxRange: range.max ?? 6
+        maxRange: range.max ?? DEFAULT_MISSILE_MAX_RANGE
       },
       effect: weapon.effect ?? { kind: "circle", radius: 3 },
       losType: weapon.losType ?? "missile",
-      rangeBands: weapon.rangeBands ?? {},
-      splashTn: weapon.splashTn ?? {},
-      damage: weapon.damage ?? 0
+      damage: weapon.damage ?? 0,
+      splashDamage: weapon.splashDamage ?? {}
     };
   }
 
@@ -286,15 +260,14 @@ function normalizeWeaponToActionProfile(weapon) {
     name: weapon.name,
     scale,
     weaponType: "direct",
-    fireArc: weapon.fireArc ?? { kind: "fan", range: 10 },
+    fireArc: weapon.fireArc ?? { kind: "fan", range: DEFAULT_FIRE_ARC_RANGE },
     targeting: {
-      kind: "range_band",
+      kind: "direct_tile",
       minRange: range.min ?? 1,
-      maxRange: range.max ?? 20
+      maxRange: range.max ?? DEFAULT_DIRECT_MAX_RANGE
     },
     effect: weapon.effect ?? { kind: "single" },
     losType: weapon.losType ?? "direct",
-    rangeBands: weapon.rangeBands ?? {},
     damage: weapon.damage ?? 0
   };
 }
@@ -341,16 +314,12 @@ function evaluateLosForTargets(state, mech, profile, candidateTiles) {
       visible: true,
       cover: "none",
       los: null,
-      distance: manhattanDistance(mech.x, mech.y, tile.x, tile.y),
-      rangeBand: "pointBlank",
-      rangeModifier: profile.rangeBands?.pointBlank ?? 0
+      distance: manhattanDistance(mech.x, mech.y, tile.x, tile.y)
     }));
   }
 
   return candidateTiles.map((tile) => {
     const distance = manhattanDistance(mech.x, mech.y, tile.x, tile.y);
-    const rangeBand = getRangeBandForDistance(distance);
-    const rangeModifier = getRangeModifier(profile, rangeBand);
 
     if (isMissile) {
       const missileTarget = evaluateMissileTargetWithSpotter(
@@ -367,8 +336,6 @@ function evaluateLosForTargets(state, mech, profile, candidateTiles) {
         cover: "none",
         los: missileTarget.los,
         distance,
-        rangeBand,
-        rangeModifier,
         missileSource: missileTarget.missileSource,
         spotterId: missileTarget.spotterId,
         spotterPosition: missileTarget.spotterPosition,
@@ -393,9 +360,7 @@ function evaluateLosForTargets(state, mech, profile, candidateTiles) {
       visible: los.visible === true,
       cover: los.cover,
       los,
-      distance,
-      rangeBand,
-      rangeModifier
+      distance
     };
   });
 }
@@ -413,7 +378,6 @@ function evaluateMissileTargetWithSpotter(state, mech, profile, targetX, targetY
     }
   );
 
-  // Shooter has valid missile LOS
   if (shooterLos.visible === true) {
     return {
       visible: true,
@@ -425,9 +389,8 @@ function evaluateMissileTargetWithSpotter(state, mech, profile, targetX, targetY
     };
   }
 
-  // Shooter is blocked, check same-team spotters closest -> farthest
   const minRange = profile.targeting?.minRange ?? 1;
-  const maxRange = profile.targeting?.maxRange ?? 6;
+  const maxRange = profile.targeting?.maxRange ?? DEFAULT_MISSILE_MAX_RANGE;
 
   const spotters = state.mechs
     .filter((unit) => {
@@ -470,7 +433,6 @@ function evaluateMissileTargetWithSpotter(state, mech, profile, targetX, targetY
     }
   }
 
-  // No valid spotter found, keep shooter LOS so render can show red proof
   return {
     visible: false,
     los: shooterLos,
@@ -479,12 +441,6 @@ function evaluateMissileTargetWithSpotter(state, mech, profile, targetX, targetY
     spotterPosition: null,
     validationReason: "blocked_no_spotter"
   };
-}
-
-
-function getRangeModifier(profile, rangeBand) {
-  if (!rangeBand) return 0;
-  return profile.rangeBands?.[rangeBand] ?? 0;
 }
 
 function getWeaponCandidateTiles(mech, profile) {
@@ -496,9 +452,7 @@ function getWeaponCandidateTiles(mech, profile) {
     case "cardinal_adjacent":
       return getCardinalAdjacentTilesForFacing(mech.x, mech.y, mech.facing);
 
-    case "range_band":
-      return getTilesInRangeBand(mech.x, mech.y, minRange, maxRange);
-
+    case "direct_tile":
     case "fire_arc_tile":
       return getTilesInRangeBand(mech.x, mech.y, minRange, maxRange);
 
