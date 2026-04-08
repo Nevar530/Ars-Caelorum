@@ -27,11 +27,7 @@ import {
 import { initializeDevMenu } from "./dev/devMenu.js";
 import { logDev, setDevLogSize } from "./dev/devLogger.js";
 import { resolveHit } from "./src/combat/hitResolver.js";
-import {
-  addCombatTextMarker,
-  clearCombatTextMarkers,
-  renderCombatTextOverlay
-} from "./src/combat/combatTextOverlay.js";
+import { resolveDamage } from "./src/combat/damageResolver.js";
 
 const refs = {
   editor: document.getElementById("editor"),
@@ -83,7 +79,6 @@ async function init() {
   function render() {
     renderAll(state, refs);
     renderHud(state, refs);
-    renderCombatTextOverlay(state, refs);
   }
 
   function hideSplash() {
@@ -137,6 +132,19 @@ async function init() {
     state.focus.y = 0;
   }
 
+  function getNextEligiblePhaseIndex(order, startIndex) {
+    if (!Array.isArray(order)) return -1;
+
+    for (let i = Math.max(0, startIndex); i < order.length; i += 1) {
+      const unit = getMechById(state.mechs, order[i]);
+      if (!unit) continue;
+      if (unit.status === "disabled") continue;
+      return i;
+    }
+
+    return -1;
+  }
+
   function setActiveMechByCurrentTurnIndex() {
     const activeMechId = getActiveUnitFromPhaseOrder(state);
 
@@ -167,14 +175,13 @@ async function init() {
     if (!state.mechs.length) return;
 
     clearTransientUi();
-    clearCombatTextMarkers(state);
     state.turn.combatStarted = true;
     state.turn.round = 1;
     state.turn.phase = "move";
 
     rebuildOrdersAndLog();
 
-    state.turn.moveIndex = 0;
+    state.turn.moveIndex = getNextEligiblePhaseIndex(state.turn.moveOrder, 0);
     state.turn.actionIndex = -1;
     setActiveMechByCurrentTurnIndex();
 
@@ -187,8 +194,13 @@ async function init() {
 
   function beginActionPhase() {
     state.turn.phase = "action";
-    state.turn.actionIndex = 0;
     state.turn.moveIndex = state.turn.moveOrder.length;
+    state.turn.actionIndex = getNextEligiblePhaseIndex(state.turn.actionOrder, 0);
+
+    if (state.turn.actionIndex < 0) {
+      endRoundAndBeginNext();
+      return;
+    }
 
     clearTransientUi();
     setActiveMechByCurrentTurnIndex();
@@ -200,14 +212,13 @@ async function init() {
   }
 
   function endRoundAndBeginNext() {
-    clearCombatTextMarkers(state);
     state.turn.round += 1;
     state.turn.phase = "move";
 
     clearTransientUi();
     rebuildOrdersAndLog();
 
-    state.turn.moveIndex = 0;
+    state.turn.moveIndex = getNextEligiblePhaseIndex(state.turn.moveOrder, 0);
     state.turn.actionIndex = -1;
     setActiveMechByCurrentTurnIndex();
 
@@ -224,9 +235,12 @@ async function init() {
       activeMech.hasMoved = true;
     }
 
-    state.turn.moveIndex += 1;
+    state.turn.moveIndex = getNextEligiblePhaseIndex(
+      state.turn.moveOrder,
+      state.turn.moveIndex + 1
+    );
 
-    if (state.turn.moveIndex < state.turn.moveOrder.length) {
+    if (state.turn.moveIndex >= 0) {
       clearTransientUi();
       setActiveMechByCurrentTurnIndex();
       render();
@@ -242,9 +256,12 @@ async function init() {
       activeMech.hasActed = true;
     }
 
-    state.turn.actionIndex += 1;
+    state.turn.actionIndex = getNextEligiblePhaseIndex(
+      state.turn.actionOrder,
+      state.turn.actionIndex + 1
+    );
 
-    if (state.turn.actionIndex < state.turn.actionOrder.length) {
+    if (state.turn.actionIndex >= 0) {
       clearTransientUi();
       setActiveMechByCurrentTurnIndex();
       render();
@@ -524,15 +541,22 @@ async function init() {
           }
 
           for (const singleResult of hitResult.results) {
-            addCombatTextMarker(
-              state,
-              singleResult.targetId,
-              singleResult.hit ? "HIT" : "MISS",
-              { tone: singleResult.hit ? "hit" : "miss" }
-            );
-
             for (const line of singleResult.logs) {
               logDev(line);
+            }
+
+            if (singleResult.hit) {
+              const damageResult = resolveDamage(
+                state,
+                activeMech,
+                weapon,
+                state.ui.action.lastConfirmed,
+                singleResult
+              );
+
+              for (const line of damageResult.logs) {
+                logDev(line);
+              }
             }
           }
         }
@@ -657,7 +681,6 @@ async function init() {
   function resetCombatToSetup() {
     clearTransientUi();
     hideSplash();
-    clearCombatTextMarkers(state);
 
     state.turn.activeMechId = null;
     state.turn.round = 1;
