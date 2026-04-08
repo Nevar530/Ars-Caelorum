@@ -28,6 +28,11 @@ import { initializeDevMenu } from "./dev/devMenu.js";
 import { logDev, setDevLogSize } from "./dev/devLogger.js";
 import { resolveHit } from "./src/combat/hitResolver.js";
 import { resolveDamage } from "./src/combat/damageResolver.js";
+import {
+  addCombatTextMarker,
+  clearCombatTextMarkers,
+  renderCombatTextOverlay
+} from "./src/combat/combatTextOverlay.js";
 
 const refs = {
   editor: document.getElementById("editor"),
@@ -79,6 +84,7 @@ async function init() {
   function render() {
     renderAll(state, refs);
     renderHud(state, refs);
+    renderCombatTextOverlay(state, refs);
   }
 
   function hideSplash() {
@@ -175,6 +181,7 @@ async function init() {
     if (!state.mechs.length) return;
 
     clearTransientUi();
+    clearCombatTextMarkers(state);
     state.turn.combatStarted = true;
     state.turn.round = 1;
     state.turn.phase = "move";
@@ -212,6 +219,7 @@ async function init() {
   }
 
   function endRoundAndBeginNext() {
+    clearCombatTextMarkers(state);
     state.turn.round += 1;
     state.turn.phase = "move";
 
@@ -541,6 +549,13 @@ async function init() {
           }
 
           for (const singleResult of hitResult.results) {
+            addCombatTextMarker(
+              state,
+              singleResult.targetId,
+              singleResult.hit ? "HIT" : "MISS",
+              { tone: singleResult.hit ? "hit" : "miss" }
+            );
+
             for (const line of singleResult.logs) {
               logDev(line);
             }
@@ -556,6 +571,37 @@ async function init() {
 
               for (const line of damageResult.logs) {
                 logDev(line);
+              }
+
+              if (damageResult.result) {
+                const dr = damageResult.result;
+
+                if (dr.shieldDamage > 0) {
+                  addCombatTextMarker(
+                    state,
+                    dr.targetId,
+                    `-${dr.shieldDamage} SHD`,
+                    { tone: "shield" }
+                  );
+                }
+
+                if (dr.coreDamage > 0) {
+                  addCombatTextMarker(
+                    state,
+                    dr.targetId,
+                    `-${dr.coreDamage} CORE`,
+                    { tone: "core" }
+                  );
+                }
+
+                if (dr.statusAfter === "disabled") {
+                  addCombatTextMarker(
+                    state,
+                    dr.targetId,
+                    "DISABLED",
+                    { tone: "disabled" }
+                  );
+                }
               }
             }
           }
@@ -681,6 +727,7 @@ async function init() {
   function resetCombatToSetup() {
     clearTransientUi();
     hideSplash();
+    clearCombatTextMarkers(state);
 
     state.turn.activeMechId = null;
     state.turn.round = 1;
