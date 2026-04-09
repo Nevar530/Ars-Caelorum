@@ -48,21 +48,10 @@ export function updateCameraFraming(state, refs) {
   const rawBounds = getMapScreenBoundsRaw(state);
   const offsetLimits = getCameraOffsetLimits(rawBounds, viewport);
 
-  const focusTile = state.map?.tiles?.find?.(() => false); // noop guard for shape changes
-  const actualFocusTile = state.map ? null : focusTile;
-  void actualFocusTile;
-
-  const tile = state.map ? null : null;
-  void tile;
-
-  const focusElevation =
-    state.map?.[0] === undefined
-      ? (state.map && state.focus ? undefined : undefined)
-      : undefined;
-  void focusElevation;
-
   const safeElevation =
-    state.map && typeof state.focus?.x === "number" && typeof state.focus?.y === "number"
+    state.map &&
+    typeof state.focus?.x === "number" &&
+    typeof state.focus?.y === "number"
       ? (state.map[state.focus.y]?.[state.focus.x]?.elevation ?? 0)
       : 0;
 
