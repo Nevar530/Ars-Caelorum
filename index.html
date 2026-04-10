@@ -10,10 +10,17 @@
   <div class="app">
     <aside class="sidebar">
       <div class="panel-title">Ars Caelorum</div>
-      <div class="panel-sub">Mech Map Editor</div>
+      <div class="panel-sub">Map Editor</div>
       <div class="panel-sub">Left click = raise · Right click = lower</div>
-      <div class="panel-sub">1 mech tile = 4×4 human tiles</div>
+      <div class="panel-sub">1 mech tile = 4×4 detail cells</div>
       <div class="panel-sub">R = Tactical View Toggle</div>
+
+      <div style="display:flex; gap:8px; margin:10px 0 8px;">
+        <button id="editorModeMech" type="button">Mech Tile Edit</button>
+        <button id="editorModeDetail" type="button">Detail Cell Edit</button>
+      </div>
+
+      <div id="editorModeLabel" class="panel-sub">Editor Mode: Mech Tiles</div>
 
       <svg
         id="editor"
@@ -22,30 +29,30 @@
       ></svg>
     </aside>
 
-<main class="main">
-<div id="devToolbar" class="toolbar">
-  <button id="rotateLeft" type="button">⟲ Rotate Left</button>
-  <button id="rotateRight" type="button">⟳ Rotate Right</button>
-  <button id="toggleView" type="button">Toggle Tactical (R)</button>
-  <button id="resetMap" type="button">Reset Map</button>
-</div>
+    <main class="main">
+      <div id="devToolbar" class="toolbar">
+        <button id="rotateLeft" type="button">⟲ Rotate Left</button>
+        <button id="rotateRight" type="button">⟳ Rotate Right</button>
+        <button id="toggleView" type="button">Toggle Tactical (R)</button>
+        <button id="resetMap" type="button">Reset Map</button>
+      </div>
 
-  <div id="combatRibbon" class="combat-ribbon" aria-label="Combat initiative ribbon"></div>
-  <div id="combatOverlay" class="combat-overlay" aria-label="Combat overlay"></div>
+      <div id="combatRibbon" class="combat-ribbon" aria-label="Combat initiative ribbon"></div>
+      <div id="combatOverlay" class="combat-overlay" aria-label="Combat overlay"></div>
 
-  <div class="stage">
-    <svg id="board" viewBox="0 0 1400 900" aria-label="Isometric tactics board">
-      <g id="world-scene"></g>
-      <g id="world-ui"></g>
-    </svg>
-  </div>
+      <div class="stage">
+        <svg id="board" viewBox="0 0 1400 900" aria-label="Isometric tactics board">
+          <g id="world-scene"></g>
+          <g id="world-ui"></g>
+        </svg>
+      </div>
 
-  <section id="hudRoot" class="hud" aria-label="Tactical bottom HUD">
-    <div id="hudLeft" class="hud-panel hud-panel-left"></div>
-    <div id="hudCenter" class="hud-panel hud-panel-center"></div>
-    <div id="hudRight" class="hud-panel hud-panel-right"></div>
-  </section>
-</main>
+      <section id="hudRoot" class="hud" aria-label="Tactical bottom HUD">
+        <div id="hudLeft" class="hud-panel hud-panel-left"></div>
+        <div id="hudCenter" class="hud-panel hud-panel-center"></div>
+        <div id="hudRight" class="hud-panel hud-panel-right"></div>
+      </section>
+    </main>
   </div>
 
   <script type="module" src="./script.js"></script>
