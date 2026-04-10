@@ -1,6 +1,6 @@
 // src/render/renderUnits.js
 
-import { getTile } from "../map.js";
+import { getTile, getTileRenderElevation } from "../map.js";
 import { RENDER_CONFIG } from "../config.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { projectScene, TOPDOWN_CONFIG } from "./projection.js";
@@ -10,6 +10,8 @@ export function drawMech(state, mech, screenX, screenY, parent, isActive = false
   const tile = getTile(state.map, mech.x, mech.y);
 
   if (!tile) return;
+
+  const tileElevation = getTileRenderElevation(tile);
 
   if (state.ui.viewMode === "top") {
     const cellX = screenX + (TOPDOWN_CONFIG.cellSize / 2);
@@ -25,7 +27,7 @@ export function drawMech(state, mech, screenX, screenY, parent, isActive = false
     body.setAttribute("class", getTopMechBodyClass(state, mech, isActive));
 
     const facingMark = makePolygon(
-      getTopFacingStripePointsFromWorld(state, mech, tile.elevation, cellX, cellY),
+      getTopFacingStripePointsFromWorld(state, mech, tileElevation, cellX, cellY),
       getTopFacingClass(state, mech),
       "currentColor"
     );
@@ -107,7 +109,7 @@ export function drawMech(state, mech, screenX, screenY, parent, isActive = false
         getIsoTopStripePointsFromWorld(
           state,
           mech,
-          tile.elevation + level,
+          tileElevation + level,
           anchorX,
           anchorY - levelOffset,
           cubeHeight,
@@ -219,45 +221,40 @@ export function getTopFacingStripePointsFromWorld(state, mech, elevation, center
 
   const vx = to.x - from.x;
   const vy = to.y - from.y;
-  const length = Math.hypot(vx, vy) || 1;
-  const ux = vx / length;
-  const uy = vy / length;
-  const px = -uy;
-  const py = ux;
+  const len = Math.hypot(vx, vy) || 1;
+  const nx = vx / len;
+  const ny = vy / len;
+  const px = -ny;
+  const py = nx;
 
-  const start = {
-    x: centerX - (ux * 4),
-    y: centerY - (uy * 4)
-  };
-
-  const end = {
-    x: centerX + (ux * 10),
-    y: centerY + (uy * 10)
-  };
-
-  const halfThickness = 2.8;
+  const stripeLength = 9;
+  const stripeWidth = 6;
 
   return [
     {
-      x: start.x + (px * halfThickness),
-      y: start.y + (py * halfThickness)
+      x: centerX + (nx * stripeLength) + (px * stripeWidth),
+      y: centerY + (ny * stripeLength) + (py * stripeWidth)
     },
     {
-      x: end.x + (px * halfThickness),
-      y: end.y + (py * halfThickness)
+      x: centerX + (nx * stripeLength) - (px * stripeWidth),
+      y: centerY + (ny * stripeLength) - (py * stripeWidth)
     },
     {
-      x: end.x - (px * halfThickness),
-      y: end.y - (py * halfThickness)
-    },
-    {
-      x: start.x - (px * halfThickness),
-      y: start.y - (py * halfThickness)
+      x: centerX - (nx * 2),
+      y: centerY - (ny * 2)
     }
   ];
 }
 
-export function getIsoTopStripePointsFromWorld(state, mech, elevation, anchorX, anchorY, height, halfH) {
+export function getIsoTopStripePointsFromWorld(
+  state,
+  mech,
+  elevation,
+  anchorX,
+  anchorY,
+  cubeHeight,
+  halfH
+) {
   const facing = getWorldFacing(state, mech);
   const { dx, dy } = facingToWorldDelta(facing);
 
@@ -266,45 +263,30 @@ export function getIsoTopStripePointsFromWorld(state, mech, elevation, anchorX, 
 
   const vx = to.x - from.x;
   const vy = to.y - from.y;
-  const length = Math.hypot(vx, vy) || 1;
-  const ux = vx / length;
-  const uy = vy / length;
-  const px = -uy;
-  const py = ux;
+  const len = Math.hypot(vx, vy) || 1;
+  const nx = vx / len;
+  const ny = vy / len;
+  const px = -ny;
+  const py = nx;
 
-  const center = {
-    x: anchorX,
-    y: anchorY - height
-  };
+  const centerX = anchorX;
+  const centerY = anchorY - cubeHeight - (halfH / 2);
 
-  const start = {
-    x: center.x - (ux * 3),
-    y: center.y - (uy * 3)
-  };
-
-  const end = {
-    x: center.x + (ux * 12),
-    y: center.y + (uy * 12)
-  };
-
-  const halfThickness = 2.4;
+  const stripeLength = 12;
+  const stripeWidth = 6;
 
   return [
     {
-      x: start.x + (px * halfThickness),
-      y: start.y + (py * halfThickness)
+      x: centerX + (nx * stripeLength) + (px * stripeWidth),
+      y: centerY + (ny * stripeLength) + (py * stripeWidth)
     },
     {
-      x: end.x + (px * halfThickness),
-      y: end.y + (py * halfThickness)
+      x: centerX + (nx * stripeLength) - (px * stripeWidth),
+      y: centerY + (ny * stripeLength) - (py * stripeWidth)
     },
     {
-      x: end.x - (px * halfThickness),
-      y: end.y - (py * halfThickness)
-    },
-    {
-      x: start.x - (px * halfThickness),
-      y: start.y - (py * halfThickness)
+      x: centerX - (nx * 2),
+      y: centerY - (ny * 2)
     }
   ];
 }
