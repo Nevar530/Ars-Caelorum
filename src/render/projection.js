@@ -4,9 +4,7 @@ import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
 import { rotateCoord, getTileEffectiveElevation } from "../map.js";
 
 export const TOPDOWN_CONFIG = {
-  cellSize: 56,
-  originX: 460,
-  originY: 130
+  cellSize: 56
 };
 
 export const CAMERA_CENTER = {
@@ -58,7 +56,6 @@ export function updateCameraFraming(state, refs) {
       : null;
 
   const safeElevation = safeTile ? getTileEffectiveElevation(safeTile) : 0;
-
   const focusScreen = projectScene(state, state.focus.x, state.focus.y, safeElevation);
 
   const deadZone = {
@@ -86,17 +83,8 @@ export function updateCameraFraming(state, refs) {
   state.camera.offsetX += dx;
   state.camera.offsetY += dy;
 
-  state.camera.offsetX = clamp(
-    state.camera.offsetX,
-    offsetLimits.minX,
-    offsetLimits.maxX
-  );
-
-  state.camera.offsetY = clamp(
-    state.camera.offsetY,
-    offsetLimits.minY,
-    offsetLimits.maxY
-  );
+  state.camera.offsetX = clamp(state.camera.offsetX, offsetLimits.minX, offsetLimits.maxX);
+  state.camera.offsetY = clamp(state.camera.offsetY, offsetLimits.minY, offsetLimits.maxY);
 }
 
 export function getSceneViewport(refs) {
@@ -141,7 +129,11 @@ export function getCameraOffsetLimits(rawBounds, viewport) {
 
 export function getMapScreenBoundsRaw(state) {
   if (state.ui?.viewMode === "top") {
-    return getTopDownBoundsRaw();
+    const minX = CAMERA_CENTER.topX;
+    const minY = CAMERA_CENTER.topY;
+    const maxX = CAMERA_CENTER.topX + (MAP_CONFIG.mechWidth * TOPDOWN_CONFIG.cellSize);
+    const maxY = CAMERA_CENTER.topY + (MAP_CONFIG.mechHeight * TOPDOWN_CONFIG.cellSize);
+    return { minX, maxX, minY, maxY };
   }
 
   const corners = [
@@ -168,15 +160,6 @@ export function getMapScreenBoundsRaw(state) {
     minY: Math.min(...ys),
     maxY: Math.max(...ys)
   };
-}
-
-function getTopDownBoundsRaw() {
-  const minX = CAMERA_CENTER.topX;
-  const minY = CAMERA_CENTER.topY;
-  const maxX = CAMERA_CENTER.topX + (MAP_CONFIG.mechWidth * TOPDOWN_CONFIG.cellSize);
-  const maxY = CAMERA_CENTER.topY + (MAP_CONFIG.mechHeight * TOPDOWN_CONFIG.cellSize);
-
-  return { minX, maxX, minY, maxY };
 }
 
 export function projectScene(state, x, y, elevation = 0, size = 1) {
