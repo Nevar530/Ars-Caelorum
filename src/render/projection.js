@@ -29,6 +29,8 @@ export const LOS_HEIGHT_PROFILES = {
   }
 };
 
+const EPSILON = 1e-9;
+
 export function ensureCameraState(state) {
   if (!state.camera) {
     state.camera = { angle: 0 };
@@ -182,7 +184,7 @@ export function projectIso(state, x, y, elevation = 0) {
 }
 
 export function projectIsoRaw(x, y, elevation = 0, rotation = 0) {
-  const rotated = rotateCoord(x, y, MAP_CONFIG.mechWidth, MAP_CONFIG.mechHeight, rotation);
+  const rotated = rotateSceneCoord(x, y, rotation);
 
   const isoX =
     (rotated.x - rotated.y) * (RENDER_CONFIG.isoTileWidth / 2) + CAMERA_CENTER.isoX;
@@ -210,7 +212,7 @@ export function getSceneSortKey(state, x, y, elevation = 0) {
     return (y * 1000) + x;
   }
 
-  const rotated = rotateCoord(x, y, MAP_CONFIG.mechWidth, MAP_CONFIG.mechHeight, state.rotation);
+  const rotated = rotateSceneCoord(x, y, state.rotation);
   return (rotated.x + rotated.y) * 1000 + (elevation * 10);
 }
 
@@ -251,6 +253,59 @@ export function getLosRayEndPoint(state, rayTrace, fallbackX, fallbackY, fallbac
   }
 
   return projectLosPoint(state, fallbackX, fallbackY, fallbackHeight);
+}
+
+function rotateSceneCoord(x, y, rotation = 0) {
+  const normalizedRotation = ((rotation % 4) + 4) % 4;
+
+  if (isWholeTileCoord(x) && isWholeTileCoord(y)) {
+    return rotateCoord(
+      x,
+      y,
+      MAP_CONFIG.mechWidth,
+      MAP_CONFIG.mechHeight,
+      normalizedRotation
+    );
+  }
+
+  const baseX = Math.floor(x);
+  const baseY = Math.floor(y);
+  const localX = x - baseX;
+  const localY = y - baseY;
+
+  const rotatedBase = rotateCoord(
+    baseX,
+    baseY,
+    MAP_CONFIG.mechWidth,
+    MAP_CONFIG.mechHeight,
+    normalizedRotation
+  );
+
+  const rotatedLocal = rotateLocalOffset(localX, localY, normalizedRotation);
+
+  return {
+    x: rotatedBase.x + rotatedLocal.x,
+    y: rotatedBase.y + rotatedLocal.y
+  };
+}
+
+function rotateLocalOffset(localX, localY, rotation = 0) {
+  switch (rotation) {
+    case 0:
+      return { x: localX, y: localY };
+    case 1:
+      return { x: 1 - localY, y: localX };
+    case 2:
+      return { x: 1 - localX, y: 1 - localY };
+    case 3:
+      return { x: localY, y: 1 - localX };
+    default:
+      return { x: localX, y: localY };
+  }
+}
+
+function isWholeTileCoord(value) {
+  return Math.abs(value - Math.round(value)) < EPSILON;
 }
 
 function clamp(value, min, max) {
