@@ -24,8 +24,8 @@ export function drawSceneActionOverlayForTile(state, item, parent) {
   let stroke = null;
 
   if (fireArc.has(key)) {
-    fill = "rgba(255, 176, 0, 0.05)";
-    stroke = "rgba(255, 176, 0, 0.18)";
+    fill = "rgba(255, 176, 0, 0.10)";
+    stroke = "rgba(255, 176, 0, 0.24)";
   }
 
   const evaluatedTarget = targetMap.get(key);
@@ -34,20 +34,20 @@ export function drawSceneActionOverlayForTile(state, item, parent) {
     const visible = evaluatedTarget.visible ?? evaluatedTarget.los?.visible ?? false;
 
     if (visible && cover === "none") {
-      fill = "rgba(82, 208, 146, 0.12)";
-      stroke = "rgba(82, 208, 146, 0.60)";
+      fill = "rgba(82, 208, 146, 0.20)";
+      stroke = "rgba(82, 208, 146, 0.68)";
     } else if (visible && cover === "half") {
-      fill = "rgba(240, 176, 0, 0.14)";
-      stroke = "rgba(240, 176, 0, 0.75)";
+      fill = "rgba(240, 176, 0, 0.22)";
+      stroke = "rgba(240, 176, 0, 0.82)";
     } else {
-      fill = "rgba(255, 74, 74, 0.14)";
-      stroke = "rgba(255, 74, 74, 0.72)";
+      fill = "rgba(255, 74, 74, 0.22)";
+      stroke = "rgba(255, 74, 74, 0.82)";
     }
   }
 
   if (effectTiles.has(key)) {
-    fill = "rgba(255, 74, 74, 0.14)";
-    stroke = "rgba(255, 74, 74, 0.82)";
+    fill = "rgba(255, 74, 74, 0.22)";
+    stroke = "rgba(255, 74, 74, 0.90)";
   }
 
   if (!fill || !stroke) return;
@@ -67,8 +67,8 @@ export function drawSceneFocusOverlayForTile(state, item, parent) {
     drawTopOverlayBox(
       item.screenX,
       item.screenY,
-      "rgba(240, 176, 0, 0.04)",
-      "rgba(240, 176, 0, 0.95)",
+      "rgba(240, 176, 0, 0.08)",
+      "rgba(240, 176, 0, 0.98)",
       parent
     );
     return;
@@ -78,8 +78,8 @@ export function drawSceneFocusOverlayForTile(state, item, parent) {
     state,
     item,
     "focus-tile",
-    "rgba(240, 176, 0, 0.04)",
-    "rgba(240, 176, 0, 0.95)",
+    "rgba(240, 176, 0, 0.08)",
+    "rgba(240, 176, 0, 0.98)",
     parent
   );
 }
@@ -97,8 +97,8 @@ export function drawScenePathOverlayForTile(state, item, parent) {
     drawTopOverlayBox(
       item.screenX,
       item.screenY,
-      "rgba(240, 176, 0, 0.10)",
-      "rgba(240, 176, 0, 0.90)",
+      "rgba(240, 176, 0, 0.18)",
+      "rgba(240, 176, 0, 0.92)",
       parent
     );
 
@@ -120,8 +120,8 @@ export function drawScenePathOverlayForTile(state, item, parent) {
     state,
     item,
     "move-path-tile",
-    "rgba(240, 176, 0, 0.10)",
-    "rgba(240, 176, 0, 0.85)",
+    "rgba(240, 176, 0, 0.18)",
+    "rgba(240, 176, 0, 0.90)",
     parent
   );
 
@@ -142,8 +142,8 @@ export function drawSceneMoveOverlay(state, item, parent, text) {
     drawTopOverlayBox(
       item.screenX,
       item.screenY,
-      "rgba(80, 180, 255, 0.10)",
-      "rgba(80, 180, 255, 0.35)",
+      "rgba(80, 180, 255, 0.16)",
+      "rgba(80, 180, 255, 0.42)",
       parent
     );
 
@@ -162,8 +162,8 @@ export function drawSceneMoveOverlay(state, item, parent, text) {
     state,
     item,
     "move-range-tile",
-    "rgba(80, 180, 255, 0.10)",
-    "rgba(80, 180, 255, 0.35)",
+    "rgba(80, 180, 255, 0.16)",
+    "rgba(80, 180, 255, 0.42)",
     parent
   );
 
@@ -192,7 +192,8 @@ function drawOverlayForTile(state, item, className, fill, stroke, parent) {
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", "1.5");
+  poly.setAttribute("stroke-width", "2");
+  poly.setAttribute("paint-order", "stroke fill");
   parent.appendChild(poly);
 }
 
@@ -314,7 +315,8 @@ export function drawOverlayDiamond(screenX, screenY, className, fill, stroke, pa
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", "1.5");
+  poly.setAttribute("stroke-width", "2");
+  poly.setAttribute("paint-order", "stroke fill");
   parent.appendChild(poly);
 }
 
@@ -327,7 +329,8 @@ export function drawTopOverlayBox(screenX, screenY, fill, stroke, parent) {
   rect.setAttribute("rx", "8");
   rect.setAttribute("fill", fill);
   rect.setAttribute("stroke", stroke);
-  rect.setAttribute("stroke-width", "1.5");
+  rect.setAttribute("stroke-width", "2");
+  rect.setAttribute("paint-order", "stroke fill");
   parent.appendChild(rect);
 }
 
