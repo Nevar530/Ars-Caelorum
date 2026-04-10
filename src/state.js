@@ -53,7 +53,11 @@ export function createState({
       preMove: null,
 
       editor: {
-        mode: "mech"
+        mode: "mech",
+        selectedTile: {
+          x: 0,
+          y: 0
+        }
       },
 
       action: createActionUiState(),
