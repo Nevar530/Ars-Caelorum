@@ -18,7 +18,7 @@ export function createState({
     turn: {
       activeMechId: null,
       round: 1,
-      phase: "setup", // "setup" | "move" | "action"
+      phase: "setup",
       combatStarted: false,
 
       moveOrder: [],
@@ -51,6 +51,10 @@ export function createState({
       viewMode: "iso",
       facingPreview: null,
       preMove: null,
+
+      editor: {
+        mode: "mech"
+      },
 
       action: createActionUiState(),
 
