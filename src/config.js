@@ -1,5 +1,7 @@
 export const GAME_CONFIG = {
-  humanTilesPerMechTile: 4
+  humanTilesPerMechTile: 4,
+  detailSubdivisionsPerMechTile: 4,
+  detailElevationPerMechLevel: 4
 };
 
 export const MAP_CONFIG = {
