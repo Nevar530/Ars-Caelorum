@@ -1,7 +1,7 @@
 // src/render/projection.js
 
 import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
-import { rotateCoord } from "../map.js";
+import { rotateCoord, getTileEffectiveElevation } from "../map.js";
 
 export const TOPDOWN_CONFIG = {
   cellSize: 56,
@@ -48,12 +48,14 @@ export function updateCameraFraming(state, refs) {
   const rawBounds = getMapScreenBoundsRaw(state);
   const offsetLimits = getCameraOffsetLimits(rawBounds, viewport);
 
-  const safeElevation =
+  const safeTile =
     state.map &&
     typeof state.focus?.x === "number" &&
     typeof state.focus?.y === "number"
-      ? (state.map[state.focus.y]?.[state.focus.x]?.elevation ?? 0)
-      : 0;
+      ? state.map[state.focus.y]?.[state.focus.x] ?? null
+      : null;
+
+  const safeElevation = safeTile ? getTileEffectiveElevation(safeTile) : 0;
 
   const focusScreen = projectScene(state, state.focus.x, state.focus.y, safeElevation);
 
@@ -139,108 +141,82 @@ export function getMapScreenBoundsRaw(state) {
   const corners = [
     { x: 0, y: 0 },
     { x: MAP_CONFIG.mechWidth - 1, y: 0 },
-    { x: MAP_CONFIG.mechWidth - 1, y: MAP_CONFIG.mechHeight - 1 },
-    { x: 0, y: MAP_CONFIG.mechHeight - 1 }
+    { x: 0, y: MAP_CONFIG.mechHeight - 1 },
+    { x: MAP_CONFIG.mechWidth - 1, y: MAP_CONFIG.mechHeight - 1 }
   ];
 
-  const points = corners.map((corner) =>
-    projectSceneBase(state, corner.x, corner.y, 0)
-  );
+  const points = [];
 
-  if (state.ui.viewMode === "top") {
-    return {
-      minX: Math.min(...points.map((p) => p.x)),
-      maxX: Math.max(...points.map((p) => p.x)) + TOPDOWN_CONFIG.cellSize,
-      minY: Math.min(...points.map((p) => p.y)),
-      maxY: Math.max(...points.map((p) => p.y)) + TOPDOWN_CONFIG.cellSize
-    };
+  for (const corner of corners) {
+    for (const elevation of [0, MAP_CONFIG.maxElevation + 2]) {
+      points.push(projectIsoRaw(corner.x, corner.y, elevation, state.rotation));
+    }
   }
 
-  const halfW = RENDER_CONFIG.isoTileWidth / 2;
-  const tileBottomPad =
-    RENDER_CONFIG.isoTileHeight +
-    (MAP_CONFIG.maxElevation * RENDER_CONFIG.elevationStepPx);
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
 
   return {
-    minX: Math.min(...points.map((p) => p.x)) - halfW,
-    maxX: Math.max(...points.map((p) => p.x)) + halfW,
-    minY: Math.min(...points.map((p) => p.y)),
-    maxY: Math.max(...points.map((p) => p.y)) + tileBottomPad
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys)
   };
 }
 
-export function projectScene(state, x, y, elevation) {
-  const base = projectSceneBase(state, x, y, elevation);
-
-  return {
-    x: base.x + state.camera.offsetX,
-    y: base.y + state.camera.offsetY
-  };
-}
-
-export function projectSceneBase(state, x, y, elevation) {
-  if (state.ui.viewMode === "top") {
-    const snappedTurns = normalizedTurns(state);
-
-    const rotated = rotateCoord(
-      x,
-      y,
-      MAP_CONFIG.mechWidth,
-      MAP_CONFIG.mechHeight,
-      snappedTurns
-    );
-
-    return {
-      x: CAMERA_CENTER.topX + (rotated.x * TOPDOWN_CONFIG.cellSize),
-      y: CAMERA_CENTER.topY + (rotated.y * TOPDOWN_CONFIG.cellSize)
-    };
+export function projectScene(state, x, y, elevation = 0) {
+  if (state.ui?.viewMode === "top") {
+    return projectTopDown(state, x, y);
   }
 
-  const startTurns = ((Math.floor(state.camera.angle / 90) % 4) + 4) % 4;
-  const nextTurns = (startTurns + 1) % 4;
-  const blend = (state.camera.angle % 90) / 90;
+  return projectIso(state, x, y, elevation);
+}
 
-  const startRot = rotateCoord(
-    x,
-    y,
-    MAP_CONFIG.mechWidth,
-    MAP_CONFIG.mechHeight,
-    startTurns
-  );
-
-  const nextRot = rotateCoord(
-    x,
-    y,
-    MAP_CONFIG.mechWidth,
-    MAP_CONFIG.mechHeight,
-    nextTurns
-  );
-
-  const p0 = isoProjectRaw(startRot.x, startRot.y, elevation);
-  const p1 = isoProjectRaw(nextRot.x, nextRot.y, elevation);
+export function projectIso(state, x, y, elevation = 0) {
+  const raw = projectIsoRaw(x, y, elevation, state.rotation);
 
   return {
-    x: lerp(p0.x, p1.x, blend) + CAMERA_CENTER.isoX,
-    y: lerp(p0.y, p1.y, blend) + CAMERA_CENTER.isoY
+    x: raw.x + (state.camera?.offsetX ?? 0),
+    y: raw.y + (state.camera?.offsetY ?? 0)
   };
 }
 
-export function getSceneSortKey(state, x, y, elevation) {
-  const turns = normalizedTurns(state);
+export function projectIsoRaw(x, y, elevation = 0, rotation = 0) {
+  const rotated = rotateCoord(x, y, MAP_CONFIG.mechWidth, MAP_CONFIG.mechHeight, rotation);
 
-  const rotated = rotateCoord(
-    x,
-    y,
-    MAP_CONFIG.mechWidth,
-    MAP_CONFIG.mechHeight,
-    turns
-  );
+  const isoX =
+    (rotated.x - rotated.y) * (RENDER_CONFIG.isoTileWidth / 2) + CAMERA_CENTER.isoX;
 
-  return (rotated.x + rotated.y) * 100 + elevation;
+  const isoY =
+    (rotated.x + rotated.y) * (RENDER_CONFIG.isoTileHeight / 2) +
+    CAMERA_CENTER.isoY -
+    (elevation * RENDER_CONFIG.elevationStepPx);
+
+  return {
+    x: isoX,
+    y: isoY
+  };
+}
+
+export function projectTopDown(state, x, y) {
+  return {
+    x: TOPDOWN_CONFIG.originX + (x * TOPDOWN_CONFIG.cellSize),
+    y: TOPDOWN_CONFIG.originY + (y * TOPDOWN_CONFIG.cellSize)
+  };
+}
+
+export function getSceneSortKey(state, x, y, elevation = 0) {
+  if (state.ui?.viewMode === "top") {
+    return (y * 1000) + x;
+  }
+
+  const rotated = rotateCoord(x, y, MAP_CONFIG.mechWidth, MAP_CONFIG.mechHeight, state.rotation);
+  return (rotated.x + rotated.y) * 1000 + (elevation * 10);
 }
 
 export function getLosHeights(baseElevation, scale = "mech") {
   const profile = LOS_HEIGHT_PROFILES[scale] ?? LOS_HEIGHT_PROFILES.mech;
+
   return {
     fire: baseElevation + profile.fire,
     chest: baseElevation + profile.chest,
@@ -248,69 +224,35 @@ export function getLosHeights(baseElevation, scale = "mech") {
   };
 }
 
-export function getLosRayEndPoint(state, ray, fallbackX, fallbackY, fallbackHeight) {
-  if (ray?.blocked && ray.blockingTile) {
+export function projectLosPoint(state, x, y, height) {
+  if (state.ui?.viewMode === "top") {
+    const top = projectTopDown(state, x, y);
+    return {
+      x: top.x + (TOPDOWN_CONFIG.cellSize / 2),
+      y: top.y + (TOPDOWN_CONFIG.cellSize / 2)
+    };
+  }
+
+  const projected = projectIso(state, x, y, height);
+  return {
+    x: projected.x,
+    y: projected.y + (RENDER_CONFIG.isoTileHeight / 2)
+  };
+}
+
+export function getLosRayEndPoint(state, rayTrace, fallbackX, fallbackY, fallbackHeight) {
+  if (rayTrace?.blocked && rayTrace?.blockingTile) {
     return projectLosPoint(
       state,
-      ray.blockingTile.x,
-      ray.blockingTile.y,
-      ray.stopHeight ?? ray.rayHeight ?? fallbackHeight
+      rayTrace.blockingTile.x,
+      rayTrace.blockingTile.y,
+      rayTrace.stopHeight ?? fallbackHeight
     );
   }
 
   return projectLosPoint(state, fallbackX, fallbackY, fallbackHeight);
 }
 
-export function projectLosPoint(state, x, y, elevation) {
-  if (state.ui.viewMode === "top") {
-    const rotated = rotateCoord(
-      x,
-      y,
-      MAP_CONFIG.mechWidth,
-      MAP_CONFIG.mechHeight,
-      normalizedTurns(state)
-    );
-
-    return {
-      x:
-        CAMERA_CENTER.topX +
-        state.camera.offsetX +
-        (rotated.x * TOPDOWN_CONFIG.cellSize) +
-        (TOPDOWN_CONFIG.cellSize / 2),
-      y:
-        CAMERA_CENTER.topY +
-        state.camera.offsetY +
-        (rotated.y * TOPDOWN_CONFIG.cellSize) +
-        (TOPDOWN_CONFIG.cellSize / 2)
-    };
-  }
-
-  const projected = projectScene(state, x, y, elevation);
-  return {
-    x: projected.x,
-    y: projected.y + (RENDER_CONFIG.isoTileHeight * 0.5)
-  };
-}
-
-export function isoProjectRaw(x, y, elevation) {
-  const screenX =
-    (x - y) * (RENDER_CONFIG.isoTileWidth / 2);
-
-  const screenY =
-    (x + y) * (RENDER_CONFIG.isoTileHeight / 2) -
-    (elevation * RENDER_CONFIG.elevationStepPx);
-
-  return { x: screenX, y: screenY };
-}
-
-export function lerp(a, b, t) {
-  return a + ((b - a) * t);
-}
-
-export function normalizedTurns(state) {
-  return ((Math.round(state.camera.angle / 90) % 4) + 4) % 4;
-}
-
-export function clamp(value, min, max) {
+function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
