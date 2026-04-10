@@ -1,12 +1,14 @@
 // dev/devMenu.js
 //
 // Dev menu for the live Ars Caelorum app.
-// Source of truth:
-// - state.mechs
-// - state.content
-// - existing DOM refs from script.js
-//
 // Toggle key: `
+//
+// Important behavior:
+// - gameplay HUD stays in the main page layout
+// - dev menu is a separate overlay
+// - existing map editor sidebar is moved into the Map tab
+// - closing dev menu does NOT hide HUD
+// - devToolbar is dev-only and follows the dev menu
 
 import { createMechInstance } from "../src/mechs.js";
 import { rebuildRoundOrder } from "../src/initiative.js";
@@ -73,6 +75,10 @@ class DevMenu {
     this.controlSelectEl = null;
     this.teamSelectEl = null;
 
+    this.editorSidebarEl = null;
+    this.editorSidebarOriginalParent = null;
+    this.editorSidebarOriginalNextSibling = null;
+
     this.initialized = false;
     this.unsubscribeLog = null;
 
@@ -98,6 +104,7 @@ class DevMenu {
     this.renderApp = render;
     this.refs = refs;
 
+    this.captureExistingSidebar();
     this.buildDom();
     this.bindEvents();
     this.populateSelectors();
@@ -122,6 +129,8 @@ class DevMenu {
       this.unsubscribeLog = null;
     }
 
+    this.restoreExistingSidebar();
+
     if (this.refs?.devToolbar) {
       this.refs.devToolbar.style.display = "none";
     }
@@ -129,6 +138,53 @@ class DevMenu {
     this.rootEl = null;
     this.panelEl = null;
     this.initialized = false;
+  }
+
+  captureExistingSidebar() {
+    const sidebar = document.querySelector(".sidebar");
+    this.editorSidebarEl = sidebar ?? null;
+
+    if (sidebar) {
+      this.editorSidebarOriginalParent = sidebar.parentNode;
+      this.editorSidebarOriginalNextSibling = sidebar.nextSibling;
+    }
+  }
+
+  mountExistingMapEditorIntoTab() {
+    if (!this.editorSidebarEl || !this.mapTabEl) return;
+
+    this.editorSidebarEl.style.width = "100%";
+    this.editorSidebarEl.style.maxWidth = "100%";
+    this.editorSidebarEl.style.height = "auto";
+    this.editorSidebarEl.style.margin = "0";
+    this.editorSidebarEl.style.background = "transparent";
+    this.editorSidebarEl.style.border = "0";
+    this.editorSidebarEl.style.padding = "0";
+    this.editorSidebarEl.style.boxShadow = "none";
+
+    this.mapTabEl.appendChild(this.editorSidebarEl);
+  }
+
+  restoreExistingSidebar() {
+    if (!this.editorSidebarEl || !this.editorSidebarOriginalParent) return;
+
+    this.editorSidebarEl.style.width = "";
+    this.editorSidebarEl.style.maxWidth = "";
+    this.editorSidebarEl.style.height = "";
+    this.editorSidebarEl.style.margin = "";
+    this.editorSidebarEl.style.background = "";
+    this.editorSidebarEl.style.border = "";
+    this.editorSidebarEl.style.padding = "";
+    this.editorSidebarEl.style.boxShadow = "";
+
+    if (this.editorSidebarOriginalNextSibling) {
+      this.editorSidebarOriginalParent.insertBefore(
+        this.editorSidebarEl,
+        this.editorSidebarOriginalNextSibling
+      );
+    } else {
+      this.editorSidebarOriginalParent.appendChild(this.editorSidebarEl);
+    }
   }
 
   getContent() {
@@ -152,73 +208,107 @@ class DevMenu {
   }
 
   buildDom() {
-    const root = document.getElementById("ac-dev-root");
-    const panel = document.getElementById("ac-dev-panel");
+    const root = document.createElement("div");
+    root.id = "ac-dev-root";
+    root.style.position = "fixed";
+    root.style.top = "0";
+    root.style.right = "0";
+    root.style.height = "100vh";
+    root.style.zIndex = "9999";
+    root.style.pointerEvents = "none";
 
-    if (!root || !panel) {
-      throw new Error("Dev menu root markup is missing from index.html.");
-    }
+    const panel = document.createElement("div");
+    panel.id = "ac-dev-panel";
+    panel.style.width = "420px";
+    panel.style.height = "100%";
+    panel.style.background = "rgba(10, 12, 18, 0.96)";
+    panel.style.color = "#d8e1ea";
+    panel.style.borderLeft = "1px solid rgba(255,255,255,0.12)";
+    panel.style.boxShadow = "-8px 0 24px rgba(0,0,0,0.35)";
+    panel.style.fontFamily = "monospace";
+    panel.style.fontSize = "12px";
+    panel.style.display = "none";
+    panel.style.pointerEvents = "auto";
+    panel.style.overflowY = "auto";
+    panel.style.padding = "12px";
+    panel.style.boxSizing = "border-box";
 
-    const unitsHost = panel.querySelector("#ac-dev-tab-panel-units");
-    unitsHost.innerHTML = `
-      <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-        <div style="font-weight:bold; margin-bottom:8px;">Spawn Unit</div>
+    panel.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-size:14px; font-weight:bold;">DEV MENU</div>
+        <button id="ac-dev-close-btn" type="button">Close</button>
+      </div>
 
-        <label style="display:block; margin-bottom:6px;">
-          <div>Mech</div>
-          <select id="ac-dev-mech-select" style="width:100%;"></select>
-        </label>
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <button id="ac-dev-tab-units" type="button">Units</button>
+        <button id="ac-dev-tab-map" type="button">Map</button>
+      </div>
 
-        <label style="display:block; margin-bottom:6px;">
-          <div>Pilot</div>
-          <select id="ac-dev-pilot-select" style="width:100%;"></select>
-        </label>
+      <div id="ac-dev-tab-panel-units">
+        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+          <div style="font-weight:bold; margin-bottom:8px;">Spawn Unit</div>
 
-        <label style="display:block; margin-bottom:6px;">
-          <div>Spawn</div>
-          <select id="ac-dev-spawn-select" style="width:100%;"></select>
-        </label>
+          <label style="display:block; margin-bottom:6px;">
+            <div>Mech</div>
+            <select id="ac-dev-mech-select" style="width:100%;"></select>
+          </label>
 
-        <label style="display:block; margin-bottom:6px;">
-          <div>Control Type</div>
-          <select id="ac-dev-control-select" style="width:100%;">
-            <option value="PC">PC</option>
-            <option value="CPU">CPU</option>
-          </select>
-        </label>
+          <label style="display:block; margin-bottom:6px;">
+            <div>Pilot</div>
+            <select id="ac-dev-pilot-select" style="width:100%;"></select>
+          </label>
 
-        <label style="display:block; margin-bottom:10px;">
-          <div>Team</div>
-          <select id="ac-dev-team-select" style="width:100%;">
-            <option value="player">player</option>
-            <option value="enemy">enemy</option>
-          </select>
-        </label>
+          <label style="display:block; margin-bottom:6px;">
+            <div>Spawn</div>
+            <select id="ac-dev-spawn-select" style="width:100%;"></select>
+          </label>
 
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button id="ac-dev-spawn-btn" type="button">Spawn / Replace</button>
-          <button id="ac-dev-reset-btn" type="button">Reset Units</button>
-          <button id="ac-dev-reroll-btn" type="button">Reroll Initiative</button>
-          <button id="ac-dev-clearlog-btn" type="button">Clear Log</button>
+          <label style="display:block; margin-bottom:6px;">
+            <div>Control Type</div>
+            <select id="ac-dev-control-select" style="width:100%;">
+              <option value="PC">PC</option>
+              <option value="CPU">CPU</option>
+            </select>
+          </label>
+
+          <label style="display:block; margin-bottom:10px;">
+            <div>Team</div>
+            <select id="ac-dev-team-select" style="width:100%;">
+              <option value="player">player</option>
+              <option value="enemy">enemy</option>
+            </select>
+          </label>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="ac-dev-spawn-btn" type="button">Spawn / Replace</button>
+            <button id="ac-dev-reset-btn" type="button">Reset Units</button>
+            <button id="ac-dev-reroll-btn" type="button">Reroll Initiative</button>
+            <button id="ac-dev-clearlog-btn" type="button">Clear Log</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+          <div style="font-weight:bold; margin-bottom:8px;">Combat State</div>
+          <div id="ac-dev-round-phase"></div>
+          <div id="ac-dev-phase-order" style="margin-top:8px;"></div>
+        </div>
+
+        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+          <div style="font-weight:bold; margin-bottom:8px;">Units On Map</div>
+          <div id="ac-dev-unit-list"></div>
+        </div>
+
+        <div>
+          <div style="font-weight:bold; margin-bottom:8px;">Debug Log</div>
+          <div id="ac-dev-log-list"></div>
         </div>
       </div>
 
-      <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-        <div style="font-weight:bold; margin-bottom:8px;">Combat State</div>
-        <div id="ac-dev-round-phase"></div>
-        <div id="ac-dev-phase-order" style="margin-top:8px;"></div>
-      </div>
-
-      <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-        <div style="font-weight:bold; margin-bottom:8px;">Units On Map</div>
-        <div id="ac-dev-unit-list"></div>
-      </div>
-
-      <div>
-        <div style="font-weight:bold; margin-bottom:8px;">Debug Log</div>
-        <div id="ac-dev-log-list"></div>
-      </div>
+      <div id="ac-dev-tab-panel-map" style="display:none;"></div>
     `;
+
+    root.appendChild(panel);
+    document.body.appendChild(root);
 
     this.rootEl = root;
     this.panelEl = panel;
@@ -238,6 +328,8 @@ class DevMenu {
     this.spawnSelectEl = panel.querySelector("#ac-dev-spawn-select");
     this.controlSelectEl = panel.querySelector("#ac-dev-control-select");
     this.teamSelectEl = panel.querySelector("#ac-dev-team-select");
+
+    this.mountExistingMapEditorIntoTab();
   }
 
   bindEvents() {
@@ -357,12 +449,7 @@ class DevMenu {
       typeof force === "boolean" ? force : !this.state.isOpen;
 
     this.state.isOpen = nextState;
-    this.rootEl.style.display = nextState ? "block" : "none";
     this.panelEl.style.display = nextState ? "block" : "none";
-
-    if (nextState) {
-      this.setActiveTab(this.state.activeTab);
-    }
 
     this.syncToolbarVisibility();
     this.render();
