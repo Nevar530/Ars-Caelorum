@@ -1,7 +1,13 @@
 // src/render.js
 
-import { GAME_CONFIG, MAP_CONFIG, RENDER_CONFIG } from "../config.js";
-import { getTile, getDetailGrid } from "../map.js";
+import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
+import {
+  getTile,
+  getDetailGrid,
+  getDetailRenderCells,
+  isDetailTileUniform,
+  getTileRenderElevation
+} from "../map.js";
 import { getReachableTiles } from "../movement.js";
 import {
   renderTerrainTile,
@@ -52,18 +58,43 @@ export function renderIso(state, refs) {
   for (let y = 0; y < MAP_CONFIG.mechHeight; y++) {
     for (let x = 0; x < MAP_CONFIG.mechWidth; x++) {
       const tile = getTile(map, x, y);
-      const projected = projectScene(state, x, y, tile.elevation);
+      if (!tile) continue;
+
+      const renderElevation = getTileRenderElevation(tile);
+      const projected = projectScene(state, x, y, renderElevation);
+      const hasDetailGeometry = !isDetailTileUniform(tile);
 
       sceneItems.push({
         kind: "tile",
         x,
         y,
-        elevation: tile.elevation,
+        elevation: renderElevation,
         screenX: projected.x,
         screenY: projected.y,
-        sortKey: getSceneSortKey(state, x, y, tile.elevation),
-        reachableCost: reachableMap.get(`${x},${y}`) ?? null
+        sortKey: getSceneSortKey(state, x, y, renderElevation),
+        reachableCost: reachableMap.get(`${x},${y}`) ?? null,
+        skipTerrain: hasDetailGeometry
       });
+
+      if (!hasDetailGeometry) continue;
+
+      for (const cell of getDetailRenderCells(map, x, y)) {
+        const cellProjected = projectScene(state, cell.x, cell.y, cell.elevation);
+
+        sceneItems.push({
+          kind: "detail",
+          x: cell.x,
+          y: cell.y,
+          elevation: cell.elevation,
+          fineElevation: cell.fineElevation,
+          size: cell.size,
+          leftFaceHeight: cell.leftFaceHeight,
+          rightFaceHeight: cell.rightFaceHeight,
+          screenX: cellProjected.x,
+          screenY: cellProjected.y,
+          sortKey: getSceneSortKey(state, cell.x, cell.y, cell.elevation) - 0.1
+        });
+      }
     }
   }
 
@@ -71,7 +102,7 @@ export function renderIso(state, refs) {
     const tile = getTile(map, mech.x, mech.y);
     if (!tile) continue;
 
-    const projected = projectScene(state, mech.x, mech.y, tile.elevation);
+    const projected = projectScene(state, mech.x, mech.y, getTileRenderElevation(tile));
 
     sceneItems.push({
       kind: "mech",
@@ -79,7 +110,7 @@ export function renderIso(state, refs) {
       elevation: tile.elevation,
       screenX: projected.x,
       screenY: projected.y,
-      sortKey: getSceneSortKey(state, mech.x, mech.y, tile.elevation) + 0.25
+      sortKey: getSceneSortKey(state, mech.x, mech.y, getTileRenderElevation(tile)) + 0.25
     });
   }
 
@@ -87,7 +118,9 @@ export function renderIso(state, refs) {
 
   for (const item of sceneItems) {
     if (item.kind === "tile") {
-      renderTerrainTile(state, item, worldScene);
+      if (!item.skipTerrain) {
+        renderTerrainTile(state, item, worldScene);
+      }
 
       if (state.ui.mode === "move" && item.reachableCost !== null) {
         drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost));
@@ -96,6 +129,8 @@ export function renderIso(state, refs) {
       drawScenePathOverlayForTile(state, item, worldScene);
       drawSceneActionOverlayForTile(state, item, worldScene);
       drawSceneFocusOverlayForTile(state, item, worldScene);
+    } else if (item.kind === "detail") {
+      renderTerrainTile(state, item, worldScene);
     } else {
       const isActive = item.mech.instanceId === state.turn.activeMechId;
       drawMech(state, item.mech, item.screenX, item.screenY, worldScene, isActive);
