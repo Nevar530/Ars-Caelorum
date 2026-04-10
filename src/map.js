@@ -356,16 +356,7 @@ export function getDetailRenderCells(map, mechX, mechY) {
 
       const world = getWorldDetailCellPosition(mechX, mechY, subX, subY, subdivisions);
       const currentFineElevation = detailCell.elevation;
-      const southFineElevation = getFineElevationAtWorldDetailCell(
-        map,
-        mechX * subdivisions + subX,
-        mechY * subdivisions + subY + 1
-      );
-      const eastFineElevation = getFineElevationAtWorldDetailCell(
-        map,
-        mechX * subdivisions + subX + 1,
-        mechY * subdivisions + subY
-      );
+      const coarseElevation = currentFineElevation / GAME_CONFIG.detailElevationPerMechLevel;
 
       cells.push({
         mechX,
@@ -376,13 +367,15 @@ export function getDetailRenderCells(map, mechX, mechY) {
         y: world.y,
         size: world.size,
         fineElevation: currentFineElevation,
-        elevation: currentFineElevation / GAME_CONFIG.detailElevationPerMechLevel,
-        leftFaceHeight:
-          Math.max(0, currentFineElevation - southFineElevation) /
-          GAME_CONFIG.detailElevationPerMechLevel,
-        rightFaceHeight:
-          Math.max(0, currentFineElevation - eastFineElevation) /
-          GAME_CONFIG.detailElevationPerMechLevel
+        elevation: coarseElevation,
+
+        // Detail cells must behave like tiny normal terrain tiles.
+        // Do not derive face visibility from fixed world neighbors here.
+        // The stable 1x1 terrain rule is: each tile renders as a full iso block
+        // and rotation is handled by projection / draw order, not by changing
+        // which world neighbor directions generate wall faces.
+        leftFaceHeight: coarseElevation,
+        rightFaceHeight: coarseElevation
       });
     }
   }
