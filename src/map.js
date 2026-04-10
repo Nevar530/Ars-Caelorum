@@ -26,13 +26,69 @@ function createDetailGridForElevation(elevation) {
   };
 }
 
-function createTile(x, y, elevation = 0) {
+function buildTileSummary(tile) {
+  const baseFineElevation =
+    (tile?.elevation ?? 0) * GAME_CONFIG.detailElevationPerMechLevel;
+
+  const detail = tile?.detail;
+  const cells = detail?.cells ?? [];
+
+  let minFineElevation = baseFineElevation;
+  let maxFineElevation = baseFineElevation;
+
+  for (const row of cells) {
+    for (const cell of row) {
+      const fineElevation = cell?.elevation ?? baseFineElevation;
+      minFineElevation = Math.min(minFineElevation, fineElevation);
+      maxFineElevation = Math.max(maxFineElevation, fineElevation);
+    }
+  }
+
+  const heightRangeFine = maxFineElevation - minFineElevation;
+  const mechLevelFine = GAME_CONFIG.detailElevationPerMechLevel;
+
   return {
+    baseElevation: tile?.elevation ?? 0,
+    baseFineElevation,
+    minFineElevation,
+    maxFineElevation,
+    minElevation: minFineElevation / mechLevelFine,
+    maxElevation: maxFineElevation / mechLevelFine,
+    heightRangeFine,
+    heightRange: heightRangeFine / mechLevelFine,
+    hasDetailShape: minFineElevation !== maxFineElevation,
+    mechEnterable: heightRangeFine <= mechLevelFine,
+    mechFootFineElevation: maxFineElevation,
+    mechFootElevation: maxFineElevation / mechLevelFine
+  };
+}
+
+function refreshTileSummary(tile) {
+  if (!tile) return tile;
+  tile.summary = buildTileSummary(tile);
+  return tile;
+}
+
+function createTile(x, y, elevation = 0) {
+  return refreshTileSummary({
     x,
     y,
     elevation,
-    detail: createDetailGridForElevation(elevation)
-  };
+    detail: createDetailGridForElevation(elevation),
+    summary: null
+  });
+}
+
+export function refreshAllTileSummaries(map) {
+  if (!Array.isArray(map)) return map;
+
+  for (const row of map) {
+    for (const tile of row) {
+      refreshTileSummary(tile);
+    }
+  }
+
+  return map;
 }
 
 export function createInitialMap() {
@@ -71,6 +127,14 @@ export function getTile(map, x, y) {
   return map[y][x];
 }
 
+export function getTileSummary(tile) {
+  if (!tile) return null;
+  if (!tile.summary) {
+    refreshTileSummary(tile);
+  }
+  return tile.summary;
+}
+
 export function getDetailGrid(tile) {
   return tile?.detail ?? null;
 }
@@ -98,61 +162,54 @@ export function changeElevation(map, x, y, delta) {
   );
 
   tile.detail = createDetailGridForElevation(tile.elevation);
+  refreshTileSummary(tile);
 }
 
 export function changeDetailElevation(map, mechX, mechY, subX, subY, delta) {
+  const tile = getTile(map, mechX, mechY);
   const detailCell = getDetailCell(map, mechX, mechY, subX, subY);
-  if (!detailCell) return;
+  if (!tile || !detailCell) return;
 
   const maxFineElevation = MAP_CONFIG.maxElevation * GAME_CONFIG.detailElevationPerMechLevel;
 
   detailCell.elevation = clamp(detailCell.elevation + delta, 0, maxFineElevation);
+  refreshTileSummary(tile);
 }
 
 export function getTileBaseFineElevation(tile) {
-  return (tile?.elevation ?? 0) * GAME_CONFIG.detailElevationPerMechLevel;
+  return getTileSummary(tile)?.baseFineElevation ?? 0;
+}
+
+export function getMinFineElevationForTile(tile) {
+  return getTileSummary(tile)?.minFineElevation ?? 0;
 }
 
 export function getMaxFineElevationForTile(tile) {
-  const detail = getDetailGrid(tile);
-  if (!detail?.cells?.length) {
-    return getTileBaseFineElevation(tile);
-  }
+  return getTileSummary(tile)?.maxFineElevation ?? 0;
+}
 
-  let maxFineElevation = getTileBaseFineElevation(tile);
+export function getTileHeightRange(tile) {
+  return getTileSummary(tile)?.heightRange ?? 0;
+}
 
-  for (const row of detail.cells) {
-    for (const cell of row) {
-      maxFineElevation = Math.max(maxFineElevation, cell?.elevation ?? 0);
-    }
-  }
+export function getTileFootElevation(tile) {
+  return getTileSummary(tile)?.mechFootElevation ?? 0;
+}
 
-  return maxFineElevation;
+export function isTileMechEnterable(tile) {
+  return getTileSummary(tile)?.mechEnterable ?? false;
 }
 
 export function getTileEffectiveElevation(tile) {
-  return getMaxFineElevationForTile(tile) / GAME_CONFIG.detailElevationPerMechLevel;
+  return getTileFootElevation(tile);
 }
 
 export function isDetailTileUniform(tile) {
-  const detail = getDetailGrid(tile);
-  if (!detail?.cells?.length) return true;
-
-  const baseFineElevation = getTileBaseFineElevation(tile);
-
-  for (const row of detail.cells) {
-    for (const cell of row) {
-      if ((cell?.elevation ?? baseFineElevation) !== baseFineElevation) {
-        return false;
-      }
-    }
-  }
-
-  return true;
+  return !(getTileSummary(tile)?.hasDetailShape ?? false);
 }
 
 export function getTileRenderElevation(tile) {
-  return getTileEffectiveElevation(tile);
+  return getTileFootElevation(tile);
 }
 
 export function getDetailCellSize(tile) {
