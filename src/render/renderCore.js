@@ -1,4 +1,4 @@
-// src/render.js
+// src/render/renderCore.js
 
 import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
 import {
@@ -6,7 +6,9 @@ import {
   getDetailGrid,
   getDetailRenderCells,
   isDetailTileUniform,
-  getTileRenderElevation
+  getTileRenderElevation,
+  getTileSummary,
+  formatDetailElevation
 } from "../map.js";
 import { getReachableTiles } from "../movement.js";
 import {
@@ -107,7 +109,7 @@ export function renderIso(state, refs) {
     sceneItems.push({
       kind: "mech",
       mech,
-      elevation: tile.elevation,
+      elevation: getTileRenderElevation(tile),
       screenX: projected.x,
       screenY: projected.y,
       sortKey: getSceneSortKey(state, mech.x, mech.y, getTileRenderElevation(tile)) + 0.25
@@ -185,6 +187,7 @@ function renderDetailEditor(state, parent, map, pad, inner) {
   const selectedY = state.ui.editor.selectedTile.y;
   const selectedTile = getTile(map, selectedX, selectedY);
   const detail = getDetailGrid(selectedTile);
+  const summary = getTileSummary(selectedTile);
 
   const miniSize = 126;
   const miniCellW = miniSize / MAP_CONFIG.mechWidth;
@@ -223,7 +226,7 @@ function renderDetailEditor(state, parent, map, pad, inner) {
     makeText(
       infoX,
       infoY + 22,
-      `Base Elevation ${selectedTile?.elevation ?? 0}`,
+      `Base ${selectedTile?.elevation ?? 0} · Foot ${formatDetailElevation(summary?.mechFootFineElevation ?? 0)}`,
       "editor-mode-sub"
     )
   );
@@ -232,6 +235,15 @@ function renderDetailEditor(state, parent, map, pad, inner) {
     makeText(
       infoX,
       infoY + 44,
+      `Range ${formatDetailElevation(summary?.heightRangeFine ?? 0)} · ${summary?.mechEnterable ? "Mech Enterable" : "Mech Blocked"}`,
+      "editor-mode-sub"
+    )
+  );
+
+  parent.appendChild(
+    makeText(
+      infoX,
+      infoY + 66,
       "Click map to change tile · Click big cells to edit detail",
       "editor-mode-sub"
     )
