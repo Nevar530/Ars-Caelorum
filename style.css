@@ -859,3 +859,66 @@ button:disabled {
 #devToolbar {
   display: none;
 }
+
+.editor-cell-selected {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.editor-cell-mini {
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 0.8;
+  cursor: pointer;
+}
+
+.editor-cell-mini:hover {
+  stroke: var(--accent);
+  stroke-width: 1.4;
+}
+
+.editor-cell-mini-selected {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.editor-cell-detail {
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 1;
+  cursor: pointer;
+}
+
+.editor-cell-detail:hover {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.editor-cell-detail-large {
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 1.4;
+}
+
+.editor-detail-text-large {
+  fill: #ffffff;
+  font-size: 18px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  font-weight: 700;
+}
+
+.editor-mode-title {
+  fill: #f5e7b0;
+  font-size: 14px;
+  text-anchor: start;
+  dominant-baseline: middle;
+  pointer-events: none;
+  font-weight: 700;
+}
+
+.editor-mode-sub {
+  fill: #b8c7d4;
+  font-size: 10px;
+  text-anchor: start;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
