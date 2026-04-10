@@ -1,7 +1,7 @@
 // src/render/renderTerrain.js
 
-import { RENDER_CONFIG } from "../config.js";
-import { tileTypeFromElevation } from "../map.js";
+import { GAME_CONFIG, RENDER_CONFIG } from "../config.js";
+import { tileTypeFromElevation, detailTypeFromFineElevation } from "../map.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG } from "./projection.js";
 
@@ -36,6 +36,58 @@ export function renderEditorTile(tile, x, y, px, py, cellWidth, cellHeight, pare
 
   group.appendChild(rect);
   group.appendChild(label);
+  parent.appendChild(group);
+}
+
+export function renderEditorDetailCell(
+  detailCell,
+  mechX,
+  mechY,
+  subX,
+  subY,
+  px,
+  py,
+  cellWidth,
+  cellHeight,
+  parent,
+  options = {}
+) {
+  const group = svgEl("g");
+  const coarseElevation = Math.floor(
+    detailCell.elevation / GAME_CONFIG.detailElevationPerMechLevel
+  );
+
+  const rect = svgEl("rect");
+  rect.setAttribute("x", px);
+  rect.setAttribute("y", py);
+  rect.setAttribute("width", cellWidth);
+  rect.setAttribute("height", cellHeight);
+  rect.setAttribute("fill", editorDetailCellColor(detailCell.elevation));
+  rect.setAttribute("class", "editor-cell-detail");
+  rect.dataset.mx = String(mechX);
+  rect.dataset.my = String(mechY);
+  rect.dataset.sx = String(subX);
+  rect.dataset.sy = String(subY);
+
+  rect.setAttribute(
+    "stroke",
+    options.drawParentOutline ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.08)"
+  );
+  rect.setAttribute("stroke-width", options.drawParentOutline ? "1.2" : "0.5");
+
+  group.appendChild(rect);
+
+  if (cellWidth >= 10 && cellHeight >= 10) {
+    const label = makeText(
+      px + (cellWidth / 2),
+      py + (cellHeight / 2),
+      String(coarseElevation),
+      "editor-text"
+    );
+    label.setAttribute("font-size", "7");
+    group.appendChild(label);
+  }
+
   parent.appendChild(group);
 }
 
@@ -160,4 +212,17 @@ export function editorCellColor(elevation) {
   if (elevation >= 2) return "#5e7751";
   if (elevation >= 1) return "#4e6b86";
   return "#243241";
+}
+
+export function editorDetailCellColor(fineElevation) {
+  const type = detailTypeFromFineElevation(fineElevation);
+
+  switch (type) {
+    case "peak":
+      return "#8b6b4a";
+    case "high":
+      return "#4e6b86";
+    default:
+      return "#243241";
+  }
 }
