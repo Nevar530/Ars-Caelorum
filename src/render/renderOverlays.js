@@ -4,8 +4,9 @@ import { RENDER_CONFIG } from "../config.js";
 import {
   getTile,
   getDetailRenderCells,
-  isDetailTileUniform,
-  getTileRenderElevation
+  getTileRenderElevation,
+  getTileSummary,
+  isDetailTileUniform
 } from "../map.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG, projectScene } from "./projection.js";
@@ -66,7 +67,8 @@ export function drawSceneActionOverlayForTile(state, item, parent) {
 
   drawIsoTileOverlay(state, item, fill, stroke, parent, {
     showCenterMarker: true,
-    centerColor: center ?? stroke
+    centerColor: center ?? stroke,
+    detailFillMode: "highest"
   });
 }
 
@@ -87,12 +89,13 @@ export function drawSceneFocusOverlayForTile(state, item, parent) {
   drawIsoTileOverlay(
     state,
     item,
-    "rgba(240, 176, 0, 0.035)",
+    "rgba(240, 176, 0, 0.03)",
     "rgba(240, 176, 0, 0.95)",
     parent,
     {
       showCenterMarker: true,
-      centerColor: "rgba(240, 176, 0, 1)"
+      centerColor: "rgba(240, 176, 0, 1)",
+      detailFillMode: "highest"
     }
   );
 }
@@ -132,12 +135,13 @@ export function drawScenePathOverlayForTile(state, item, parent) {
   drawIsoTileOverlay(
     state,
     item,
-    "rgba(240, 176, 0, 0.075)",
+    "rgba(240, 176, 0, 0.06)",
     "rgba(240, 176, 0, 0.88)",
     parent,
     {
       showCenterMarker: true,
-      centerColor: "rgba(240, 176, 0, 0.98)"
+      centerColor: "rgba(240, 176, 0, 0.98)",
+      detailFillMode: "highest"
     }
   );
 
@@ -177,11 +181,12 @@ export function drawSceneMoveOverlay(state, item, parent, text) {
   drawIsoTileOverlay(
     state,
     item,
-    "rgba(80, 180, 255, 0.055)",
+    "rgba(80, 180, 255, 0.045)",
     "rgba(80, 180, 255, 0.30)",
     parent,
     {
-      showCenterMarker: false
+      showCenterMarker: false,
+      detailFillMode: "none"
     }
   );
 
@@ -222,11 +227,20 @@ function drawIsoTileOverlay(state, item, fill, stroke, parent, options = {}) {
     return;
   }
 
-  const cells = getDetailRenderCells(state.map, item.x, item.y);
+  const detailFillMode = options.detailFillMode ?? "highest";
+  const detailCells = getDetailRenderCells(state.map, item.x, item.y);
+  const summary = getTileSummary(tile);
+  const highestFineElevation = summary?.maxFineElevation ?? null;
 
-  for (const cell of cells) {
-    const projected = projectScene(state, cell.x, cell.y, cell.elevation);
-    drawOverlayCellTop(projected.x, projected.y, cell.size, fill, parent);
+  if (detailFillMode !== "none" && highestFineElevation !== null) {
+    const targetCells = detailCells.filter(
+      (cell) => cell.fineElevation === highestFineElevation
+    );
+
+    for (const cell of targetCells) {
+      const projected = projectScene(state, cell.x, cell.y, cell.elevation);
+      drawOverlayCellTop(projected.x, projected.y, cell.size, fill, parent);
+    }
   }
 
   if (options.showCenterMarker) {
@@ -252,7 +266,7 @@ function drawIsoTileOverlay(state, item, fill, stroke, parent, options = {}) {
     "none",
     stroke,
     parent,
-    1.2
+    1.4
   );
 }
 
