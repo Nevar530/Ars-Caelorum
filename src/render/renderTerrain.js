@@ -14,8 +14,9 @@ export function renderTerrainTile(state, item, parent) {
   drawIsoTile(item, parent);
 }
 
-export function renderEditorTile(tile, x, y, px, py, cellWidth, cellHeight, parent) {
+export function renderEditorTile(tile, x, y, px, py, cellWidth, cellHeight, parent, options = {}) {
   const group = svgEl("g");
+  const isSelected = options.selected === true;
 
   const rect = svgEl("rect");
   rect.setAttribute("x", px);
@@ -23,7 +24,7 @@ export function renderEditorTile(tile, x, y, px, py, cellWidth, cellHeight, pare
   rect.setAttribute("width", cellWidth);
   rect.setAttribute("height", cellHeight);
   rect.setAttribute("fill", editorCellColor(tile.elevation));
-  rect.setAttribute("class", "editor-cell");
+  rect.setAttribute("class", isSelected ? "editor-cell editor-cell-selected" : "editor-cell");
   rect.dataset.x = String(x);
   rect.dataset.y = String(y);
 
@@ -37,6 +38,22 @@ export function renderEditorTile(tile, x, y, px, py, cellWidth, cellHeight, pare
   group.appendChild(rect);
   group.appendChild(label);
   parent.appendChild(group);
+}
+
+export function renderEditorMiniTile(tile, x, y, px, py, cellWidth, cellHeight, parent, options = {}) {
+  const rect = svgEl("rect");
+  rect.setAttribute("x", px);
+  rect.setAttribute("y", py);
+  rect.setAttribute("width", cellWidth);
+  rect.setAttribute("height", cellHeight);
+  rect.setAttribute("fill", editorCellColor(tile.elevation));
+  rect.setAttribute(
+    "class",
+    options.selected ? "editor-cell-mini editor-cell-mini-selected" : "editor-cell-mini"
+  );
+  rect.dataset.x = String(x);
+  rect.dataset.y = String(y);
+  parent.appendChild(rect);
 }
 
 export function renderEditorDetailCell(
@@ -63,28 +80,26 @@ export function renderEditorDetailCell(
   rect.setAttribute("width", cellWidth);
   rect.setAttribute("height", cellHeight);
   rect.setAttribute("fill", editorDetailCellColor(detailCell.elevation));
-  rect.setAttribute("class", "editor-cell-detail");
+  rect.setAttribute(
+    "class",
+    options.large ? "editor-cell-detail editor-cell-detail-large" : "editor-cell-detail"
+  );
   rect.dataset.mx = String(mechX);
   rect.dataset.my = String(mechY);
   rect.dataset.sx = String(subX);
   rect.dataset.sy = String(subY);
 
-  rect.setAttribute(
-    "stroke",
-    options.drawParentOutline ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.08)"
-  );
-  rect.setAttribute("stroke-width", options.drawParentOutline ? "1.2" : "0.5");
-
   group.appendChild(rect);
 
-  if (cellWidth >= 10 && cellHeight >= 10) {
+  const showLabel = options.large ? cellWidth >= 28 : cellWidth >= 10;
+
+  if (showLabel) {
     const label = makeText(
       px + (cellWidth / 2),
       py + (cellHeight / 2),
       String(coarseElevation),
-      "editor-text"
+      options.large ? "editor-detail-text-large" : "editor-text"
     );
-    label.setAttribute("font-size", "7");
     group.appendChild(label);
   }
 
