@@ -1,4 +1,4 @@
-import { changeElevation } from "./map.js";
+import { changeElevation, changeDetailElevation } from "./map.js";
 import { getMechById } from "./mechs.js";
 import { clampFocusToBoard, getPathToTile } from "./movement.js";
 import { moveAttackSelection, updateActionTargetPreview } from "./action.js";
@@ -8,10 +8,48 @@ export function bindInput(state, refs, actions) {
   bindGameplayInput(state, refs, actions);
 }
 
+export function snapFocusToActiveMech(state) {
+  const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+  if (!activeMech) return;
+
+  state.focus.x = activeMech.x;
+  state.focus.y = activeMech.y;
+}
+
 function bindEditorInput(state, refs, actions) {
-  const { editor } = refs;
+  const {
+    editor,
+    editorModeMechButton,
+    editorModeDetailButton
+  } = refs;
+
+  if (editorModeMechButton) {
+    editorModeMechButton.addEventListener("click", () => {
+      actions.setEditorMode("mech");
+    });
+  }
+
+  if (editorModeDetailButton) {
+    editorModeDetailButton.addEventListener("click", () => {
+      actions.setEditorMode("detail");
+    });
+  }
 
   editor.addEventListener("click", (event) => {
+    if (state.ui.editor.mode === "detail") {
+      const detailRect = event.target.closest(".editor-cell-detail");
+      if (!detailRect) return;
+
+      const mechX = Number(detailRect.dataset.mx);
+      const mechY = Number(detailRect.dataset.my);
+      const subX = Number(detailRect.dataset.sx);
+      const subY = Number(detailRect.dataset.sy);
+
+      changeDetailElevation(state.map, mechX, mechY, subX, subY, 1);
+      actions.render();
+      return;
+    }
+
     const tileRect = event.target.closest(".editor-cell");
     if (!tileRect) return;
 
@@ -24,6 +62,20 @@ function bindEditorInput(state, refs, actions) {
 
   editor.addEventListener("contextmenu", (event) => {
     event.preventDefault();
+
+    if (state.ui.editor.mode === "detail") {
+      const detailRect = event.target.closest(".editor-cell-detail");
+      if (!detailRect) return;
+
+      const mechX = Number(detailRect.dataset.mx);
+      const mechY = Number(detailRect.dataset.my);
+      const subX = Number(detailRect.dataset.sx);
+      const subY = Number(detailRect.dataset.sy);
+
+      changeDetailElevation(state.map, mechX, mechY, subX, subY, -1);
+      actions.render();
+      return;
+    }
 
     const tileRect = event.target.closest(".editor-cell");
     if (!tileRect) return;
@@ -266,89 +318,40 @@ function handleConfirmCancelKeys(key, state, actions) {
     }
   }
 
-  if (state.ui.mode === "idle" && state.ui.commandMenu.open && isCancel) {
-    actions.closeCommandMenu();
-    return true;
-  }
-
   return false;
 }
 
 function getScreenRelativeBoardDelta(state, direction) {
-  const turns = ((Math.round(state.camera.angle / 90) % 4) + 4) % 4;
+  const rotation = ((Math.round(state.camera.angle / 90) % 4) + 4) % 4;
 
-  switch (turns) {
-    case 0:
-      return deltaForRotation0(direction);
-    case 1:
-      return deltaForRotation90(direction);
-    case 2:
-      return deltaForRotation180(direction);
-    case 3:
-      return deltaForRotation270(direction);
-    default:
-      return { dx: 0, dy: 0 };
-  }
-}
+  const directionMaps = {
+    up: [
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 0 }
+    ],
+    right: [
+      { dx: 1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: -1 }
+    ],
+    down: [
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: 0 }
+    ],
+    left: [
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: 0 },
+      { dx: 0, dy: 1 }
+    ]
+  };
 
-function deltaForRotation0(direction) {
-  switch (direction) {
-    case "up":
-      return { dx: 0, dy: -1 };
-    case "right":
-      return { dx: 1, dy: 0 };
-    case "down":
-      return { dx: 0, dy: 1 };
-    case "left":
-      return { dx: -1, dy: 0 };
-    default:
-      return { dx: 0, dy: 0 };
-  }
-}
-
-function deltaForRotation90(direction) {
-  switch (direction) {
-    case "up":
-      return { dx: -1, dy: 0 };
-    case "right":
-      return { dx: 0, dy: -1 };
-    case "down":
-      return { dx: 1, dy: 0 };
-    case "left":
-      return { dx: 0, dy: 1 };
-    default:
-      return { dx: 0, dy: 0 };
-  }
-}
-
-function deltaForRotation180(direction) {
-  switch (direction) {
-    case "up":
-      return { dx: 0, dy: 1 };
-    case "right":
-      return { dx: -1, dy: 0 };
-    case "down":
-      return { dx: 0, dy: -1 };
-    case "left":
-      return { dx: 1, dy: 0 };
-    default:
-      return { dx: 0, dy: 0 };
-  }
-}
-
-function deltaForRotation270(direction) {
-  switch (direction) {
-    case "up":
-      return { dx: 1, dy: 0 };
-    case "right":
-      return { dx: 0, dy: 1 };
-    case "down":
-      return { dx: -1, dy: 0 };
-    case "left":
-      return { dx: 0, dy: -1 };
-    default:
-      return { dx: 0, dy: 0 };
-  }
+  return directionMaps[direction][rotation];
 }
 
 function facingFromDelta(dx, dy) {
@@ -357,12 +360,4 @@ function facingFromDelta(dx, dy) {
   if (dx === 0 && dy === 1) return 2;
   if (dx === -1 && dy === 0) return 3;
   return null;
-}
-
-export function snapFocusToActiveMech(state) {
-  const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-  if (!activeMech) return;
-
-  state.focus.x = activeMech.x;
-  state.focus.y = activeMech.y;
 }
