@@ -1,6 +1,7 @@
 import { MAP_CONFIG } from "./config.js";
 import { getTile } from "./map.js";
-import { getMechById, getMechAt } from "./mechs.js";
+import { getMechById } from "./mechs.js";
+import { isPositionBlocked } from "./scale/occupancy.js";
 
 export function clampFocusToBoard(x, y) {
   return {
@@ -19,12 +20,7 @@ export function parseCoordKey(key) {
 }
 
 export function isWithinBoard(x, y) {
-  return (
-    x >= 0 &&
-    y >= 0 &&
-    x < MAP_CONFIG.mechWidth &&
-    y < MAP_CONFIG.mechHeight
-  );
+  return x >= 0 && y >= 0 && x < MAP_CONFIG.mechWidth && y < MAP_CONFIG.mechHeight;
 }
 
 export function getNeighbors(x, y) {
@@ -40,14 +36,9 @@ export function isTileBlocked(state, x, y, activeMech = null) {
   const tile = getTile(state.map, x, y);
   if (!tile) return true;
 
-  const occupant = getMechAt(state.mechs, x, y);
-  if (!occupant) return false;
-
-  if (activeMech && occupant.instanceId === activeMech.instanceId) {
-    return false;
-  }
-
-  return true;
+  return isPositionBlocked(state, x, y, "mech", {
+    ignoreUnitId: activeMech?.instanceId ?? null
+  });
 }
 
 export function canStepToTile(state, fromX, fromY, toX, toY) {
@@ -58,8 +49,6 @@ export function canStepToTile(state, fromX, fromY, toX, toY) {
 
   const elevationRise = toTile.elevation - fromTile.elevation;
 
-  // Can climb up at most 1 elevation step per move step.
-  // Going down any amount is allowed for now.
   if (elevationRise > 1) return false;
 
   return true;
@@ -73,10 +62,8 @@ export function getTileMoveCost(state, fromX, fromY, toX, toY) {
 
   const heightDiff = toTile.elevation - fromTile.elevation;
 
-  // Can't climb more than 1
   if (heightDiff > 1) return Infinity;
 
-  // Movement cost = base 1 + elevation change
   return 1 + Math.abs(heightDiff);
 }
 
@@ -100,14 +87,7 @@ export function getReachableTileMap(state) {
     for (const next of getNeighbors(current.x, current.y)) {
       if (isTileBlocked(state, next.x, next.y, activeMech)) continue;
 
-      const stepCost = getTileMoveCost(
-        state,
-        current.x,
-        current.y,
-        next.x,
-        next.y
-      );
-
+      const stepCost = getTileMoveCost(state, current.x, current.y, next.x, next.y);
       if (!Number.isFinite(stepCost)) continue;
 
       const newCost = currentCost + stepCost;
@@ -170,14 +150,7 @@ export function getPathToTile(state, targetX, targetY) {
     for (const next of getNeighbors(current.x, current.y)) {
       if (isTileBlocked(state, next.x, next.y, activeMech)) continue;
 
-      const stepCost = getTileMoveCost(
-        state,
-        current.x,
-        current.y,
-        next.x,
-        next.y
-      );
-
+      const stepCost = getTileMoveCost(state, current.x, current.y, next.x, next.y);
       if (!Number.isFinite(stepCost)) continue;
 
       const newCost = costSoFar.get(currentKey) + stepCost;
