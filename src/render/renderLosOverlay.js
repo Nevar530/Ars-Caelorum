@@ -1,6 +1,6 @@
 // src/render/renderLosOverlay.js
 
-import { getTile } from "../map.js";
+import { getTile, getTileEffectiveElevation } from "../map.js";
 import { getMechById } from "../mechs.js";
 import {
   getLosHeights,
@@ -28,8 +28,11 @@ export function drawSceneLosPreview(state, parent) {
   const attackerScale = activeMech.scale ?? "mech";
   const targetScale = profile.scale ?? "mech";
 
-  const attackerHeights = getLosHeights(attackerTile.elevation, attackerScale);
-  const targetHeights = getLosHeights(targetTile.elevation, targetScale);
+  const attackerBaseElevation = getTileEffectiveElevation(attackerTile);
+  const targetBaseElevation = getTileEffectiveElevation(targetTile);
+
+  const attackerHeights = getLosHeights(attackerBaseElevation, attackerScale);
+  const targetHeights = getLosHeights(targetBaseElevation, targetScale);
 
   const attackerFirePoint = projectLosPoint(
     state,
@@ -78,7 +81,7 @@ export function drawSceneLosPreview(state, parent) {
 
       if (spotterTile) {
         const spotterHeights = getLosHeights(
-          spotterTile.elevation,
+          getTileEffectiveElevation(spotterTile),
           profile.scale ?? "mech"
         );
 
@@ -98,7 +101,7 @@ export function drawSceneLosPreview(state, parent) {
       state,
       focusedTarget.x,
       focusedTarget.y,
-      targetTile.elevation
+      targetBaseElevation
     );
 
     drawArcLine(parent, attackerFirePoint, impactPoint, arcColor);
@@ -219,6 +222,6 @@ export function drawLosEndpoint(parent, point, color) {
   parent.appendChild(inner);
 }
 
-export function isMissileProfile(profile) {
+function isMissileProfile(profile) {
   return profile?.weaponType === "missile";
 }
