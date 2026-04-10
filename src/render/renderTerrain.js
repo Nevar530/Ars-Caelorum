@@ -1,7 +1,11 @@
 // src/render/renderTerrain.js
 
 import { GAME_CONFIG, RENDER_CONFIG } from "../config.js";
-import { tileTypeFromElevation, detailTypeFromFineElevation } from "../map.js";
+import {
+  tileTypeFromElevation,
+  detailTypeFromFineElevation,
+  formatDetailElevation
+} from "../map.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG } from "./projection.js";
 
@@ -70,9 +74,6 @@ export function renderEditorDetailCell(
   options = {}
 ) {
   const group = svgEl("g");
-  const coarseElevation = Math.floor(
-    detailCell.elevation / GAME_CONFIG.detailElevationPerMechLevel
-  );
 
   const rect = svgEl("rect");
   rect.setAttribute("x", px);
@@ -97,7 +98,7 @@ export function renderEditorDetailCell(
     const label = makeText(
       px + (cellWidth / 2),
       py + (cellHeight / 2),
-      String(coarseElevation),
+      formatDetailElevation(detailCell.elevation),
       options.large ? "editor-detail-text-large" : "editor-text"
     );
     group.appendChild(label);
@@ -202,7 +203,7 @@ function drawTopTerrainCell(item, parent) {
     const label = makeText(
       screenX + TOPDOWN_CONFIG.cellSize - 8,
       screenY + 14,
-      String(elevation),
+      Number.isInteger(elevation) ? String(elevation) : elevation.toFixed(2).replace(/\.?0+$/, ""),
       "top-elevation-label"
     );
     label.setAttribute("text-anchor", "end");
