@@ -17,11 +17,7 @@ export function snapFocusToActiveMech(state) {
 }
 
 function bindEditorInput(state, refs, actions) {
-  const {
-    editor,
-    editorModeMechButton,
-    editorModeDetailButton
-  } = refs;
+  const { editor, editorModeMechButton, editorModeDetailButton } = refs;
 
   if (editorModeMechButton) {
     editorModeMechButton.addEventListener("click", () => {
@@ -37,6 +33,14 @@ function bindEditorInput(state, refs, actions) {
 
   editor.addEventListener("click", (event) => {
     if (state.ui.editor.mode === "detail") {
+      const miniTile = event.target.closest(".editor-cell-mini");
+      if (miniTile) {
+        state.ui.editor.selectedTile.x = Number(miniTile.dataset.x);
+        state.ui.editor.selectedTile.y = Number(miniTile.dataset.y);
+        actions.render();
+        return;
+      }
+
       const detailRect = event.target.closest(".editor-cell-detail");
       if (!detailRect) return;
 
@@ -44,6 +48,9 @@ function bindEditorInput(state, refs, actions) {
       const mechY = Number(detailRect.dataset.my);
       const subX = Number(detailRect.dataset.sx);
       const subY = Number(detailRect.dataset.sy);
+
+      state.ui.editor.selectedTile.x = mechX;
+      state.ui.editor.selectedTile.y = mechY;
 
       changeDetailElevation(state.map, mechX, mechY, subX, subY, 1);
       actions.render();
@@ -56,6 +63,9 @@ function bindEditorInput(state, refs, actions) {
     const x = Number(tileRect.dataset.x);
     const y = Number(tileRect.dataset.y);
 
+    state.ui.editor.selectedTile.x = x;
+    state.ui.editor.selectedTile.y = y;
+
     changeElevation(state.map, x, y, 1);
     actions.render();
   });
@@ -64,6 +74,14 @@ function bindEditorInput(state, refs, actions) {
     event.preventDefault();
 
     if (state.ui.editor.mode === "detail") {
+      const miniTile = event.target.closest(".editor-cell-mini");
+      if (miniTile) {
+        state.ui.editor.selectedTile.x = Number(miniTile.dataset.x);
+        state.ui.editor.selectedTile.y = Number(miniTile.dataset.y);
+        actions.render();
+        return;
+      }
+
       const detailRect = event.target.closest(".editor-cell-detail");
       if (!detailRect) return;
 
@@ -71,6 +89,9 @@ function bindEditorInput(state, refs, actions) {
       const mechY = Number(detailRect.dataset.my);
       const subX = Number(detailRect.dataset.sx);
       const subY = Number(detailRect.dataset.sy);
+
+      state.ui.editor.selectedTile.x = mechX;
+      state.ui.editor.selectedTile.y = mechY;
 
       changeDetailElevation(state.map, mechX, mechY, subX, subY, -1);
       actions.render();
@@ -82,6 +103,9 @@ function bindEditorInput(state, refs, actions) {
 
     const x = Number(tileRect.dataset.x);
     const y = Number(tileRect.dataset.y);
+
+    state.ui.editor.selectedTile.x = x;
+    state.ui.editor.selectedTile.y = y;
 
     changeElevation(state.map, x, y, -1);
     actions.render();
