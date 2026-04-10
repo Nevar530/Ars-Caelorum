@@ -113,6 +113,27 @@ export function getTileBaseFineElevation(tile) {
   return (tile?.elevation ?? 0) * GAME_CONFIG.detailElevationPerMechLevel;
 }
 
+export function getMaxFineElevationForTile(tile) {
+  const detail = getDetailGrid(tile);
+  if (!detail?.cells?.length) {
+    return getTileBaseFineElevation(tile);
+  }
+
+  let maxFineElevation = getTileBaseFineElevation(tile);
+
+  for (const row of detail.cells) {
+    for (const cell of row) {
+      maxFineElevation = Math.max(maxFineElevation, cell?.elevation ?? 0);
+    }
+  }
+
+  return maxFineElevation;
+}
+
+export function getTileEffectiveElevation(tile) {
+  return getMaxFineElevationForTile(tile) / GAME_CONFIG.detailElevationPerMechLevel;
+}
+
 export function isDetailTileUniform(tile) {
   const detail = getDetailGrid(tile);
   if (!detail?.cells?.length) return true;
@@ -131,20 +152,7 @@ export function isDetailTileUniform(tile) {
 }
 
 export function getTileRenderElevation(tile) {
-  const detail = getDetailGrid(tile);
-  if (!detail?.cells?.length) {
-    return tile?.elevation ?? 0;
-  }
-
-  let maxFineElevation = 0;
-
-  for (const row of detail.cells) {
-    for (const cell of row) {
-      maxFineElevation = Math.max(maxFineElevation, cell?.elevation ?? 0);
-    }
-  }
-
-  return maxFineElevation / GAME_CONFIG.detailElevationPerMechLevel;
+  return getTileEffectiveElevation(tile);
 }
 
 export function getDetailCellSize(tile) {
@@ -152,7 +160,13 @@ export function getDetailCellSize(tile) {
   return 1 / subdivisions;
 }
 
-export function getWorldDetailCellPosition(mechX, mechY, subX, subY, subdivisions = GAME_CONFIG.detailSubdivisionsPerMechTile) {
+export function getWorldDetailCellPosition(
+  mechX,
+  mechY,
+  subX,
+  subY,
+  subdivisions = GAME_CONFIG.detailSubdivisionsPerMechTile
+) {
   const cellSize = 1 / subdivisions;
 
   return {
@@ -227,6 +241,16 @@ export function getDetailRenderCells(map, mechX, mechY) {
   }
 
   return cells;
+}
+
+export function formatDetailElevation(fineElevation) {
+  const coarseValue = fineElevation / GAME_CONFIG.detailElevationPerMechLevel;
+
+  if (Number.isInteger(coarseValue)) {
+    return String(coarseValue);
+  }
+
+  return coarseValue.toFixed(2).replace(/\.?0+$/, "");
 }
 
 export function tileTypeFromElevation(elevation) {
