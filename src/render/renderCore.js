@@ -89,7 +89,7 @@ export function renderIso(state, refs) {
       const detailCells = getDetailRenderCells(map, x, y);
       const detailCount = Math.max(detailCells.length, 1);
 
-      for (let i = 0; i < detailCells.length; i++) {
+      for (let i = 0; i < detailCells.length; i += 1) {
         const cell = detailCells[i];
         const cellProjected = projectScene(state, cell.x, cell.y, cell.elevation);
 
@@ -107,6 +107,12 @@ export function renderIso(state, refs) {
           sortKey: parentSort + ((i + 1) / (detailCount + 1)) * 0.8
         });
       }
+
+      sceneItems.push({
+        kind: "tileOverlay",
+        tileItem,
+        sortKey: parentSort + 0.86
+      });
     }
   }
 
@@ -143,21 +149,26 @@ export function renderIso(state, refs) {
       continue;
     }
 
+    if (item.kind === "tileOverlay") {
+      drawTileOverlayStack(state, item.tileItem, worldScene);
+      continue;
+    }
+
     const isActive = item.mech.instanceId === state.turn.activeMechId;
     drawMech(state, item.mech, item.screenX, item.screenY, worldScene, isActive);
   }
 
-  for (const item of tileItems) {
-    if (state.ui.mode === "move" && item.reachableCost !== null) {
-      drawSceneMoveOverlay(state, item, worldUi, String(item.reachableCost));
-    }
+  drawSceneLosPreview(state, worldUi);
+}
 
-    drawScenePathOverlayForTile(state, item, worldUi);
-    drawSceneActionOverlayForTile(state, item, worldUi);
-    drawSceneFocusOverlayForTile(state, item, worldUi);
+function drawTileOverlayStack(state, item, parent) {
+  if (state.ui.mode === "move" && item.reachableCost !== null) {
+    drawSceneMoveOverlay(state, item, parent, String(item.reachableCost));
   }
 
-  drawSceneLosPreview(state, worldUi);
+  drawScenePathOverlayForTile(state, item, parent);
+  drawSceneActionOverlayForTile(state, item, parent);
+  drawSceneFocusOverlayForTile(state, item, parent);
 }
 
 export function renderEditor(state, refs) {
