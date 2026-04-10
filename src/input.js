@@ -356,8 +356,8 @@ function getScreenRelativeBoardDelta(state, direction) {
     { dx: -1, dy: 0 }
   ];
 
-  const screenVector = screenVectorForDirection(direction);
-  let bestDelta = candidates[0];
+  const targetVector = screenVectorForDirection(direction);
+  let best = candidates[0];
   let bestScore = -Infinity;
 
   for (const candidate of candidates) {
@@ -371,32 +371,31 @@ function getScreenRelativeBoardDelta(state, direction) {
     const vx = projected.x - origin.x;
     const vy = projected.y - origin.y;
     const length = Math.hypot(vx, vy);
-
     if (length <= 0.0001) continue;
 
-    const score =
-      ((vx / length) * screenVector.x) +
-      ((vy / length) * screenVector.y);
+    const nx = vx / length;
+    const ny = vy / length;
+    const score = (nx * targetVector.x) + (ny * targetVector.y);
 
     if (score > bestScore) {
       bestScore = score;
-      bestDelta = candidate;
+      best = candidate;
     }
   }
 
-  return bestDelta;
+  return best;
 }
 
 function screenVectorForDirection(direction) {
   switch (direction) {
     case "up":
-      return { x: 0, y: -1 };
-    case "down":
-      return { x: 0, y: 1 };
+      return { x: 1, y: -1 };   // top-right on screen
     case "left":
-      return { x: -1, y: 0 };
+      return { x: -1, y: -1 };  // top-left on screen
+    case "down":
+      return { x: -1, y: 1 };   // bottom-left on screen
     case "right":
-      return { x: 1, y: 0 };
+      return { x: 1, y: 1 };    // bottom-right on screen
     default:
       return { x: 0, y: 0 };
   }
