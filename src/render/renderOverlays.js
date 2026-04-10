@@ -9,6 +9,8 @@ import {
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG, projectScene } from "./projection.js";
 
+const DETAIL_OVERLAY_LIFT = 0.25;
+
 export function drawSceneActionOverlayForTile(state, item, parent) {
   if (state.ui.mode !== "action-target") return;
 
@@ -184,114 +186,36 @@ function drawOverlayForTile(state, item, className, fill, stroke, parent) {
     return;
   }
 
-  const points = buildDetailOverlayBoundaryPoints(state, item.x, item.y);
-  if (!points || points.length < 4) {
+  const detailCells = getDetailRenderCells(state.map, item.x, item.y);
+  if (!detailCells.length) {
     drawOverlayDiamond(item.screenX, item.screenY, className, fill, stroke, parent);
     return;
   }
 
-  const poly = makePolygon(points, className, fill);
-  poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", "2");
-  poly.setAttribute("paint-order", "stroke fill");
-  parent.appendChild(poly);
-}
-
-function buildDetailOverlayBoundaryPoints(state, tileX, tileY) {
-  const detailCells = getDetailRenderCells(state.map, tileX, tileY);
-  if (!detailCells.length) return null;
-
-  const size = detailCells[0].size ?? 0.25;
-  const subdivisions = Math.max(1, Math.round(1 / size));
-  const elevations = Array.from({ length: subdivisions }, () =>
-    Array.from({ length: subdivisions }, () => 0)
-  );
-
   for (const cell of detailCells) {
-    const sx = clampIndex(Math.round((cell.x - tileX) / size), subdivisions);
-    const sy = clampIndex(Math.round((cell.y - tileY) / size), subdivisions);
-    elevations[sy][sx] = cell.elevation;
+    drawOverlayCellTop(state, cell, className, fill, stroke, parent);
   }
-
-  const perimeter = [];
-
-  for (let cx = 0; cx <= subdivisions; cx += 1) {
-    perimeter.push(makeBoundaryPoint(state, tileX, tileY, size, elevations, subdivisions, cx, 0));
-  }
-
-  for (let cy = 1; cy <= subdivisions; cy += 1) {
-    perimeter.push(makeBoundaryPoint(state, tileX, tileY, size, elevations, subdivisions, subdivisions, cy));
-  }
-
-  for (let cx = subdivisions - 1; cx >= 0; cx -= 1) {
-    perimeter.push(makeBoundaryPoint(state, tileX, tileY, size, elevations, subdivisions, cx, subdivisions));
-  }
-
-  for (let cy = subdivisions - 1; cy >= 1; cy -= 1) {
-    perimeter.push(makeBoundaryPoint(state, tileX, tileY, size, elevations, subdivisions, 0, cy));
-  }
-
-  return compressColinearPoints(perimeter);
 }
 
-function makeBoundaryPoint(state, tileX, tileY, size, elevations, subdivisions, cx, cy) {
-  const elevation = getBoundaryCornerElevation(elevations, subdivisions, cx, cy);
-  const projected = projectScene(
-    state,
-    tileX + (cx * size),
-    tileY + (cy * size),
-    elevation
-  );
+function drawOverlayCellTop(state, cell, className, fill, stroke, parent) {
+  const liftedElevation = cell.elevation + DETAIL_OVERLAY_LIFT;
+  const topPoint = projectScene(state, cell.x, cell.y, liftedElevation);
 
-  return {
-    x: projected.x,
-    y: projected.y
-  };
-}
+  const halfW = (RENDER_CONFIG.isoTileWidth * cell.size) / 2;
+  const halfH = (RENDER_CONFIG.isoTileHeight * cell.size) / 2;
 
-function getBoundaryCornerElevation(elevations, subdivisions, cx, cy) {
-  let maxElevation = Number.NEGATIVE_INFINITY;
-
-  const candidates = [
-    [cx - 1, cy - 1],
-    [cx, cy - 1],
-    [cx - 1, cy],
-    [cx, cy]
+  const points = [
+    { x: topPoint.x, y: topPoint.y },
+    { x: topPoint.x + halfW, y: topPoint.y + halfH },
+    { x: topPoint.x, y: topPoint.y + (halfH * 2) },
+    { x: topPoint.x - halfW, y: topPoint.y + halfH }
   ];
 
-  for (const [sx, sy] of candidates) {
-    if (sx < 0 || sy < 0 || sx >= subdivisions || sy >= subdivisions) continue;
-    maxElevation = Math.max(maxElevation, elevations[sy][sx]);
-  }
-
-  return Number.isFinite(maxElevation) ? maxElevation : 0;
-}
-
-function compressColinearPoints(points) {
-  if (points.length <= 3) return points;
-
-  const compressed = [];
-
-  for (let i = 0; i < points.length; i += 1) {
-    const prev = points[(i - 1 + points.length) % points.length];
-    const curr = points[i];
-    const next = points[(i + 1) % points.length];
-
-    if (!isColinear(prev, curr, next)) {
-      compressed.push(curr);
-    }
-  }
-
-  return compressed.length >= 4 ? compressed : points;
-}
-
-function isColinear(a, b, c) {
-  const area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-  return Math.abs(area) < 0.001;
-}
-
-function clampIndex(value, subdivisions) {
-  return Math.max(0, Math.min(subdivisions - 1, value));
+  const poly = makePolygon(points, className, fill);
+  poly.setAttribute("stroke", stroke);
+  poly.setAttribute("stroke-width", "1.25");
+  poly.setAttribute("paint-order", "stroke fill");
+  parent.appendChild(poly);
 }
 
 export function tileSetFromList(tiles) {
