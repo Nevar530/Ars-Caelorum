@@ -109,6 +109,126 @@ export function changeDetailElevation(map, mechX, mechY, subX, subY, delta) {
   detailCell.elevation = clamp(detailCell.elevation + delta, 0, maxFineElevation);
 }
 
+export function getTileBaseFineElevation(tile) {
+  return (tile?.elevation ?? 0) * GAME_CONFIG.detailElevationPerMechLevel;
+}
+
+export function isDetailTileUniform(tile) {
+  const detail = getDetailGrid(tile);
+  if (!detail?.cells?.length) return true;
+
+  const baseFineElevation = getTileBaseFineElevation(tile);
+
+  for (const row of detail.cells) {
+    for (const cell of row) {
+      if ((cell?.elevation ?? baseFineElevation) !== baseFineElevation) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+export function getTileRenderElevation(tile) {
+  const detail = getDetailGrid(tile);
+  if (!detail?.cells?.length) {
+    return tile?.elevation ?? 0;
+  }
+
+  let maxFineElevation = 0;
+
+  for (const row of detail.cells) {
+    for (const cell of row) {
+      maxFineElevation = Math.max(maxFineElevation, cell?.elevation ?? 0);
+    }
+  }
+
+  return maxFineElevation / GAME_CONFIG.detailElevationPerMechLevel;
+}
+
+export function getDetailCellSize(tile) {
+  const subdivisions = tile?.detail?.subdivisions ?? GAME_CONFIG.detailSubdivisionsPerMechTile;
+  return 1 / subdivisions;
+}
+
+export function getWorldDetailCellPosition(mechX, mechY, subX, subY, subdivisions = GAME_CONFIG.detailSubdivisionsPerMechTile) {
+  const cellSize = 1 / subdivisions;
+
+  return {
+    x: mechX + (subX * cellSize),
+    y: mechY + (subY * cellSize),
+    size: cellSize
+  };
+}
+
+export function getFineElevationAtWorldDetailCell(map, detailX, detailY) {
+  const subdivisions = GAME_CONFIG.detailSubdivisionsPerMechTile;
+  const mechX = Math.floor(detailX / subdivisions);
+  const mechY = Math.floor(detailY / subdivisions);
+  const subX = detailX - (mechX * subdivisions);
+  const subY = detailY - (mechY * subdivisions);
+
+  const detailCell = getDetailCell(map, mechX, mechY, subX, subY);
+  if (detailCell) {
+    return detailCell.elevation;
+  }
+
+  const tile = getTile(map, mechX, mechY);
+  if (!tile) return 0;
+
+  return getTileBaseFineElevation(tile);
+}
+
+export function getDetailRenderCells(map, mechX, mechY) {
+  const tile = getTile(map, mechX, mechY);
+  const detail = getDetailGrid(tile);
+  if (!tile || !detail?.cells?.length) return [];
+
+  const cells = [];
+  const subdivisions = detail.subdivisions ?? GAME_CONFIG.detailSubdivisionsPerMechTile;
+
+  for (let subY = 0; subY < subdivisions; subY++) {
+    for (let subX = 0; subX < subdivisions; subX++) {
+      const detailCell = detail.cells[subY]?.[subX];
+      if (!detailCell) continue;
+
+      const world = getWorldDetailCellPosition(mechX, mechY, subX, subY, subdivisions);
+      const currentFineElevation = detailCell.elevation;
+      const southFineElevation = getFineElevationAtWorldDetailCell(
+        map,
+        mechX * subdivisions + subX,
+        mechY * subdivisions + subY + 1
+      );
+      const eastFineElevation = getFineElevationAtWorldDetailCell(
+        map,
+        mechX * subdivisions + subX + 1,
+        mechY * subdivisions + subY
+      );
+
+      cells.push({
+        mechX,
+        mechY,
+        subX,
+        subY,
+        x: world.x,
+        y: world.y,
+        size: world.size,
+        fineElevation: currentFineElevation,
+        elevation: currentFineElevation / GAME_CONFIG.detailElevationPerMechLevel,
+        leftFaceHeight:
+          Math.max(0, currentFineElevation - southFineElevation) /
+          GAME_CONFIG.detailElevationPerMechLevel,
+        rightFaceHeight:
+          Math.max(0, currentFineElevation - eastFineElevation) /
+          GAME_CONFIG.detailElevationPerMechLevel
+      });
+    }
+  }
+
+  return cells;
+}
+
 export function tileTypeFromElevation(elevation) {
   if (elevation >= 3) return "peak";
   if (elevation >= 1) return "high";
