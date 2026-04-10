@@ -85,8 +85,20 @@ export function renderIso(state, refs) {
       const detailCells = getDetailRenderCells(map, x, y);
 
       for (const cell of detailCells) {
-        const cellProjected = projectScene(state, cell.x, cell.y, cell.elevation);
-        const cellSort = getSceneSortKey(state, cell.x, cell.y, cell.elevation);
+        const cellProjected = projectScene(
+          state,
+          cell.x,
+          cell.y,
+          cell.elevation,
+          cell.size
+        );
+        const cellSort = getSceneSortKey(
+          state,
+          cell.x,
+          cell.y,
+          cell.elevation,
+          cell.size
+        );
 
         sceneItems.push({
           kind: "detail",
