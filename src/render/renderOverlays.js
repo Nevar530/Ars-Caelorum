@@ -10,6 +10,8 @@ import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG, projectScene } from "./projection.js";
 
 const DETAIL_OVERLAY_LIFT = 0;
+const DETAIL_STROKE_WIDTH = 2;
+const DIAMOND_STROKE_WIDTH = 2.5;
 
 export function drawSceneActionOverlayForTile(state, item, parent) {
   if (state.ui.mode !== "action-target") return;
@@ -199,10 +201,6 @@ function drawOverlayForTile(state, item, className, fill, stroke, parent) {
 
 function drawOverlayCellTop(state, cell, className, fill, stroke, parent) {
   const liftedElevation = cell.elevation + DETAIL_OVERLAY_LIFT;
-
-  // Critical fix:
-  // detail cells must project using their own size so the overlay uses
-  // the same anchor / rotation math as the actual terrain cell.
   const topPoint = projectScene(
     state,
     cell.x,
@@ -223,7 +221,7 @@ function drawOverlayCellTop(state, cell, className, fill, stroke, parent) {
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", "2");
+  poly.setAttribute("stroke-width", String(DETAIL_STROKE_WIDTH));
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
@@ -250,7 +248,7 @@ export function drawOverlayDiamond(screenX, screenY, className, fill, stroke, pa
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", "2.5");
+  poly.setAttribute("stroke-width", String(DIAMOND_STROKE_WIDTH));
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
