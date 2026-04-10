@@ -26,8 +26,8 @@ export function drawSceneActionOverlayForTile(state, item, parent) {
   let stroke = null;
 
   if (fireArc.has(key)) {
-    fill = "rgba(255, 176, 0, 0.10)";
-    stroke = "rgba(255, 176, 0, 0.24)";
+    fill = "rgba(255, 176, 0, 0.22)";
+    stroke = "rgba(255, 176, 0, 0.96)";
   }
 
   const evaluatedTarget = targetMap.get(key);
@@ -36,20 +36,20 @@ export function drawSceneActionOverlayForTile(state, item, parent) {
     const visible = evaluatedTarget.visible ?? evaluatedTarget.los?.visible ?? false;
 
     if (visible && cover === "none") {
-      fill = "rgba(82, 208, 146, 0.20)";
-      stroke = "rgba(82, 208, 146, 0.68)";
+      fill = "rgba(82, 208, 146, 0.24)";
+      stroke = "rgba(82, 208, 146, 0.98)";
     } else if (visible && cover === "half") {
-      fill = "rgba(240, 176, 0, 0.22)";
-      stroke = "rgba(240, 176, 0, 0.82)";
+      fill = "rgba(240, 176, 0, 0.24)";
+      stroke = "rgba(240, 176, 0, 0.98)";
     } else {
-      fill = "rgba(255, 74, 74, 0.22)";
-      stroke = "rgba(255, 74, 74, 0.82)";
+      fill = "rgba(255, 74, 74, 0.24)";
+      stroke = "rgba(255, 74, 74, 0.98)";
     }
   }
 
   if (effectTiles.has(key)) {
-    fill = "rgba(255, 74, 74, 0.22)";
-    stroke = "rgba(255, 74, 74, 0.90)";
+    fill = "rgba(255, 74, 74, 0.24)";
+    stroke = "rgba(255, 74, 74, 1)";
   }
 
   if (!fill || !stroke) return;
@@ -69,8 +69,8 @@ export function drawSceneFocusOverlayForTile(state, item, parent) {
     drawTopOverlayBox(
       item.screenX,
       item.screenY,
-      "rgba(240, 176, 0, 0.08)",
-      "rgba(240, 176, 0, 0.98)",
+      "rgba(240, 176, 0, 0.16)",
+      "rgba(240, 176, 0, 1)",
       parent
     );
     return;
@@ -80,8 +80,8 @@ export function drawSceneFocusOverlayForTile(state, item, parent) {
     state,
     item,
     "focus-tile",
-    "rgba(240, 176, 0, 0.08)",
-    "rgba(240, 176, 0, 0.98)",
+    "rgba(240, 176, 0, 0.16)",
+    "rgba(240, 176, 0, 1)",
     parent
   );
 }
@@ -99,8 +99,8 @@ export function drawScenePathOverlayForTile(state, item, parent) {
     drawTopOverlayBox(
       item.screenX,
       item.screenY,
-      "rgba(240, 176, 0, 0.18)",
-      "rgba(240, 176, 0, 0.92)",
+      "rgba(240, 176, 0, 0.24)",
+      "rgba(240, 176, 0, 1)",
       parent
     );
 
@@ -122,8 +122,8 @@ export function drawScenePathOverlayForTile(state, item, parent) {
     state,
     item,
     "move-path-tile",
-    "rgba(240, 176, 0, 0.18)",
-    "rgba(240, 176, 0, 0.90)",
+    "rgba(240, 176, 0, 0.24)",
+    "rgba(240, 176, 0, 1)",
     parent
   );
 
@@ -144,8 +144,8 @@ export function drawSceneMoveOverlay(state, item, parent, text) {
     drawTopOverlayBox(
       item.screenX,
       item.screenY,
-      "rgba(80, 180, 255, 0.16)",
-      "rgba(80, 180, 255, 0.42)",
+      "rgba(80, 180, 255, 0.24)",
+      "rgba(80, 180, 255, 0.92)",
       parent
     );
 
@@ -164,8 +164,8 @@ export function drawSceneMoveOverlay(state, item, parent, text) {
     state,
     item,
     "move-range-tile",
-    "rgba(80, 180, 255, 0.16)",
-    "rgba(80, 180, 255, 0.42)",
+    "rgba(80, 180, 255, 0.24)",
+    "rgba(80, 180, 255, 0.92)",
     parent
   );
 
@@ -199,7 +199,17 @@ function drawOverlayForTile(state, item, className, fill, stroke, parent) {
 
 function drawOverlayCellTop(state, cell, className, fill, stroke, parent) {
   const liftedElevation = cell.elevation + DETAIL_OVERLAY_LIFT;
-  const topPoint = projectScene(state, cell.x, cell.y, liftedElevation);
+
+  // Critical fix:
+  // detail cells must project using their own size so the overlay uses
+  // the same anchor / rotation math as the actual terrain cell.
+  const topPoint = projectScene(
+    state,
+    cell.x,
+    cell.y,
+    liftedElevation,
+    cell.size
+  );
 
   const halfW = (RENDER_CONFIG.isoTileWidth * cell.size) / 2;
   const halfH = (RENDER_CONFIG.isoTileHeight * cell.size) / 2;
@@ -213,8 +223,9 @@ function drawOverlayCellTop(state, cell, className, fill, stroke, parent) {
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", "1.25");
+  poly.setAttribute("stroke-width", "2");
   poly.setAttribute("paint-order", "stroke fill");
+  poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
 }
 
@@ -239,8 +250,9 @@ export function drawOverlayDiamond(screenX, screenY, className, fill, stroke, pa
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", "2");
+  poly.setAttribute("stroke-width", "2.5");
   poly.setAttribute("paint-order", "stroke fill");
+  poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
 }
 
@@ -253,7 +265,7 @@ export function drawTopOverlayBox(screenX, screenY, fill, stroke, parent) {
   rect.setAttribute("rx", "8");
   rect.setAttribute("fill", fill);
   rect.setAttribute("stroke", stroke);
-  rect.setAttribute("stroke-width", "2");
+  rect.setAttribute("stroke-width", "2.5");
   rect.setAttribute("paint-order", "stroke fill");
   parent.appendChild(rect);
 }
