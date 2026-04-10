@@ -1,5 +1,9 @@
 import { MAP_CONFIG } from "./config.js";
-import { getTile } from "./map.js";
+import {
+  getTile,
+  getTileFootElevation,
+  isTileMechEnterable
+} from "./map.js";
 import { getMechById } from "./mechs.js";
 import { isPositionBlocked } from "./scale/occupancy.js";
 
@@ -35,6 +39,7 @@ export function getNeighbors(x, y) {
 export function isTileBlocked(state, x, y, activeMech = null) {
   const tile = getTile(state.map, x, y);
   if (!tile) return true;
+  if (!isTileMechEnterable(tile)) return true;
 
   return isPositionBlocked(state, x, y, "mech", {
     ignoreUnitId: activeMech?.instanceId ?? null
@@ -46,8 +51,9 @@ export function canStepToTile(state, fromX, fromY, toX, toY) {
   const toTile = getTile(state.map, toX, toY);
 
   if (!fromTile || !toTile) return false;
+  if (!isTileMechEnterable(fromTile) || !isTileMechEnterable(toTile)) return false;
 
-  const elevationRise = toTile.elevation - fromTile.elevation;
+  const elevationRise = getTileFootElevation(toTile) - getTileFootElevation(fromTile);
 
   if (elevationRise > 1) return false;
 
@@ -59,8 +65,9 @@ export function getTileMoveCost(state, fromX, fromY, toX, toY) {
   const toTile = getTile(state.map, toX, toY);
 
   if (!fromTile || !toTile) return Infinity;
+  if (!isTileMechEnterable(fromTile) || !isTileMechEnterable(toTile)) return Infinity;
 
-  const heightDiff = toTile.elevation - fromTile.elevation;
+  const heightDiff = getTileFootElevation(toTile) - getTileFootElevation(fromTile);
 
   if (heightDiff > 1) return Infinity;
 
