@@ -8,7 +8,8 @@
 // - dev menu is a separate overlay
 // - existing map editor sidebar is moved into the Map tab
 // - closing dev menu does NOT hide HUD
-// - devToolbar is dev-only and follows the dev menu
+// - devToolbar is dev-only visually, but its layout row stays reserved
+//   so the stage does not resize and push the HUD offscreen
 
 import { createMechInstance } from "../src/mechs.js";
 import { rebuildRoundOrder } from "../src/initiative.js";
@@ -132,7 +133,15 @@ class DevMenu {
     this.restoreExistingSidebar();
 
     if (this.refs?.devToolbar) {
-      this.refs.devToolbar.style.display = "none";
+      const toolbar = this.refs.devToolbar;
+      toolbar.style.display = "";
+      toolbar.style.visibility = "";
+      toolbar.style.pointerEvents = "";
+      toolbar.style.opacity = "";
+    }
+
+    if (this.rootEl && this.rootEl.parentNode) {
+      this.rootEl.parentNode.removeChild(this.rootEl);
     }
 
     this.rootEl = null;
@@ -574,7 +583,10 @@ class DevMenu {
     const toolbar = this.refs?.devToolbar;
     if (!toolbar) return;
 
-    toolbar.style.display = this.state.isOpen ? "flex" : "none";
+    toolbar.style.display = "flex";
+    toolbar.style.visibility = this.state.isOpen ? "visible" : "hidden";
+    toolbar.style.pointerEvents = this.state.isOpen ? "auto" : "none";
+    toolbar.style.opacity = this.state.isOpen ? "1" : "0";
   }
 
   removeUnit(instanceId) {
