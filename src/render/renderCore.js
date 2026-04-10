@@ -49,6 +49,7 @@ export function renderIso(state, refs) {
   worldUi.innerHTML = "";
 
   const sceneItems = [];
+  const tileItems = [];
   const reachableMap = new Map();
 
   if (state.ui.mode === "move") {
@@ -65,22 +66,31 @@ export function renderIso(state, refs) {
       const renderElevation = getTileRenderElevation(tile);
       const projected = projectScene(state, x, y, renderElevation);
       const hasDetailGeometry = !isDetailTileUniform(tile);
+      const parentSort = getSceneSortKey(state, x, y, renderElevation);
 
-      sceneItems.push({
+      const tileItem = {
         kind: "tile",
         x,
         y,
         elevation: renderElevation,
         screenX: projected.x,
         screenY: projected.y,
-        sortKey: getSceneSortKey(state, x, y, renderElevation),
+        sortKey: parentSort,
+        parentSort,
         reachableCost: reachableMap.get(`${x},${y}`) ?? null,
         skipTerrain: hasDetailGeometry
-      });
+      };
+
+      sceneItems.push(tileItem);
+      tileItems.push(tileItem);
 
       if (!hasDetailGeometry) continue;
 
-      for (const cell of getDetailRenderCells(map, x, y)) {
+      const detailCells = getDetailRenderCells(map, x, y);
+      const detailCount = Math.max(detailCells.length, 1);
+
+      for (let i = 0; i < detailCells.length; i++) {
+        const cell = detailCells[i];
         const cellProjected = projectScene(state, cell.x, cell.y, cell.elevation);
 
         sceneItems.push({
@@ -94,7 +104,7 @@ export function renderIso(state, refs) {
           rightFaceHeight: cell.rightFaceHeight,
           screenX: cellProjected.x,
           screenY: cellProjected.y,
-          sortKey: getSceneSortKey(state, cell.x, cell.y, cell.elevation) - 0.1
+          sortKey: parentSort + ((i + 1) / (detailCount + 1)) * 0.8
         });
       }
     }
@@ -104,15 +114,17 @@ export function renderIso(state, refs) {
     const tile = getTile(map, mech.x, mech.y);
     if (!tile) continue;
 
-    const projected = projectScene(state, mech.x, mech.y, getTileRenderElevation(tile));
+    const tileElevation = getTileRenderElevation(tile);
+    const projected = projectScene(state, mech.x, mech.y, tileElevation);
+    const parentSort = getSceneSortKey(state, mech.x, mech.y, tileElevation);
 
     sceneItems.push({
       kind: "mech",
       mech,
-      elevation: getTileRenderElevation(tile),
+      elevation: tileElevation,
       screenX: projected.x,
       screenY: projected.y,
-      sortKey: getSceneSortKey(state, mech.x, mech.y, getTileRenderElevation(tile)) + 0.25
+      sortKey: parentSort + 0.92
     });
   }
 
@@ -123,20 +135,26 @@ export function renderIso(state, refs) {
       if (!item.skipTerrain) {
         renderTerrainTile(state, item, worldScene);
       }
-
-      if (state.ui.mode === "move" && item.reachableCost !== null) {
-        drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost));
-      }
-
-      drawScenePathOverlayForTile(state, item, worldScene);
-      drawSceneActionOverlayForTile(state, item, worldScene);
-      drawSceneFocusOverlayForTile(state, item, worldScene);
-    } else if (item.kind === "detail") {
-      renderTerrainTile(state, item, worldScene);
-    } else {
-      const isActive = item.mech.instanceId === state.turn.activeMechId;
-      drawMech(state, item.mech, item.screenX, item.screenY, worldScene, isActive);
+      continue;
     }
+
+    if (item.kind === "detail") {
+      renderTerrainTile(state, item, worldScene);
+      continue;
+    }
+
+    const isActive = item.mech.instanceId === state.turn.activeMechId;
+    drawMech(state, item.mech, item.screenX, item.screenY, worldScene, isActive);
+  }
+
+  for (const item of tileItems) {
+    if (state.ui.mode === "move" && item.reachableCost !== null) {
+      drawSceneMoveOverlay(state, item, worldUi, String(item.reachableCost));
+    }
+
+    drawScenePathOverlayForTile(state, item, worldUi);
+    drawSceneActionOverlayForTile(state, item, worldUi);
+    drawSceneFocusOverlayForTile(state, item, worldUi);
   }
 
   drawSceneLosPreview(state, worldUi);
