@@ -1,15 +1,8 @@
 // src/render/renderOverlays.js
 
 import { RENDER_CONFIG } from "../config.js";
-import {
-  getTile,
-  getDetailRenderCells,
-  getTileRenderElevation,
-  getTileSummary,
-  isDetailTileUniform
-} from "../map.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
-import { TOPDOWN_CONFIG, projectScene } from "./projection.js";
+import { TOPDOWN_CONFIG } from "./projection.js";
 
 export function drawSceneActionOverlayForTile(state, item, parent) {
   if (state.ui.mode !== "action-target") return;
@@ -24,12 +17,10 @@ export function drawSceneActionOverlayForTile(state, item, parent) {
 
   let fill = null;
   let stroke = null;
-  let center = null;
 
   if (fireArc.has(key)) {
-    fill = "rgba(255, 176, 0, 0.035)";
-    stroke = "rgba(255, 176, 0, 0.30)";
-    center = "rgba(255, 176, 0, 0.90)";
+    fill = "rgba(255, 176, 0, 0.05)";
+    stroke = "rgba(255, 176, 0, 0.18)";
   }
 
   const evaluatedTarget = targetMap.get(key);
@@ -38,24 +29,20 @@ export function drawSceneActionOverlayForTile(state, item, parent) {
     const visible = evaluatedTarget.visible ?? evaluatedTarget.los?.visible ?? false;
 
     if (visible && cover === "none") {
-      fill = "rgba(82, 208, 146, 0.085)";
-      stroke = "rgba(82, 208, 146, 0.65)";
-      center = "rgba(82, 208, 146, 0.95)";
+      fill = "rgba(82, 208, 146, 0.12)";
+      stroke = "rgba(82, 208, 146, 0.60)";
     } else if (visible && cover === "half") {
-      fill = "rgba(240, 176, 0, 0.095)";
-      stroke = "rgba(240, 176, 0, 0.82)";
-      center = "rgba(240, 176, 0, 0.95)";
+      fill = "rgba(240, 176, 0, 0.14)";
+      stroke = "rgba(240, 176, 0, 0.75)";
     } else {
-      fill = "rgba(255, 74, 74, 0.095)";
-      stroke = "rgba(255, 74, 74, 0.82)";
-      center = "rgba(255, 74, 74, 0.95)";
+      fill = "rgba(255, 74, 74, 0.14)";
+      stroke = "rgba(255, 74, 74, 0.72)";
     }
   }
 
   if (effectTiles.has(key)) {
-    fill = "rgba(255, 74, 74, 0.075)";
-    stroke = "rgba(255, 74, 74, 0.92)";
-    center = "rgba(255, 74, 74, 1)";
+    fill = "rgba(255, 74, 74, 0.14)";
+    stroke = "rgba(255, 74, 74, 0.82)";
   }
 
   if (!fill || !stroke) return;
@@ -65,11 +52,7 @@ export function drawSceneActionOverlayForTile(state, item, parent) {
     return;
   }
 
-  drawIsoTileOverlay(state, item, fill, stroke, parent, {
-    showCenterMarker: true,
-    centerColor: center ?? stroke,
-    detailFillMode: "highest"
-  });
+  drawOverlayDiamond(item.screenX, item.screenY, "action-preview-tile", fill, stroke, parent);
 }
 
 export function drawSceneFocusOverlayForTile(state, item, parent) {
@@ -79,24 +62,20 @@ export function drawSceneFocusOverlayForTile(state, item, parent) {
     drawTopOverlayBox(
       item.screenX,
       item.screenY,
-      "rgba(240, 176, 0, 0.035)",
+      "rgba(240, 176, 0, 0.04)",
       "rgba(240, 176, 0, 0.95)",
       parent
     );
     return;
   }
 
-  drawIsoTileOverlay(
-    state,
-    item,
-    "rgba(240, 176, 0, 0.03)",
+  drawOverlayDiamond(
+    item.screenX,
+    item.screenY,
+    "focus-tile",
+    "rgba(240, 176, 0, 0.04)",
     "rgba(240, 176, 0, 0.95)",
-    parent,
-    {
-      showCenterMarker: true,
-      centerColor: "rgba(240, 176, 0, 1)",
-      detailFillMode: "highest"
-    }
+    parent
   );
 }
 
@@ -113,7 +92,7 @@ export function drawScenePathOverlayForTile(state, item, parent) {
     drawTopOverlayBox(
       item.screenX,
       item.screenY,
-      "rgba(240, 176, 0, 0.08)",
+      "rgba(240, 176, 0, 0.10)",
       "rgba(240, 176, 0, 0.90)",
       parent
     );
@@ -132,17 +111,13 @@ export function drawScenePathOverlayForTile(state, item, parent) {
     return;
   }
 
-  drawIsoTileOverlay(
-    state,
-    item,
-    "rgba(240, 176, 0, 0.06)",
-    "rgba(240, 176, 0, 0.88)",
-    parent,
-    {
-      showCenterMarker: true,
-      centerColor: "rgba(240, 176, 0, 0.98)",
-      detailFillMode: "highest"
-    }
+  drawOverlayDiamond(
+    item.screenX,
+    item.screenY,
+    "move-path-tile",
+    "rgba(240, 176, 0, 0.10)",
+    "rgba(240, 176, 0, 0.85)",
+    parent
   );
 
   if (step.cost !== undefined && step.cost !== null) {
@@ -162,8 +137,8 @@ export function drawSceneMoveOverlay(state, item, parent, text) {
     drawTopOverlayBox(
       item.screenX,
       item.screenY,
-      "rgba(80, 180, 255, 0.06)",
-      "rgba(80, 180, 255, 0.32)",
+      "rgba(80, 180, 255, 0.10)",
+      "rgba(80, 180, 255, 0.35)",
       parent
     );
 
@@ -178,16 +153,13 @@ export function drawSceneMoveOverlay(state, item, parent, text) {
     return;
   }
 
-  drawIsoTileOverlay(
-    state,
-    item,
-    "rgba(80, 180, 255, 0.045)",
-    "rgba(80, 180, 255, 0.30)",
-    parent,
-    {
-      showCenterMarker: false,
-      detailFillMode: "none"
-    }
+  drawOverlayDiamond(
+    item.screenX,
+    item.screenY,
+    "move-range-tile",
+    "rgba(80, 180, 255, 0.10)",
+    "rgba(80, 180, 255, 0.35)",
+    parent
   );
 
   const label = makeText(
@@ -208,93 +180,7 @@ export function tileSetFromList(tiles) {
   return set;
 }
 
-function drawIsoTileOverlay(state, item, fill, stroke, parent, options = {}) {
-  const tile = getTile(state.map, item.x, item.y);
-  if (!tile) return;
-
-  if (isDetailTileUniform(tile)) {
-    drawOverlayDiamond(item.screenX, item.screenY, "tile-overlay", fill, stroke, parent);
-
-    if (options.showCenterMarker) {
-      drawCenterMarker(
-        item.screenX,
-        item.screenY + (RENDER_CONFIG.isoTileHeight / 2),
-        options.centerColor ?? stroke,
-        parent
-      );
-    }
-
-    return;
-  }
-
-  const detailFillMode = options.detailFillMode ?? "highest";
-  const detailCells = getDetailRenderCells(state.map, item.x, item.y);
-  const summary = getTileSummary(tile);
-  const highestFineElevation = summary?.maxFineElevation ?? null;
-
-  if (detailFillMode !== "none" && highestFineElevation !== null) {
-    const targetCells = detailCells.filter(
-      (cell) => cell.fineElevation === highestFineElevation
-    );
-
-    for (const cell of targetCells) {
-      const projected = projectScene(state, cell.x, cell.y, cell.elevation);
-      drawOverlayCellTop(projected.x, projected.y, cell.size, fill, parent);
-    }
-  }
-
-  if (options.showCenterMarker) {
-    const centerProjected = projectScene(
-      state,
-      item.x,
-      item.y,
-      getTileRenderElevation(tile)
-    );
-
-    drawCenterMarker(
-      centerProjected.x,
-      centerProjected.y + (RENDER_CONFIG.isoTileHeight / 2),
-      options.centerColor ?? stroke,
-      parent
-    );
-  }
-
-  drawOverlayDiamond(
-    item.screenX,
-    item.screenY,
-    "tile-overlay-outline",
-    "none",
-    stroke,
-    parent,
-    1.4
-  );
-}
-
-function drawOverlayCellTop(screenX, screenY, size, fill, parent) {
-  const halfW = (RENDER_CONFIG.isoTileWidth * size) / 2;
-  const halfH = (RENDER_CONFIG.isoTileHeight * size) / 2;
-
-  const points = [
-    { x: screenX, y: screenY },
-    { x: screenX + halfW, y: screenY + halfH },
-    { x: screenX, y: screenY + (halfH * 2) },
-    { x: screenX - halfW, y: screenY + halfH }
-  ];
-
-  const poly = makePolygon(points, "tile-overlay-cell", fill);
-  poly.setAttribute("stroke", "none");
-  parent.appendChild(poly);
-}
-
-export function drawOverlayDiamond(
-  screenX,
-  screenY,
-  className,
-  fill,
-  stroke,
-  parent,
-  strokeWidth = 1.5
-) {
+export function drawOverlayDiamond(screenX, screenY, className, fill, stroke, parent) {
   const halfW = RENDER_CONFIG.isoTileWidth / 2;
   const halfH = RENDER_CONFIG.isoTileHeight / 2;
 
@@ -307,30 +193,8 @@ export function drawOverlayDiamond(
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", String(strokeWidth));
+  poly.setAttribute("stroke-width", "1.5");
   parent.appendChild(poly);
-}
-
-function drawCenterMarker(screenX, screenY, color, parent) {
-  const outer = svgEl("circle");
-  outer.setAttribute("cx", screenX);
-  outer.setAttribute("cy", screenY);
-  outer.setAttribute("r", "8");
-  outer.setAttribute("fill", "none");
-  outer.setAttribute("stroke", color);
-  outer.setAttribute("stroke-width", "1.6");
-  outer.setAttribute("opacity", "0.95");
-
-  const inner = svgEl("circle");
-  inner.setAttribute("cx", screenX);
-  inner.setAttribute("cy", screenY);
-  inner.setAttribute("r", "2.4");
-  inner.setAttribute("fill", color);
-  inner.setAttribute("stroke", "rgba(0,0,0,0.55)");
-  inner.setAttribute("stroke-width", "0.8");
-
-  parent.appendChild(outer);
-  parent.appendChild(inner);
 }
 
 export function drawTopOverlayBox(screenX, screenY, fill, stroke, parent) {
