@@ -8,6 +8,27 @@
 </head>
 <body>
   <div class="app">
+    <aside class="sidebar">
+      <div class="panel-title">Ars Caelorum</div>
+      <div class="panel-sub">Map Editor</div>
+      <div class="panel-sub">Left click = raise · Right click = lower</div>
+      <div class="panel-sub">1 mech tile = 4×4 detail cells</div>
+      <div class="panel-sub">R = Tactical View Toggle</div>
+
+      <div style="display:flex; gap:8px; margin:10px 0 8px;">
+        <button id="editorModeMech" type="button">Mech Tile Edit</button>
+        <button id="editorModeDetail" type="button">Detail Cell Edit</button>
+      </div>
+
+      <div id="editorModeLabel" class="panel-sub">Editor Mode: Mech Tiles</div>
+
+      <svg
+        id="editor"
+        viewBox="0 0 420 420"
+        aria-label="Top down mech map editor"
+      ></svg>
+    </aside>
+
     <main class="main">
       <div id="devToolbar" class="toolbar">
         <button id="rotateLeft" type="button">⟲ Rotate Left</button>
@@ -32,75 +53,6 @@
         <div id="hudRight" class="hud-panel hud-panel-right"></div>
       </section>
     </main>
-  </div>
-
-  <div
-    id="ac-dev-root"
-    style="
-      position: fixed;
-      top: 0;
-      right: 0;
-      width: min(760px, 92vw);
-      height: 100vh;
-      z-index: 9999;
-      display: none;
-      pointer-events: none;
-    "
-  >
-    <div
-      id="ac-dev-panel"
-      style="
-        display: none;
-        width: 100%;
-        height: 100%;
-        background: rgba(10, 12, 18, 0.96);
-        color: #d8e1ea;
-        border-left: 1px solid rgba(255,255,255,0.12);
-        box-shadow: -8px 0 24px rgba(0,0,0,0.35);
-        font-family: monospace;
-        font-size: 12px;
-        pointer-events: auto;
-        box-sizing: border-box;
-        overflow: hidden;
-      "
-    >
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 12px 0 12px;">
-        <div style="font-size:14px; font-weight:bold;">DEV MENU</div>
-        <button id="ac-dev-close-btn" type="button">Close</button>
-      </div>
-
-      <div style="display:flex; gap:8px; padding:12px 12px 0 12px;">
-        <button id="ac-dev-tab-units" type="button">Units</button>
-        <button id="ac-dev-tab-map" type="button">Map</button>
-      </div>
-
-      <div style="display:grid; grid-template-columns: minmax(0, 1fr); height: calc(100% - 92px); padding:12px; gap:12px;">
-        <div id="ac-dev-tab-panel-units" style="display:block; overflow-y:auto; min-height:0;"></div>
-
-        <div id="ac-dev-tab-panel-map" style="display:none; overflow-y:auto; min-height:0;">
-          <aside class="sidebar" style="width:100%; min-width:0; height:auto; border-right:0; padding:0; background:transparent;">
-            <div class="panel-title">Ars Caelorum</div>
-            <div class="panel-sub">Map Editor</div>
-            <div class="panel-sub">Left click = raise · Right click = lower</div>
-            <div class="panel-sub">1 mech tile = 4×4 detail cells</div>
-            <div class="panel-sub">R = Tactical View Toggle</div>
-
-            <div style="display:flex; gap:8px; margin:10px 0 8px;">
-              <button id="editorModeMech" type="button">Mech Tile Edit</button>
-              <button id="editorModeDetail" type="button">Detail Cell Edit</button>
-            </div>
-
-            <div id="editorModeLabel" class="panel-sub">Editor Mode: Mech Tiles</div>
-
-            <svg
-              id="editor"
-              viewBox="0 0 420 420"
-              aria-label="Top down mech map editor"
-            ></svg>
-          </aside>
-        </div>
-      </div>
-    </div>
   </div>
 
   <script type="module" src="./script.js"></script>
