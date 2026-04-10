@@ -7,11 +7,11 @@ import {
 import { resolveHit } from "../combat/hitResolver.js";
 import { resolveDamage } from "../combat/damageResolver.js";
 import { addCombatTextMarker } from "../combat/combatTextOverlay.js";
+import { getPrimaryOccupantAt } from "../scale/occupancy.js";
 
 export function createCombatController({
   state,
   getMechById,
-  getMechAt,
   render,
   logDev,
   clearTransientUi,
@@ -53,7 +53,10 @@ export function createCombatController({
   function handleConfirmedTarget(activeMech, selectedAttack) {
     const targetX = state.focus.x;
     const targetY = state.focus.y;
-    const targetMech = getMechAt(state.mechs, targetX, targetY);
+    const targetEntry = getPrimaryOccupantAt(state, targetX, targetY, "mech", {
+      excludeUnitId: activeMech.instanceId
+    });
+    const targetMech = targetEntry?.unit ?? null;
 
     if (!confirmActionTarget(state)) {
       return false;
