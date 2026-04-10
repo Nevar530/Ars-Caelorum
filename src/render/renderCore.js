@@ -83,11 +83,10 @@ export function renderIso(state, refs) {
       if (!hasDetailGeometry) continue;
 
       const detailCells = getDetailRenderCells(map, x, y);
-      const detailCount = Math.max(detailCells.length, 1);
 
-      for (let i = 0; i < detailCells.length; i += 1) {
-        const cell = detailCells[i];
+      for (const cell of detailCells) {
         const cellProjected = projectScene(state, cell.x, cell.y, cell.elevation);
+        const cellSort = getSceneSortKey(state, cell.x, cell.y, cell.elevation);
 
         sceneItems.push({
           kind: "detail",
@@ -100,7 +99,7 @@ export function renderIso(state, refs) {
           rightFaceHeight: cell.rightFaceHeight,
           screenX: cellProjected.x,
           screenY: cellProjected.y,
-          sortKey: parentSort + ((i + 1) / (detailCount + 1)) * 0.8
+          sortKey: cellSort
         });
       }
     }
@@ -261,42 +260,77 @@ function renderDetailEditor(state, parent, map, pad, inner) {
     )
   );
 
-  const detailBoxY = miniY + miniSize + 18;
-  const detailBoxSize = inner - miniSize - 18;
-  const gridSize = Math.min(detailBoxSize, inner);
-  const cellSize = gridSize / detail.subdivisions;
+  if (!detail?.cells?.length) {
+    return;
+  }
 
-  for (let sy = 0; sy < detail.subdivisions; sy++) {
-    for (let sx = 0; sx < detail.subdivisions; sx++) {
-      const detailCell = detail.cells[sy][sx];
+  const subdivisions = detail.subdivisions ?? 4;
+  const detailPadTop = 110;
+  const detailSize = Math.min(inner - miniSize - 28, inner - detailPadTop);
+  const detailCellW = detailSize / subdivisions;
+  const detailCellH = detailSize / subdivisions;
+  const detailX = miniX + miniSize + 16;
+  const detailY = miniY + detailPadTop;
+
+  for (let subY = 0; subY < subdivisions; subY++) {
+    for (let subX = 0; subX < subdivisions; subX++) {
+      const cell = detail.cells[subY]?.[subX];
+      if (!cell) continue;
 
       renderEditorDetailCell(
-        detailCell,
+        cell,
         selectedX,
         selectedY,
-        sx,
-        sy,
-        pad + (sx * cellSize),
-        detailBoxY + (sy * cellSize),
-        cellSize,
-        cellSize,
+        subX,
+        subY,
+        detailX + (subX * detailCellW),
+        detailY + (subY * detailCellH),
+        detailCellW,
+        detailCellH,
         parent,
         {
-          large: true
+          large: true,
+          selected:
+            state.ui.editor.detailSelection &&
+            state.ui.editor.detailSelection.sx === subX &&
+            state.ui.editor.detailSelection.sy === subY
         }
       );
     }
   }
 }
 
-function renderEditorUi(state, refs) {
-  if (!refs.editorModeLabel) return;
+export function renderEditorUi(state, refs) {
+  const { editorUi } = refs;
 
-  if (state.ui.editor.mode === "detail") {
-    refs.editorModeLabel.textContent =
-      `Editor Mode: Detail Cells · Tile ${state.ui.editor.selectedTile.x},${state.ui.editor.selectedTile.y}`;
+  editorUi.innerHTML = "";
+
+  if (!state.ui.showDevMenu || state.ui.devTab !== "map") {
     return;
   }
 
-  refs.editorModeLabel.textContent = "Editor Mode: Mech Tiles";
+  const title = makeText(14, 20, "MAP EDITOR", "editor-ui-title");
+  editorUi.appendChild(title);
+
+  const modeLabel = state.ui.editor.mode === "detail"
+    ? "Mode: Detail 4x4"
+    : "Mode: Mech Tile";
+
+  editorUi.appendChild(
+    makeText(14, 42, modeLabel, "editor-ui-subtitle")
+  );
+
+  editorUi.appendChild(
+    makeText(14, 66, "E/Q: Raise/Lower · Tab: Toggle Detail Mode", "editor-ui-help")
+  );
+
+  if (state.ui.editor.mode === "detail") {
+    editorUi.appendChild(
+      makeText(14, 86, "Click a detail cell, then use E/Q to edit fine height", "editor-ui-help")
+    );
+  } else {
+    editorUi.appendChild(
+      makeText(14, 86, "Click a mech tile, then use E/Q to edit tile height", "editor-ui-help")
+    );
+  }
 }
