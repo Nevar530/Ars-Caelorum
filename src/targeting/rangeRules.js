@@ -1,6 +1,6 @@
 // src/targeting/rangeRules.js
 
-import { getMechAt } from "../mechs.js";
+import { getPrimaryOccupantAt } from "../scale/occupancy.js";
 import {
   getCardinalAdjacentTilesForFacing,
   uniqueBoardTiles
@@ -32,7 +32,7 @@ export function getCircleTiles(cx, cy, radius) {
 
   for (let dx = -radius; dx <= radius; dx++) {
     for (let dy = -radius; dy <= radius; dy++) {
-      const distSq = (dx * dx) + (dy * dy);
+      const distSq = dx * dx + dy * dy;
       if (distSq <= radius * radius) {
         results.push({ x: cx + dx, y: cy + dy });
       }
@@ -51,8 +51,12 @@ export function getWeaponCandidateTiles(state, mech, profile) {
     case "cardinal_adjacent":
       return getCardinalAdjacentTilesForFacing(mech.x, mech.y, mech.facing)
         .map((tile) => {
-          const targetMech = getMechAt(state.mechs, tile.x, tile.y);
-          if (!targetMech || targetMech.instanceId === mech.instanceId) return null;
+          const targetEntry = getPrimaryOccupantAt(state, tile.x, tile.y, "mech", {
+            excludeUnitId: mech.instanceId
+          });
+          const targetMech = targetEntry?.unit ?? null;
+
+          if (!targetMech) return null;
           if (targetMech.team === mech.team) return null;
 
           return {
