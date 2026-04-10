@@ -140,6 +140,10 @@ export function getCameraOffsetLimits(rawBounds, viewport) {
 }
 
 export function getMapScreenBoundsRaw(state) {
+  if (state.ui?.viewMode === "top") {
+    return getTopDownBoundsRaw();
+  }
+
   const corners = [
     { x: 0, y: 0 },
     { x: MAP_CONFIG.mechWidth - 1, y: 0 },
@@ -164,6 +168,15 @@ export function getMapScreenBoundsRaw(state) {
     minY: Math.min(...ys),
     maxY: Math.max(...ys)
   };
+}
+
+function getTopDownBoundsRaw() {
+  const minX = CAMERA_CENTER.topX;
+  const minY = CAMERA_CENTER.topY;
+  const maxX = CAMERA_CENTER.topX + (MAP_CONFIG.mechWidth * TOPDOWN_CONFIG.cellSize);
+  const maxY = CAMERA_CENTER.topY + (MAP_CONFIG.mechHeight * TOPDOWN_CONFIG.cellSize);
+
+  return { minX, maxX, minY, maxY };
 }
 
 export function projectScene(state, x, y, elevation = 0, size = 1) {
@@ -202,8 +215,8 @@ export function projectIsoRaw(x, y, elevation = 0, rotation = 0, size = 1) {
 
 export function projectTopDown(state, x, y) {
   return {
-    x: TOPDOWN_CONFIG.originX + (x * TOPDOWN_CONFIG.cellSize),
-    y: TOPDOWN_CONFIG.originY + (y * TOPDOWN_CONFIG.cellSize)
+    x: CAMERA_CENTER.topX + (x * TOPDOWN_CONFIG.cellSize) + (state.camera?.offsetX ?? 0),
+    y: CAMERA_CENTER.topY + (y * TOPDOWN_CONFIG.cellSize) + (state.camera?.offsetY ?? 0)
   };
 }
 
