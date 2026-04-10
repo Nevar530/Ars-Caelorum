@@ -1,6 +1,7 @@
 import { getTile } from "../map.js";
-import { getMechAt, getMechById } from "../mechs.js";
+import { getMechById } from "../mechs.js";
 import { getLineOfSightResult } from "../los.js";
+import { getPrimaryOccupantAt } from "../scale/occupancy.js";
 
 const BASE_TN = 6;
 
@@ -110,7 +111,9 @@ function getDirectTarget(state, confirmed) {
     return getMechById(state.mechs, confirmed.targetMechId);
   }
 
-  return getMechAt(state.mechs, confirmed.target.x, confirmed.target.y);
+  return (
+    getPrimaryOccupantAt(state, confirmed.target.x, confirmed.target.y, "mech")?.unit ?? null
+  );
 }
 
 function getMissileTargets(state, confirmed) {
@@ -118,7 +121,7 @@ function getMissileTargets(state, confirmed) {
   const seen = new Set();
 
   for (const tile of confirmed.effectTiles ?? []) {
-    const target = getMechAt(state.mechs, tile.x, tile.y);
+    const target = getPrimaryOccupantAt(state, tile.x, tile.y, "mech")?.unit ?? null;
     if (!target) continue;
     if (seen.has(target.instanceId)) continue;
     seen.add(target.instanceId);
@@ -143,11 +146,12 @@ function buildSingleHitResult({
     targetScale: target.scale ?? "mech"
   });
 
-  const cover = confirmed.weaponType === "missile"
-    ? coverLos.cover ?? "none"
-    : (target.x === confirmed.target.x && target.y === confirmed.target.y
-      ? confirmed.targetCover ?? "none"
-      : coverLos.cover ?? "none");
+  const cover =
+    confirmed.weaponType === "missile"
+      ? coverLos.cover ?? "none"
+      : target.x === confirmed.target.x && target.y === confirmed.target.y
+        ? confirmed.targetCover ?? "none"
+        : coverLos.cover ?? "none";
 
   const coverModifier = getCoverModifier(cover);
   const height = getHeightModifier(state, attacker, target);
@@ -266,25 +270,28 @@ export function resolveHit(state, attacker, weapon, confirmed) {
   if (!target) {
     return {
       attackResolved: false,
-      logs: ["No valid target unit was found for this attack."],
+      logs: ["To-hit could not resolve: direct target not found."],
       results: []
     };
   }
 
-  const distance = Number(confirmed.targetDistance ?? 0);
-  const result = buildSingleHitResult({
-    state,
-    attacker,
-    weapon,
-    confirmed,
-    target,
-    distance,
-    targetingSource
-  });
+  const distance = Number(
+    confirmed.targetDistance ?? Math.abs(target.x - attacker.x) + Math.abs(target.y - attacker.y)
+  );
 
   return {
     attackResolved: true,
     logs: [],
-    results: [result]
+    results: [
+      buildSingleHitResult({
+        state,
+        attacker,
+        weapon,
+        confirmed,
+        target,
+        distance,
+        targetingSource
+      })
+    ]
   };
 }
