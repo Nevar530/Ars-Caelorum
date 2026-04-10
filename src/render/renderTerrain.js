@@ -7,11 +7,11 @@ import { TOPDOWN_CONFIG } from "./projection.js";
 
 export function renderTerrainTile(state, item, parent) {
   if (state.ui.viewMode === "top") {
-    drawTopTile(item, parent);
+    drawTopTerrainCell(item, parent);
     return;
   }
 
-  drawIsoTile(item, parent);
+  drawIsoTerrainCell(item, parent);
 }
 
 export function renderEditorTile(tile, x, y, px, py, cellWidth, cellHeight, parent, options = {}) {
@@ -106,84 +106,99 @@ export function renderEditorDetailCell(
   parent.appendChild(group);
 }
 
-export function drawIsoTile(item, parent) {
-  const { x, y, elevation, screenX, screenY } = item;
+function drawIsoTerrainCell(item, parent) {
+  const {
+    x,
+    y,
+    elevation,
+    size = 1,
+    screenX,
+    screenY,
+    leftFaceHeight = elevation,
+    rightFaceHeight = elevation,
+    fineElevation = null
+  } = item;
 
-  const type = tileTypeFromElevation(elevation);
+  const type = fineElevation === null
+    ? tileTypeFromElevation(elevation)
+    : detailTypeFromFineElevation(fineElevation);
   const colors = tileColors(type);
 
-  const halfW = RENDER_CONFIG.isoTileWidth / 2;
-  const halfH = RENDER_CONFIG.isoTileHeight / 2;
-  const heightPx = elevation * RENDER_CONFIG.elevationStepPx;
+  const halfW = (RENDER_CONFIG.isoTileWidth * size) / 2;
+  const halfH = (RENDER_CONFIG.isoTileHeight * size) / 2;
+  const leftHeightPx = leftFaceHeight * RENDER_CONFIG.elevationStepPx;
+  const rightHeightPx = rightFaceHeight * RENDER_CONFIG.elevationStepPx;
 
   const top = {
     top: { x: screenX, y: screenY },
     right: { x: screenX + halfW, y: screenY + halfH },
-    bottom: { x: screenX, y: screenY + RENDER_CONFIG.isoTileHeight },
+    bottom: { x: screenX, y: screenY + (halfH * 2) },
     left: { x: screenX - halfW, y: screenY + halfH }
   };
-
-  const leftFace = [
-    top.left,
-    top.bottom,
-    { x: top.bottom.x, y: top.bottom.y + heightPx },
-    { x: top.left.x, y: top.left.y + heightPx }
-  ];
-
-  const rightFace = [
-    top.right,
-    top.bottom,
-    { x: top.bottom.x, y: top.bottom.y + heightPx },
-    { x: top.right.x, y: top.right.y + heightPx }
-  ];
-
-  const topFace = [top.top, top.right, top.bottom, top.left];
 
   const group = svgEl("g");
   group.dataset.x = String(x);
   group.dataset.y = String(y);
 
-  if (elevation > 0) {
+  if (leftHeightPx > 0) {
+    const leftFace = [
+      top.left,
+      top.bottom,
+      { x: top.bottom.x, y: top.bottom.y + leftHeightPx },
+      { x: top.left.x, y: top.left.y + leftHeightPx }
+    ];
+
     group.appendChild(makePolygon(leftFace, "tile-left", colors.left));
+  }
+
+  if (rightHeightPx > 0) {
+    const rightFace = [
+      top.right,
+      top.bottom,
+      { x: top.bottom.x, y: top.bottom.y + rightHeightPx },
+      { x: top.right.x, y: top.right.y + rightHeightPx }
+    ];
+
     group.appendChild(makePolygon(rightFace, "tile-right", colors.right));
   }
 
+  const topFace = [top.top, top.right, top.bottom, top.left];
   group.appendChild(makePolygon(topFace, "tile-top", colors.top));
   group.appendChild(makePolygon(topFace, "tile-outline", "none"));
-
-  if (RENDER_CONFIG.showCoords) {
-    group.appendChild(
-      makeText(
-        screenX,
-        screenY + (RENDER_CONFIG.isoTileHeight * 0.68),
-        `${x},${y}:${elevation}`,
-        "iso-label"
-      )
-    );
-  }
 
   parent.appendChild(group);
 }
 
-export function drawTopTile(item, parent) {
-  const { x, y, elevation, screenX, screenY } = item;
-  const type = tileTypeFromElevation(elevation);
+function drawTopTerrainCell(item, parent) {
+  const {
+    x,
+    y,
+    elevation,
+    screenX,
+    screenY,
+    size = 1,
+    fineElevation = null
+  } = item;
+
+  const type = fineElevation === null
+    ? tileTypeFromElevation(elevation)
+    : detailTypeFromFineElevation(fineElevation);
   const colors = tileColors(type);
 
   const rect = svgEl("rect");
   rect.setAttribute("x", screenX);
   rect.setAttribute("y", screenY);
-  rect.setAttribute("width", TOPDOWN_CONFIG.cellSize);
-  rect.setAttribute("height", TOPDOWN_CONFIG.cellSize);
+  rect.setAttribute("width", TOPDOWN_CONFIG.cellSize * size);
+  rect.setAttribute("height", TOPDOWN_CONFIG.cellSize * size);
   rect.setAttribute("fill", colors.top);
   rect.setAttribute("stroke", "rgba(255,255,255,0.08)");
-  rect.setAttribute("stroke-width", "1");
+  rect.setAttribute("stroke-width", size < 1 ? "0.5" : "1");
   rect.dataset.x = String(x);
   rect.dataset.y = String(y);
 
   parent.appendChild(rect);
 
-  if (elevation > 0) {
+  if (size >= 1 && elevation > 0) {
     const label = makeText(
       screenX + TOPDOWN_CONFIG.cellSize - 8,
       screenY + 14,
