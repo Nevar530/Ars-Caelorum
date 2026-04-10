@@ -2,6 +2,7 @@ import { changeElevation, changeDetailElevation } from "./map.js";
 import { getMechById } from "./mechs.js";
 import { clampFocusToBoard, getPathToTile } from "./movement.js";
 import { moveAttackSelection, updateActionTargetPreview } from "./action.js";
+import { projectScene } from "./render/projection.js";
 
 export function bindInput(state, refs, actions) {
   bindEditorInput(state, refs, actions);
@@ -346,36 +347,59 @@ function handleConfirmCancelKeys(key, state, actions) {
 }
 
 function getScreenRelativeBoardDelta(state, direction) {
-  const rotation = ((Math.round(state.camera.angle / 90) % 4) + 4) % 4;
+  const origin = projectScene(state, state.focus.x, state.focus.y, 0);
 
-  const directionMaps = {
-    up: [
-      { dx: 0, dy: -1 },
-      { dx: 1, dy: 0 },
-      { dx: 0, dy: 1 },
-      { dx: -1, dy: 0 }
-    ],
-    right: [
-      { dx: 1, dy: 0 },
-      { dx: 0, dy: 1 },
-      { dx: -1, dy: 0 },
-      { dx: 0, dy: -1 }
-    ],
-    down: [
-      { dx: 0, dy: 1 },
-      { dx: -1, dy: 0 },
-      { dx: 0, dy: -1 },
-      { dx: 1, dy: 0 }
-    ],
-    left: [
-      { dx: -1, dy: 0 },
-      { dx: 0, dy: -1 },
-      { dx: 1, dy: 0 },
-      { dx: 0, dy: 1 }
-    ]
-  };
+  const candidates = [
+    { dx: 0, dy: -1 },
+    { dx: 1, dy: 0 },
+    { dx: 0, dy: 1 },
+    { dx: -1, dy: 0 }
+  ];
 
-  return directionMaps[direction][rotation];
+  const screenVector = screenVectorForDirection(direction);
+  let bestDelta = candidates[0];
+  let bestScore = -Infinity;
+
+  for (const candidate of candidates) {
+    const projected = projectScene(
+      state,
+      state.focus.x + candidate.dx,
+      state.focus.y + candidate.dy,
+      0
+    );
+
+    const vx = projected.x - origin.x;
+    const vy = projected.y - origin.y;
+    const length = Math.hypot(vx, vy);
+
+    if (length <= 0.0001) continue;
+
+    const score =
+      ((vx / length) * screenVector.x) +
+      ((vy / length) * screenVector.y);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestDelta = candidate;
+    }
+  }
+
+  return bestDelta;
+}
+
+function screenVectorForDirection(direction) {
+  switch (direction) {
+    case "up":
+      return { x: 0, y: -1 };
+    case "down":
+      return { x: 0, y: 1 };
+    case "left":
+      return { x: -1, y: 0 };
+    case "right":
+      return { x: 1, y: 0 };
+    default:
+      return { x: 0, y: 0 };
+  }
 }
 
 function facingFromDelta(dx, dy) {
