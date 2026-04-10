@@ -166,16 +166,16 @@ export function getMapScreenBoundsRaw(state) {
   };
 }
 
-export function projectScene(state, x, y, elevation = 0) {
+export function projectScene(state, x, y, elevation = 0, size = 1) {
   if (state.ui?.viewMode === "top") {
     return projectTopDown(state, x, y);
   }
 
-  return projectIso(state, x, y, elevation);
+  return projectIso(state, x, y, elevation, size);
 }
 
-export function projectIso(state, x, y, elevation = 0) {
-  const raw = projectIsoRaw(x, y, elevation, state.rotation);
+export function projectIso(state, x, y, elevation = 0, size = 1) {
+  const raw = projectIsoRaw(x, y, elevation, state.rotation, size);
 
   return {
     x: raw.x + (state.camera?.offsetX ?? 0),
@@ -183,8 +183,8 @@ export function projectIso(state, x, y, elevation = 0) {
   };
 }
 
-export function projectIsoRaw(x, y, elevation = 0, rotation = 0) {
-  const rotated = rotateSceneCoord(x, y, rotation);
+export function projectIsoRaw(x, y, elevation = 0, rotation = 0, size = 1) {
+  const rotated = rotateSceneCoord(x, y, rotation, size);
 
   const isoX =
     (rotated.x - rotated.y) * (RENDER_CONFIG.isoTileWidth / 2) + CAMERA_CENTER.isoX;
@@ -207,12 +207,12 @@ export function projectTopDown(state, x, y) {
   };
 }
 
-export function getSceneSortKey(state, x, y, elevation = 0) {
+export function getSceneSortKey(state, x, y, elevation = 0, size = 1) {
   if (state.ui?.viewMode === "top") {
     return (y * 1000) + x;
   }
 
-  const rotated = rotateSceneCoord(x, y, state.rotation);
+  const rotated = rotateSceneCoord(x, y, state.rotation, size);
   return (rotated.x + rotated.y) * 1000 + (elevation * 10);
 }
 
@@ -255,10 +255,10 @@ export function getLosRayEndPoint(state, rayTrace, fallbackX, fallbackY, fallbac
   return projectLosPoint(state, fallbackX, fallbackY, fallbackHeight);
 }
 
-function rotateSceneCoord(x, y, rotation = 0) {
+function rotateSceneCoord(x, y, rotation = 0, size = 1) {
   const normalizedRotation = ((rotation % 4) + 4) % 4;
 
-  if (isWholeTileCoord(x) && isWholeTileCoord(y)) {
+  if (isWholeTileCoord(x) && isWholeTileCoord(y) && size === 1) {
     return rotateCoord(
       x,
       y,
@@ -281,7 +281,7 @@ function rotateSceneCoord(x, y, rotation = 0) {
     normalizedRotation
   );
 
-  const rotatedLocal = rotateLocalOffset(localX, localY, normalizedRotation);
+  const rotatedLocal = rotateLocalOffset(localX, localY, normalizedRotation, size);
 
   return {
     x: rotatedBase.x + rotatedLocal.x,
@@ -289,40 +289,21 @@ function rotateSceneCoord(x, y, rotation = 0) {
   };
 }
 
-function rotateLocalOffset(localX, localY, rotation = 0) {
-  // shift to center (pivot = 0.5,0.5)
-  const cx = localX - 0.5;
-  const cy = localY - 0.5;
-
-  let rx, ry;
+function rotateLocalOffset(localX, localY, rotation = 0, size = 1) {
+  const maxAnchor = 1 - size;
 
   switch (rotation) {
     case 0:
-      rx = cx;
-      ry = cy;
-      break;
+      return { x: localX, y: localY };
     case 1:
-      rx = -cy;
-      ry = cx;
-      break;
+      return { x: maxAnchor - localY, y: localX };
     case 2:
-      rx = -cx;
-      ry = -cy;
-      break;
+      return { x: maxAnchor - localX, y: maxAnchor - localY };
     case 3:
-      rx = cy;
-      ry = -cx;
-      break;
+      return { x: localY, y: maxAnchor - localX };
     default:
-      rx = cx;
-      ry = cy;
+      return { x: localX, y: localY };
   }
-
-  // shift back to tile space
-  return {
-    x: rx + 0.5,
-    y: ry + 0.5
-  };
 }
 
 function isWholeTileCoord(value) {
