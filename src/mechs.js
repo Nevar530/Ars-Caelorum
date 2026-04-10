@@ -128,6 +128,8 @@ export function createMechInstance(definition, overrides = {}) {
   const targeting = Number(overrides.targeting ?? pilot?.targeting ?? 0);
 
   return {
+    unitType: overrides.unitType ?? definition.unitType ?? "mech",
+
     instanceId: overrides.instanceId ?? definition.id,
     definitionId: definition.id,
     name: definition.name,
