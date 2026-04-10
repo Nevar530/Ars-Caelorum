@@ -1,5 +1,7 @@
 // src/losUtils.js
 
+import { getTileEffectiveElevation } from "./map.js";
+
 const HEIGHT_PROFILES = {
   mech: {
     fire: 1,
@@ -18,7 +20,7 @@ export function getScaleProfile(scale = "mech") {
 }
 
 export function getHeightsForScale(tile, scale = "mech") {
-  const base = tile?.elevation ?? 0;
+  const base = getTileEffectiveElevation(tile);
   const profile = getScaleProfile(scale);
 
   return {
@@ -56,13 +58,13 @@ export function traceRay(z1, z2, sampledTiles, state) {
         blocked: true,
         blockingTile: pos,
         reason: "hard_blocker",
-        terrainHeight: tile.elevation ?? 0,
+        terrainHeight: getTileEffectiveElevation(tile),
         rayHeight,
         stopHeight: rayHeight
       };
     }
 
-    const terrainHeight = tile.elevation ?? 0;
+    const terrainHeight = getTileEffectiveElevation(tile);
 
     // White sheet rule: touching counts as blocked.
     if (terrainHeight >= rayHeight) {
