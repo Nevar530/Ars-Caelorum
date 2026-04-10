@@ -1,9 +1,13 @@
 // src/render/renderCore.js
 
-import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
-import { getTile } from "../map.js";
+import { GAME_CONFIG, MAP_CONFIG, RENDER_CONFIG } from "../config.js";
+import { getTile, getDetailGrid } from "../map.js";
 import { getReachableTiles } from "../movement.js";
-import { renderTerrainTile, renderEditorTile } from "./renderTerrain.js";
+import {
+  renderTerrainTile,
+  renderEditorTile,
+  renderEditorDetailCell
+} from "./renderTerrain.js";
 import { drawMech } from "./renderUnits.js";
 import {
   drawSceneMoveOverlay,
@@ -24,6 +28,7 @@ export function renderAll(state, refs) {
   updateCameraFraming(state, refs);
   renderIso(state, refs);
   renderEditor(state, refs);
+  renderEditorUi(state, refs);
 }
 
 export function renderIso(state, refs) {
@@ -105,13 +110,66 @@ export function renderEditor(state, refs) {
   editor.innerHTML = "";
 
   const usable = RENDER_CONFIG.editorSize - (RENDER_CONFIG.editorPadding * 2);
+
+  if (state.ui.editor.mode === "detail") {
+    const detailWidth = MAP_CONFIG.mechWidth * GAME_CONFIG.detailSubdivisionsPerMechTile;
+    const detailHeight = MAP_CONFIG.mechHeight * GAME_CONFIG.detailSubdivisionsPerMechTile;
+    const cellWidth = usable / detailWidth;
+    const cellHeight = usable / detailHeight;
+
+    for (let my = 0; my < MAP_CONFIG.mechHeight; my++) {
+      for (let mx = 0; mx < MAP_CONFIG.mechWidth; mx++) {
+        const tile = getTile(map, mx, my);
+        const detail = getDetailGrid(tile);
+        if (!detail?.cells) continue;
+
+        for (let sy = 0; sy < detail.subdivisions; sy++) {
+          for (let sx = 0; sx < detail.subdivisions; sx++) {
+            const detailCell = detail.cells[sy][sx];
+
+            const globalX = (mx * detail.subdivisions) + sx;
+            const globalY = (my * detail.subdivisions) + sy;
+
+            renderEditorDetailCell(
+              detailCell,
+              mx,
+              my,
+              sx,
+              sy,
+              px(globalX, cellWidth),
+              py(globalY, cellHeight),
+              cellWidth,
+              cellHeight,
+              editor,
+              {
+                drawParentOutline:
+                  sx === detail.subdivisions - 1 || sy === detail.subdivisions - 1
+              }
+            );
+          }
+        }
+      }
+    }
+
+    return;
+  }
+
   const cellWidth = usable / MAP_CONFIG.mechWidth;
   const cellHeight = usable / MAP_CONFIG.mechHeight;
 
   for (let y = 0; y < MAP_CONFIG.mechHeight; y++) {
     for (let x = 0; x < MAP_CONFIG.mechWidth; x++) {
       const tile = getTile(map, x, y);
-      renderEditorTile(tile, x, y, px(x, cellWidth), py(y, cellHeight), cellWidth, cellHeight, editor);
+      renderEditorTile(
+        tile,
+        x,
+        y,
+        px(x, cellWidth),
+        py(y, cellHeight),
+        cellWidth,
+        cellHeight,
+        editor
+      );
     }
   }
 
@@ -122,4 +180,13 @@ export function renderEditor(state, refs) {
   function py(y, cellHeightValue) {
     return RENDER_CONFIG.editorPadding + (y * cellHeightValue);
   }
+}
+
+function renderEditorUi(state, refs) {
+  if (!refs.editorModeLabel) return;
+
+  refs.editorModeLabel.textContent =
+    state.ui.editor.mode === "detail"
+      ? "Editor Mode: Detail Cells"
+      : "Editor Mode: Mech Tiles";
 }
