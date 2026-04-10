@@ -49,7 +49,6 @@ export function renderIso(state, refs) {
   worldUi.innerHTML = "";
 
   const sceneItems = [];
-  const tileItems = [];
   const reachableMap = new Map();
 
   if (state.ui.mode === "move") {
@@ -68,7 +67,7 @@ export function renderIso(state, refs) {
       const hasDetailGeometry = !isDetailTileUniform(tile);
       const parentSort = getSceneSortKey(state, x, y, renderElevation);
 
-      const tileItem = {
+      sceneItems.push({
         kind: "tile",
         x,
         y,
@@ -79,10 +78,7 @@ export function renderIso(state, refs) {
         parentSort,
         reachableCost: reachableMap.get(`${x},${y}`) ?? null,
         skipTerrain: hasDetailGeometry
-      };
-
-      sceneItems.push(tileItem);
-      tileItems.push(tileItem);
+      });
 
       if (!hasDetailGeometry) continue;
 
@@ -107,12 +103,6 @@ export function renderIso(state, refs) {
           sortKey: parentSort + ((i + 1) / (detailCount + 1)) * 0.8
         });
       }
-
-      sceneItems.push({
-        kind: "tileOverlay",
-        tileItem,
-        sortKey: parentSort + 0.86
-      });
     }
   }
 
@@ -141,6 +131,14 @@ export function renderIso(state, refs) {
       if (!item.skipTerrain) {
         renderTerrainTile(state, item, worldScene);
       }
+
+      if (state.ui.mode === "move" && item.reachableCost !== null) {
+        drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost));
+      }
+
+      drawScenePathOverlayForTile(state, item, worldScene);
+      drawSceneActionOverlayForTile(state, item, worldScene);
+      drawSceneFocusOverlayForTile(state, item, worldScene);
       continue;
     }
 
@@ -149,26 +147,11 @@ export function renderIso(state, refs) {
       continue;
     }
 
-    if (item.kind === "tileOverlay") {
-      drawTileOverlayStack(state, item.tileItem, worldScene);
-      continue;
-    }
-
     const isActive = item.mech.instanceId === state.turn.activeMechId;
     drawMech(state, item.mech, item.screenX, item.screenY, worldScene, isActive);
   }
 
   drawSceneLosPreview(state, worldUi);
-}
-
-function drawTileOverlayStack(state, item, parent) {
-  if (state.ui.mode === "move" && item.reachableCost !== null) {
-    drawSceneMoveOverlay(state, item, parent, String(item.reachableCost));
-  }
-
-  drawScenePathOverlayForTile(state, item, parent);
-  drawSceneActionOverlayForTile(state, item, parent);
-  drawSceneFocusOverlayForTile(state, item, parent);
 }
 
 export function renderEditor(state, refs) {
