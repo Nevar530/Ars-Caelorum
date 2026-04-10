@@ -290,18 +290,39 @@ function rotateSceneCoord(x, y, rotation = 0) {
 }
 
 function rotateLocalOffset(localX, localY, rotation = 0) {
+  // shift to center (pivot = 0.5,0.5)
+  const cx = localX - 0.5;
+  const cy = localY - 0.5;
+
+  let rx, ry;
+
   switch (rotation) {
     case 0:
-      return { x: localX, y: localY };
+      rx = cx;
+      ry = cy;
+      break;
     case 1:
-      return { x: 1 - localY, y: localX };
+      rx = -cy;
+      ry = cx;
+      break;
     case 2:
-      return { x: 1 - localX, y: 1 - localY };
+      rx = -cx;
+      ry = -cy;
+      break;
     case 3:
-      return { x: localY, y: 1 - localX };
+      rx = cy;
+      ry = -cx;
+      break;
     default:
-      return { x: localX, y: localY };
+      rx = cx;
+      ry = cy;
   }
+
+  // shift back to tile space
+  return {
+    x: rx + 0.5,
+    y: ry + 0.5
+  };
 }
 
 function isWholeTileCoord(value) {
