@@ -79,6 +79,37 @@ function createTile(x, y, elevation = 0) {
   });
 }
 
+function setDetailCellFine(tile, subX, subY, fineElevation) {
+  if (!tile?.detail?.cells?.[subY]?.[subX]) return;
+  tile.detail.cells[subY][subX].elevation = fineElevation;
+}
+
+function setDetailCell(tile, subX, subY, coarseElevation) {
+  setDetailCellFine(
+    tile,
+    subX,
+    subY,
+    coarseElevation * GAME_CONFIG.detailElevationPerMechLevel
+  );
+}
+
+function applyDetailPattern(tile, pattern) {
+  if (!tile || !Array.isArray(pattern)) return;
+
+  for (let sy = 0; sy < pattern.length; sy++) {
+    const row = pattern[sy];
+    if (!Array.isArray(row)) continue;
+
+    for (let sx = 0; sx < row.length; sx++) {
+      const value = row[sx];
+      if (value === null || value === undefined) continue;
+      setDetailCell(tile, sx, sy, value);
+    }
+  }
+
+  refreshTileSummary(tile);
+}
+
 export function refreshAllTileSummaries(map) {
   if (!Array.isArray(map)) return map;
 
@@ -112,7 +143,66 @@ export function createInitialMap() {
     map.push(row);
   }
 
-  return map;
+  // --------------------------------------------------
+  // DETAIL TERRAIN TEST SET
+  // --------------------------------------------------
+  // Intent:
+  // - give the default map a few real detail-shape tests
+  // - keep them spread out so they are easy to inspect
+  // - include both mech-enterable and mech-blocked examples
+  // --------------------------------------------------
+
+  // Gentle broken tile: should remain mech-enterable
+  // Range = 1.0 total
+  applyDetailPattern(getTile(map, 14, 14), [
+    [0, 0.25, 0.25, 0.5],
+    [0, 0.25, 0.5, 0.5],
+    [0.25, 0.5, 0.75, 0.75],
+    [0.5, 0.5, 0.75, 1]
+  ]);
+
+  // Hard jagged tile: should be mech-blocked
+  // Range > 1.0 total
+  applyDetailPattern(getTile(map, 15, 14), [
+    [0, 0, 0, 0],
+    [0, 0.5, 0.5, 0],
+    [0, 1.5, 1.5, 0],
+    [0, 2, 2, 0]
+  ]);
+
+  // Small stepped corner / wedge test
+  applyDetailPattern(getTile(map, 16, 14), [
+    [0, 0, 0.25, 0.5],
+    [0, 0.25, 0.5, 0.75],
+    [0.25, 0.5, 0.75, 1],
+    [0.5, 0.75, 1, 1]
+  ]);
+
+  // Thin wall-like strip inside a flat tile
+  applyDetailPattern(getTile(map, 14, 15), [
+    [0, 1, 1, 0],
+    [0, 1, 1, 0],
+    [0, 1, 1, 0],
+    [0, 1, 1, 0]
+  ]);
+
+  // Platform corner / raised pad test
+  applyDetailPattern(getTile(map, 15, 15), [
+    [0, 0, 0, 0],
+    [0, 1, 1, 0],
+    [0, 1, 1, 0],
+    [0, 0, 0, 0]
+  ]);
+
+  // Quarter-step single tile test
+  applyDetailPattern(getTile(map, 16, 15), [
+    [0, 0.25, 0.5, 0.75],
+    [0.25, 0.5, 0.75, 1],
+    [0.5, 0.75, 1, 1.25],
+    [0.75, 1, 1.25, 1.5]
+  ]);
+
+  return refreshAllTileSummaries(map);
 }
 
 export function resetMap() {
