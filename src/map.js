@@ -143,6 +143,17 @@ export function createInitialMap() {
     map.push(row);
   }
 
+  // --------------------------------------------------
+  // DETAIL TERRAIN TEST SET
+  // --------------------------------------------------
+  // Intent:
+  // - give the default map a few real detail-shape tests
+  // - keep them spread out so they are easy to inspect
+  // - include both mech-enterable and mech-blocked examples
+  // --------------------------------------------------
+
+  // Gentle broken tile: should remain mech-enterable
+  // Range = 1.0 total
   applyDetailPattern(getTile(map, 14, 14), [
     [0, 0.25, 0.25, 0.5],
     [0, 0.25, 0.5, 0.5],
@@ -150,6 +161,8 @@ export function createInitialMap() {
     [0.5, 0.5, 0.75, 1]
   ]);
 
+  // Hard jagged tile: should be mech-blocked
+  // Range > 1.0 total
   applyDetailPattern(getTile(map, 15, 14), [
     [0, 0, 0, 0],
     [0, 0.5, 0.5, 0],
@@ -157,6 +170,7 @@ export function createInitialMap() {
     [0, 2, 2, 0]
   ]);
 
+  // Small stepped corner / wedge test
   applyDetailPattern(getTile(map, 16, 14), [
     [0, 0, 0.25, 0.5],
     [0, 0.25, 0.5, 0.75],
@@ -164,6 +178,7 @@ export function createInitialMap() {
     [0.5, 0.75, 1, 1]
   ]);
 
+  // Thin wall-like strip inside a flat tile
   applyDetailPattern(getTile(map, 14, 15), [
     [0, 1, 1, 0],
     [0, 1, 1, 0],
@@ -171,6 +186,7 @@ export function createInitialMap() {
     [0, 1, 1, 0]
   ]);
 
+  // Platform corner / raised pad test
   applyDetailPattern(getTile(map, 15, 15), [
     [0, 0, 0, 0],
     [0, 1, 1, 0],
@@ -178,6 +194,7 @@ export function createInitialMap() {
     [0, 0, 0, 0]
   ]);
 
+  // Quarter-step single tile test
   applyDetailPattern(getTile(map, 16, 15), [
     [0, 0.25, 0.5, 0.75],
     [0.25, 0.5, 0.75, 1],
