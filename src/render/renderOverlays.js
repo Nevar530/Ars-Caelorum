@@ -9,7 +9,7 @@ import {
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG, projectScene } from "./projection.js";
 
-const DETAIL_OVERLAY_LIFT = 0.25;
+const DETAIL_OVERLAY_LIFT = 0;
 
 export function drawSceneActionOverlayForTile(state, item, parent) {
   if (state.ui.mode !== "action-target") return;
