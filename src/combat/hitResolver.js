@@ -1,4 +1,4 @@
-import { getTile } from "../map.js";
+import { getTile, getTileEffectiveElevation } from "../map.js";
 import { getMechById } from "../mechs.js";
 import { getLineOfSightResult } from "../los.js";
 import { getPrimaryOccupantAt } from "../scale/occupancy.js";
@@ -68,8 +68,8 @@ export function getHeightModifier(state, attacker, target) {
   const attackerTile = getTile(state.map, attacker.x, attacker.y);
   const targetTile = getTile(state.map, target.x, target.y);
 
-  const attackerElevation = attackerTile?.elevation ?? 0;
-  const targetElevation = targetTile?.elevation ?? 0;
+  const attackerElevation = attackerTile ? getTileEffectiveElevation(attackerTile) : 0;
+  const targetElevation = targetTile ? getTileEffectiveElevation(targetTile) : 0;
 
   if (attackerElevation > targetElevation) {
     return {
@@ -261,7 +261,7 @@ export function resolveHit(state, attacker, weapon, confirmed) {
 
     return {
       attackResolved: true,
-      logs: [`${attacker.name} fires ${weapon.name} at tile (${confirmed.target.x},${confirmed.target.y}).`],
+      logs: results.flatMap((result) => result.logs),
       results
     };
   }
@@ -270,28 +270,29 @@ export function resolveHit(state, attacker, weapon, confirmed) {
   if (!target) {
     return {
       attackResolved: false,
-      logs: ["To-hit could not resolve: direct target not found."],
+      logs: ["Attack could not resolve: no target on selected tile."],
       results: []
     };
   }
 
   const distance = Number(
-    confirmed.targetDistance ?? Math.abs(target.x - attacker.x) + Math.abs(target.y - attacker.y)
+    confirmed.targetDistance ??
+    Math.abs(target.x - attacker.x) + Math.abs(target.y - attacker.y)
   );
+
+  const result = buildSingleHitResult({
+    state,
+    attacker,
+    weapon,
+    confirmed,
+    target,
+    distance,
+    targetingSource
+  });
 
   return {
     attackResolved: true,
-    logs: [],
-    results: [
-      buildSingleHitResult({
-        state,
-        attacker,
-        weapon,
-        confirmed,
-        target,
-        distance,
-        targetingSource
-      })
-    ]
+    logs: result.logs,
+    results: [result]
   };
 }
