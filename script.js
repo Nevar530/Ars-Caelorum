@@ -28,6 +28,9 @@ const refs = {
   rotateRightButton: document.getElementById("rotateRight"),
   toggleViewButton: document.getElementById("toggleView"),
   resetMapButton: document.getElementById("resetMap"),
+  editorModeMechButton: document.getElementById("editorModeMech"),
+  editorModeDetailButton: document.getElementById("editorModeDetail"),
+  editorModeLabel: document.getElementById("editorModeLabel"),
   hudRoot: document.getElementById("hudRoot"),
   hudLeft: document.getElementById("hudLeft"),
   hudCenter: document.getElementById("hudCenter"),
@@ -102,6 +105,11 @@ async function init() {
   const actions = {
     render: gameController.render,
     snapFocusToActiveMech,
+
+    setEditorMode(mode) {
+      state.ui.editor.mode = mode === "detail" ? "detail" : "mech";
+      gameController.render();
+    },
 
     selectFocusedMechIfPresent() {
       return gameController.selectFocusedMechIfPresent(getMechAt);
