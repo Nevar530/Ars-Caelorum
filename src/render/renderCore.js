@@ -217,60 +217,77 @@ export function renderIso(state, refs) {
   }
 
   for (const unit of units) {
-    const footprint = getUnitFootprint(unit);
-    const bounds = getUnitFootprintBounds(unit);
-    const anchorTile = getTile(map, unit.x, unit.y);
-    if (!anchorTile) continue;
+  const footprint = getUnitFootprint(unit);
+  const bounds = getUnitFootprintBounds(unit);
+  const anchorTile = getTile(map, unit.x, unit.y);
+  if (!anchorTile) continue;
 
-    const tileElevation = getTileRenderElevation(anchorTile);
-    const sceneSize = Math.max(footprint.width, footprint.height);
+  const tileElevation = getTileRenderElevation(anchorTile);
 
-    const unitScenePoint =
-      state.ui?.viewMode === "top"
-        ? {
-            x: bounds.minX,
-            y: bounds.minY
+  const isoBase = {
+    top: projectScene(state, bounds.minX, bounds.minY, tileElevation, 1),
+    right: projectScene(state, bounds.maxX + 1, bounds.minY, tileElevation, 1),
+    bottom: projectScene(state, bounds.maxX + 1, bounds.maxY + 1, tileElevation, 1),
+    left: projectScene(state, bounds.minX, bounds.maxY + 1, tileElevation, 1)
+  };
+
+  isoBase.center = {
+    x: (isoBase.left.x + isoBase.right.x) / 2,
+    y: (isoBase.top.y + isoBase.bottom.y) / 2
+  };
+
+  
+  const cellSize = state.ui?.viewMode === "top" ? 28 : 0;
+
+  const renderModel =
+    state.ui?.viewMode === "top"
+      ? {
+          top: {
+            topLeftX: 140 + (bounds.minX * cellSize) + (state.camera?.offsetX ?? 0),
+            topLeftY: 120 + (bounds.minY * cellSize) + (state.camera?.offsetY ?? 0),
+            widthPx: footprint.width * cellSize,
+            heightPx: footprint.height * cellSize
           }
-        : {
-            x: bounds.minX + (footprint.width / 2),
-            y: bounds.minY
-          };
+        }
+      : {
+          iso: {
+            base: {
+              top: isoBase.top,
+              right: isoBase.right,
+              bottom: isoBase.bottom,
+              left: isoBase.left,
+              center: isoBase.center
+            }
+          }
+        };
 
-    const projected = projectScene(
-      state,
-      unitScenePoint.x,
-      unitScenePoint.y,
-      tileElevation,
-      sceneSize
-    );
+  const sortKey = getSceneSortKey(
+    state,
+    bounds.minX + (footprint.width / 2),
+    bounds.minY + (footprint.height / 2),
+    tileElevation,
+    1
+  );
 
-    const sortKey = getSceneSortKey(
-      state,
-      bounds.minX + (footprint.width / 2),
-      bounds.minY + (footprint.height / 2),
-      tileElevation,
-      sceneSize
-    );
+  const cubeHeightPx = getUnitCubeHeightPx(unit);
 
-    const cubeHeightPx = getUnitCubeHeightPx(unit);
-
-    sceneItems.push({
-      kind: "unit",
-      sortDepth:
-        getUnitDepth({
-          size: sceneSize,
-          screenY: projected.y,
-          terrainElevation: tileElevation,
-          cubeHeightPx
-        }) + UNIT_SORT_EPSILON,
-      sortKey,
-      render(parent) {
-        const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
-        const isActive = unit.instanceId === activeUnitId;
-        drawMech(state, unit, projected.x, projected.y, parent, isActive);
-      }
-    });
-  }
+  sceneItems.push({
+    kind: "unit",
+    sortDepth:
+      getUnitDepth({
+        size: Math.max(footprint.width, footprint.height),
+        screenY: isoBase.bottom.y,
+        terrainElevation: tileElevation,
+        cubeHeightPx
+      }) + UNIT_SORT_EPSILON,
+    sortKey,
+    render(parent) {
+      const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
+      const isActive = unit.instanceId === activeUnitId;
+      drawMech(state, unit, renderModel, parent, isActive);
+    }
+  });
+}
 
   sceneItems.sort(compareSceneItems);
 
