@@ -33,6 +33,9 @@ import {
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
 import { makeText } from "../utils.js";
 
+const OVERLAY_SORT_EPSILON = 0.35;
+const MECH_SORT_EPSILON = 0.92;
+
 export function renderAll(state, refs) {
   ensureCameraState(state);
   updateCameraFraming(state, refs);
@@ -49,8 +52,8 @@ export function renderIso(state, refs) {
   worldUi.innerHTML = "";
 
   const terrainItems = [];
-  const mechItems = [];
   const overlayTileItems = [];
+  const sceneItems = [];
   const reachableMap = new Map();
 
   if (state.ui.mode === "move") {
@@ -79,47 +82,131 @@ export function renderIso(state, refs) {
         sortKey: parentSort,
         reachableCost: reachableMap.get(`${x},${y}`) ?? null,
         skipTerrain: hasDetailGeometry,
-        size: 1
+        size: 1,
+        sortDepth: getTerrainDepth({
+          size: 1,
+          screenY: projected.y,
+          leftFaceHeight: renderElevation,
+          rightFaceHeight: renderElevation
+        })
       };
 
       terrainItems.push(tileItem);
       overlayTileItems.push(tileItem);
 
-      if (!hasDetailGeometry) continue;
+      let tileOverlayDepth = tileItem.sortDepth;
 
-      const detailCells = getDetailRenderCells(map, x, y);
+      if (hasDetailGeometry) {
+        const detailCells = getDetailRenderCells(map, x, y);
 
-      for (const cell of detailCells) {
-        const cellProjected = projectScene(
-          state,
-          cell.x,
-          cell.y,
-          cell.elevation,
-          cell.size
-        );
-        const cellSort = getSceneSortKey(
-          state,
-          cell.x,
-          cell.y,
-          cell.elevation,
-          cell.size
-        );
+        for (const cell of detailCells) {
+          const cellProjected = projectScene(
+            state,
+            cell.x,
+            cell.y,
+            cell.elevation,
+            cell.size
+          );
+          const cellSort = getSceneSortKey(
+            state,
+            cell.x,
+            cell.y,
+            cell.elevation,
+            cell.size
+          );
 
-        terrainItems.push({
-          kind: "detail",
-          x: cell.x,
-          y: cell.y,
-          elevation: cell.elevation,
-          fineElevation: cell.fineElevation,
-          size: cell.size,
-          leftFaceHeight: cell.leftFaceHeight,
-          rightFaceHeight: cell.rightFaceHeight,
-          screenX: cellProjected.x,
-          screenY: cellProjected.y,
-          sortKey: cellSort
+          const detailItem = {
+            kind: "detail",
+            x: cell.x,
+            y: cell.y,
+            elevation: cell.elevation,
+            fineElevation: cell.fineElevation,
+            size: cell.size,
+            leftFaceHeight: cell.leftFaceHeight,
+            rightFaceHeight: cell.rightFaceHeight,
+            screenX: cellProjected.x,
+            screenY: cellProjected.y,
+            sortKey: cellSort,
+            sortDepth: getTerrainDepth({
+              size: cell.size,
+              screenY: cellProjected.y,
+              leftFaceHeight: cell.leftFaceHeight,
+              rightFaceHeight: cell.rightFaceHeight
+            })
+          };
+
+          terrainItems.push(detailItem);
+          tileOverlayDepth = Math.max(tileOverlayDepth, detailItem.sortDepth);
+        }
+      }
+
+      tileItem.overlaySortDepth = tileOverlayDepth + OVERLAY_SORT_EPSILON;
+    }
+  }
+
+  terrainItems.sort(compareTerrainItems);
+
+  for (const item of terrainItems) {
+    if (item.kind === "tile" && item.skipTerrain) continue;
+
+    sceneItems.push({
+      kind: "terrain",
+      sortDepth: item.sortDepth,
+      sortKey: item.sortKey,
+      render(parent) {
+        renderTerrainTile(state, item, parent);
+      }
+    });
+  }
+
+  for (const item of overlayTileItems) {
+    sceneItems.push({
+      kind: "overlay-action",
+      sortDepth: item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON),
+      sortKey: item.sortKey,
+      render(parent) {
+        drawSceneActionOverlayForTile(state, item, parent, {
+          drawShapes: true,
+          drawLabels: false
         });
       }
-    }
+    });
+
+    sceneItems.push({
+      kind: "overlay-move",
+      sortDepth: (item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON)) + 0.001,
+      sortKey: item.sortKey,
+      render(parent) {
+        drawSceneMoveOverlay(state, item, parent, String(item.reachableCost ?? ""), {
+          drawShapes: item.reachableCost !== null,
+          drawLabels: false
+        });
+      }
+    });
+
+    sceneItems.push({
+      kind: "overlay-path",
+      sortDepth: (item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON)) + 0.002,
+      sortKey: item.sortKey,
+      render(parent) {
+        drawScenePathOverlayForTile(state, item, parent, {
+          drawShapes: true,
+          drawLabels: false
+        });
+      }
+    });
+
+    sceneItems.push({
+      kind: "overlay-focus",
+      sortDepth: (item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON)) + 0.003,
+      sortKey: item.sortKey,
+      render(parent) {
+        drawSceneFocusOverlayForTile(state, item, parent, {
+          drawShapes: true,
+          drawLabels: false
+        });
+      }
+    });
   }
 
   for (const mech of mechs) {
@@ -130,43 +217,74 @@ export function renderIso(state, refs) {
     const projected = projectScene(state, mech.x, mech.y, tileElevation);
     const parentSort = getSceneSortKey(state, mech.x, mech.y, tileElevation);
 
-    mechItems.push({
+    sceneItems.push({
       kind: "mech",
-      mech,
-      elevation: tileElevation,
-      screenX: projected.x,
-      screenY: projected.y,
-      sortKey: parentSort + 0.92
+      sortDepth:
+        getTerrainDepth({
+          size: 1,
+          screenY: projected.y,
+          leftFaceHeight: tileElevation,
+          rightFaceHeight: tileElevation
+        }) + MECH_SORT_EPSILON,
+      sortKey: parentSort,
+      render(parent) {
+        const isActive = mech.instanceId === state.turn.activeMechId;
+        drawMech(state, mech, projected.x, projected.y, parent, isActive);
+      }
     });
   }
 
-  terrainItems.sort(compareTerrainItems);
-  mechItems.sort((a, b) => a.sortKey - b.sortKey);
+  sceneItems.sort(compareSceneItems);
 
-  for (const item of terrainItems) {
-    if (item.kind === "tile" && item.skipTerrain) continue;
-    renderTerrainTile(state, item, worldScene);
-  }
-
-  for (const item of mechItems) {
-    const isActive = item.mech.instanceId === state.turn.activeMechId;
-    drawMech(state, item.mech, item.screenX, item.screenY, worldScene, isActive);
+  for (const item of sceneItems) {
+    item.render(worldScene);
   }
 
   for (const item of overlayTileItems) {
     if (state.ui.mode === "move" && item.reachableCost !== null) {
-      drawSceneMoveOverlay(state, item, worldUi, String(item.reachableCost));
+      drawSceneMoveOverlay(state, item, worldUi, String(item.reachableCost), {
+        drawShapes: false,
+        drawLabels: true
+      });
     }
 
-    drawScenePathOverlayForTile(state, item, worldUi);
-    drawSceneActionOverlayForTile(state, item, worldUi);
-    drawSceneFocusOverlayForTile(state, item, worldUi);
+    drawScenePathOverlayForTile(state, item, worldUi, {
+      drawShapes: false,
+      drawLabels: true
+    });
   }
 
   drawSceneLosPreview(state, worldUi);
 }
 
+function getTerrainDepth(item) {
+  const size = item.size ?? 1;
+  const faceHeight = Math.max(item.leftFaceHeight ?? 0, item.rightFaceHeight ?? 0);
+
+  return (
+    item.screenY +
+    (RENDER_CONFIG.isoTileHeight * size) +
+    (faceHeight * RENDER_CONFIG.elevationStepPx)
+  );
+}
+
+function compareSceneItems(a, b) {
+  if (a.sortDepth !== b.sortDepth) {
+    return a.sortDepth - b.sortDepth;
+  }
+
+  if (a.sortKey !== b.sortKey) {
+    return a.sortKey - b.sortKey;
+  }
+
+  return 0;
+}
+
 function compareTerrainItems(a, b) {
+  if (a.sortDepth !== b.sortDepth) {
+    return a.sortDepth - b.sortDepth;
+  }
+
   if (a.sortKey !== b.sortKey) {
     return a.sortKey - b.sortKey;
   }
