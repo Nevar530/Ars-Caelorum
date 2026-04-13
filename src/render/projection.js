@@ -1,7 +1,6 @@
 // src/render/projection.js
 
 import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
-import { rotateCoord } from "../map.js";
 import { normalizeScale, getResolutionBoardSize } from "../scale/scaleMath.js";
 
 export const TOPDOWN_CONFIG = {
@@ -153,16 +152,16 @@ export function getMapScreenBoundsRaw(state) {
 
   const corners = [
     { x: 0, y: 0 },
-    { x: board.width - 1, y: 0 },
-    { x: 0, y: board.height - 1 },
-    { x: board.width - 1, y: board.height - 1 }
+    { x: board.width, y: 0 },
+    { x: 0, y: board.height },
+    { x: board.width, y: board.height }
   ];
 
   const points = [];
 
   for (const corner of corners) {
     points.push(projectIsoRaw(corner.x, corner.y, 0, state.rotation, 1));
-    points.push(projectIsoRaw(corner.x, corner.y, MAP_CONFIG.maxElevation + 4, state.rotation, 1));
+    points.push(projectIsoRaw(corner.x, corner.y, MAP_CONFIG.maxElevation + 8, state.rotation, 1));
   }
 
   return {
@@ -191,7 +190,8 @@ export function projectIso(state, x, y, elevation = 0, size = 1) {
 }
 
 export function projectIsoRaw(x, y, elevation = 0, rotation = 0, _size = 1) {
-  const rotated = rotateSceneCoord(x, y, rotation);
+  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, rotation);
 
   const isoX =
     ((rotated.x - rotated.y) * (RENDER_CONFIG.isoTileWidth / 2)) + CAMERA_CENTER.isoX;
@@ -221,7 +221,8 @@ export function getSceneSortKey(state, x, y, elevation = 0) {
     return (y * 1000) + x;
   }
 
-  const rotated = rotateSceneCoord(x, y, state.rotation);
+  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
   return ((rotated.x + rotated.y) * 1000) + (elevation * 10);
 }
 
@@ -284,17 +285,19 @@ export function getCurrentInteractionScale(state) {
   );
 }
 
-function rotateSceneCoord(x, y, rotation = 0) {
-  const normalizedRotation = ((rotation % 4) + 4) % 4;
-  const board = getResolutionBoardSize("base", MAP_CONFIG);
-
-  return rotateCoord(
-    Math.floor(x),
-    Math.floor(y),
-    board.width,
-    board.height,
-    normalizedRotation
-  );
+function rotateSceneCoordContinuous(x, y, width, height, rotation = 0) {
+  switch ((((rotation % 4) + 4) % 4)) {
+    case 0:
+      return { x, y };
+    case 1:
+      return { x: height - y, y: x };
+    case 2:
+      return { x: width - x, y: height - y };
+    case 3:
+      return { x: y, y: width - x };
+    default:
+      return { x, y };
+  }
 }
 
 function clamp(value, min, max) {
