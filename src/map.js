@@ -125,10 +125,10 @@ export function refreshAllTileSummaries(map) {
 export function createInitialMap() {
   const map = [];
 
-  for (let y = 0; y < MAP_CONFIG.mechHeight; y++) {
+  for (let y = 0; y < MAP_CONFIG.height; y++) {
     const row = [];
 
-    for (let x = 0; x < MAP_CONFIG.mechWidth; x++) {
+    for (let x = 0; x < MAP_CONFIG.width; x++) {
       let elevation = 0;
 
       if (x >= 3 && x <= 6 && y >= 3 && y <= 5) elevation = 1;
@@ -210,9 +210,9 @@ export function resetMap() {
 }
 
 export function getTile(map, x, y) {
-  if (y < 0 || y >= MAP_CONFIG.mechHeight || x < 0 || x >= MAP_CONFIG.mechWidth) {
-    return null;
-  }
+if (y < 0 || y >= MAP_CONFIG.height || x < 0 || x >= MAP_CONFIG.width) {
+  return null;
+}
 
   return map[y][x];
 }
