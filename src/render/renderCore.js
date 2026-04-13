@@ -223,22 +223,31 @@ export function renderIso(state, refs) {
     if (!anchorTile) continue;
 
     const tileElevation = getTileRenderElevation(anchorTile);
-    const sceneX = bounds.minX;
-    const sceneY = bounds.minY;
     const sceneSize = Math.max(footprint.width, footprint.height);
+
+    const unitScenePoint =
+      state.ui?.viewMode === "top"
+        ? {
+            x: bounds.minX,
+            y: bounds.minY
+          }
+        : {
+            x: bounds.minX + (footprint.width / 2),
+            y: bounds.minY
+          };
 
     const projected = projectScene(
       state,
-      sceneX,
-      sceneY,
+      unitScenePoint.x,
+      unitScenePoint.y,
       tileElevation,
       sceneSize
     );
 
     const sortKey = getSceneSortKey(
       state,
-      bounds.maxX,
-      bounds.maxY,
+      bounds.minX + (footprint.width / 2),
+      bounds.minY + (footprint.height / 2),
       tileElevation,
       sceneSize
     );
