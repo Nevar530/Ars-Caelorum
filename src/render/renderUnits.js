@@ -68,18 +68,32 @@ function drawIsoCubeUnit(state, unit, group, screenX, screenY, footprint, isActi
   const halfH = cubeSize * (RENDER_CONFIG.isoTileHeight / 2);
   const cubeHeight = getUnitCubeHeightPx(unit);
 
-  const topDiamond = makeDiamond(screenX, screenY, halfW, halfH);
+  // screenX / screenY is the FOOTPRINT BASE top point on the ground.
+  // The visible top cap of the cube must be lifted upward by cubeHeight.
+  const baseDiamond = makeDiamond(screenX, screenY, halfW, halfH);
+  const topDiamond = makeDiamond(screenX, screenY - cubeHeight, halfW, halfH);
 
   const shadow = svgEl("ellipse");
   shadow.setAttribute("cx", screenX);
-  shadow.setAttribute("cy", screenY + (halfH * 2) + cubeHeight + 8);
+  shadow.setAttribute("cy", baseDiamond.bottom.y + 8);
   shadow.setAttribute("rx", Math.max(10, halfW * 0.62));
   shadow.setAttribute("ry", Math.max(4, halfH * 0.30));
   shadow.setAttribute("class", "mech-shadow");
   group.appendChild(shadow);
 
-  const leftFace = makeSideFace(topDiamond.left, topDiamond.bottom, cubeHeight);
-  const rightFace = makeSideFace(topDiamond.right, topDiamond.bottom, cubeHeight);
+  const leftFace = [
+    topDiamond.left,
+    topDiamond.bottom,
+    baseDiamond.bottom,
+    baseDiamond.left
+  ];
+
+  const rightFace = [
+    topDiamond.right,
+    topDiamond.bottom,
+    baseDiamond.bottom,
+    baseDiamond.right
+  ];
 
   const leftPoly = makePolygon(leftFace, "mech-cube-left", "currentColor");
   leftPoly.removeAttribute("fill");
@@ -103,8 +117,8 @@ function drawIsoCubeUnit(state, unit, group, screenX, screenY, footprint, isActi
   facingLine.setAttribute("class", getFacingLineClass(state, unit));
 
   const label = makeText(
-    screenX,
-    screenY + halfH - 10,
+    topDiamond.center.x,
+    topDiamond.center.y - 10,
     unit.name,
     "mech-label"
   );
