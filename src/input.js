@@ -1,8 +1,16 @@
+// src/input.js
+
 import { changeElevation, changeDetailElevation } from "./map.js";
-import { getMechById } from "./mechs.js";
+import { getUnitById } from "./mechs.js";
 import { clampFocusToBoard, getPathToTile } from "./movement.js";
 import { moveAttackSelection, updateActionTargetPreview } from "./action.js";
 import { projectScene } from "./render/projection.js";
+
+function getActiveUnit(state) {
+  const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
+  const units = state.units ?? state.mechs ?? [];
+  return getUnitById(units, activeId);
+}
 
 export function bindInput(state, refs, actions) {
   bindEditorInput(state, refs, actions);
@@ -10,11 +18,18 @@ export function bindInput(state, refs, actions) {
 }
 
 export function snapFocusToActiveMech(state) {
-  const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-  if (!activeMech) return;
+  // bridge wrapper name kept so current controllers do not break
+  snapFocusToActiveUnit(state);
+}
 
-  state.focus.x = activeMech.x;
-  state.focus.y = activeMech.y;
+export function snapFocusToActiveUnit(state) {
+  const activeUnit = getActiveUnit(state);
+  if (!activeUnit) return;
+
+  state.focus.x = activeUnit.x;
+  state.focus.y = activeUnit.y;
+  state.focus.scale = activeUnit.scale ?? "mech";
+  state.camera.zoomScale = activeUnit.scale ?? "mech";
 }
 
 function bindEditorInput(state, refs, actions) {
@@ -114,79 +129,29 @@ function bindEditorInput(state, refs, actions) {
 }
 
 function bindGameplayInput(state, refs, actions) {
-  const {
-    rotateLeftButton,
-    rotateRightButton,
-    toggleViewButton,
-    resetMapButton
-  } = refs;
+  const { rotateLeftButton, rotateRightButton, toggleViewButton, resetMapButton } = refs;
 
-  rotateLeftButton.addEventListener("click", () => {
-    actions.rotateLeft();
-  });
-
-  rotateRightButton.addEventListener("click", () => {
-    actions.rotateRight();
-  });
-
-  toggleViewButton.addEventListener("click", () => {
-    actions.toggleView();
-  });
-
-  resetMapButton.addEventListener("click", () => {
-    actions.resetMap();
-  });
+  rotateLeftButton.addEventListener("click", () => actions.rotateLeft());
+  rotateRightButton.addEventListener("click", () => actions.rotateRight());
+  toggleViewButton.addEventListener("click", () => actions.toggleView());
+  resetMapButton.addEventListener("click", () => actions.resetMap());
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
 
-    if (handleRotationKeys(key, actions)) {
-      event.preventDefault();
-      return;
-    }
-
-    if (handleViewKeys(key, actions)) {
-      event.preventDefault();
-      return;
-    }
-
-    if (handleMenuNavigationKeys(key, state, actions)) {
-      event.preventDefault();
-      return;
-    }
-
-    if (handleIdleKeys(key, state, actions)) {
-      event.preventDefault();
-      return;
-    }
-
-    if (handleFacingKeys(key, state, actions)) {
-      event.preventDefault();
-      return;
-    }
-
-    if (handleFocusKeys(key, state, actions)) {
-      event.preventDefault();
-      return;
-    }
-
-    if (handleConfirmCancelKeys(key, state, actions)) {
-      event.preventDefault();
-    }
+    if (handleRotationKeys(key, actions)) { event.preventDefault(); return; }
+    if (handleViewKeys(key, actions)) { event.preventDefault(); return; }
+    if (handleMenuNavigationKeys(key, state, actions)) { event.preventDefault(); return; }
+    if (handleIdleKeys(key, state, actions)) { event.preventDefault(); return; }
+    if (handleFacingKeys(key, state, actions)) { event.preventDefault(); return; }
+    if (handleFocusKeys(key, state, actions)) { event.preventDefault(); return; }
+    if (handleConfirmCancelKeys(key, state, actions)) { event.preventDefault(); }
   });
 }
 
 function handleRotationKeys(key, actions) {
-  if (key === "q") {
-    actions.rotateLeft();
-    return true;
-  }
-
-  if (key === "e") {
-    actions.rotateRight();
-    return true;
-  }
-
+  if (key === "q") { actions.rotateLeft(); return true; }
+  if (key === "e") { actions.rotateRight(); return true; }
   return false;
 }
 
@@ -195,7 +160,6 @@ function handleViewKeys(key, actions) {
     actions.toggleView();
     return true;
   }
-
   return false;
 }
 
@@ -279,13 +243,8 @@ function handleFacingKeys(key, state, actions) {
 }
 
 function handleFocusKeys(key, state, actions) {
-  if (state.ui.commandMenu.open && state.ui.mode === "idle") {
-    return false;
-  }
-
-  if (state.ui.mode === "action-attack-select") {
-    return false;
-  }
+  if (state.ui.commandMenu.open && state.ui.mode === "idle") return false;
+  if (state.ui.mode === "action-attack-select") return false;
 
   let direction = null;
 
@@ -298,7 +257,8 @@ function handleFocusKeys(key, state, actions) {
   const delta = getScreenRelativeBoardDelta(state, direction);
   const next = clampFocusToBoard(
     state.focus.x + delta.dx,
-    state.focus.y + delta.dy
+    state.focus.y + delta.dy,
+    state.focus.scale ?? "mech"
   );
 
   state.focus.x = next.x;
@@ -388,16 +348,11 @@ function getScreenRelativeBoardDelta(state, direction) {
 
 function screenVectorForDirection(direction) {
   switch (direction) {
-    case "up":
-      return { x: 1, y: -1 };   // top-right on screen
-    case "left":
-      return { x: -1, y: -1 };  // top-left on screen
-    case "down":
-      return { x: -1, y: 1 };   // bottom-left on screen
-    case "right":
-      return { x: 1, y: 1 };    // bottom-right on screen
-    default:
-      return { x: 0, y: 0 };
+    case "up": return { x: 1, y: -1 };
+    case "left": return { x: -1, y: -1 };
+    case "down": return { x: -1, y: 1 };
+    case "right": return { x: 1, y: 1 };
+    default: return { x: 0, y: 0 };
   }
 }
 
