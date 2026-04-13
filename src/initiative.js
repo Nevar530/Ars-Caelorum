@@ -1,3 +1,5 @@
+// src/initiative.js
+
 export function rollD6() {
   return Math.floor(Math.random() * 6) + 1;
 }
@@ -10,6 +12,12 @@ function isUnitEligible(unit) {
 
 function compareInstanceIds(a, b) {
   return String(a.instanceId ?? "").localeCompare(String(b.instanceId ?? ""));
+}
+
+function getStateUnits(state) {
+  if (Array.isArray(state?.units)) return state.units;
+  if (Array.isArray(state?.mechs)) return state.mechs;
+  return [];
 }
 
 export function rollInitiativeForUnit(unit) {
@@ -70,7 +78,8 @@ export function getActionOrder(units) {
 }
 
 export function rebuildRoundOrder(state) {
-  const rolledUnits = rollInitiativeForAll(state.mechs);
+  const units = getStateUnits(state);
+  const rolledUnits = rollInitiativeForAll(units);
 
   state.turn.lastInitiativeRolls = rolledUnits.map((unit) => ({
     instanceId: unit.instanceId,
@@ -93,26 +102,14 @@ export function rebuildRoundOrder(state) {
 }
 
 export function getCurrentPhaseOrder(state) {
-  if (state.turn.phase === "move") {
-    return state.turn.moveOrder;
-  }
-
-  if (state.turn.phase === "action") {
-    return state.turn.actionOrder;
-  }
-
+  if (state.turn.phase === "move") return state.turn.moveOrder;
+  if (state.turn.phase === "action") return state.turn.actionOrder;
   return [];
 }
 
 export function getCurrentPhaseIndex(state) {
-  if (state.turn.phase === "move") {
-    return state.turn.moveIndex;
-  }
-
-  if (state.turn.phase === "action") {
-    return state.turn.actionIndex;
-  }
-
+  if (state.turn.phase === "move") return state.turn.moveIndex;
+  if (state.turn.phase === "action") return state.turn.actionIndex;
   return -1;
 }
 
