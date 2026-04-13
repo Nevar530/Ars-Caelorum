@@ -1,17 +1,11 @@
 // src/render/renderUnits.js
 
-import { getTile, getTileRenderElevation } from "../map.js";
-import { RENDER_CONFIG } from "../config.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG } from "./projection.js";
-import { getUnitFootprint, getUnitFootprintBounds } from "../scale/scaleMath.js";
+import { getUnitFootprint } from "../scale/scaleMath.js";
 
 export function drawMech(state, unit, screenX, screenY, parent, isActive = false) {
   const footprint = getUnitFootprint(unit);
-  const bounds = getUnitFootprintBounds(unit);
-  const anchorTile = getTile(state.map, unit.x, unit.y);
-  const tileElevation = anchorTile ? getTileRenderElevation(anchorTile) : 0;
-
   const group = svgEl("g");
 
   if (state.ui.viewMode === "top") {
@@ -20,7 +14,7 @@ export function drawMech(state, unit, screenX, screenY, parent, isActive = false
     return;
   }
 
-  drawIsoUnit(state, unit, group, screenX, screenY, footprint, bounds, tileElevation, isActive);
+  drawIsoStackedUnit(state, unit, group, screenX, screenY, footprint, isActive);
   parent.appendChild(group);
 }
 
@@ -37,99 +31,106 @@ function drawTopUnit(state, unit, group, screenX, screenY, footprint, isActive) 
   body.setAttribute("rx", unit.unitType === "pilot" ? "6" : "10");
   body.setAttribute("class", getTopBodyClass(unit, isActive));
 
-  const facingStripe = makePolygon(
-    getTopFacingStripePoints(unit, screenX, screenY, widthPx, heightPx),
-    getTopFacingClass(state, unit),
-    "currentColor"
-  );
-  facingStripe.removeAttribute("fill");
+  const facingLine = svgEl("line");
+  const linePoints = getTopFacingLinePoints(unit, screenX, screenY, widthPx, heightPx);
+  facingLine.setAttribute("x1", linePoints.x1);
+  facingLine.setAttribute("y1", linePoints.y1);
+  facingLine.setAttribute("x2", linePoints.x2);
+  facingLine.setAttribute("y2", linePoints.y2);
+  facingLine.setAttribute("class", getFacingLineClass(state, unit));
 
   const label = makeText(
     screenX + (widthPx / 2),
     screenY + heightPx + 16,
     unit.name,
-    unit.unitType === "pilot" ? "pilot-label" : "mech-label"
+    "mech-label"
   );
 
   group.appendChild(body);
-  group.appendChild(facingStripe);
+  group.appendChild(facingLine);
   group.appendChild(label);
 }
 
-function drawIsoUnit(state, unit, group, screenX, screenY, footprint, _bounds, _tileElevation, isActive) {
-  const size = footprint.width;
-  const halfW = (RENDER_CONFIG.isoTileWidth * size) / 2;
-  const halfH = (RENDER_CONFIG.isoTileHeight * size) / 2;
-  const bodyHeight = unit.unitType === "pilot" ? 18 : 36;
+function drawIsoStackedUnit(state, unit, group, screenX, screenY, footprint, isActive) {
+  const unitSize = Math.max(footprint.width, footprint.height);
+  const halfW = unitSize * 48;
+  const halfH = unitSize * 24;
 
-  const top = [
-    { x: screenX, y: screenY },
-    { x: screenX + halfW, y: screenY + halfH },
-    { x: screenX, y: screenY + (halfH * 2) },
-    { x: screenX - halfW, y: screenY + halfH }
-  ];
+  // Lower cube height and upper cube lift.
+  // Pilot stays smaller but uses the exact same stacked language.
+  const lowerHeight = unit.unitType === "pilot" ? 22 : 34;
+  const upperHeight = unit.unitType === "pilot" ? 18 : 28;
+  const upperLift = unit.unitType === "pilot" ? 18 : 28;
 
-  const left = [
-    top[3],
-    top[2],
-    { x: top[2].x, y: top[2].y + bodyHeight },
-    { x: top[3].x, y: top[3].y + bodyHeight }
-  ];
-
-  const right = [
-    top[1],
-    top[2],
-    { x: top[2].x, y: top[2].y + bodyHeight },
-    { x: top[1].x, y: top[1].y + bodyHeight }
-  ];
+  const lowerTop = makeDiamond(screenX, screenY + upperLift, halfW, halfH);
+  const upperTop = makeDiamond(screenX, screenY, halfW, halfH);
 
   const shadow = svgEl("ellipse");
   shadow.setAttribute("cx", screenX);
-  shadow.setAttribute("cy", screenY + (halfH * 2) + 8);
-  shadow.setAttribute("rx", Math.max(10, halfW * 0.55));
-  shadow.setAttribute("ry", Math.max(4, halfH * 0.28));
-  shadow.setAttribute("class", unit.unitType === "pilot" ? "pilot-shadow" : "mech-shadow");
+  shadow.setAttribute("cy", screenY + upperLift + (halfH * 2) + 10);
+  shadow.setAttribute("rx", Math.max(10, halfW * 0.62));
+  shadow.setAttribute("ry", Math.max(4, halfH * 0.32));
+  shadow.setAttribute("class", "mech-shadow");
   group.appendChild(shadow);
 
-  const leftPoly = makePolygon(
-    left,
-    unit.unitType === "pilot" ? "pilot-cube-left" : "mech-cube-left",
-    "currentColor"
-  );
-  leftPoly.removeAttribute("fill");
+  // Lower cube
+  const lowerLeft = makeSideFace(lowerTop.left, lowerTop.bottom, lowerHeight);
+  const lowerRight = makeSideFace(lowerTop.right, lowerTop.bottom, lowerHeight);
 
-  const rightPoly = makePolygon(
-    right,
-    unit.unitType === "pilot" ? "pilot-cube-right" : "mech-cube-right",
-    "currentColor"
-  );
-  rightPoly.removeAttribute("fill");
+  const lowerLeftPoly = makePolygon(lowerLeft, "mech-cube-left", "currentColor");
+  lowerLeftPoly.removeAttribute("fill");
 
-  const topPoly = makePolygon(
-    top,
+  const lowerRightPoly = makePolygon(lowerRight, "mech-cube-right", "currentColor");
+  lowerRightPoly.removeAttribute("fill");
+
+  const lowerTopPoly = makePolygon(
+    lowerTop.points,
     getIsoTopClass(state, unit, isActive),
     "currentColor"
   );
-  topPoly.removeAttribute("fill");
+  lowerTopPoly.removeAttribute("fill");
 
-  const facingStripe = makePolygon(
-    getIsoFacingStripePoints(unit, top),
-    getIsoTopStripeClass(state, unit),
+  // Upper cube
+  const upperLeft = makeSideFace(upperTop.left, upperTop.bottom, upperHeight);
+  const upperRight = makeSideFace(upperTop.right, upperTop.bottom, upperHeight);
+
+  const upperLeftPoly = makePolygon(upperLeft, "mech-cube-left", "currentColor");
+  upperLeftPoly.removeAttribute("fill");
+
+  const upperRightPoly = makePolygon(upperRight, "mech-cube-right", "currentColor");
+  upperRightPoly.removeAttribute("fill");
+
+  const upperTopPoly = makePolygon(
+    upperTop.points,
+    getIsoTopClass(state, unit, isActive),
     "currentColor"
   );
-  facingStripe.removeAttribute("fill");
+  upperTopPoly.removeAttribute("fill");
+
+  const facingLine = svgEl("line");
+  const facing = getIsoFacingLinePoints(state, unit, upperTop);
+  facingLine.setAttribute("x1", facing.x1);
+  facingLine.setAttribute("y1", facing.y1);
+  facingLine.setAttribute("x2", facing.x2);
+  facingLine.setAttribute("y2", facing.y2);
+  facingLine.setAttribute("class", getFacingLineClass(state, unit));
 
   const label = makeText(
     screenX,
-    screenY + halfH - Math.max(10, bodyHeight * 0.15),
+    screenY + halfH - Math.max(12, upperHeight * 0.15),
     unit.name,
-    unit.unitType === "pilot" ? "pilot-label" : "mech-label"
+    "mech-label"
   );
 
-  group.appendChild(leftPoly);
-  group.appendChild(rightPoly);
-  group.appendChild(topPoly);
-  group.appendChild(facingStripe);
+  group.appendChild(lowerLeftPoly);
+  group.appendChild(lowerRightPoly);
+  group.appendChild(lowerTopPoly);
+
+  group.appendChild(upperLeftPoly);
+  group.appendChild(upperRightPoly);
+  group.appendChild(upperTopPoly);
+
+  group.appendChild(facingLine);
   group.appendChild(label);
 }
 
@@ -143,11 +144,7 @@ export function getWorldFacing(state, unit) {
   return isPreviewing ? state.ui.facingPreview : unit.facing;
 }
 
-function getTopBodyClass(unit, isActive) {
-  if (unit.unitType === "pilot") {
-    return isActive ? "pilot-top-body-active" : "pilot-top-body";
-  }
-
+function getTopBodyClass(_unit, isActive) {
   return isActive ? "mech-top-body mech-top-body-active" : "mech-top-body";
 }
 
@@ -162,10 +159,10 @@ export function getTopFacingClass(state, unit) {
 }
 
 export function getIsoTopClass(state, unit, isActive) {
-  const classes = [unit.unitType === "pilot" ? "pilot-iso-body" : "mech-cube-top"];
+  const classes = ["mech-cube-top"];
 
   if (isActive) {
-    classes.push(unit.unitType === "pilot" ? "pilot-iso-body-active" : "mech-cube-top-active");
+    classes.push("mech-cube-top-active");
   }
 
   const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
@@ -174,80 +171,102 @@ export function getIsoTopClass(state, unit, isActive) {
     unit.instanceId === activeId &&
     state.ui.facingPreview !== null
   ) {
-    classes.push(unit.unitType === "pilot" ? "pilot-iso-body-active" : "mech-cube-top-preview");
+    classes.push("mech-cube-top-preview");
   }
 
   return classes.join(" ");
 }
 
-export function getIsoTopStripeClass(state, unit) {
+function getFacingLineClass(state, unit) {
   const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
   const isPreviewing =
     state.ui.mode === "face" &&
     unit.instanceId === activeId &&
     state.ui.facingPreview !== null;
 
-  if (unit.unitType === "pilot") {
-    return isPreviewing ? "pilot-iso-facing-active" : "pilot-iso-facing";
-  }
-
   return isPreviewing ? "mech-top-facing-preview" : "mech-top-facing";
 }
 
-function getTopFacingStripePoints(unit, x, y, width, height) {
+function getTopFacingLinePoints(unit, x, y, width, height) {
   const facing = normalizeFacing(unit.facing);
-  const inset = Math.max(4, Math.min(width, height) * 0.18);
+  const cx = x + (width / 2);
+  const cy = y + (height / 2);
+  const reach = Math.max(8, Math.min(width, height) * 0.34);
 
   switch (facing) {
     case 0:
-      return [
-        { x: x + (width / 2), y: y + inset },
-        { x: x + width - inset, y: y + (height / 2) },
-        { x: x + inset, y: y + (height / 2) }
-      ];
+      return { x1: cx, y1: cy, x2: cx, y2: cy - reach };
     case 1:
-      return [
-        { x: x + width - inset, y: y + (height / 2) },
-        { x: x + (width / 2), y: y + inset },
-        { x: x + (width / 2), y: y + height - inset }
-      ];
+      return { x1: cx, y1: cy, x2: cx + reach, y2: cy };
     case 2:
-      return [
-        { x: x + (width / 2), y: y + height - inset },
-        { x: x + inset, y: y + (height / 2) },
-        { x: x + width - inset, y: y + (height / 2) }
-      ];
+      return { x1: cx, y1: cy, x2: cx, y2: cy + reach };
     case 3:
     default:
-      return [
-        { x: x + inset, y: y + (height / 2) },
-        { x: x + (width / 2), y: y + height - inset },
-        { x: x + (width / 2), y: y + inset }
-      ];
+      return { x1: cx, y1: cy, x2: cx - reach, y2: cy };
   }
 }
 
-function getIsoFacingStripePoints(unit, top) {
-  const facing = normalizeFacing(unit.facing);
+function getIsoFacingLinePoints(state, unit, topDiamond) {
+  const facing = normalizeFacing(getWorldFacing(state, unit));
+  const center = topDiamond.center;
+  const north = topDiamond.top;
+  const east = topDiamond.right;
+  const south = topDiamond.bottom;
+  const west = topDiamond.left;
 
-  const north = [top[0], midpoint(top[0], top[1]), midpoint(top[0], top[3])];
-  const east = [top[1], midpoint(top[1], top[2]), midpoint(top[1], top[0])];
-  const south = [top[2], midpoint(top[2], top[3]), midpoint(top[2], top[1])];
-  const west = [top[3], midpoint(top[3], top[0]), midpoint(top[3], top[2])];
+  const tipInset = 0.34;
 
   switch (facing) {
-    case 0: return north;
-    case 1: return east;
-    case 2: return south;
+    case 0: {
+      const end = lerpPoint(center, north, tipInset);
+      return { x1: center.x, y1: center.y, x2: end.x, y2: end.y };
+    }
+    case 1: {
+      const end = lerpPoint(center, east, tipInset);
+      return { x1: center.x, y1: center.y, x2: end.x, y2: end.y };
+    }
+    case 2: {
+      const end = lerpPoint(center, south, tipInset);
+      return { x1: center.x, y1: center.y, x2: end.x, y2: end.y };
+    }
     case 3:
-    default: return west;
+    default: {
+      const end = lerpPoint(center, west, tipInset);
+      return { x1: center.x, y1: center.y, x2: end.x, y2: end.y };
+    }
   }
 }
 
-function midpoint(a, b) {
+function makeDiamond(centerX, topY, halfW, halfH) {
+  const top = { x: centerX, y: topY };
+  const right = { x: centerX + halfW, y: topY + halfH };
+  const bottom = { x: centerX, y: topY + (halfH * 2) };
+  const left = { x: centerX - halfW, y: topY + halfH };
+  const center = { x: centerX, y: topY + halfH };
+
   return {
-    x: (a.x + b.x) / 2,
-    y: (a.y + b.y) / 2
+    top,
+    right,
+    bottom,
+    left,
+    center,
+    points: [top, right, bottom, left]
+  };
+}
+
+function makeSideFace(upperEdgeA, upperEdgeB, height) {
+  return [
+    upperEdgeA,
+    upperEdgeB,
+    { x: upperEdgeB.x, y: upperEdgeB.y + height },
+    { x: upperEdgeA.x, y: upperEdgeA.y + height }
+  ];
+}
+
+function lerpPoint(a, b, t) {
+  return {
+    x: a.x + ((b.x - a.x) * t),
+    y: a.y + ((b.y - a.y) * t)
   };
 }
 
