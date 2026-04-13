@@ -3,6 +3,7 @@
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG } from "./projection.js";
 import { getUnitFootprint } from "../scale/scaleMath.js";
+import { RENDER_CONFIG } from "../config.js";
 
 export function drawMech(state, unit, screenX, screenY, parent, isActive = false) {
   const footprint = getUnitFootprint(unit);
@@ -14,8 +15,18 @@ export function drawMech(state, unit, screenX, screenY, parent, isActive = false
     return;
   }
 
-  drawIsoStackedUnit(state, unit, group, screenX, screenY, footprint, isActive);
+  drawIsoCubeUnit(state, unit, group, screenX, screenY, footprint, isActive);
   parent.appendChild(group);
+}
+
+export function getUnitCubeHeightPx(unit) {
+  const footprint = getUnitFootprint(unit);
+  const cubeSize = Math.max(footprint.width, footprint.height);
+
+  // True cube height in world language:
+  // 4x4 mech = 4 elevation steps tall
+  // 2x2 pilot = 2 elevation steps tall
+  return cubeSize * RENDER_CONFIG.elevationStepPx;
 }
 
 function drawTopUnit(state, unit, group, screenX, screenY, footprint, isActive) {
@@ -51,63 +62,40 @@ function drawTopUnit(state, unit, group, screenX, screenY, footprint, isActive) 
   group.appendChild(label);
 }
 
-function drawIsoStackedUnit(state, unit, group, screenX, screenY, footprint, isActive) {
-  const unitSize = Math.max(footprint.width, footprint.height);
+function drawIsoCubeUnit(state, unit, group, screenX, screenY, footprint, isActive) {
+  const cubeSize = Math.max(footprint.width, footprint.height);
+  const halfW = cubeSize * (RENDER_CONFIG.isoTileWidth / 2);
+  const halfH = cubeSize * (RENDER_CONFIG.isoTileHeight / 2);
+  const cubeHeight = getUnitCubeHeightPx(unit);
 
-  // 1 base tile in your render is 96x48, so half extents scale by footprint.
-  const halfW = unitSize * 48;
-  const halfH = unitSize * 24;
-
-  // Temporary heights until we do the shape cleanup pass.
-  const lowerHeight = unit.unitType === "pilot" ? 22 : 34;
-  const upperHeight = unit.unitType === "pilot" ? 18 : 28;
-  const upperLift = unit.unitType === "pilot" ? 18 : 28;
-
-  const lowerTop = makeDiamond(screenX, screenY + upperLift, halfW, halfH);
-  const upperTop = makeDiamond(screenX, screenY, halfW, halfH);
+  const topDiamond = makeDiamond(screenX, screenY, halfW, halfH);
 
   const shadow = svgEl("ellipse");
   shadow.setAttribute("cx", screenX);
-  shadow.setAttribute("cy", screenY + upperLift + (halfH * 2) + 10);
+  shadow.setAttribute("cy", screenY + (halfH * 2) + cubeHeight + 8);
   shadow.setAttribute("rx", Math.max(10, halfW * 0.62));
-  shadow.setAttribute("ry", Math.max(4, halfH * 0.32));
+  shadow.setAttribute("ry", Math.max(4, halfH * 0.30));
   shadow.setAttribute("class", "mech-shadow");
   group.appendChild(shadow);
 
-  const lowerLeft = makeSideFace(lowerTop.left, lowerTop.bottom, lowerHeight);
-  const lowerRight = makeSideFace(lowerTop.right, lowerTop.bottom, lowerHeight);
+  const leftFace = makeSideFace(topDiamond.left, topDiamond.bottom, cubeHeight);
+  const rightFace = makeSideFace(topDiamond.right, topDiamond.bottom, cubeHeight);
 
-  const lowerLeftPoly = makePolygon(lowerLeft, "mech-cube-left", "currentColor");
-  lowerLeftPoly.removeAttribute("fill");
+  const leftPoly = makePolygon(leftFace, "mech-cube-left", "currentColor");
+  leftPoly.removeAttribute("fill");
 
-  const lowerRightPoly = makePolygon(lowerRight, "mech-cube-right", "currentColor");
-  lowerRightPoly.removeAttribute("fill");
+  const rightPoly = makePolygon(rightFace, "mech-cube-right", "currentColor");
+  rightPoly.removeAttribute("fill");
 
-  const lowerTopPoly = makePolygon(
-    lowerTop.points,
+  const topPoly = makePolygon(
+    topDiamond.points,
     getIsoTopClass(state, unit, isActive),
     "currentColor"
   );
-  lowerTopPoly.removeAttribute("fill");
-
-  const upperLeft = makeSideFace(upperTop.left, upperTop.bottom, upperHeight);
-  const upperRight = makeSideFace(upperTop.right, upperTop.bottom, upperHeight);
-
-  const upperLeftPoly = makePolygon(upperLeft, "mech-cube-left", "currentColor");
-  upperLeftPoly.removeAttribute("fill");
-
-  const upperRightPoly = makePolygon(upperRight, "mech-cube-right", "currentColor");
-  upperRightPoly.removeAttribute("fill");
-
-  const upperTopPoly = makePolygon(
-    upperTop.points,
-    getIsoTopClass(state, unit, isActive),
-    "currentColor"
-  );
-  upperTopPoly.removeAttribute("fill");
+  topPoly.removeAttribute("fill");
 
   const facingLine = svgEl("line");
-  const facing = getIsoFacingLinePoints(state, unit, upperTop);
+  const facing = getIsoFacingLinePoints(state, unit, topDiamond);
   facingLine.setAttribute("x1", facing.x1);
   facingLine.setAttribute("y1", facing.y1);
   facingLine.setAttribute("x2", facing.x2);
@@ -116,19 +104,14 @@ function drawIsoStackedUnit(state, unit, group, screenX, screenY, footprint, isA
 
   const label = makeText(
     screenX,
-    screenY + halfH - Math.max(12, upperHeight * 0.15),
+    screenY + halfH - 10,
     unit.name,
     "mech-label"
   );
 
-  group.appendChild(lowerLeftPoly);
-  group.appendChild(lowerRightPoly);
-  group.appendChild(lowerTopPoly);
-
-  group.appendChild(upperLeftPoly);
-  group.appendChild(upperRightPoly);
-  group.appendChild(upperTopPoly);
-
+  group.appendChild(leftPoly);
+  group.appendChild(rightPoly);
+  group.appendChild(topPoly);
   group.appendChild(facingLine);
   group.appendChild(label);
 }
@@ -176,11 +159,6 @@ function getFacingLineClass(state, unit) {
   return isPreviewing ? "mech-top-facing-preview" : "mech-top-facing";
 }
 
-// Top-down should mirror iso movement directions:
-// 0 up = top-right
-// 1 right = bottom-right
-// 2 down = bottom-left
-// 3 left = top-left
 function getTopFacingLinePoints(state, unit, x, y, width, height) {
   const facing = normalizeFacing(getWorldFacing(state, unit));
   const cx = x + (width / 2);
@@ -201,8 +179,6 @@ function getTopFacingLinePoints(state, unit, x, y, width, height) {
   }
 }
 
-// Iso should point into one of the four quadrants of the top diamond,
-// not vertical/horizontal screen directions.
 function getIsoFacingLinePoints(state, unit, topDiamond) {
   const facing = normalizeFacing(getWorldFacing(state, unit));
   const center = topDiamond.center;
