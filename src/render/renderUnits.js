@@ -20,13 +20,13 @@ export function drawMech(state, unit, screenX, screenY, parent, isActive = false
 }
 
 export function getUnitCubeHeightPx(unit) {
-  const footprint = getUnitFootprint(unit);
-  const cubeSize = Math.max(footprint.width, footprint.height);
+  const tileHeight = RENDER_CONFIG.isoTileHeight;
 
-  // True cube height in world language:
-  // 4x4 mech = 4 elevation steps tall
-  // 2x2 pilot = 2 elevation steps tall
-  return cubeSize * RENDER_CONFIG.elevationStepPx;
+  if (unit?.unitType === "pilot") {
+    return 4 * tileHeight;
+  }
+
+  return 8 * tileHeight;
 }
 
 function drawTopUnit(state, unit, group, screenX, screenY, footprint, isActive) {
