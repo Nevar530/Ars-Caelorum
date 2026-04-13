@@ -1,12 +1,28 @@
 export const GAME_CONFIG = {
-  humanTilesPerMechTile: 4,
-  detailSubdivisionsPerMechTile: 4,
-  detailElevationPerMechLevel: 4
+  baseGridIsTruth: true,
+
+  footprintByUnitType: {
+    pilot: { width: 2, height: 2 },
+    mech: { width: 4, height: 4 },
+    structure: { width: 1, height: 1 }
+  },
+
+  anchorType: "center",
+
+  // Legacy bridge values kept alive until render / editor / LOS are rewritten.
+  detailSubdivisionsPerMechTile: 1,
+  detailElevationPerMechLevel: 1,
+  humanTilesPerMechTile: 2
 };
 
 export const MAP_CONFIG = {
-  mechWidth: 20,
-  mechHeight: 20,
+  width: 40,
+  height: 40,
+
+  // Bridge keys for older files still using old names.
+  mechWidth: 40,
+  mechHeight: 40,
+
   minElevation: 0,
   maxElevation: 6
 };
