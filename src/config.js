@@ -24,7 +24,7 @@ export const MAP_CONFIG = {
   mechHeight: 40,
 
   minElevation: 0,
-  maxElevation: 6
+  maxElevation: 40
 };
 
 export const RENDER_CONFIG = {
