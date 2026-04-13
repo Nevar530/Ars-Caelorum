@@ -53,8 +53,8 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
     facing: facingToNumber(overrides.facing ?? definition.defaultFacing ?? 0),
     anchorType: "center",
 
-    footprintWidth: isPilot ? 2 : 4,
-    footprintHeight: isPilot ? 2 : 4,
+    footprintWidth: isPilot ? 1 : 4,
+    footprintHeight: isPilot ? 1 : 4,
     scale: unitType,
 
     move: Number(definition.move ?? (isPilot ? 6 : 4)),
