@@ -46,7 +46,8 @@ export function renderAll(state, refs) {
 
 export function renderIso(state, refs) {
   const { worldScene, worldUi } = refs;
-  const { map, mechs } = state;
+  const units = state.units ?? state.mechs ?? [];
+  const { map } = state;
 
   worldScene.innerHTML = "";
   worldUi.innerHTML = "";
@@ -176,7 +177,8 @@ export function renderIso(state, refs) {
 
     sceneItems.push({
       kind: "overlay-move",
-      sortDepth: (item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON)) + 0.001,
+      sortDepth:
+        (item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON)) + 0.001,
       sortKey: item.sortKey,
       render(parent) {
         drawSceneMoveOverlay(state, item, parent, String(item.reachableCost ?? ""), {
@@ -188,7 +190,8 @@ export function renderIso(state, refs) {
 
     sceneItems.push({
       kind: "overlay-path",
-      sortDepth: (item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON)) + 0.002,
+      sortDepth:
+        (item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON)) + 0.002,
       sortKey: item.sortKey,
       render(parent) {
         drawScenePathOverlayForTile(state, item, parent, {
@@ -200,7 +203,8 @@ export function renderIso(state, refs) {
 
     sceneItems.push({
       kind: "overlay-focus",
-      sortDepth: (item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON)) + 0.003,
+      sortDepth:
+        (item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON)) + 0.003,
       sortKey: item.sortKey,
       render(parent) {
         drawSceneFocusOverlayForTile(state, item, parent, {
@@ -211,27 +215,43 @@ export function renderIso(state, refs) {
     });
   }
 
-  for (const mech of mechs) {
-    const tile = getTile(map, mech.x, mech.y);
+  for (const unit of units) {
+    const mechX = unit.scale === "pilot" ? Math.floor(unit.x / 2) : unit.x;
+    const mechY = unit.scale === "pilot" ? Math.floor(unit.y / 2) : unit.y;
+
+    const tile = getTile(map, mechX, mechY);
     if (!tile) continue;
 
     const tileElevation = getTileRenderElevation(tile);
-    const projected = projectScene(state, mech.x, mech.y, tileElevation);
-    const parentSort = getSceneSortKey(state, mech.x, mech.y, tileElevation);
+    const projected = projectScene(
+      state,
+      unit.x,
+      unit.y,
+      tileElevation,
+      unit.scale === "pilot" ? 0.5 : 1
+    );
+    const parentSort = getSceneSortKey(
+      state,
+      unit.x,
+      unit.y,
+      tileElevation,
+      unit.scale === "pilot" ? 0.5 : 1
+    );
 
     sceneItems.push({
-      kind: "mech",
+      kind: "unit",
       sortDepth:
         getTerrainDepth({
-          size: 1,
+          size: unit.scale === "pilot" ? 0.5 : 1,
           screenY: projected.y,
           leftFaceHeight: tileElevation,
           rightFaceHeight: tileElevation
         }) + MECH_SORT_EPSILON,
       sortKey: parentSort,
       render(parent) {
-        const isActive = mech.instanceId === state.turn.activeMechId;
-        drawMech(state, mech, projected.x, projected.y, parent, isActive);
+        const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
+        const isActive = unit.instanceId === activeUnitId;
+        drawMech(state, unit, projected.x, projected.y, parent, isActive);
       }
     });
   }
