@@ -23,7 +23,7 @@ export function getUnitCubeHeightPx(unit) {
   const tileHeight = RENDER_CONFIG.isoTileHeight;
 
   if (unit?.unitType === "pilot") {
-    return 2 * tileHeight;
+    return 4 * tileHeight;
   }
 
   return 8 * tileHeight;
@@ -68,8 +68,6 @@ function drawIsoCubeUnit(state, unit, group, screenX, screenY, footprint, isActi
   const halfH = cubeSize * (RENDER_CONFIG.isoTileHeight / 2);
   const cubeHeight = getUnitCubeHeightPx(unit);
 
-  // screenX / screenY is the FOOTPRINT BASE top point on the ground.
-  // The visible top cap of the cube is lifted upward by cubeHeight.
   const baseDiamond = makeDiamond(screenX, screenY, halfW, halfH);
   const topDiamond = makeDiamond(screenX, screenY - cubeHeight, halfW, halfH);
 
