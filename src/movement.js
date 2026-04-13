@@ -1,16 +1,31 @@
+// src/movement.js
+
 import { MAP_CONFIG } from "./config.js";
 import {
   getTile,
   getTileFootElevation,
   isTileMechEnterable
 } from "./map.js";
-import { getMechById } from "./mechs.js";
+import { getUnitById } from "./mechs.js";
 import { isPositionBlocked } from "./scale/occupancy.js";
+import {
+  normalizeScale,
+  getResolutionBoardSize,
+  getParentMechTileForPosition
+} from "./scale/scaleMath.js";
 
-export function clampFocusToBoard(x, y) {
+function getActiveUnit(state) {
+  const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
+  const units = state.units ?? state.mechs ?? [];
+  return getUnitById(units, activeId);
+}
+
+export function clampFocusToBoard(x, y, scale = "mech") {
+  const board = getResolutionBoardSize(scale, MAP_CONFIG);
+
   return {
-    x: Math.max(0, Math.min(MAP_CONFIG.mechWidth - 1, x)),
-    y: Math.max(0, Math.min(MAP_CONFIG.mechHeight - 1, y))
+    x: Math.max(0, Math.min(board.width - 1, x)),
+    y: Math.max(0, Math.min(board.height - 1, y))
   };
 }
 
@@ -23,66 +38,83 @@ export function parseCoordKey(key) {
   return { x, y };
 }
 
-export function isWithinBoard(x, y) {
-  return x >= 0 && y >= 0 && x < MAP_CONFIG.mechWidth && y < MAP_CONFIG.mechHeight;
+export function isWithinBoard(x, y, scale = "mech") {
+  const board = getResolutionBoardSize(scale, MAP_CONFIG);
+  return x >= 0 && y >= 0 && x < board.width && y < board.height;
 }
 
-export function getNeighbors(x, y) {
+export function getNeighbors(x, y, scale = "mech") {
   return [
     { x: x + 1, y },
     { x: x - 1, y },
     { x, y: y + 1 },
     { x, y: y - 1 }
-  ].filter((pos) => isWithinBoard(pos.x, pos.y));
+  ].filter((pos) => isWithinBoard(pos.x, pos.y, scale));
 }
 
-export function isTileBlocked(state, x, y, activeMech = null) {
-  const tile = getTile(state.map, x, y);
+function getParentTileForScalePosition(x, y, scale = "mech") {
+  return getParentMechTileForPosition(x, y, scale);
+}
+
+export function isTileBlocked(state, x, y, activeUnit = null, resolution = "mech") {
+  const scale = normalizeScale(resolution);
+  const parentTile = getParentTileForScalePosition(x, y, scale);
+  const tile = getTile(state.map, parentTile.x, parentTile.y);
+
   if (!tile) return true;
   if (!isTileMechEnterable(tile)) return true;
 
-  return isPositionBlocked(state, x, y, "mech", {
-    ignoreUnitId: activeMech?.instanceId ?? null
+  return isPositionBlocked(state, x, y, scale, {
+    ignoreUnitId: activeUnit?.instanceId ?? null
   });
 }
 
-export function canStepToTile(state, fromX, fromY, toX, toY) {
-  const fromTile = getTile(state.map, fromX, fromY);
-  const toTile = getTile(state.map, toX, toY);
+export function canStepToTile(state, fromX, fromY, toX, toY, resolution = "mech") {
+  const scale = normalizeScale(resolution);
+
+  const fromParent = getParentTileForScalePosition(fromX, fromY, scale);
+  const toParent = getParentTileForScalePosition(toX, toY, scale);
+
+  const fromTile = getTile(state.map, fromParent.x, fromParent.y);
+  const toTile = getTile(state.map, toParent.x, toParent.y);
 
   if (!fromTile || !toTile) return false;
   if (!isTileMechEnterable(fromTile) || !isTileMechEnterable(toTile)) return false;
 
   const elevationRise = getTileFootElevation(toTile) - getTileFootElevation(fromTile);
-
   if (elevationRise > 1) return false;
 
   return true;
 }
 
-export function getTileMoveCost(state, fromX, fromY, toX, toY) {
-  const fromTile = getTile(state.map, fromX, fromY);
-  const toTile = getTile(state.map, toX, toY);
+export function getTileMoveCost(state, fromX, fromY, toX, toY, resolution = "mech") {
+  const scale = normalizeScale(resolution);
+
+  const fromParent = getParentTileForScalePosition(fromX, fromY, scale);
+  const toParent = getParentTileForScalePosition(toX, toY, scale);
+
+  const fromTile = getTile(state.map, fromParent.x, fromParent.y);
+  const toTile = getTile(state.map, toParent.x, toParent.y);
 
   if (!fromTile || !toTile) return Infinity;
   if (!isTileMechEnterable(fromTile) || !isTileMechEnterable(toTile)) return Infinity;
 
   const heightDiff = getTileFootElevation(toTile) - getTileFootElevation(fromTile);
-
   if (heightDiff > 1) return Infinity;
 
   return 1 + Math.abs(heightDiff);
 }
 
 export function getReachableTileMap(state) {
-  const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-  if (!activeMech) return new Map();
+  const activeUnit = getActiveUnit(state);
+  if (!activeUnit) return new Map();
 
-  const maxMove = activeMech.move;
-  const startKey = coordKey(activeMech.x, activeMech.y);
+  const scale = normalizeScale(activeUnit.scale ?? "mech");
+  const maxMove = activeUnit.move;
+  const startKey = coordKey(activeUnit.x, activeUnit.y);
 
   const costs = new Map();
-  const queue = [{ x: activeMech.x, y: activeMech.y }];
+  const queue = [{ x: activeUnit.x, y: activeUnit.y }];
 
   costs.set(startKey, 0);
 
@@ -91,10 +123,11 @@ export function getReachableTileMap(state) {
     const currentKey = coordKey(current.x, current.y);
     const currentCost = costs.get(currentKey);
 
-    for (const next of getNeighbors(current.x, current.y)) {
-      if (isTileBlocked(state, next.x, next.y, activeMech)) continue;
+    for (const next of getNeighbors(current.x, current.y, scale)) {
+      if (!canStepToTile(state, current.x, current.y, next.x, next.y, scale)) continue;
+      if (isTileBlocked(state, next.x, next.y, activeUnit, scale)) continue;
 
-      const stepCost = getTileMoveCost(state, current.x, current.y, next.x, next.y);
+      const stepCost = getTileMoveCost(state, current.x, current.y, next.x, next.y, scale);
       if (!Number.isFinite(stepCost)) continue;
 
       const newCost = currentCost + stepCost;
@@ -130,18 +163,19 @@ export function canMoveActiveMechTo(state, x, y) {
 }
 
 export function getPathToTile(state, targetX, targetY) {
-  const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-  if (!activeMech) return [];
+  const activeUnit = getActiveUnit(state);
+  if (!activeUnit) return [];
 
+  const scale = normalizeScale(activeUnit.scale ?? "mech");
   const targetKey = coordKey(targetX, targetY);
   const reachable = getReachableTileMap(state);
 
   if (!reachable.has(targetKey)) return [];
 
-  const startKey = coordKey(activeMech.x, activeMech.y);
+  const startKey = coordKey(activeUnit.x, activeUnit.y);
   const cameFrom = new Map();
   const costSoFar = new Map();
-  const queue = [{ x: activeMech.x, y: activeMech.y }];
+  const queue = [{ x: activeUnit.x, y: activeUnit.y }];
 
   cameFrom.set(startKey, null);
   costSoFar.set(startKey, 0);
@@ -154,10 +188,11 @@ export function getPathToTile(state, targetX, targetY) {
       break;
     }
 
-    for (const next of getNeighbors(current.x, current.y)) {
-      if (isTileBlocked(state, next.x, next.y, activeMech)) continue;
+    for (const next of getNeighbors(current.x, current.y, scale)) {
+      if (!canStepToTile(state, current.x, current.y, next.x, next.y, scale)) continue;
+      if (isTileBlocked(state, next.x, next.y, activeUnit, scale)) continue;
 
-      const stepCost = getTileMoveCost(state, current.x, current.y, next.x, next.y);
+      const stepCost = getTileMoveCost(state, current.x, current.y, next.x, next.y, scale);
       if (!Number.isFinite(stepCost)) continue;
 
       const newCost = costSoFar.get(currentKey) + stepCost;
