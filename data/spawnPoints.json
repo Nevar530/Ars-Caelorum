@@ -1,26 +1,30 @@
 [
   {
-    "id": "spawn_1",
-    "label": "Spawn 1",
-    "x": 1,
-    "y": 2
+    "id": "enemy_pilot_1",
+    "label": "Enemy Pilot 1",
+    "x": 10,
+    "y": 10,
+    "unitType": "pilot"
   },
   {
-    "id": "spawn_2",
-    "label": "Spawn 2",
-    "x": 2,
-    "y": 1
+    "id": "enemy_mech_1",
+    "label": "Enemy Mech 1",
+    "x": 14,
+    "y": 10,
+    "unitType": "mech"
   },
   {
-    "id": "spawn_3",
-    "label": "Spawn 3",
-    "x": 19,
-    "y": 17
+    "id": "player_pilot_1",
+    "label": "Player Pilot 1",
+    "x": 30,
+    "y": 30,
+    "unitType": "pilot"
   },
   {
-    "id": "spawn_4",
-    "label": "Spawn 4",
-    "x": 17,
-    "y": 19
+    "id": "player_mech_1",
+    "label": "Player Mech 1",
+    "x": 34,
+    "y": 30,
+    "unitType": "mech"
   }
 ]
