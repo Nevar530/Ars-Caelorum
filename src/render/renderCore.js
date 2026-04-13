@@ -83,6 +83,8 @@ export function renderIso(state, refs) {
         reachableCost: reachableMap.get(`${x},${y}`) ?? null,
         skipTerrain: hasDetailGeometry,
         size: 1,
+        leftFaceHeight: renderElevation,
+        rightFaceHeight: renderElevation,
         sortDepth: getTerrainDepth({
           size: 1,
           screenY: projected.y,
