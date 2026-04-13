@@ -32,6 +32,7 @@ import {
 } from "./projection.js";
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
 import { makeText } from "../utils.js";
+import { getUnitScenePosition } from "../mechs.js";
 
 const OVERLAY_SORT_EPSILON = 0.35;
 const MECH_SORT_EPSILON = 0.92;
@@ -216,33 +217,33 @@ export function renderIso(state, refs) {
   }
 
   for (const unit of units) {
-    const mechX = unit.scale === "pilot" ? Math.floor(unit.x / 2) : unit.x;
-    const mechY = unit.scale === "pilot" ? Math.floor(unit.y / 2) : unit.y;
-
-    const tile = getTile(map, mechX, mechY);
+    const anchor = getUnitScenePosition(unit);
+    const tile = getTile(map, anchor.mechX, anchor.mechY);
     if (!tile) continue;
 
     const tileElevation = getTileRenderElevation(tile);
+
     const projected = projectScene(
       state,
-      unit.x,
-      unit.y,
+      anchor.sceneX,
+      anchor.sceneY,
       tileElevation,
-      unit.scale === "pilot" ? 0.5 : 1
+      anchor.sceneSize
     );
+
     const parentSort = getSceneSortKey(
       state,
-      unit.x,
-      unit.y,
+      anchor.sceneX,
+      anchor.sceneY,
       tileElevation,
-      unit.scale === "pilot" ? 0.5 : 1
+      anchor.sceneSize
     );
 
     sceneItems.push({
       kind: "unit",
       sortDepth:
         getTerrainDepth({
-          size: unit.scale === "pilot" ? 0.5 : 1,
+          size: anchor.sceneSize,
           screenY: projected.y,
           leftFaceHeight: tileElevation,
           rightFaceHeight: tileElevation
