@@ -942,7 +942,7 @@ button:disabled {
     padding: 6px 8px;
   }
 
-   .mech-top-facing,
+.mech-top-facing,
 .mech-top-facing-preview {
   fill: none;
   stroke-linecap: round;
