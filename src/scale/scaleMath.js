@@ -1,82 +1,177 @@
 // src/scale/scaleMath.js
 
-export const SCALE_RESOLUTION = {
-  mech: 1,
-  pilot: 2
+import { GAME_CONFIG, MAP_CONFIG } from "../config.js";
+
+export const SCALE_CLASS = {
+  PILOT: "pilot",
+  MECH: "mech",
+  STRUCTURE: "structure"
+};
+
+export const ANCHOR_TYPE = {
+  CENTER: "center"
 };
 
 export function normalizeScale(scale) {
-  return scale === "pilot" ? "pilot" : "mech";
+  if (scale === SCALE_CLASS.PILOT) return SCALE_CLASS.PILOT;
+  if (scale === SCALE_CLASS.STRUCTURE) return SCALE_CLASS.STRUCTURE;
+  return SCALE_CLASS.MECH;
 }
 
-export function getResolutionMultiplier(scale = "mech") {
-  return SCALE_RESOLUTION[normalizeScale(scale)] ?? 1;
+export function normalizeAnchorType(anchorType) {
+  return anchorType === ANCHOR_TYPE.CENTER ? ANCHOR_TYPE.CENTER : ANCHOR_TYPE.CENTER;
 }
 
-export function makePositionKey(x, y, scale = "mech") {
-  return `${normalizeScale(scale)}:${x},${y}`;
+export function makePositionKey(x, y) {
+  return `${Number(x)},${Number(y)}`;
 }
 
-export function makeScaleCellKey(scale = "mech", x = 0, y = 0) {
-  return makePositionKey(x, y, scale);
+export function makeScaleCellKey(_scale = "base", x = 0, y = 0) {
+  return makePositionKey(x, y);
 }
 
-export function getUnitPrimaryPosition(unit) {
+export function getResolutionBoardSize(_scale = "base", mapConfig = MAP_CONFIG) {
+  return {
+    width: Number(mapConfig?.width ?? mapConfig?.mechWidth ?? 40),
+    height: Number(mapConfig?.height ?? mapConfig?.mechHeight ?? 40)
+  };
+}
+
+export function getDefaultFootprintByUnitType(unitType = "mech") {
+  return (
+    GAME_CONFIG.footprintByUnitType?.[unitType] ??
+    GAME_CONFIG.footprintByUnitType.mech
+  );
+}
+
+export function getUnitScaleClass(unit) {
+  if (unit?.unitType === SCALE_CLASS.PILOT) return SCALE_CLASS.PILOT;
+  if (unit?.unitType === SCALE_CLASS.STRUCTURE) return SCALE_CLASS.STRUCTURE;
+  return SCALE_CLASS.MECH;
+}
+
+export function getUnitAnchor(unit) {
   return {
     x: Number(unit?.x ?? 0),
     y: Number(unit?.y ?? 0),
-    scale: normalizeScale(unit?.scale ?? "mech")
+    anchorType: normalizeAnchorType(unit?.anchorType ?? GAME_CONFIG.anchorType),
+    scale: getUnitScaleClass(unit)
   };
 }
 
-export function mechTileToPilotCells(x, y) {
-  const baseX = Number(x) * 2;
-  const baseY = Number(y) * 2;
+export function getUnitFootprint(unit) {
+  const defaults = getDefaultFootprintByUnitType(getUnitScaleClass(unit));
 
-  return [
-    { x: baseX, y: baseY },
-    { x: baseX + 1, y: baseY },
-    { x: baseX, y: baseY + 1 },
-    { x: baseX + 1, y: baseY + 1 }
-  ];
-}
-
-export function pilotCellToMechTile(x, y) {
   return {
-    x: Math.floor(Number(x) / 2),
-    y: Math.floor(Number(y) / 2)
+    width: Math.max(1, Number(unit?.footprintWidth ?? defaults.width)),
+    height: Math.max(1, Number(unit?.footprintHeight ?? defaults.height))
   };
 }
 
-export function getResolutionBoardSize(scale, mapConfig) {
-  const normalized = normalizeScale(scale);
+// Even footprints are centered around the anchor.
+// 2x2 at anchor (10,10) -> x 9..10 and y 9..10
+// 4x4 at anchor (10,10) -> x 8..11 and y 8..11
+export function getFootprintBoundsFromAnchor(anchorX, anchorY, footprintWidth, footprintHeight) {
+  const width = Math.max(1, Number(footprintWidth ?? 1));
+  const height = Math.max(1, Number(footprintHeight ?? 1));
 
-  if (normalized === "pilot") {
-    return {
-      width: mapConfig.mechWidth * 2,
-      height: mapConfig.mechHeight * 2
-    };
+  const minX = Number(anchorX) - Math.floor(width / 2);
+  const minY = Number(anchorY) - Math.floor(height / 2);
+  const maxX = minX + width - 1;
+  const maxY = minY + height - 1;
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width,
+    height
+  };
+}
+
+export function getUnitFootprintBounds(unit) {
+  const anchor = getUnitAnchor(unit);
+  const footprint = getUnitFootprint(unit);
+
+  return getFootprintBoundsFromAnchor(anchor.x, anchor.y, footprint.width, footprint.height);
+}
+
+export function getOccupiedCellsFromAnchor(anchorX, anchorY, footprintWidth, footprintHeight) {
+  const bounds = getFootprintBoundsFromAnchor(anchorX, anchorY, footprintWidth, footprintHeight);
+  const cells = [];
+
+  for (let y = bounds.minY; y <= bounds.maxY; y += 1) {
+    for (let x = bounds.minX; x <= bounds.maxX; x += 1) {
+      cells.push({ x, y });
+    }
   }
 
+  return cells;
+}
+
+export function getUnitOccupiedCells(unit) {
+  const anchor = getUnitAnchor(unit);
+  const footprint = getUnitFootprint(unit);
+
+  return getOccupiedCellsFromAnchor(anchor.x, anchor.y, footprint.width, footprint.height);
+}
+
+export function getUnitCenterPoint(unit) {
+  const bounds = getUnitFootprintBounds(unit);
+
   return {
-    width: mapConfig.mechWidth,
-    height: mapConfig.mechHeight
+    x: bounds.minX + (bounds.width / 2),
+    y: bounds.minY + (bounds.height / 2)
   };
 }
 
-export function getResolutionCenterPoint(x, y, scale = "mech") {
+export function getUnitPrimaryPosition(unit) {
+  const anchor = getUnitAnchor(unit);
+
+  return {
+    x: anchor.x,
+    y: anchor.y,
+    scale: anchor.scale
+  };
+}
+
+export function isCellWithinBoard(x, y, mapConfig = MAP_CONFIG) {
+  const board = getResolutionBoardSize("base", mapConfig);
+
+  return x >= 0 && y >= 0 && x < board.width && y < board.height;
+}
+
+export function areCellsWithinBoard(cells, mapConfig = MAP_CONFIG) {
+  return cells.every((cell) => isCellWithinBoard(cell.x, cell.y, mapConfig));
+}
+
+export function isUnitWithinBoard(unit, mapConfig = MAP_CONFIG) {
+  return areCellsWithinBoard(getUnitOccupiedCells(unit), mapConfig);
+}
+
+export function getResolutionCenterPoint(x, y, _scale = "base") {
   return {
     x: Number(x) + 0.5,
     y: Number(y) + 0.5,
-    scale: normalizeScale(scale)
+    scale: "base"
   };
 }
 
-export function getParentMechTileForPosition(x, y, scale = "mech") {
-  if (normalizeScale(scale) === "pilot") {
-    return pilotCellToMechTile(x, y);
-  }
+export function getParentMechTileForPosition(x, y, _scale = "base") {
+  return {
+    x: Number(x),
+    y: Number(y)
+  };
+}
 
+// Legacy dead bridge wrappers.
+// Keep them so old imports do not crash while we rewrite outward.
+export function mechTileToPilotCells(x, y) {
+  return [{ x: Number(x), y: Number(y) }];
+}
+
+export function pilotCellToMechTile(x, y) {
   return {
     x: Number(x),
     y: Number(y)
