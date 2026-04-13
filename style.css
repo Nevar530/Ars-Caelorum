@@ -941,4 +941,20 @@ button:disabled {
     font-size: 12px;
     padding: 6px 8px;
   }
+
+   .mech-top-facing,
+.mech-top-facing-preview {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.mech-top-facing {
+  stroke: #dceeff;
+  stroke-width: 3;
+}
+
+.mech-top-facing-preview {
+  stroke: #ffe28a;
+  stroke-width: 3.5;
+}
 }
