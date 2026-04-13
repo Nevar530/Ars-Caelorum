@@ -10,7 +10,7 @@ export function normalizeScale(scale) {
 }
 
 export function getResolutionMultiplier(scale = "mech") {
-  return SCALE_RESOLUTION[normalizeScale(scale)] ?? SCALE_RESOLUTION.mech;
+  return SCALE_RESOLUTION[normalizeScale(scale)] ?? 1;
 }
 
 export function makePositionKey(x, y, scale = "mech") {
@@ -48,18 +48,37 @@ export function pilotCellToMechTile(x, y) {
   };
 }
 
-export function getResolutionCenterPoint(x, y, scale = "mech") {
-  const normalizedScale = normalizeScale(scale);
+export function getResolutionBoardSize(scale, mapConfig) {
+  const normalized = normalizeScale(scale);
 
-  if (normalizedScale === "pilot") {
+  if (normalized === "pilot") {
     return {
-      x: Number(x) + 0.5,
-      y: Number(y) + 0.5
+      width: mapConfig.mechWidth * 2,
+      height: mapConfig.mechHeight * 2
     };
   }
 
   return {
+    width: mapConfig.mechWidth,
+    height: mapConfig.mechHeight
+  };
+}
+
+export function getResolutionCenterPoint(x, y, scale = "mech") {
+  return {
     x: Number(x) + 0.5,
-    y: Number(y) + 0.5
+    y: Number(y) + 0.5,
+    scale: normalizeScale(scale)
+  };
+}
+
+export function getParentMechTileForPosition(x, y, scale = "mech") {
+  if (normalizeScale(scale) === "pilot") {
+    return pilotCellToMechTile(x, y);
+  }
+
+  return {
+    x: Number(x),
+    y: Number(y)
   };
 }
