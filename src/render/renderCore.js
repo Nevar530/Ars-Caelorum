@@ -32,10 +32,10 @@ import {
 } from "./projection.js";
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
 import { makeText } from "../utils.js";
-import { getUnitScenePosition } from "../mechs.js";
+import { getUnitFootprint, getUnitFootprintBounds } from "../scale/scaleMath.js";
 
 const OVERLAY_SORT_EPSILON = 0.35;
-const MECH_SORT_EPSILON = 0.92;
+const UNIT_SORT_EPSILON = 0.92;
 
 export function renderAll(state, refs) {
   ensureCameraState(state);
@@ -64,15 +64,15 @@ export function renderIso(state, refs) {
     }
   }
 
-  for (let y = 0; y < MAP_CONFIG.mechHeight; y++) {
-    for (let x = 0; x < MAP_CONFIG.mechWidth; x++) {
+  for (let y = 0; y < MAP_CONFIG.height; y++) {
+    for (let x = 0; x < MAP_CONFIG.width; x++) {
       const tile = getTile(map, x, y);
       if (!tile) continue;
 
       const renderElevation = getTileRenderElevation(tile);
-      const projected = projectScene(state, x, y, renderElevation);
+      const projected = projectScene(state, x, y, renderElevation, 1);
       const hasDetailGeometry = !isDetailTileUniform(tile);
-      const parentSort = getSceneSortKey(state, x, y, renderElevation);
+      const parentSort = getSceneSortKey(state, x, y, renderElevation, 1);
 
       const tileItem = {
         kind: "tile",
@@ -217,38 +217,42 @@ export function renderIso(state, refs) {
   }
 
   for (const unit of units) {
-    const anchor = getUnitScenePosition(unit);
-    const tile = getTile(map, anchor.mechX, anchor.mechY);
-    if (!tile) continue;
+    const footprint = getUnitFootprint(unit);
+    const bounds = getUnitFootprintBounds(unit);
+    const anchorTile = getTile(map, unit.x, unit.y);
+    if (!anchorTile) continue;
 
-    const tileElevation = getTileRenderElevation(tile);
+    const tileElevation = getTileRenderElevation(anchorTile);
+    const sceneX = bounds.minX;
+    const sceneY = bounds.minY;
+    const sceneSize = Math.max(footprint.width, footprint.height);
 
     const projected = projectScene(
       state,
-      anchor.sceneX,
-      anchor.sceneY,
+      sceneX,
+      sceneY,
       tileElevation,
-      anchor.sceneSize
+      sceneSize
     );
 
-    const parentSort = getSceneSortKey(
+    const sortKey = getSceneSortKey(
       state,
-      anchor.sceneX,
-      anchor.sceneY,
+      bounds.maxX,
+      bounds.maxY,
       tileElevation,
-      anchor.sceneSize
+      sceneSize
     );
 
     sceneItems.push({
       kind: "unit",
       sortDepth:
         getTerrainDepth({
-          size: anchor.sceneSize,
+          size: sceneSize,
           screenY: projected.y,
           leftFaceHeight: tileElevation,
           rightFaceHeight: tileElevation
-        }) + MECH_SORT_EPSILON,
-      sortKey: parentSort,
+        }) + UNIT_SORT_EPSILON,
+      sortKey,
       render(parent) {
         const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
         const isActive = unit.instanceId === activeUnitId;
@@ -344,11 +348,11 @@ export function renderEditor(state, refs) {
     return;
   }
 
-  const cellWidth = inner / MAP_CONFIG.mechWidth;
-  const cellHeight = inner / MAP_CONFIG.mechHeight;
+  const cellWidth = inner / MAP_CONFIG.width;
+  const cellHeight = inner / MAP_CONFIG.height;
 
-  for (let y = 0; y < MAP_CONFIG.mechHeight; y++) {
-    for (let x = 0; x < MAP_CONFIG.mechWidth; x++) {
+  for (let y = 0; y < MAP_CONFIG.height; y++) {
+    for (let x = 0; x < MAP_CONFIG.width; x++) {
       const tile = getTile(map, x, y);
       const isSelected =
         x === state.ui.editor.selectedTile.x &&
@@ -377,14 +381,14 @@ function renderDetailEditor(state, parent, map, pad, inner) {
   const summary = getTileSummary(selectedTile);
 
   const miniSize = 126;
-  const miniCellW = miniSize / MAP_CONFIG.mechWidth;
-  const miniCellH = miniSize / MAP_CONFIG.mechHeight;
+  const miniCellW = miniSize / MAP_CONFIG.width;
+  const miniCellH = miniSize / MAP_CONFIG.height;
 
   const miniX = pad;
   const miniY = pad;
 
-  for (let y = 0; y < MAP_CONFIG.mechHeight; y++) {
-    for (let x = 0; x < MAP_CONFIG.mechWidth; x++) {
+  for (let y = 0; y < MAP_CONFIG.height; y++) {
+    for (let x = 0; x < MAP_CONFIG.width; x++) {
       const tile = getTile(map, x, y);
       const isSelected = x === selectedX && y === selectedY;
 
@@ -473,5 +477,5 @@ function renderEditorUi(state, refs) {
     return;
   }
 
-  refs.editorModeLabel.textContent = "Editor Mode: Mech Tiles";
+  refs.editorModeLabel.textContent = "Editor Mode: Base Grid";
 }
