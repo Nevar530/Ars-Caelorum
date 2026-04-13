@@ -29,10 +29,10 @@ function drawTopUnit(state, unit, group, screenX, screenY, footprint, isActive) 
   body.setAttribute("width", widthPx);
   body.setAttribute("height", heightPx);
   body.setAttribute("rx", unit.unitType === "pilot" ? "6" : "10");
-  body.setAttribute("class", getTopBodyClass(unit, isActive));
+  body.setAttribute("class", getTopBodyClass(isActive));
 
   const facingLine = svgEl("line");
-  const linePoints = getTopFacingLinePoints(unit, screenX, screenY, widthPx, heightPx);
+  const linePoints = getTopFacingLinePoints(state, unit, screenX, screenY, widthPx, heightPx);
   facingLine.setAttribute("x1", linePoints.x1);
   facingLine.setAttribute("y1", linePoints.y1);
   facingLine.setAttribute("x2", linePoints.x2);
@@ -53,11 +53,12 @@ function drawTopUnit(state, unit, group, screenX, screenY, footprint, isActive) 
 
 function drawIsoStackedUnit(state, unit, group, screenX, screenY, footprint, isActive) {
   const unitSize = Math.max(footprint.width, footprint.height);
+
+  // 1 base tile in your render is 96x48, so half extents scale by footprint.
   const halfW = unitSize * 48;
   const halfH = unitSize * 24;
 
-  // Lower cube height and upper cube lift.
-  // Pilot stays smaller but uses the exact same stacked language.
+  // Temporary heights until we do the shape cleanup pass.
   const lowerHeight = unit.unitType === "pilot" ? 22 : 34;
   const upperHeight = unit.unitType === "pilot" ? 18 : 28;
   const upperLift = unit.unitType === "pilot" ? 18 : 28;
@@ -73,7 +74,6 @@ function drawIsoStackedUnit(state, unit, group, screenX, screenY, footprint, isA
   shadow.setAttribute("class", "mech-shadow");
   group.appendChild(shadow);
 
-  // Lower cube
   const lowerLeft = makeSideFace(lowerTop.left, lowerTop.bottom, lowerHeight);
   const lowerRight = makeSideFace(lowerTop.right, lowerTop.bottom, lowerHeight);
 
@@ -90,7 +90,6 @@ function drawIsoStackedUnit(state, unit, group, screenX, screenY, footprint, isA
   );
   lowerTopPoly.removeAttribute("fill");
 
-  // Upper cube
   const upperLeft = makeSideFace(upperTop.left, upperTop.bottom, upperHeight);
   const upperRight = makeSideFace(upperTop.right, upperTop.bottom, upperHeight);
 
@@ -144,18 +143,8 @@ export function getWorldFacing(state, unit) {
   return isPreviewing ? state.ui.facingPreview : unit.facing;
 }
 
-function getTopBodyClass(_unit, isActive) {
+function getTopBodyClass(isActive) {
   return isActive ? "mech-top-body mech-top-body-active" : "mech-top-body";
-}
-
-export function getTopFacingClass(state, unit) {
-  const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
-  const isPreviewing =
-    state.ui.mode === "face" &&
-    unit.instanceId === activeId &&
-    state.ui.facingPreview !== null;
-
-  return isPreviewing ? "mech-top-facing-preview" : "mech-top-facing";
 }
 
 export function getIsoTopClass(state, unit, isActive) {
@@ -187,51 +176,60 @@ function getFacingLineClass(state, unit) {
   return isPreviewing ? "mech-top-facing-preview" : "mech-top-facing";
 }
 
-function getTopFacingLinePoints(unit, x, y, width, height) {
-  const facing = normalizeFacing(unit.facing);
+// Top-down should mirror iso movement directions:
+// 0 up = top-right
+// 1 right = bottom-right
+// 2 down = bottom-left
+// 3 left = top-left
+function getTopFacingLinePoints(state, unit, x, y, width, height) {
+  const facing = normalizeFacing(getWorldFacing(state, unit));
   const cx = x + (width / 2);
   const cy = y + (height / 2);
-  const reach = Math.max(8, Math.min(width, height) * 0.34);
+  const reachX = width * 0.24;
+  const reachY = height * 0.24;
 
   switch (facing) {
     case 0:
-      return { x1: cx, y1: cy, x2: cx, y2: cy - reach };
+      return { x1: cx, y1: cy, x2: cx + reachX, y2: cy - reachY };
     case 1:
-      return { x1: cx, y1: cy, x2: cx + reach, y2: cy };
+      return { x1: cx, y1: cy, x2: cx + reachX, y2: cy + reachY };
     case 2:
-      return { x1: cx, y1: cy, x2: cx, y2: cy + reach };
+      return { x1: cx, y1: cy, x2: cx - reachX, y2: cy + reachY };
     case 3:
     default:
-      return { x1: cx, y1: cy, x2: cx - reach, y2: cy };
+      return { x1: cx, y1: cy, x2: cx - reachX, y2: cy - reachY };
   }
 }
 
+// Iso should point into one of the four quadrants of the top diamond,
+// not vertical/horizontal screen directions.
 function getIsoFacingLinePoints(state, unit, topDiamond) {
   const facing = normalizeFacing(getWorldFacing(state, unit));
   const center = topDiamond.center;
-  const north = topDiamond.top;
-  const east = topDiamond.right;
-  const south = topDiamond.bottom;
-  const west = topDiamond.left;
 
-  const tipInset = 0.34;
+  const northEast = midpoint(topDiamond.top, topDiamond.right);
+  const southEast = midpoint(topDiamond.right, topDiamond.bottom);
+  const southWest = midpoint(topDiamond.bottom, topDiamond.left);
+  const northWest = midpoint(topDiamond.left, topDiamond.top);
+
+  const t = 0.72;
 
   switch (facing) {
     case 0: {
-      const end = lerpPoint(center, north, tipInset);
+      const end = lerpPoint(center, northEast, t);
       return { x1: center.x, y1: center.y, x2: end.x, y2: end.y };
     }
     case 1: {
-      const end = lerpPoint(center, east, tipInset);
+      const end = lerpPoint(center, southEast, t);
       return { x1: center.x, y1: center.y, x2: end.x, y2: end.y };
     }
     case 2: {
-      const end = lerpPoint(center, south, tipInset);
+      const end = lerpPoint(center, southWest, t);
       return { x1: center.x, y1: center.y, x2: end.x, y2: end.y };
     }
     case 3:
     default: {
-      const end = lerpPoint(center, west, tipInset);
+      const end = lerpPoint(center, northWest, t);
       return { x1: center.x, y1: center.y, x2: end.x, y2: end.y };
     }
   }
@@ -261,6 +259,13 @@ function makeSideFace(upperEdgeA, upperEdgeB, height) {
     { x: upperEdgeB.x, y: upperEdgeB.y + height },
     { x: upperEdgeA.x, y: upperEdgeA.y + height }
   ];
+}
+
+function midpoint(a, b) {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2
+  };
 }
 
 function lerpPoint(a, b, t) {
