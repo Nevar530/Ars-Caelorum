@@ -130,9 +130,6 @@ export function instantiateTestUnits(content) {
     return [];
   }
 
-  // New simple runtime setup:
-  // 1 pilot + 1 mech per team
-  // spaced far enough apart for 2x2 and 4x4 footprints
   const setup = [
     {
       unitType: "pilot",
@@ -232,6 +229,32 @@ export function setUnitFacing(units, instanceId, facing) {
 
   unit.facing = facingToNumber(facing);
   return true;
+}
+
+export function getUnitScenePosition(unit) {
+  const unitType = unit?.unitType ?? "mech";
+
+  if (unitType === "pilot") {
+    return {
+      mechX: Number(unit?.x ?? 0),
+      mechY: Number(unit?.y ?? 0),
+      pilotX: Number(unit?.x ?? 0),
+      pilotY: Number(unit?.y ?? 0),
+      sceneX: Number(unit?.x ?? 0),
+      sceneY: Number(unit?.y ?? 0),
+      sceneSize: 1
+    };
+  }
+
+  return {
+    mechX: Number(unit?.x ?? 0),
+    mechY: Number(unit?.y ?? 0),
+    pilotX: Number(unit?.x ?? 0),
+    pilotY: Number(unit?.y ?? 0),
+    sceneX: Number(unit?.x ?? 0),
+    sceneY: Number(unit?.y ?? 0),
+    sceneSize: 1
+  };
 }
 
 // Bridge wrappers retained for older controllers.
