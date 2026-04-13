@@ -2,9 +2,19 @@
 
 import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
 import { rotateCoord, getTileEffectiveElevation } from "../map.js";
+import {
+  normalizeScale,
+  getResolutionBoardSize,
+  getParentMechTileForPosition
+} from "../scale/scaleMath.js";
 
 export const TOPDOWN_CONFIG = {
-  cellSize: 56
+  mechCellSize: 56
+};
+
+export const SCALE_ZOOM = {
+  mech: 1,
+  pilot: 2
 };
 
 export const CAMERA_CENTER = {
@@ -41,22 +51,42 @@ export function ensureCameraState(state) {
   if (typeof state.camera.offsetY !== "number") {
     state.camera.offsetY = 0;
   }
+
+  if (!state.camera.zoomScale) {
+    state.camera.zoomScale = getCurrentInteractionScale(state);
+  }
 }
 
 export function updateCameraFraming(state, refs) {
+  const currentScale = getCurrentInteractionScale(state);
+  state.camera.zoomScale = currentScale;
+
   const viewport = getSceneViewport(refs);
-  const rawBounds = getMapScreenBoundsRaw(state);
+  const rawBounds = getMapScreenBoundsRaw(state, currentScale);
   const offsetLimits = getCameraOffsetLimits(rawBounds, viewport);
+
+  const focusScale = normalizeScale(state.focus?.scale ?? currentScale);
+  const parentTile = getParentMechTileForPosition(
+    state.focus?.x ?? 0,
+    state.focus?.y ?? 0,
+    focusScale
+  );
 
   const safeTile =
     state.map &&
-    typeof state.focus?.x === "number" &&
-    typeof state.focus?.y === "number"
-      ? state.map[state.focus.y]?.[state.focus.x] ?? null
+    typeof parentTile?.x === "number" &&
+    typeof parentTile?.y === "number"
+      ? state.map[parentTile.y]?.[parentTile.x] ?? null
       : null;
 
   const safeElevation = safeTile ? getTileEffectiveElevation(safeTile) : 0;
-  const focusScreen = projectScene(state, state.focus.x, state.focus.y, safeElevation);
+  const focusScreen = projectScene(
+    state,
+    state.focus?.x ?? 0,
+    state.focus?.y ?? 0,
+    safeElevation,
+    focusScale === "pilot" ? 0.5 : 1
+  );
 
   const deadZone = {
     left: viewport.width * 0.28,
@@ -127,27 +157,36 @@ export function getCameraOffsetLimits(rawBounds, viewport) {
   return { minX, maxX, minY, maxY };
 }
 
-export function getMapScreenBoundsRaw(state) {
+export function getMapScreenBoundsRaw(state, scale = null) {
+  const currentScale = normalizeScale(scale ?? getCurrentInteractionScale(state));
+
   if (state.ui?.viewMode === "top") {
+    const board = getResolutionBoardSize(currentScale, MAP_CONFIG);
+    const cellSize = getTopdownCellSize(currentScale);
+
     const minX = CAMERA_CENTER.topX;
     const minY = CAMERA_CENTER.topY;
-    const maxX = CAMERA_CENTER.topX + (MAP_CONFIG.mechWidth * TOPDOWN_CONFIG.cellSize);
-    const maxY = CAMERA_CENTER.topY + (MAP_CONFIG.mechHeight * TOPDOWN_CONFIG.cellSize);
+    const maxX = CAMERA_CENTER.topX + (board.width * cellSize);
+    const maxY = CAMERA_CENTER.topY + (board.height * cellSize);
+
     return { minX, maxX, minY, maxY };
   }
 
+  const board = getResolutionBoardSize(currentScale, MAP_CONFIG);
+  const size = currentScale === "pilot" ? 0.5 : 1;
+
   const corners = [
     { x: 0, y: 0 },
-    { x: MAP_CONFIG.mechWidth - 1, y: 0 },
-    { x: 0, y: MAP_CONFIG.mechHeight - 1 },
-    { x: MAP_CONFIG.mechWidth - 1, y: MAP_CONFIG.mechHeight - 1 }
+    { x: board.width - 1, y: 0 },
+    { x: 0, y: board.height - 1 },
+    { x: board.width - 1, y: board.height - 1 }
   ];
 
   const points = [];
 
   for (const corner of corners) {
     for (const elevation of [0, MAP_CONFIG.maxElevation + 2]) {
-      points.push(projectIsoRaw(corner.x, corner.y, elevation, state.rotation));
+      points.push(projectIsoRaw(corner.x, corner.y, elevation, state.rotation, size));
     }
   }
 
@@ -163,8 +202,10 @@ export function getMapScreenBoundsRaw(state) {
 }
 
 export function projectScene(state, x, y, elevation = 0, size = 1) {
+  const inferredScale = inferScaleFromSize(size);
+
   if (state.ui?.viewMode === "top") {
-    return projectTopDown(state, x, y);
+    return projectTopDown(state, x, y, inferredScale);
   }
 
   return projectIso(state, x, y, elevation, size);
@@ -181,14 +222,16 @@ export function projectIso(state, x, y, elevation = 0, size = 1) {
 
 export function projectIsoRaw(x, y, elevation = 0, rotation = 0, size = 1) {
   const rotated = rotateSceneCoord(x, y, rotation, size);
+  const scale = inferScaleFromSize(size);
+  const zoom = getZoomFactor(scale);
 
   const isoX =
-    (rotated.x - rotated.y) * (RENDER_CONFIG.isoTileWidth / 2) + CAMERA_CENTER.isoX;
+    (rotated.x - rotated.y) * ((RENDER_CONFIG.isoTileWidth * zoom) / 2) + CAMERA_CENTER.isoX;
 
   const isoY =
-    (rotated.x + rotated.y) * (RENDER_CONFIG.isoTileHeight / 2) +
+    (rotated.x + rotated.y) * ((RENDER_CONFIG.isoTileHeight * zoom) / 2) +
     CAMERA_CENTER.isoY -
-    (elevation * RENDER_CONFIG.elevationStepPx);
+    (elevation * RENDER_CONFIG.elevationStepPx * zoom);
 
   return {
     x: isoX,
@@ -196,24 +239,31 @@ export function projectIsoRaw(x, y, elevation = 0, rotation = 0, size = 1) {
   };
 }
 
-export function projectTopDown(state, x, y) {
+export function projectTopDown(state, x, y, scale = null) {
+  const currentScale = normalizeScale(scale ?? getCurrentInteractionScale(state));
+  const cellSize = getTopdownCellSize(currentScale);
+
   return {
-    x: CAMERA_CENTER.topX + (x * TOPDOWN_CONFIG.cellSize) + (state.camera?.offsetX ?? 0),
-    y: CAMERA_CENTER.topY + (y * TOPDOWN_CONFIG.cellSize) + (state.camera?.offsetY ?? 0)
+    x: CAMERA_CENTER.topX + (x * cellSize) + (state.camera?.offsetX ?? 0),
+    y: CAMERA_CENTER.topY + (y * cellSize) + (state.camera?.offsetY ?? 0)
   };
 }
 
 export function getSceneSortKey(state, x, y, elevation = 0, size = 1) {
+  const scale = inferScaleFromSize(size);
+
   if (state.ui?.viewMode === "top") {
     return (y * 1000) + x;
   }
 
   const rotated = rotateSceneCoord(x, y, state.rotation, size);
-  return (rotated.x + rotated.y) * 1000 + (elevation * 10);
+  const scaleBias = scale === "pilot" ? 0 : 1000000;
+
+  return scaleBias + ((rotated.x + rotated.y) * 1000) + (elevation * 10);
 }
 
 export function getLosHeights(baseElevation, scale = "mech") {
-  const profile = LOS_HEIGHT_PROFILES[scale] ?? LOS_HEIGHT_PROFILES.mech;
+  const profile = LOS_HEIGHT_PROFILES[normalizeScale(scale)] ?? LOS_HEIGHT_PROFILES.mech;
 
   return {
     fire: baseElevation + profile.fire,
@@ -222,33 +272,66 @@ export function getLosHeights(baseElevation, scale = "mech") {
   };
 }
 
-export function projectLosPoint(state, x, y, height) {
+export function projectLosPoint(state, x, y, height, scale = "mech") {
+  const currentScale = normalizeScale(scale);
+
   if (state.ui?.viewMode === "top") {
-    const top = projectTopDown(state, x, y);
+    const top = projectTopDown(state, x, y, currentScale);
+    const cellSize = getTopdownCellSize(currentScale);
+
     return {
-      x: top.x + (TOPDOWN_CONFIG.cellSize / 2),
-      y: top.y + (TOPDOWN_CONFIG.cellSize / 2)
+      x: top.x + (cellSize / 2),
+      y: top.y + (cellSize / 2)
     };
   }
 
-  const projected = projectIso(state, x, y, height);
+  const projected = projectIso(
+    state,
+    x,
+    y,
+    height,
+    currentScale === "pilot" ? 0.5 : 1
+  );
+
   return {
     x: projected.x,
-    y: projected.y + (RENDER_CONFIG.isoTileHeight / 2)
+    y: projected.y + ((RENDER_CONFIG.isoTileHeight * getZoomFactor(currentScale)) / 2)
   };
 }
 
-export function getLosRayEndPoint(state, rayTrace, fallbackX, fallbackY, fallbackHeight) {
+export function getLosRayEndPoint(state, rayTrace, fallbackX, fallbackY, fallbackHeight, scale = "mech") {
   if (rayTrace?.blocked && rayTrace?.blockingTile) {
     return projectLosPoint(
       state,
       rayTrace.blockingTile.x,
       rayTrace.blockingTile.y,
-      rayTrace.stopHeight ?? fallbackHeight
+      rayTrace.stopHeight ?? fallbackHeight,
+      scale
     );
   }
 
-  return projectLosPoint(state, fallbackX, fallbackY, fallbackHeight);
+  return projectLosPoint(state, fallbackX, fallbackY, fallbackHeight, scale);
+}
+
+export function getTopdownCellSize(scale = "mech") {
+  const currentScale = normalizeScale(scale);
+  return currentScale === "pilot"
+    ? TOPDOWN_CONFIG.mechCellSize / 2
+    : TOPDOWN_CONFIG.mechCellSize;
+}
+
+export function getZoomFactor(scale = "mech") {
+  return SCALE_ZOOM[normalizeScale(scale)] ?? 1;
+}
+
+export function getCurrentInteractionScale(state) {
+  const activeScale = normalizeScale(
+    state.camera?.zoomScale ??
+    state.focus?.scale ??
+    "mech"
+  );
+
+  return activeScale;
 }
 
 function rotateSceneCoord(x, y, rotation = 0, size = 1) {
@@ -264,6 +347,9 @@ function rotateSceneCoord(x, y, rotation = 0, size = 1) {
     );
   }
 
+  const gridScale = inferScaleFromSize(size);
+  const board = getResolutionBoardSize(gridScale, MAP_CONFIG);
+
   const baseX = Math.floor(x);
   const baseY = Math.floor(y);
   const localX = x - baseX;
@@ -272,8 +358,8 @@ function rotateSceneCoord(x, y, rotation = 0, size = 1) {
   const rotatedBase = rotateCoord(
     baseX,
     baseY,
-    MAP_CONFIG.mechWidth,
-    MAP_CONFIG.mechHeight,
+    board.width,
+    board.height,
     normalizedRotation
   );
 
@@ -300,6 +386,10 @@ function rotateLocalOffset(localX, localY, rotation = 0, size = 1) {
     default:
       return { x: localX, y: localY };
   }
+}
+
+function inferScaleFromSize(size = 1) {
+  return size < 1 ? "pilot" : "mech";
 }
 
 function isWholeTileCoord(value) {
