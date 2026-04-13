@@ -173,7 +173,6 @@ export function getMapScreenBoundsRaw(state, scale = null) {
   }
 
   const board = getResolutionBoardSize(currentScale, MAP_CONFIG);
-  const size = currentScale === "pilot" ? 0.5 : 1;
 
   const corners = [
     { x: 0, y: 0 },
@@ -186,7 +185,9 @@ export function getMapScreenBoundsRaw(state, scale = null) {
 
   for (const corner of corners) {
     for (const elevation of [0, MAP_CONFIG.maxElevation + 2]) {
-      points.push(projectIsoRaw(corner.x, corner.y, elevation, state.rotation, size));
+      points.push(
+        projectIsoRaw(corner.x, corner.y, elevation, state.rotation, currentScale === "pilot" ? 0.5 : 1)
+      );
     }
   }
 
@@ -202,17 +203,17 @@ export function getMapScreenBoundsRaw(state, scale = null) {
 }
 
 export function projectScene(state, x, y, elevation = 0, size = 1) {
-  const inferredScale = inferScaleFromSize(size);
+  const coordSpace = getCoordSpace(x, y, size, state);
 
   if (state.ui?.viewMode === "top") {
-    return projectTopDown(state, x, y, inferredScale);
+    return projectTopDown(state, x, y, coordSpace);
   }
 
-  return projectIso(state, x, y, elevation, size);
+  return projectIso(state, x, y, elevation, size, coordSpace);
 }
 
-export function projectIso(state, x, y, elevation = 0, size = 1) {
-  const raw = projectIsoRaw(x, y, elevation, state.rotation, size);
+export function projectIso(state, x, y, elevation = 0, size = 1, coordSpace = null) {
+  const raw = projectIsoRaw(x, y, elevation, state.rotation, size, coordSpace);
 
   return {
     x: raw.x + (state.camera?.offsetX ?? 0),
@@ -220,10 +221,10 @@ export function projectIso(state, x, y, elevation = 0, size = 1) {
   };
 }
 
-export function projectIsoRaw(x, y, elevation = 0, rotation = 0, size = 1) {
-  const rotated = rotateSceneCoord(x, y, rotation, size);
-  const scale = inferScaleFromSize(size);
-  const zoom = getZoomFactor(scale);
+export function projectIsoRaw(x, y, elevation = 0, rotation = 0, size = 1, coordSpace = null) {
+  const resolvedCoordSpace = coordSpace ?? getCoordSpace(x, y, size, null);
+  const rotated = rotateSceneCoord(x, y, rotation, size, resolvedCoordSpace);
+  const zoom = getZoomFactor(resolvedCoordSpace === "pilot" ? "pilot" : "mech");
 
   const isoX =
     (rotated.x - rotated.y) * ((RENDER_CONFIG.isoTileWidth * zoom) / 2) + CAMERA_CENTER.isoX;
@@ -239,9 +240,13 @@ export function projectIsoRaw(x, y, elevation = 0, rotation = 0, size = 1) {
   };
 }
 
-export function projectTopDown(state, x, y, scale = null) {
-  const currentScale = normalizeScale(scale ?? getCurrentInteractionScale(state));
-  const cellSize = getTopdownCellSize(currentScale);
+export function projectTopDown(state, x, y, coordSpace = null) {
+  const resolvedCoordSpace =
+    coordSpace ?? getCoordSpace(x, y, 1, state);
+
+  const cellSize = getTopdownCellSize(
+    resolvedCoordSpace === "pilot" ? "pilot" : "mech"
+  );
 
   return {
     x: CAMERA_CENTER.topX + (x * cellSize) + (state.camera?.offsetX ?? 0),
@@ -250,14 +255,14 @@ export function projectTopDown(state, x, y, scale = null) {
 }
 
 export function getSceneSortKey(state, x, y, elevation = 0, size = 1) {
-  const scale = inferScaleFromSize(size);
+  const coordSpace = getCoordSpace(x, y, size, state);
 
   if (state.ui?.viewMode === "top") {
     return (y * 1000) + x;
   }
 
-  const rotated = rotateSceneCoord(x, y, state.rotation, size);
-  const scaleBias = scale === "pilot" ? 0 : 1000000;
+  const rotated = rotateSceneCoord(x, y, state.rotation, size, coordSpace);
+  const scaleBias = coordSpace === "pilot" ? 0 : 1000000;
 
   return scaleBias + ((rotated.x + rotated.y) * 1000) + (elevation * 10);
 }
@@ -290,7 +295,8 @@ export function projectLosPoint(state, x, y, height, scale = "mech") {
     x,
     y,
     height,
-    currentScale === "pilot" ? 0.5 : 1
+    currentScale === "pilot" ? 0.5 : 1,
+    currentScale
   );
 
   return {
@@ -325,17 +331,27 @@ export function getZoomFactor(scale = "mech") {
 }
 
 export function getCurrentInteractionScale(state) {
-  const activeScale = normalizeScale(
+  return normalizeScale(
     state.camera?.zoomScale ??
     state.focus?.scale ??
     "mech"
   );
-
-  return activeScale;
 }
 
-function rotateSceneCoord(x, y, rotation = 0, size = 1) {
+function rotateSceneCoord(x, y, rotation = 0, size = 1, coordSpace = "mech") {
   const normalizedRotation = ((rotation % 4) + 4) % 4;
+
+  if (coordSpace === "pilot") {
+    const board = getResolutionBoardSize("pilot", MAP_CONFIG);
+
+    return rotateCoord(
+      x,
+      y,
+      board.width,
+      board.height,
+      normalizedRotation
+    );
+  }
 
   if (isWholeTileCoord(x) && isWholeTileCoord(y) && size === 1) {
     return rotateCoord(
@@ -347,9 +363,6 @@ function rotateSceneCoord(x, y, rotation = 0, size = 1) {
     );
   }
 
-  const gridScale = inferScaleFromSize(size);
-  const board = getResolutionBoardSize(gridScale, MAP_CONFIG);
-
   const baseX = Math.floor(x);
   const baseY = Math.floor(y);
   const localX = x - baseX;
@@ -358,12 +371,12 @@ function rotateSceneCoord(x, y, rotation = 0, size = 1) {
   const rotatedBase = rotateCoord(
     baseX,
     baseY,
-    board.width,
-    board.height,
+    MAP_CONFIG.mechWidth,
+    MAP_CONFIG.mechHeight,
     normalizedRotation
   );
 
-  const rotatedLocal = rotateLocalOffset(localX, localY, normalizedRotation, size);
+  const rotatedLocal = rotateLocalOffset(localX, localY, rotation, size);
 
   return {
     x: rotatedBase.x + rotatedLocal.x,
@@ -372,9 +385,10 @@ function rotateSceneCoord(x, y, rotation = 0, size = 1) {
 }
 
 function rotateLocalOffset(localX, localY, rotation = 0, size = 1) {
+  const normalizedRotation = ((rotation % 4) + 4) % 4;
   const maxAnchor = 1 - size;
 
-  switch (rotation) {
+  switch (normalizedRotation) {
     case 0:
       return { x: localX, y: localY };
     case 1:
@@ -388,8 +402,18 @@ function rotateLocalOffset(localX, localY, rotation = 0, size = 1) {
   }
 }
 
-function inferScaleFromSize(size = 1) {
-  return size < 1 ? "pilot" : "mech";
+function getCoordSpace(x, y, size = 1, state = null) {
+  const activeScale = state ? getCurrentInteractionScale(state) : "mech";
+
+  if (size === 0.5 && isWholeTileCoord(x) && isWholeTileCoord(y)) {
+    return "pilot";
+  }
+
+  if (activeScale === "pilot" && size === 1 && isWholeTileCoord(x) && isWholeTileCoord(y)) {
+    return "pilot";
+  }
+
+  return "mech";
 }
 
 function isWholeTileCoord(value) {
