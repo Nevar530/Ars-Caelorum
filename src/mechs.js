@@ -1,8 +1,4 @@
 // src/mechs.js
-//
-// BRIDGE FILE:
-// keep the old filename so the rest of the project still imports cleanly,
-// but move the runtime thinking to generic units.
 
 import { pilotCellToMechTile } from "./scale/scaleMath.js";
 
@@ -61,7 +57,6 @@ export function createMechInstance(definition, overrides = {}) {
 
   return {
     unitType: "mech",
-
     instanceId: overrides.instanceId ?? definition.id,
     definitionId: definition.id,
     name: definition.name,
@@ -121,7 +116,6 @@ export function createPilotInstance(definition, overrides = {}) {
 
   return {
     unitType: "pilot",
-
     instanceId: overrides.instanceId ?? definition.id,
     definitionId: definition.id,
     name: definition.name,
@@ -179,7 +173,6 @@ export function createPilotInstance(definition, overrides = {}) {
 }
 
 export function instantiateTestMechs(content) {
-  // kept for compatibility, now returns ALL TEST UNITS
   return instantiateTestUnits(content);
 }
 
@@ -256,9 +249,6 @@ export function instantiateTestUnits(content) {
     })
     .filter(Boolean);
 
-  // TEST SCAFFOLD:
-  // add one pilot unit per team so movement / focus / targeting can be tested
-  // before exit-mech is wired.
   const pilotLoadout = [
     {
       pilotId: "pilot_biggs",
@@ -303,8 +293,6 @@ export function instantiateTestUnits(content) {
   return [...mechUnits, ...pilotUnits];
 }
 
-// GENERIC UNIT QUERIES
-
 export function getUnitById(units, instanceId) {
   return (Array.isArray(units) ? units : []).find((unit) => unit.instanceId === instanceId) ?? null;
 }
@@ -334,8 +322,6 @@ export function setUnitFacing(units, instanceId, facing) {
   return true;
 }
 
-// BRIDGE WRAPPERS
-
 export function getMechAt(units, x, y) {
   return getUnitsAt(units, x, y).find(Boolean) ?? null;
 }
@@ -352,16 +338,25 @@ export function setMechFacing(units, instanceId, facing) {
   return setUnitFacing(units, instanceId, facing);
 }
 
-export function getUnitScreenAnchorPosition(unit) {
+export function getUnitScenePosition(unit) {
   if (!unit) {
-    return { x: 0, y: 0, mechX: 0, mechY: 0, scale: "mech" };
+    return {
+      sceneX: 0,
+      sceneY: 0,
+      sceneSize: 1,
+      mechX: 0,
+      mechY: 0,
+      scale: "mech"
+    };
   }
 
   if (unit.scale === "pilot") {
     const mechTile = pilotCellToMechTile(unit.x, unit.y);
+
     return {
-      x: unit.x,
-      y: unit.y,
+      sceneX: unit.x / 2,
+      sceneY: unit.y / 2,
+      sceneSize: 0.5,
       mechX: mechTile.x,
       mechY: mechTile.y,
       scale: "pilot"
@@ -369,8 +364,9 @@ export function getUnitScreenAnchorPosition(unit) {
   }
 
   return {
-    x: unit.x,
-    y: unit.y,
+    sceneX: unit.x,
+    sceneY: unit.y,
+    sceneSize: 1,
     mechX: unit.x,
     mechY: unit.y,
     scale: "mech"
