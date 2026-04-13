@@ -9,11 +9,18 @@ import {
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG, projectScene } from "./projection.js";
 
-const DETAIL_OVERLAY_LIFT = 0;
+const DETAIL_OVERLAY_LIFT = 0.02;
 const DETAIL_STROKE_WIDTH = 2;
 const DIAMOND_STROKE_WIDTH = 2.5;
 
-export function drawSceneActionOverlayForTile(state, item, parent) {
+const DEFAULT_DRAW_OPTIONS = {
+  drawShapes: true,
+  drawLabels: true
+};
+
+export function drawSceneActionOverlayForTile(state, item, parent, options = DEFAULT_DRAW_OPTIONS) {
+  const { drawShapes } = normalizeOptions(options);
+
   if (state.ui.mode !== "action-target") return;
 
   const key = `${item.x},${item.y}`;
@@ -54,7 +61,7 @@ export function drawSceneActionOverlayForTile(state, item, parent) {
     stroke = "rgba(255, 74, 74, 1)";
   }
 
-  if (!fill || !stroke) return;
+  if (!fill || !stroke || !drawShapes) return;
 
   if (state.ui.viewMode === "top") {
     drawTopOverlayBox(item.screenX, item.screenY, fill, stroke, parent);
@@ -64,8 +71,11 @@ export function drawSceneActionOverlayForTile(state, item, parent) {
   drawOverlayForTile(state, item, "action-preview-tile", fill, stroke, parent);
 }
 
-export function drawSceneFocusOverlayForTile(state, item, parent) {
+export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFAULT_DRAW_OPTIONS) {
+  const { drawShapes } = normalizeOptions(options);
+
   if (item.x !== state.focus.x || item.y !== state.focus.y) return;
+  if (!drawShapes) return;
 
   if (state.ui.viewMode === "top") {
     drawTopOverlayBox(
@@ -88,7 +98,9 @@ export function drawSceneFocusOverlayForTile(state, item, parent) {
   );
 }
 
-export function drawScenePathOverlayForTile(state, item, parent) {
+export function drawScenePathOverlayForTile(state, item, parent, options = DEFAULT_DRAW_OPTIONS) {
+  const { drawShapes, drawLabels } = normalizeOptions(options);
+
   if (state.ui.mode !== "move") return;
 
   const path = state.ui.previewPath || [];
@@ -98,15 +110,17 @@ export function drawScenePathOverlayForTile(state, item, parent) {
   if (!step) return;
 
   if (state.ui.viewMode === "top") {
-    drawTopOverlayBox(
-      item.screenX,
-      item.screenY,
-      "rgba(240, 176, 0, 0.24)",
-      "rgba(240, 176, 0, 1)",
-      parent
-    );
+    if (drawShapes) {
+      drawTopOverlayBox(
+        item.screenX,
+        item.screenY,
+        "rgba(240, 176, 0, 0.24)",
+        "rgba(240, 176, 0, 1)",
+        parent
+      );
+    }
 
-    if (step.cost !== undefined && step.cost !== null) {
+    if (drawLabels && step.cost !== undefined && step.cost !== null) {
       const label = makeText(
         item.screenX + (TOPDOWN_CONFIG.cellSize / 2),
         item.screenY + (TOPDOWN_CONFIG.cellSize / 2),
@@ -120,16 +134,18 @@ export function drawScenePathOverlayForTile(state, item, parent) {
     return;
   }
 
-  drawOverlayForTile(
-    state,
-    item,
-    "move-path-tile",
-    "rgba(240, 176, 0, 0.24)",
-    "rgba(240, 176, 0, 1)",
-    parent
-  );
+  if (drawShapes) {
+    drawOverlayForTile(
+      state,
+      item,
+      "move-path-tile",
+      "rgba(240, 176, 0, 0.24)",
+      "rgba(240, 176, 0, 1)",
+      parent
+    );
+  }
 
-  if (step.cost !== undefined && step.cost !== null) {
+  if (drawLabels && step.cost !== undefined && step.cost !== null) {
     const label = makeText(
       item.screenX,
       item.screenY + (RENDER_CONFIG.isoTileHeight * 0.62),
@@ -141,44 +157,55 @@ export function drawScenePathOverlayForTile(state, item, parent) {
   }
 }
 
-export function drawSceneMoveOverlay(state, item, parent, text) {
+export function drawSceneMoveOverlay(state, item, parent, text, options = DEFAULT_DRAW_OPTIONS) {
+  const { drawShapes, drawLabels } = normalizeOptions(options);
+
   if (state.ui.viewMode === "top") {
-    drawTopOverlayBox(
-      item.screenX,
-      item.screenY,
+    if (drawShapes) {
+      drawTopOverlayBox(
+        item.screenX,
+        item.screenY,
+        "rgba(80, 180, 255, 0.24)",
+        "rgba(80, 180, 255, 0.92)",
+        parent
+      );
+    }
+
+    if (drawLabels) {
+      const label = makeText(
+        item.screenX + (TOPDOWN_CONFIG.cellSize / 2),
+        item.screenY + (TOPDOWN_CONFIG.cellSize / 2),
+        text,
+        "move-cost-label"
+      );
+      styleMoveCostLabel(label);
+      parent.appendChild(label);
+    }
+
+    return;
+  }
+
+  if (drawShapes) {
+    drawOverlayForTile(
+      state,
+      item,
+      "move-range-tile",
       "rgba(80, 180, 255, 0.24)",
       "rgba(80, 180, 255, 0.92)",
       parent
     );
+  }
 
+  if (drawLabels) {
     const label = makeText(
-      item.screenX + (TOPDOWN_CONFIG.cellSize / 2),
-      item.screenY + (TOPDOWN_CONFIG.cellSize / 2),
+      item.screenX,
+      item.screenY + (RENDER_CONFIG.isoTileHeight * 0.62),
       text,
       "move-cost-label"
     );
     styleMoveCostLabel(label);
     parent.appendChild(label);
-    return;
   }
-
-  drawOverlayForTile(
-    state,
-    item,
-    "move-range-tile",
-    "rgba(80, 180, 255, 0.24)",
-    "rgba(80, 180, 255, 0.92)",
-    parent
-  );
-
-  const label = makeText(
-    item.screenX,
-    item.screenY + (RENDER_CONFIG.isoTileHeight * 0.62),
-    text,
-    "move-cost-label"
-  );
-  styleMoveCostLabel(label);
-  parent.appendChild(label);
 }
 
 function drawOverlayForTile(state, item, className, fill, stroke, parent) {
@@ -225,6 +252,13 @@ function drawOverlayCellTop(state, cell, className, fill, stroke, parent) {
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
+}
+
+function normalizeOptions(options) {
+  return {
+    drawShapes: options?.drawShapes !== false,
+    drawLabels: options?.drawLabels !== false
+  };
 }
 
 export function tileSetFromList(tiles) {
