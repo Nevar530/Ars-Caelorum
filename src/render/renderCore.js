@@ -17,7 +17,7 @@ import {
   renderEditorMiniTile,
   renderEditorDetailCell
 } from "./renderTerrain.js";
-import { drawMech } from "./renderUnits.js";
+import { drawMech, getUnitCubeHeightPx } from "./renderUnits.js";
 import {
   drawSceneMoveOverlay,
   drawScenePathOverlayForTile,
@@ -243,14 +243,16 @@ export function renderIso(state, refs) {
       sceneSize
     );
 
+    const cubeHeightPx = getUnitCubeHeightPx(unit);
+
     sceneItems.push({
       kind: "unit",
       sortDepth:
-        getTerrainDepth({
+        getUnitDepth({
           size: sceneSize,
           screenY: projected.y,
-          leftFaceHeight: tileElevation,
-          rightFaceHeight: tileElevation
+          terrainElevation: tileElevation,
+          cubeHeightPx
         }) + UNIT_SORT_EPSILON,
       sortKey,
       render(parent) {
@@ -292,6 +294,15 @@ function getTerrainDepth(item) {
     item.screenY +
     (RENDER_CONFIG.isoTileHeight * size) +
     (faceHeight * RENDER_CONFIG.elevationStepPx)
+  );
+}
+
+function getUnitDepth({ size, screenY, terrainElevation, cubeHeightPx }) {
+  return (
+    screenY +
+    (RENDER_CONFIG.isoTileHeight * size) +
+    (terrainElevation * RENDER_CONFIG.elevationStepPx) +
+    cubeHeightPx
   );
 }
 
