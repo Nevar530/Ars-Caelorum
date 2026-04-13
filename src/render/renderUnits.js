@@ -23,7 +23,7 @@ export function getUnitCubeHeightPx(unit) {
   const tileHeight = RENDER_CONFIG.isoTileHeight;
 
   if (unit?.unitType === "pilot") {
-    return 4 * tileHeight;
+    return 2 * tileHeight;
   }
 
   return 8 * tileHeight;
