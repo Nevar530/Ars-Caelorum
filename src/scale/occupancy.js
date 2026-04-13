@@ -31,8 +31,14 @@ function getUnitOccupiedCells(unit, resolution = "mech") {
   return [{ x: position.x, y: position.y, scale: "mech" }];
 }
 
+function getStateUnits(state) {
+  if (Array.isArray(state?.units)) return state.units;
+  if (Array.isArray(state?.mechs)) return state.mechs;
+  return [];
+}
+
 export function getOccupancyEntries(state, resolution = "mech") {
-  const units = Array.isArray(state?.mechs) ? state.mechs : [];
+  const units = getStateUnits(state);
   const queryScale = normalizeScale(resolution);
   const entries = [];
 
