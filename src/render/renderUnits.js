@@ -69,17 +69,9 @@ function drawIsoCubeUnit(state, unit, group, screenX, screenY, footprint, isActi
   const cubeHeight = getUnitCubeHeightPx(unit);
 
   // screenX / screenY is the FOOTPRINT BASE top point on the ground.
-  // The visible top cap of the cube must be lifted upward by cubeHeight.
+  // The visible top cap of the cube is lifted upward by cubeHeight.
   const baseDiamond = makeDiamond(screenX, screenY, halfW, halfH);
   const topDiamond = makeDiamond(screenX, screenY - cubeHeight, halfW, halfH);
-
-  const shadow = svgEl("ellipse");
-  shadow.setAttribute("cx", screenX);
-  shadow.setAttribute("cy", baseDiamond.bottom.y + 8);
-  shadow.setAttribute("rx", Math.max(10, halfW * 0.62));
-  shadow.setAttribute("ry", Math.max(4, halfH * 0.30));
-  shadow.setAttribute("class", "mech-shadow");
-  group.appendChild(shadow);
 
   const leftFace = [
     topDiamond.left,
@@ -240,15 +232,6 @@ function makeDiamond(centerX, topY, halfW, halfH) {
     center,
     points: [top, right, bottom, left]
   };
-}
-
-function makeSideFace(upperEdgeA, upperEdgeB, height) {
-  return [
-    upperEdgeA,
-    upperEdgeB,
-    { x: upperEdgeB.x, y: upperEdgeB.y + height },
-    { x: upperEdgeA.x, y: upperEdgeA.y + height }
-  ];
 }
 
 function midpoint(a, b) {
