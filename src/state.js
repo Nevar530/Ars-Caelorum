@@ -14,22 +14,15 @@ export function createState({
 
   return {
     map,
-
-    // NEW
     units,
-
-    // BRIDGE
-    mechs: units,
+    mechs: units, // bridge only
 
     rotation,
     content,
 
     turn: {
-      // NEW
       activeUnitId: null,
-
-      // BRIDGE
-      activeMechId: null,
+      activeMechId: null, // bridge only
 
       round: 1,
       phase: "setup",
@@ -48,13 +41,11 @@ export function createState({
     },
 
     selection: {
-      // NEW
       unitId: previewUnitId,
       targetUnitId: null,
 
-      // BRIDGE
-      mechId: previewUnitId,
-      targetMechId: null,
+      mechId: previewUnitId, // bridge only
+      targetMechId: null, // bridge only
 
       action: null,
       targetTile: null
@@ -63,7 +54,7 @@ export function createState({
     focus: {
       x: previewUnit ? previewUnit.x : 0,
       y: previewUnit ? previewUnit.y : 0,
-      scale: previewUnit?.scale ?? "mech"
+      scale: previewUnit?.scale ?? "pilot"
     },
 
     ui: {
@@ -93,7 +84,7 @@ export function createState({
     camera: {
       angle: rotation * 90,
       isTurning: false,
-      zoomScale: previewUnit?.scale ?? "mech"
+      zoomScale: previewUnit?.scale ?? "pilot"
     },
 
     hover: {
