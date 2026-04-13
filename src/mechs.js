@@ -1,7 +1,5 @@
 // src/mechs.js
 
-import { pilotCellToMechTile } from "./scale/scaleMath.js";
-
 const DEFAULT_ATTACK_PROFILE_MAP = {
   melee_01: "melee_cardinal_01",
   missile_01: "missile_aoe_01",
@@ -34,120 +32,51 @@ function getDefinitionById(items, id, fallbackIndex = 0) {
   return items.find((item) => item.id === id) ?? items[fallbackIndex] ?? null;
 }
 
-function mechTileToBasePilotCell(x, y) {
-  return {
-    x: Number(x) * 2,
-    y: Number(y) * 2
-  };
-}
-
-export function createMechInstance(definition, overrides = {}) {
-  const shield = definition.shield ?? definition.armor ?? 10;
-  const core = definition.core ?? definition.structure ?? 6;
-  const weaponIds = Array.isArray(definition.weapons) ? [...definition.weapons] : [];
-  const attackProfileIds =
-    Array.isArray(definition.attackProfileIds) && definition.attackProfileIds.length
-      ? [...definition.attackProfileIds]
-      : mapWeaponIdsToAttackProfileIds(weaponIds);
-
-  const pilot = overrides.pilot ?? null;
-  const pilotName = pilot?.name ?? overrides.pilotName ?? null;
-  const reaction = Number(overrides.reaction ?? pilot?.reaction ?? 0);
-  const targeting = Number(overrides.targeting ?? pilot?.targeting ?? 0);
+function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
+  const isPilot = unitType === "pilot";
+  const shield = Number(definition?.shield ?? definition?.armor ?? (isPilot ? 1 : 10));
+  const core = Number(definition?.core ?? definition?.structure ?? (isPilot ? 6 : 6));
+  const weaponIds = Array.isArray(definition?.weapons) ? [...definition.weapons] : [];
 
   return {
-    unitType: "mech",
+    unitType,
     instanceId: overrides.instanceId ?? definition.id,
     definitionId: definition.id,
+
     name: definition.name,
     variant: definition.variant ?? "",
-    class: definition.class ?? "",
+    class: definition.class ?? (isPilot ? "pilot" : ""),
     role: definition.role ?? "",
 
-    x: overrides.x ?? 0,
-    y: overrides.y ?? 0,
+    x: Number(overrides.x ?? 0),
+    y: Number(overrides.y ?? 0),
     facing: facingToNumber(overrides.facing ?? definition.defaultFacing ?? 0),
+    anchorType: "center",
 
-    footprint: 1,
-    humanScaleSize: definition.humanScaleSize ?? 4,
-    move: definition.move ?? 4,
-    scale: "mech",
+    footprintWidth: isPilot ? 2 : 4,
+    footprintHeight: isPilot ? 2 : 4,
+    scale: unitType,
 
+    move: Number(definition.move ?? (isPilot ? 6 : 4)),
     armor: shield,
     structure: core,
-
     shield,
     maxShield: shield,
     core,
     maxCore: core,
-    aether: definition.aether ?? 0,
+    aether: Number(definition.aether ?? 0),
 
     weapons: weaponIds,
-    attackProfileIds,
+    attackProfileIds:
+      Array.isArray(definition.attackProfileIds) && definition.attackProfileIds.length
+        ? [...definition.attackProfileIds]
+        : mapWeaponIdsToAttackProfileIds(weaponIds),
+
     abilities: Array.isArray(definition.abilities) ? [...definition.abilities] : [],
     tubes: Array.isArray(definition.tubes) ? [...definition.tubes] : [],
 
-    pilotId: pilot?.id ?? overrides.pilotId ?? null,
-    pilotName,
-    reaction,
-    targeting,
-    abilityPoints: Number(overrides.abilityPoints ?? pilot?.abilityPoints ?? 0),
-
-    team: overrides.team ?? "player",
-    controlType: overrides.controlType ?? "PC",
-    spawnId: overrides.spawnId ?? null,
-    spawnLabel: overrides.spawnLabel ?? null,
-
-    hasMoved: false,
-    hasActed: false,
-    isBraced: false,
-    initiative: null,
-    lastInitiativeRoll: null,
-    status: overrides.status ?? "operational",
-
-    image: definition.image ?? null,
-    render: definition.render ?? {}
-  };
-}
-
-export function createPilotInstance(definition, overrides = {}) {
-  const shield = definition.shield ?? 1;
-  const core = definition.core ?? 6;
-
-  return {
-    unitType: "pilot",
-    instanceId: overrides.instanceId ?? definition.id,
-    definitionId: definition.id,
-    name: definition.name,
-    variant: definition.variant ?? "",
-    class: "pilot",
-    role: definition.role ?? "",
-
-    x: overrides.x ?? 0,
-    y: overrides.y ?? 0,
-    facing: facingToNumber(overrides.facing ?? 0),
-
-    footprint: 1,
-    humanScaleSize: 1,
-    move: definition.move ?? 4,
-    scale: "pilot",
-
-    armor: shield,
-    structure: core,
-
-    shield,
-    maxShield: shield,
-    core,
-    maxCore: core,
-    aether: definition.aether ?? 0,
-
-    weapons: Array.isArray(definition.weapons) ? [...definition.weapons] : [],
-    attackProfileIds: Array.isArray(definition.attackProfileIds) ? [...definition.attackProfileIds] : [],
-    abilities: Array.isArray(definition.abilities) ? [...definition.abilities] : [],
-    tubes: [],
-
-    pilotId: definition.id,
-    pilotName: definition.name,
+    pilotId: overrides.pilotId ?? null,
+    pilotName: overrides.pilotName ?? null,
     reaction: Number(overrides.reaction ?? definition.reaction ?? 0),
     targeting: Number(overrides.targeting ?? definition.targeting ?? 0),
     abilityPoints: Number(overrides.abilityPoints ?? definition.abilityPoints ?? 0),
@@ -172,6 +101,23 @@ export function createPilotInstance(definition, overrides = {}) {
   };
 }
 
+export function createMechInstance(definition, overrides = {}) {
+  const pilot = overrides.pilot ?? null;
+
+  return buildBaseRuntimeUnit(definition, {
+    ...overrides,
+    pilotId: pilot?.id ?? overrides.pilotId ?? null,
+    pilotName: pilot?.name ?? overrides.pilotName ?? null,
+    reaction: overrides.reaction ?? pilot?.reaction ?? 0,
+    targeting: overrides.targeting ?? pilot?.targeting ?? 0,
+    abilityPoints: overrides.abilityPoints ?? pilot?.abilityPoints ?? 0
+  }, "mech");
+}
+
+export function createPilotInstance(definition, overrides = {}) {
+  return buildBaseRuntimeUnit(definition, overrides, "pilot");
+}
+
 export function instantiateTestMechs(content) {
   return instantiateTestUnits(content);
 }
@@ -179,118 +125,84 @@ export function instantiateTestMechs(content) {
 export function instantiateTestUnits(content) {
   const mechDefinitions = Array.isArray(content?.mechs) ? content.mechs : [];
   const pilotDefinitions = Array.isArray(content?.pilots) ? content.pilots : [];
-  const spawnPoints = Array.isArray(content?.spawnPoints) ? content.spawnPoints : [];
 
-  if (!mechDefinitions.length || !pilotDefinitions.length || spawnPoints.length < 4) {
+  if (!mechDefinitions.length || !pilotDefinitions.length) {
     return [];
   }
 
-  const mechLoadout = [
+  // New simple runtime setup:
+  // 1 pilot + 1 mech per team
+  // spaced far enough apart for 2x2 and 4x4 footprints
+  const setup = [
     {
-      mechId: "mech_a",
+      unitType: "pilot",
+      definitionId: "pilot_biggs",
+      instanceId: "player-pilot-1",
+      x: 30,
+      y: 30,
+      team: "player",
+      controlType: "PC"
+    },
+    {
+      unitType: "mech",
+      definitionId: "mech_a",
       pilotId: "pilot_biggs",
-      instanceId: "player-1",
+      instanceId: "player-mech-1",
+      x: 34,
+      y: 30,
       team: "player",
-      controlType: "PC",
-      spawnId: "spawn_3",
-      fallbackSpawnIndex: 2
+      controlType: "PC"
     },
     {
-      mechId: "mech_b",
-      pilotId: "pilot_wedge",
-      instanceId: "player-2",
-      team: "player",
-      controlType: "PC",
-      spawnId: "spawn_4",
-      fallbackSpawnIndex: 3
+      unitType: "pilot",
+      definitionId: "pilot_tom",
+      instanceId: "enemy-pilot-1",
+      x: 10,
+      y: 10,
+      team: "enemy",
+      controlType: "CPU"
     },
     {
-      mechId: "mech_c",
+      unitType: "mech",
+      definitionId: "mech_c",
       pilotId: "pilot_tom",
-      instanceId: "enemy-1",
+      instanceId: "enemy-mech-1",
+      x: 14,
+      y: 10,
       team: "enemy",
-      controlType: "CPU",
-      spawnId: "spawn_1",
-      fallbackSpawnIndex: 0
-    },
-    {
-      mechId: "mech_d",
-      pilotId: "pilot_jerri",
-      instanceId: "enemy-2",
-      team: "enemy",
-      controlType: "CPU",
-      spawnId: "spawn_2",
-      fallbackSpawnIndex: 1
+      controlType: "CPU"
     }
   ];
 
-  const mechUnits = mechLoadout
+  return setup
     .map((entry) => {
-      const mech = getDefinitionById(mechDefinitions, entry.mechId, entry.fallbackSpawnIndex);
-      const pilot = getDefinitionById(pilotDefinitions, entry.pilotId, entry.fallbackSpawnIndex);
-      const spawn =
-        spawnPoints.find((point) => point.id === entry.spawnId) ??
-        spawnPoints[entry.fallbackSpawnIndex] ??
-        null;
+      if (entry.unitType === "pilot") {
+        const pilot = getDefinitionById(pilotDefinitions, entry.definitionId, 0);
+        if (!pilot) return null;
 
-      if (!mech || !pilot || !spawn) return null;
+        return createPilotInstance(pilot, {
+          instanceId: entry.instanceId,
+          x: entry.x,
+          y: entry.y,
+          team: entry.team,
+          controlType: entry.controlType
+        });
+      }
+
+      const mech = getDefinitionById(mechDefinitions, entry.definitionId, 0);
+      const pilot = getDefinitionById(pilotDefinitions, entry.pilotId, 0);
+      if (!mech) return null;
 
       return createMechInstance(mech, {
         instanceId: entry.instanceId,
-        x: spawn.x,
-        y: spawn.y,
-        facing: facingToNumber(mech.defaultFacing),
+        x: entry.x,
+        y: entry.y,
         team: entry.team,
         controlType: entry.controlType,
-        pilot,
-        spawnId: spawn.id,
-        spawnLabel: spawn.label
+        pilot
       });
     })
     .filter(Boolean);
-
-  const pilotLoadout = [
-    {
-      pilotId: "pilot_biggs",
-      instanceId: "player-pilot-1",
-      team: "player",
-      controlType: "PC",
-      spawnId: "spawn_3",
-      offsetX: 0,
-      offsetY: 0
-    },
-    {
-      pilotId: "pilot_tom",
-      instanceId: "enemy-pilot-1",
-      team: "enemy",
-      controlType: "CPU",
-      spawnId: "spawn_1",
-      offsetX: 1,
-      offsetY: 1
-    }
-  ];
-
-  const pilotUnits = pilotLoadout
-    .map((entry) => {
-      const pilot = getDefinitionById(pilotDefinitions, entry.pilotId, 0);
-      const spawn = spawnPoints.find((point) => point.id === entry.spawnId) ?? null;
-      if (!pilot || !spawn) return null;
-
-      const baseCell = mechTileToBasePilotCell(spawn.x, spawn.y);
-
-      return createPilotInstance(pilot, {
-        instanceId: entry.instanceId,
-        x: baseCell.x + entry.offsetX,
-        y: baseCell.y + entry.offsetY,
-        team: entry.team,
-        controlType: entry.controlType,
-        spawnId: spawn.id,
-        spawnLabel: `${spawn.label} Pilot`
-      });
-    })
-    .filter(Boolean);
-
-  return [...mechUnits, ...pilotUnits];
 }
 
 export function getUnitById(units, instanceId) {
@@ -309,8 +221,8 @@ export function moveUnitTo(units, instanceId, x, y) {
   const unit = getUnitById(units, instanceId);
   if (!unit) return false;
 
-  unit.x = x;
-  unit.y = y;
+  unit.x = Number(x);
+  unit.y = Number(y);
   return true;
 }
 
@@ -322,6 +234,7 @@ export function setUnitFacing(units, instanceId, facing) {
   return true;
 }
 
+// Bridge wrappers retained for older controllers.
 export function getMechAt(units, x, y) {
   return getUnitsAt(units, x, y).find(Boolean) ?? null;
 }
@@ -336,39 +249,4 @@ export function moveMechTo(units, instanceId, x, y) {
 
 export function setMechFacing(units, instanceId, facing) {
   return setUnitFacing(units, instanceId, facing);
-}
-
-export function getUnitScenePosition(unit) {
-  if (!unit) {
-    return {
-      sceneX: 0,
-      sceneY: 0,
-      sceneSize: 1,
-      mechX: 0,
-      mechY: 0,
-      scale: "mech"
-    };
-  }
-
-  if (unit.scale === "pilot") {
-    const mechTile = pilotCellToMechTile(unit.x, unit.y);
-
-    return {
-      sceneX: unit.x / 2,
-      sceneY: unit.y / 2,
-      sceneSize: 0.5,
-      mechX: mechTile.x,
-      mechY: mechTile.y,
-      scale: "pilot"
-    };
-  }
-
-  return {
-    sceneX: unit.x,
-    sceneY: unit.y,
-    sceneSize: 1,
-    mechX: unit.x,
-    mechY: unit.y,
-    scale: "mech"
-  };
 }
