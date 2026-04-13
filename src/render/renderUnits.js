@@ -3,202 +3,134 @@
 import { getTile, getTileRenderElevation } from "../map.js";
 import { RENDER_CONFIG } from "../config.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
-import { projectScene, TOPDOWN_CONFIG } from "./projection.js";
-import { getUnitScenePosition } from "../mechs.js";
+import { TOPDOWN_CONFIG } from "./projection.js";
+import { getUnitFootprint, getUnitFootprintBounds } from "../scale/scaleMath.js";
 
 export function drawMech(state, unit, screenX, screenY, parent, isActive = false) {
+  const footprint = getUnitFootprint(unit);
+  const bounds = getUnitFootprintBounds(unit);
+  const anchorTile = getTile(state.map, unit.x, unit.y);
+  const tileElevation = anchorTile ? getTileRenderElevation(anchorTile) : 0;
+
   const group = svgEl("g");
-  const anchor = getUnitScenePosition(unit);
-  const tile = getTile(state.map, anchor.mechX, anchor.mechY);
-
-  if (!tile) return;
-
-  const tileElevation = getTileRenderElevation(tile);
-
-  if (unit.unitType === "pilot") {
-    drawPilot(state, unit, anchor, screenX, screenY, tileElevation, parent, isActive);
-    return;
-  }
 
   if (state.ui.viewMode === "top") {
-    const cellX = screenX + (TOPDOWN_CONFIG.cellSize / 2);
-    const cellY = screenY + (TOPDOWN_CONFIG.cellSize / 2);
-    const size = 14;
-
-    const body = svgEl("rect");
-    body.setAttribute("x", cellX - size);
-    body.setAttribute("y", cellY - size);
-    body.setAttribute("width", size * 2);
-    body.setAttribute("height", size * 2);
-    body.setAttribute("rx", "3");
-    body.setAttribute("class", getTopMechBodyClass(state, unit, isActive));
-
-    const facingMark = makePolygon(
-      getTopFacingStripePointsFromWorld(state, unit, tileElevation, cellX, cellY, anchor),
-      getTopFacingClass(state, unit),
-      "currentColor"
-    );
-    facingMark.removeAttribute("fill");
-
-    const label = makeText(cellX, cellY + 24, unit.name, "mech-label");
-
-    group.appendChild(body);
-    group.appendChild(facingMark);
-    group.appendChild(label);
+    drawTopUnit(state, unit, group, screenX, screenY, footprint, isActive);
     parent.appendChild(group);
     return;
   }
 
-  const halfW = 18;
-  const halfH = 10;
-  const cubeHeight = 18;
-  const mechLevels = 2;
-
-  const anchorX = screenX;
-  const anchorY = screenY + (RENDER_CONFIG.isoTileHeight / 2);
-
-  const shadow = svgEl("ellipse");
-  shadow.setAttribute("cx", anchorX);
-  shadow.setAttribute("cy", anchorY + 10);
-  shadow.setAttribute("rx", 18);
-  shadow.setAttribute("ry", 8);
-  shadow.setAttribute("class", "mech-shadow");
-  group.appendChild(shadow);
-
-  for (let level = 0; level < mechLevels; level++) {
-    const levelOffset = level * cubeHeight;
-
-    const top = [
-      { x: anchorX, y: anchorY - cubeHeight - halfH - levelOffset },
-      { x: anchorX + halfW, y: anchorY - cubeHeight - levelOffset },
-      { x: anchorX, y: anchorY - cubeHeight + halfH - levelOffset },
-      { x: anchorX - halfW, y: anchorY - cubeHeight - levelOffset }
-    ];
-
-    const left = [
-      top[3],
-      top[2],
-      { x: top[2].x, y: top[2].y + cubeHeight },
-      { x: top[3].x, y: top[3].y + cubeHeight }
-    ];
-
-    const right = [
-      top[1],
-      top[2],
-      { x: top[2].x, y: top[2].y + cubeHeight },
-      { x: top[1].x, y: top[1].y + cubeHeight }
-    ];
-
-    const leftPoly = makePolygon(left, "mech-cube-left", "currentColor");
-    leftPoly.removeAttribute("fill");
-
-    const rightPoly = makePolygon(right, "mech-cube-right", "currentColor");
-    rightPoly.removeAttribute("fill");
-
-    const topPoly = makePolygon(
-      top,
-      getIsoTopClass(state, unit, isActive),
-      "currentColor"
-    );
-    topPoly.removeAttribute("fill");
-
-    group.appendChild(leftPoly);
-    group.appendChild(rightPoly);
-    group.appendChild(topPoly);
-
-    if (level === mechLevels - 1) {
-      const stripe = makePolygon(
-        getIsoTopStripePointsFromWorld(
-          state,
-          unit,
-          tileElevation + level,
-          anchorX,
-          anchorY - levelOffset,
-          cubeHeight,
-          halfH,
-          anchor
-        ),
-        getIsoTopStripeClass(state, unit),
-        "currentColor"
-      );
-      stripe.removeAttribute("fill");
-      group.appendChild(stripe);
-    }
-  }
-
-  const label = makeText(
-    anchorX,
-    anchorY - (cubeHeight * mechLevels) + 6,
-    unit.name,
-    "mech-label"
-  );
-
-  group.appendChild(label);
+  drawIsoUnit(state, unit, group, screenX, screenY, footprint, bounds, tileElevation, isActive);
   parent.appendChild(group);
 }
 
-function drawPilot(state, unit, anchor, screenX, screenY, tileElevation, parent, isActive) {
-  const group = svgEl("g");
+function drawTopUnit(state, unit, group, screenX, screenY, footprint, isActive) {
+  const cellSize = TOPDOWN_CONFIG.cellSize;
+  const widthPx = footprint.width * cellSize;
+  const heightPx = footprint.height * cellSize;
 
-  if (state.ui.viewMode === "top") {
-    const cellSize = TOPDOWN_CONFIG.cellSize / 2;
-    const topX = screenX;
-    const topY = screenY;
-    const centerX = topX + (cellSize / 2);
-    const centerY = topY + (cellSize / 2);
+  const body = svgEl("rect");
+  body.setAttribute("x", screenX);
+  body.setAttribute("y", screenY);
+  body.setAttribute("width", widthPx);
+  body.setAttribute("height", heightPx);
+  body.setAttribute("rx", unit.unitType === "pilot" ? "6" : "10");
+  body.setAttribute("class", getTopBodyClass(unit, isActive));
 
-    const body = svgEl("circle");
-    body.setAttribute("cx", centerX);
-    body.setAttribute("cy", centerY);
-    body.setAttribute("r", "8");
-    body.setAttribute("class", isActive ? "pilot-top-body-active" : "pilot-top-body");
-
-    const facingMark = makePolygon(
-      getPilotTopFacingStripePoints(state, unit, centerX, centerY, anchor),
-      getTopFacingClass(state, unit),
-      "currentColor"
-    );
-    facingMark.removeAttribute("fill");
-
-    const label = makeText(centerX, centerY + 18, unit.name, "pilot-label");
-
-    group.appendChild(body);
-    group.appendChild(facingMark);
-    group.appendChild(label);
-    parent.appendChild(group);
-    return;
-  }
-
-  const anchorX = screenX;
-  const anchorY = screenY + (RENDER_CONFIG.isoTileHeight * 0.25);
-
-  const shadow = svgEl("ellipse");
-  shadow.setAttribute("cx", anchorX);
-  shadow.setAttribute("cy", anchorY + 6);
-  shadow.setAttribute("rx", 8);
-  shadow.setAttribute("ry", 4);
-  shadow.setAttribute("class", "pilot-shadow");
-  group.appendChild(shadow);
-
-  const body = svgEl("circle");
-  body.setAttribute("cx", anchorX);
-  body.setAttribute("cy", anchorY - 6);
-  body.setAttribute("r", "8");
-  body.setAttribute("class", isActive ? "pilot-iso-body-active" : "pilot-iso-body");
-  group.appendChild(body);
-
-  const facing = makePolygon(
-    getPilotIsoFacingTriangle(state, unit, anchorX, anchorY - 6, anchor, tileElevation),
-    isActive ? "pilot-iso-facing-active" : "pilot-iso-facing",
+  const facingStripe = makePolygon(
+    getTopFacingStripePoints(unit, screenX, screenY, widthPx, heightPx),
+    getTopFacingClass(state, unit),
     "currentColor"
   );
-  facing.removeAttribute("fill");
-  group.appendChild(facing);
+  facingStripe.removeAttribute("fill");
 
-  const label = makeText(anchorX, anchorY - 18, unit.name, "pilot-label");
+  const label = makeText(
+    screenX + (widthPx / 2),
+    screenY + heightPx + 16,
+    unit.name,
+    unit.unitType === "pilot" ? "pilot-label" : "mech-label"
+  );
+
+  group.appendChild(body);
+  group.appendChild(facingStripe);
   group.appendChild(label);
+}
 
-  parent.appendChild(group);
+function drawIsoUnit(state, unit, group, screenX, screenY, footprint, _bounds, _tileElevation, isActive) {
+  const size = footprint.width;
+  const halfW = (RENDER_CONFIG.isoTileWidth * size) / 2;
+  const halfH = (RENDER_CONFIG.isoTileHeight * size) / 2;
+  const bodyHeight = unit.unitType === "pilot" ? 18 : 36;
+
+  const top = [
+    { x: screenX, y: screenY },
+    { x: screenX + halfW, y: screenY + halfH },
+    { x: screenX, y: screenY + (halfH * 2) },
+    { x: screenX - halfW, y: screenY + halfH }
+  ];
+
+  const left = [
+    top[3],
+    top[2],
+    { x: top[2].x, y: top[2].y + bodyHeight },
+    { x: top[3].x, y: top[3].y + bodyHeight }
+  ];
+
+  const right = [
+    top[1],
+    top[2],
+    { x: top[2].x, y: top[2].y + bodyHeight },
+    { x: top[1].x, y: top[1].y + bodyHeight }
+  ];
+
+  const shadow = svgEl("ellipse");
+  shadow.setAttribute("cx", screenX);
+  shadow.setAttribute("cy", screenY + (halfH * 2) + 8);
+  shadow.setAttribute("rx", Math.max(10, halfW * 0.55));
+  shadow.setAttribute("ry", Math.max(4, halfH * 0.28));
+  shadow.setAttribute("class", unit.unitType === "pilot" ? "pilot-shadow" : "mech-shadow");
+  group.appendChild(shadow);
+
+  const leftPoly = makePolygon(
+    left,
+    unit.unitType === "pilot" ? "pilot-cube-left" : "mech-cube-left",
+    "currentColor"
+  );
+  leftPoly.removeAttribute("fill");
+
+  const rightPoly = makePolygon(
+    right,
+    unit.unitType === "pilot" ? "pilot-cube-right" : "mech-cube-right",
+    "currentColor"
+  );
+  rightPoly.removeAttribute("fill");
+
+  const topPoly = makePolygon(
+    top,
+    getIsoTopClass(state, unit, isActive),
+    "currentColor"
+  );
+  topPoly.removeAttribute("fill");
+
+  const facingStripe = makePolygon(
+    getIsoFacingStripePoints(unit, top),
+    getIsoTopStripeClass(state, unit),
+    "currentColor"
+  );
+  facingStripe.removeAttribute("fill");
+
+  const label = makeText(
+    screenX,
+    screenY + halfH - Math.max(10, bodyHeight * 0.15),
+    unit.name,
+    unit.unitType === "pilot" ? "pilot-label" : "mech-label"
+  );
+
+  group.appendChild(leftPoly);
+  group.appendChild(rightPoly);
+  group.appendChild(topPoly);
+  group.appendChild(facingStripe);
+  group.appendChild(label);
 }
 
 export function getWorldFacing(state, unit) {
@@ -211,31 +143,12 @@ export function getWorldFacing(state, unit) {
   return isPreviewing ? state.ui.facingPreview : unit.facing;
 }
 
-export function facingToWorldDelta(facing) {
-  switch (facing) {
-    case 0: return { dx: 0, dy: -1 };
-    case 1: return { dx: 1, dy: 0 };
-    case 2: return { dx: 0, dy: 1 };
-    case 3: return { dx: -1, dy: 0 };
-    default: return { dx: 0, dy: -1 };
-  }
-}
-
-export function getTopMechBodyClass(state, unit, isActive) {
-  const classes = ["mech-top-body"];
-
-  if (isActive) classes.push("mech-top-body-active");
-
-  const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
-  if (
-    state.ui.mode === "face" &&
-    unit.instanceId === activeId &&
-    state.ui.facingPreview !== null
-  ) {
-    classes.push("mech-top-body-preview");
+function getTopBodyClass(unit, isActive) {
+  if (unit.unitType === "pilot") {
+    return isActive ? "pilot-top-body-active" : "pilot-top-body";
   }
 
-  return classes.join(" ");
+  return isActive ? "mech-top-body mech-top-body-active" : "mech-top-body";
 }
 
 export function getTopFacingClass(state, unit) {
@@ -249,9 +162,11 @@ export function getTopFacingClass(state, unit) {
 }
 
 export function getIsoTopClass(state, unit, isActive) {
-  const classes = ["mech-cube-top"];
+  const classes = [unit.unitType === "pilot" ? "pilot-iso-body" : "mech-cube-top"];
 
-  if (isActive) classes.push("mech-cube-top-active");
+  if (isActive) {
+    classes.push(unit.unitType === "pilot" ? "pilot-iso-body-active" : "mech-cube-top-active");
+  }
 
   const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
   if (
@@ -259,7 +174,7 @@ export function getIsoTopClass(state, unit, isActive) {
     unit.instanceId === activeId &&
     state.ui.facingPreview !== null
   ) {
-    classes.push("mech-cube-top-preview");
+    classes.push(unit.unitType === "pilot" ? "pilot-iso-body-active" : "mech-cube-top-preview");
   }
 
   return classes.join(" ");
@@ -272,157 +187,71 @@ export function getIsoTopStripeClass(state, unit) {
     unit.instanceId === activeId &&
     state.ui.facingPreview !== null;
 
-  return isPreviewing ? "mech-cube-top-stripe-preview" : "mech-cube-top-stripe";
+  if (unit.unitType === "pilot") {
+    return isPreviewing ? "pilot-iso-facing-active" : "pilot-iso-facing";
+  }
+
+  return isPreviewing ? "mech-top-facing-preview" : "mech-top-facing";
 }
 
-export function getTopFacingStripePointsFromWorld(state, unit, elevation, centerX, centerY, anchor = null) {
-  const facing = getWorldFacing(state, unit);
-  const { dx, dy } = facingToWorldDelta(facing);
+function getTopFacingStripePoints(unit, x, y, width, height) {
+  const facing = normalizeFacing(unit.facing);
+  const inset = Math.max(4, Math.min(width, height) * 0.18);
 
-  const sceneAnchor = anchor ?? getUnitScenePosition(unit);
-
-  const from = projectScene(state, sceneAnchor.sceneX, sceneAnchor.sceneY, elevation, sceneAnchor.sceneSize);
-  const to = projectScene(
-    state,
-    sceneAnchor.sceneX + (dx * sceneAnchor.sceneSize),
-    sceneAnchor.sceneY + (dy * sceneAnchor.sceneSize),
-    elevation,
-    sceneAnchor.sceneSize
-  );
-
-  const vx = to.x - from.x;
-  const vy = to.y - from.y;
-  const len = Math.hypot(vx, vy) || 1;
-  const nx = vx / len;
-  const ny = vy / len;
-  const px = -ny;
-  const py = nx;
-
-  const stripeLength = 9;
-  const stripeWidth = 6;
-
-  return [
-    {
-      x: centerX + (nx * stripeLength) + (px * stripeWidth),
-      y: centerY + (ny * stripeLength) + (py * stripeWidth)
-    },
-    {
-      x: centerX + (nx * stripeLength) - (px * stripeWidth),
-      y: centerY + (ny * stripeLength) - (py * stripeWidth)
-    },
-    {
-      x: centerX - (nx * 2),
-      y: centerY - (ny * 2)
-    }
-  ];
+  switch (facing) {
+    case 0:
+      return [
+        { x: x + (width / 2), y: y + inset },
+        { x: x + width - inset, y: y + (height / 2) },
+        { x: x + inset, y: y + (height / 2) }
+      ];
+    case 1:
+      return [
+        { x: x + width - inset, y: y + (height / 2) },
+        { x: x + (width / 2), y: y + inset },
+        { x: x + (width / 2), y: y + height - inset }
+      ];
+    case 2:
+      return [
+        { x: x + (width / 2), y: y + height - inset },
+        { x: x + inset, y: y + (height / 2) },
+        { x: x + width - inset, y: y + (height / 2) }
+      ];
+    case 3:
+    default:
+      return [
+        { x: x + inset, y: y + (height / 2) },
+        { x: x + (width / 2), y: y + height - inset },
+        { x: x + (width / 2), y: y + inset }
+      ];
+  }
 }
 
-export function getIsoTopStripePointsFromWorld(
-  state,
-  unit,
-  elevation,
-  anchorX,
-  anchorY,
-  cubeHeight,
-  halfH,
-  anchor = null
-) {
-  const facing = getWorldFacing(state, unit);
-  const { dx, dy } = facingToWorldDelta(facing);
+function getIsoFacingStripePoints(unit, top) {
+  const facing = normalizeFacing(unit.facing);
 
-  const sceneAnchor = anchor ?? getUnitScenePosition(unit);
+  const north = [top[0], midpoint(top[0], top[1]), midpoint(top[0], top[3])];
+  const east = [top[1], midpoint(top[1], top[2]), midpoint(top[1], top[0])];
+  const south = [top[2], midpoint(top[2], top[3]), midpoint(top[2], top[1])];
+  const west = [top[3], midpoint(top[3], top[0]), midpoint(top[3], top[2])];
 
-  const from = projectScene(state, sceneAnchor.sceneX, sceneAnchor.sceneY, elevation, sceneAnchor.sceneSize);
-  const to = projectScene(
-    state,
-    sceneAnchor.sceneX + (dx * sceneAnchor.sceneSize),
-    sceneAnchor.sceneY + (dy * sceneAnchor.sceneSize),
-    elevation,
-    sceneAnchor.sceneSize
-  );
-
-  const vx = to.x - from.x;
-  const vy = to.y - from.y;
-  const len = Math.hypot(vx, vy) || 1;
-  const nx = vx / len;
-  const ny = vy / len;
-  const px = -ny;
-  const py = nx;
-
-  const centerX = anchorX;
-  const centerY = anchorY - cubeHeight - (halfH / 2);
-
-  const stripeLength = 12;
-  const stripeWidth = 6;
-
-  return [
-    {
-      x: centerX + (nx * stripeLength) + (px * stripeWidth),
-      y: centerY + (ny * stripeLength) + (py * stripeWidth)
-    },
-    {
-      x: centerX + (nx * stripeLength) - (px * stripeWidth),
-      y: centerY + (ny * stripeLength) - (py * stripeWidth)
-    },
-    {
-      x: centerX - (nx * 2),
-      y: centerY - (ny * 2)
-    }
-  ];
+  switch (facing) {
+    case 0: return north;
+    case 1: return east;
+    case 2: return south;
+    case 3:
+    default: return west;
+  }
 }
 
-function getPilotTopFacingStripePoints(state, unit, centerX, centerY, anchor) {
-  const facing = getWorldFacing(state, unit);
-  const { dx, dy } = facingToWorldDelta(facing);
-
-  const from = projectScene(state, anchor.sceneX, anchor.sceneY, 0, anchor.sceneSize);
-  const to = projectScene(
-    state,
-    anchor.sceneX + (dx * anchor.sceneSize),
-    anchor.sceneY + (dy * anchor.sceneSize),
-    0,
-    anchor.sceneSize
-  );
-
-  const vx = to.x - from.x;
-  const vy = to.y - from.y;
-  const len = Math.hypot(vx, vy) || 1;
-  const nx = vx / len;
-  const ny = vy / len;
-  const px = -ny;
-  const py = nx;
-
-  return [
-    { x: centerX + (nx * 8) + (px * 4), y: centerY + (ny * 8) + (py * 4) },
-    { x: centerX + (nx * 8) - (px * 4), y: centerY + (ny * 8) - (py * 4) },
-    { x: centerX - (nx * 2), y: centerY - (ny * 2) }
-  ];
+function midpoint(a, b) {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2
+  };
 }
 
-function getPilotIsoFacingTriangle(state, unit, centerX, centerY, anchor, elevation) {
-  const facing = getWorldFacing(state, unit);
-  const { dx, dy } = facingToWorldDelta(facing);
-
-  const from = projectScene(state, anchor.sceneX, anchor.sceneY, elevation, anchor.sceneSize);
-  const to = projectScene(
-    state,
-    anchor.sceneX + (dx * anchor.sceneSize),
-    anchor.sceneY + (dy * anchor.sceneSize),
-    elevation,
-    anchor.sceneSize
-  );
-
-  const vx = to.x - from.x;
-  const vy = to.y - from.y;
-  const len = Math.hypot(vx, vy) || 1;
-  const nx = vx / len;
-  const ny = vy / len;
-  const px = -ny;
-  const py = nx;
-
-  return [
-    { x: centerX + (nx * 9) + (px * 4), y: centerY + (ny * 9) + (py * 4) },
-    { x: centerX + (nx * 9) - (px * 4), y: centerY + (ny * 9) - (py * 4) },
-    { x: centerX - (nx * 2), y: centerY - (ny * 2) }
-  ];
+function normalizeFacing(value) {
+  const n = Number.isFinite(value) ? value : 0;
+  return ((n % 4) + 4) % 4;
 }
