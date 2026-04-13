@@ -2,20 +2,18 @@
 
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG } from "./projection.js";
-import { getUnitFootprint } from "../scale/scaleMath.js";
 import { RENDER_CONFIG } from "../config.js";
 
-export function drawMech(state, unit, screenX, screenY, parent, isActive = false) {
-  const footprint = getUnitFootprint(unit);
+export function drawMech(state, unit, renderModel, parent, isActive = false) {
   const group = svgEl("g");
 
   if (state.ui.viewMode === "top") {
-    drawTopUnit(state, unit, group, screenX, screenY, footprint, isActive);
+    drawTopUnit(state, unit, renderModel, group, isActive);
     parent.appendChild(group);
     return;
   }
 
-  drawIsoCubeUnit(state, unit, group, screenX, screenY, footprint, isActive);
+  drawIsoCubeUnit(state, unit, renderModel, group, isActive);
   parent.appendChild(group);
 }
 
@@ -23,27 +21,25 @@ export function getUnitCubeHeightPx(unit) {
   const tileHeight = RENDER_CONFIG.isoTileHeight;
 
   if (unit?.unitType === "pilot") {
-    return 4 * tileHeight;
+    return 2 * tileHeight;
   }
 
   return 8 * tileHeight;
 }
 
-function drawTopUnit(state, unit, group, screenX, screenY, footprint, isActive) {
-  const cellSize = TOPDOWN_CONFIG.cellSize;
-  const widthPx = footprint.width * cellSize;
-  const heightPx = footprint.height * cellSize;
+function drawTopUnit(state, unit, renderModel, group, isActive) {
+  const { topLeftX, topLeftY, widthPx, heightPx } = renderModel.top;
 
   const body = svgEl("rect");
-  body.setAttribute("x", screenX);
-  body.setAttribute("y", screenY);
+  body.setAttribute("x", topLeftX);
+  body.setAttribute("y", topLeftY);
   body.setAttribute("width", widthPx);
   body.setAttribute("height", heightPx);
   body.setAttribute("rx", unit.unitType === "pilot" ? "6" : "10");
   body.setAttribute("class", getTopBodyClass(isActive));
 
   const facingLine = svgEl("line");
-  const linePoints = getTopFacingLinePoints(state, unit, screenX, screenY, widthPx, heightPx);
+  const linePoints = getTopFacingLinePoints(state, unit, topLeftX, topLeftY, widthPx, heightPx);
   facingLine.setAttribute("x1", linePoints.x1);
   facingLine.setAttribute("y1", linePoints.y1);
   facingLine.setAttribute("x2", linePoints.x2);
@@ -51,8 +47,8 @@ function drawTopUnit(state, unit, group, screenX, screenY, footprint, isActive) 
   facingLine.setAttribute("class", getFacingLineClass(state, unit));
 
   const label = makeText(
-    screenX + (widthPx / 2),
-    screenY + heightPx + 16,
+    topLeftX + (widthPx / 2),
+    topLeftY + heightPx + 16,
     unit.name,
     "mech-label"
   );
@@ -62,27 +58,36 @@ function drawTopUnit(state, unit, group, screenX, screenY, footprint, isActive) 
   group.appendChild(label);
 }
 
-function drawIsoCubeUnit(state, unit, group, screenX, screenY, footprint, isActive) {
-  const cubeSize = Math.max(footprint.width, footprint.height);
-  const halfW = cubeSize * (RENDER_CONFIG.isoTileWidth / 2);
-  const halfH = cubeSize * (RENDER_CONFIG.isoTileHeight / 2);
+function drawIsoCubeUnit(state, unit, renderModel, group, isActive) {
   const cubeHeight = getUnitCubeHeightPx(unit);
+  const base = renderModel.iso.base;
 
-  const baseDiamond = makeDiamond(screenX, screenY, halfW, halfH);
-  const topDiamond = makeDiamond(screenX, screenY - cubeHeight, halfW, halfH);
+  const top = {
+    top: shiftPointY(base.top, -cubeHeight),
+    right: shiftPointY(base.right, -cubeHeight),
+    bottom: shiftPointY(base.bottom, -cubeHeight),
+    left: shiftPointY(base.left, -cubeHeight),
+    center: shiftPointY(base.center, -cubeHeight),
+    points: [
+      shiftPointY(base.top, -cubeHeight),
+      shiftPointY(base.right, -cubeHeight),
+      shiftPointY(base.bottom, -cubeHeight),
+      shiftPointY(base.left, -cubeHeight)
+    ]
+  };
 
   const leftFace = [
-    topDiamond.left,
-    topDiamond.bottom,
-    baseDiamond.bottom,
-    baseDiamond.left
+    top.left,
+    top.bottom,
+    base.bottom,
+    base.left
   ];
 
   const rightFace = [
-    topDiamond.right,
-    topDiamond.bottom,
-    baseDiamond.bottom,
-    baseDiamond.right
+    top.right,
+    top.bottom,
+    base.bottom,
+    base.right
   ];
 
   const leftPoly = makePolygon(leftFace, "mech-cube-left", "currentColor");
@@ -92,14 +97,14 @@ function drawIsoCubeUnit(state, unit, group, screenX, screenY, footprint, isActi
   rightPoly.removeAttribute("fill");
 
   const topPoly = makePolygon(
-    topDiamond.points,
+    top.points,
     getIsoTopClass(state, unit, isActive),
     "currentColor"
   );
   topPoly.removeAttribute("fill");
 
   const facingLine = svgEl("line");
-  const facing = getIsoFacingLinePoints(state, unit, topDiamond);
+  const facing = getIsoFacingLinePoints(state, unit, top);
   facingLine.setAttribute("x1", facing.x1);
   facingLine.setAttribute("y1", facing.y1);
   facingLine.setAttribute("x2", facing.x2);
@@ -107,8 +112,8 @@ function drawIsoCubeUnit(state, unit, group, screenX, screenY, footprint, isActi
   facingLine.setAttribute("class", getFacingLineClass(state, unit));
 
   const label = makeText(
-    topDiamond.center.x,
-    topDiamond.center.y - 10,
+    top.center.x,
+    top.center.y - 10,
     unit.name,
     "mech-label"
   );
@@ -215,20 +220,10 @@ function getIsoFacingLinePoints(state, unit, topDiamond) {
   }
 }
 
-function makeDiamond(centerX, topY, halfW, halfH) {
-  const top = { x: centerX, y: topY };
-  const right = { x: centerX + halfW, y: topY + halfH };
-  const bottom = { x: centerX, y: topY + (halfH * 2) };
-  const left = { x: centerX - halfW, y: topY + halfH };
-  const center = { x: centerX, y: topY + halfH };
-
+function shiftPointY(point, dy) {
   return {
-    top,
-    right,
-    bottom,
-    left,
-    center,
-    points: [top, right, bottom, left]
+    x: point.x,
+    y: point.y + dy
   };
 }
 
