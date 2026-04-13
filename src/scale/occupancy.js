@@ -2,34 +2,13 @@
 
 import {
   makeScaleCellKey,
-  mechTileToPilotCells,
-  normalizeScale,
-  getUnitPrimaryPosition
+  getUnitAnchor,
+  getUnitCenterPoint,
+  getUnitFootprint,
+  getUnitFootprintBounds,
+  getUnitOccupiedCells,
+  isUnitWithinBoard
 } from "./scaleMath.js";
-
-function getUnitOccupiedCells(unit, resolution = "mech") {
-  if (!unit) return [];
-
-  const position = getUnitPrimaryPosition(unit);
-  const queryScale = normalizeScale(resolution);
-
-  if (queryScale === "pilot") {
-    if (position.scale === "pilot") {
-      return [{ x: position.x, y: position.y, scale: "pilot" }];
-    }
-
-    return mechTileToPilotCells(position.x, position.y).map((cell) => ({
-      ...cell,
-      scale: "pilot"
-    }));
-  }
-
-  if (position.scale === "pilot") {
-    return [];
-  }
-
-  return [{ x: position.x, y: position.y, scale: "mech" }];
-}
 
 function getStateUnits(state) {
   if (Array.isArray(state?.units)) return state.units;
@@ -37,72 +16,111 @@ function getStateUnits(state) {
   return [];
 }
 
-export function getOccupancyEntries(state, resolution = "mech") {
+function getUnitId(unit) {
+  return unit?.instanceId ?? unit?.runtimeUnitId ?? null;
+}
+
+function buildOccupancyEntry(unit, cell) {
+  const anchor = getUnitAnchor(unit);
+  const footprint = getUnitFootprint(unit);
+  const footprintBounds = getUnitFootprintBounds(unit);
+  const centerPoint = getUnitCenterPoint(unit);
+
+  return {
+    unit,
+    unitId: getUnitId(unit),
+    unitType: unit?.unitType ?? "mech",
+    team: unit?.team ?? null,
+
+    x: cell.x,
+    y: cell.y,
+
+    anchorX: anchor.x,
+    anchorY: anchor.y,
+    anchorType: anchor.anchorType,
+
+    footprintWidth: footprint.width,
+    footprintHeight: footprint.height,
+    footprintBounds,
+    centerPoint
+  };
+}
+
+export function getOccupiedCellsForUnit(unit) {
+  return getUnitOccupiedCells(unit);
+}
+
+export function getOccupancyEntries(state) {
   const units = getStateUnits(state);
-  const queryScale = normalizeScale(resolution);
   const entries = [];
 
   for (const unit of units) {
-    const occupiedCells = getUnitOccupiedCells(unit, queryScale);
+    const cells = getUnitOccupiedCells(unit);
 
-    for (const cell of occupiedCells) {
-      entries.push({
-        unit,
-        unitId: unit.instanceId,
-        unitType: unit.unitType ?? "mech",
-        team: unit.team ?? null,
-        x: cell.x,
-        y: cell.y,
-        scale: cell.scale
-      });
+    for (const cell of cells) {
+      entries.push(buildOccupancyEntry(unit, cell));
     }
   }
 
   return entries;
 }
 
-export function getOccupancyMap(state, resolution = "mech") {
+export function getOccupancyMap(state) {
   const occupancy = new Map();
 
-  for (const entry of getOccupancyEntries(state, resolution)) {
-    const key = makeScaleCellKey(entry.scale, entry.x, entry.y);
+  for (const entry of getOccupancyEntries(state)) {
+    const key = makeScaleCellKey("base", entry.x, entry.y);
+
     if (!occupancy.has(key)) {
       occupancy.set(key, []);
     }
+
     occupancy.get(key).push(entry);
   }
 
   return occupancy;
 }
 
-export function getOccupantsAt(state, x, y, resolution = "mech") {
-  const queryScale = normalizeScale(resolution);
-  const occupancy = getOccupancyMap(state, queryScale);
-  return occupancy.get(makeScaleCellKey(queryScale, x, y)) ?? [];
+export function getOccupantsAt(state, x, y) {
+  const occupancy = getOccupancyMap(state);
+  return occupancy.get(makeScaleCellKey("base", x, y)) ?? [];
 }
 
-export function getPrimaryOccupantAt(state, x, y, resolution = "mech", options = {}) {
+export function getPrimaryOccupantAt(state, x, y, _resolution = "base", options = {}) {
   const { excludeUnitId = null } = options;
-  const occupants = getOccupantsAt(state, x, y, resolution);
+  const occupants = getOccupantsAt(state, x, y);
 
   return (
     occupants.find((entry) => {
       if (!entry?.unit) return false;
-      if (excludeUnitId && entry.unit.instanceId === excludeUnitId) return false;
+      if (excludeUnitId && entry.unitId === excludeUnitId) return false;
       return true;
     }) ?? null
   );
 }
 
-export function isPositionBlocked(state, x, y, resolution = "mech", options = {}) {
+export function isPositionBlocked(state, x, y, _resolution = "base", options = {}) {
   const { ignoreUnitId = null } = options;
-  const occupant = getPrimaryOccupantAt(state, x, y, resolution, {
-    excludeUnitId: ignoreUnitId
-  });
 
-  return occupant !== null;
+  return (
+    getPrimaryOccupantAt(state, x, y, "base", {
+      excludeUnitId: ignoreUnitId
+    }) !== null
+  );
 }
 
-export function getOccupiedCellsForUnit(unit, resolution = "mech") {
-  return getUnitOccupiedCells(unit, resolution);
+export function canUnitOccupyCells(state, unit, options = {}) {
+  const { ignoreUnitId = getUnitId(unit) } = options;
+
+  if (!isUnitWithinBoard(unit)) return false;
+
+  const occupied = getUnitOccupiedCells(unit);
+
+  return occupied.every((cell) => {
+    const occupant = getPrimaryOccupantAt(state, cell.x, cell.y, "base", {
+      excludeUnitId: ignoreUnitId
+    });
+
+    return occupant === null;
+  });
 }
