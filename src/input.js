@@ -4,7 +4,6 @@ import { changeElevation, changeDetailElevation } from "./map.js";
 import { getUnitById } from "./mechs.js";
 import { clampFocusToBoard, getPathToTile } from "./movement.js";
 import { moveAttackSelection, updateActionTargetPreview } from "./action.js";
-import { projectScene } from "./render/projection.js";
 import { getUnitFootprint } from "./scale/scaleMath.js";
 
 function getActiveUnit(state) {
@@ -249,8 +248,7 @@ function handleFacingKeys(key, state, actions) {
   else if (key === "arrowright" || key === "d") direction = "right";
   else return false;
 
-  const delta = getScreenRelativeBoardDelta(state, direction, { dx: 1, dy: 1 });
-  const facing = facingFromDelta(delta.dx, delta.dy);
+  const facing = getWorldFacingFromScreenDirection(state.rotation, direction);
 
   if (facing === null) return true;
 
@@ -272,7 +270,7 @@ function handleFocusKeys(key, state, actions) {
   else return false;
 
   const step = getFocusStep(state);
-  const delta = getScreenRelativeBoardDelta(state, direction, step);
+  const delta = getBoardDeltaFromScreenDirection(state.rotation, direction, step);
   const activeUnit = state.ui.mode === "move" ? getActiveUnit(state) : null;
 
   const next = clampFocusToBoard(
@@ -327,60 +325,40 @@ function handleConfirmCancelKeys(key, state, actions) {
   return false;
 }
 
-function getScreenRelativeBoardDelta(state, direction, step = { dx: 1, dy: 1 }) {
-  const origin = projectScene(state, state.focus.x, state.focus.y, 0);
+function getBoardDeltaFromScreenDirection(rotation, direction, step = { dx: 1, dy: 1 }) {
+  const facing = getWorldFacingFromScreenDirection(rotation, direction);
 
-  const candidates = [
-    { dx: 0, dy: -step.dy },
-    { dx: step.dx, dy: 0 },
-    { dx: 0, dy: step.dy },
-    { dx: -step.dx, dy: 0 }
-  ];
-
-  const targetVector = screenVectorForDirection(direction);
-  let best = candidates[0];
-  let bestScore = -Infinity;
-
-  for (const candidate of candidates) {
-    const projected = projectScene(
-      state,
-      state.focus.x + candidate.dx,
-      state.focus.y + candidate.dy,
-      0
-    );
-
-    const vx = projected.x - origin.x;
-    const vy = projected.y - origin.y;
-    const length = Math.hypot(vx, vy);
-    if (length <= 0.0001) continue;
-
-    const nx = vx / length;
-    const ny = vy / length;
-    const score = (nx * targetVector.x) + (ny * targetVector.y);
-
-    if (score > bestScore) {
-      bestScore = score;
-      best = candidate;
-    }
+  switch (facing) {
+    case 0: return { dx: 0, dy: -step.dy }; // north
+    case 1: return { dx: step.dx, dy: 0 };  // east
+    case 2: return { dx: 0, dy: step.dy };  // south
+    case 3: return { dx: -step.dx, dy: 0 }; // west
+    default: return { dx: 0, dy: 0 };
   }
-
-  return best;
 }
 
-function screenVectorForDirection(direction) {
+function getWorldFacingFromScreenDirection(rotation, direction) {
+  const baseFacing = screenDirectionToBaseFacing(direction);
+  if (baseFacing === null) return null;
+
+  const rot = normalizeRotation(rotation);
+
+  // Camera rotation changes view only.
+  // World-facing truth must stay constant.
+  return ((baseFacing - rot) + 4) % 4;
+}
+
+function screenDirectionToBaseFacing(direction) {
   switch (direction) {
-    case "up": return { x: 1, y: -1 };
-    case "left": return { x: -1, y: -1 };
-    case "down": return { x: -1, y: 1 };
-    case "right": return { x: 1, y: 1 };
-    default: return { x: 0, y: 0 };
+    case "up": return 0;
+    case "right": return 1;
+    case "down": return 2;
+    case "left": return 3;
+    default: return null;
   }
 }
 
-function facingFromDelta(dx, dy) {
-  if (dx === 0 && dy < 0) return 0;
-  if (dx > 0 && dy === 0) return 1;
-  if (dx === 0 && dy > 0) return 2;
-  if (dx < 0 && dy === 0) return 3;
-  return null;
+function normalizeRotation(value) {
+  const n = Number.isFinite(value) ? value : 0;
+  return ((n % 4) + 4) % 4;
 }
