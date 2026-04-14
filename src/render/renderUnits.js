@@ -107,7 +107,7 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
   const anchorY = renderModel.iso.center.y;
 
   const spriteBox = getSpriteRenderBox(unit);
-  const spriteHref = getUnitSpritePath(state, unit);
+  const spriteInfo = getUnitSpriteInfo(state, unit);
 
   const items = [];
 
@@ -115,17 +115,26 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
     sortDepth: anchorY,
     sortKey: anchorX,
     render(parent) {
-      if (spriteHref) {
+      if (spriteInfo.href) {
+        const x = anchorX - (spriteBox.width / 2);
+        const y = anchorY - spriteBox.height;
+
         const image = svgEl("image");
-        image.setAttribute("x", String(anchorX - (spriteBox.width / 2)));
-        image.setAttribute("y", String(anchorY - spriteBox.height));
+        image.setAttribute("x", String(x));
+        image.setAttribute("y", String(y));
         image.setAttribute("width", String(spriteBox.width));
         image.setAttribute("height", String(spriteBox.height));
         image.setAttribute("preserveAspectRatio", "xMidYMid meet");
-        image.setAttribute("href", spriteHref);
-        image.setAttributeNS("http://www.w3.org/1999/xlink", "href", spriteHref);
+        image.setAttribute("href", spriteInfo.href);
+        image.setAttributeNS("http://www.w3.org/1999/xlink", "href", spriteInfo.href);
         image.setAttribute("pointer-events", "none");
         image.setAttribute("class", getSpriteClass(unit, isActive));
+
+        if (spriteInfo.mirrorX) {
+          const centerX = anchorX;
+          image.setAttribute("transform", `translate(${centerX * 2}, 0) scale(-1, 1)`);
+        }
+
         parent.appendChild(image);
         return;
       }
@@ -247,20 +256,33 @@ function getSpriteClass(unit, isActive) {
   return classes.join(" ");
 }
 
-function getUnitSpritePath(state, unit) {
+function getUnitSpriteInfo(state, unit) {
   const forced = unit?.render?.sprite ?? unit?.image ?? null;
-  if (forced) return forced;
+  if (forced) {
+    return { href: forced, mirrorX: false };
+  }
 
   const facing = normalizeFacing(getWorldFacing(state, unit));
   const unitType = unit?.unitType === "pilot" ? "pilot" : "mech";
   const folder = unitType === "pilot" ? "pilot" : "mech";
 
-  // Temporary 2-facing art map:
-  // 0/1 => NE
-  // 2/3 => NW
-  const facingSuffix = facing === 0 || facing === 1 ? "NE" : "NW";
-
-  return `art/${folder}/${unitType}_${facingSuffix}.png`;
+  // 2 real sprites + mirror for the opposite pair
+  //
+  // facing 0 => NE
+  // facing 1 => NW
+  // facing 2 => NE mirrored
+  // facing 3 => NW mirrored
+  switch (facing) {
+    case 0:
+      return { href: `art/${folder}/${unitType}_NE.png`, mirrorX: false };
+    case 1:
+      return { href: `art/${folder}/${unitType}_NW.png`, mirrorX: false };
+    case 2:
+      return { href: `art/${folder}/${unitType}_NE.png`, mirrorX: true };
+    case 3:
+    default:
+      return { href: `art/${folder}/${unitType}_NW.png`, mirrorX: true };
+  }
 }
 
 function drawHeightPole(parent, unit, anchorX, anchorY) {
