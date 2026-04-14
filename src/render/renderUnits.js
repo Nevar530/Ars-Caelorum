@@ -7,13 +7,17 @@ import { getTopdownCellSize } from "./projection.js";
 
 const SPRITE_RENDER_BOX = {
   mech: { width: 256, height: 256 },
-  pilot: { width: 128, height: 128 }
+  pilot: { width: 96, height: 96 }
 };
 
 const DEBUG_HEIGHTS = {
   mech: { body: 3, head: 6 },
   pilot: { body: 1, head: 2 }
 };
+
+// This is the important fix:
+// sprite sorts slightly in front of the support tile it stands on.
+const UNIT_FRONT_TILE_BIAS = 1.0;
 
 export function drawMech(state, unit, renderModel, parent, isActive = false) {
   const items = getUnitRenderSceneItems(state, unit, renderModel, isActive);
@@ -111,8 +115,11 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
 
   const items = [];
 
+  // This makes the unit stand in front of its support tile.
+  const spriteSortDepth = anchorY + RENDER_CONFIG.isoTileHeight + UNIT_FRONT_TILE_BIAS;
+
   items.push({
-    sortDepth: anchorY,
+    sortDepth: spriteSortDepth,
     sortKey: anchorX,
     render(parent) {
       if (spriteInfo.href) {
@@ -131,8 +138,7 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
         image.setAttribute("class", getSpriteClass(unit, isActive));
 
         if (spriteInfo.mirrorX) {
-          const centerX = anchorX;
-          image.setAttribute("transform", `translate(${centerX * 2}, 0) scale(-1, 1)`);
+          image.setAttribute("transform", `translate(${anchorX * 2}, 0) scale(-1, 1)`);
         }
 
         parent.appendChild(image);
@@ -147,7 +153,7 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
   });
 
   items.push({
-    sortDepth: anchorY + 0.01,
+    sortDepth: spriteSortDepth + 0.01,
     sortKey: anchorX,
     render(parent) {
       drawHeightPole(parent, unit, anchorX, anchorY);
@@ -155,7 +161,7 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
   });
 
   items.push({
-    sortDepth: anchorY + 0.02,
+    sortDepth: spriteSortDepth + 0.02,
     sortKey: anchorX,
     render(parent) {
       const label = makeText(
@@ -266,12 +272,6 @@ function getUnitSpriteInfo(state, unit) {
   const unitType = unit?.unitType === "pilot" ? "pilot" : "mech";
   const folder = unitType === "pilot" ? "pilot" : "mech";
 
-  // 2 real sprites + mirror for the opposite pair
-  //
-  // facing 0 => NE
-  // facing 1 => NW
-  // facing 2 => NE mirrored
-  // facing 3 => NW mirrored
   switch (facing) {
     case 0:
       return { href: `art/${folder}/${unitType}_NE.png`, mirrorX: false };
