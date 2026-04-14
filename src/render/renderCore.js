@@ -59,7 +59,8 @@ export function renderIso(state, refs) {
   worldScene.innerHTML = "";
   worldUi.innerHTML = "";
 
-  const sceneItems = [];
+  const terrainItems = [];
+  const unitItems = [];
   const overlayTileItems = [];
   const reachableMap = new Map();
 
@@ -69,6 +70,9 @@ export function renderIso(state, refs) {
     }
   }
 
+  // --------------------------------
+  // Build terrain scene items
+  // --------------------------------
   for (let y = 0; y < MAP_CONFIG.height; y += 1) {
     for (let x = 0; x < MAP_CONFIG.width; x += 1) {
       const tile = getTile(map, x, y);
@@ -106,7 +110,7 @@ export function renderIso(state, refs) {
         }
       };
 
-      sceneItems.push(tileItem);
+      terrainItems.push(tileItem);
       overlayTileItems.push(tileItem);
 
       if (hasDetailGeometry) {
@@ -121,7 +125,7 @@ export function renderIso(state, refs) {
             cell.size
           );
 
-          sceneItems.push({
+          terrainItems.push({
             kind: "terrain",
             sourceKind: "detail",
             x: cell.x,
@@ -149,6 +153,46 @@ export function renderIso(state, refs) {
     }
   }
 
+  terrainItems.sort(compareSceneItems);
+
+  // --------------------------------
+  // Draw terrain first
+  // --------------------------------
+  for (const item of terrainItems) {
+    item.render(worldScene);
+  }
+
+  // --------------------------------
+  // Draw floor overlays INTO worldScene
+  // so sprites can appear above them
+  // --------------------------------
+  for (const item of overlayTileItems) {
+    if (state.ui.mode === "move" && item.reachableCost !== null) {
+      drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost), {
+        drawShapes: true,
+        drawLabels: false
+      });
+    }
+
+    drawScenePathOverlayForTile(state, item, worldScene, {
+      drawShapes: true,
+      drawLabels: false
+    });
+
+    drawSceneActionOverlayForTile(state, item, worldScene, {
+      drawShapes: true,
+      drawLabels: false
+    });
+
+    drawSceneFocusOverlayForTile(state, item, worldScene, {
+      drawShapes: true,
+      drawLabels: false
+    });
+  }
+
+  // --------------------------------
+  // Build unit scene items
+  // --------------------------------
   for (const unit of units) {
     const footprint = getUnitFootprint(unit);
     const bounds = getUnitFootprintBounds(unit);
@@ -187,10 +231,10 @@ export function renderIso(state, refs) {
     const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
     const isActive = unit.instanceId === activeUnitId;
 
-    const unitItems = getUnitRenderSceneItems(state, unit, renderModel, isActive);
+    const parts = getUnitRenderSceneItems(state, unit, renderModel, isActive);
 
-    for (const part of unitItems) {
-      sceneItems.push({
+    for (const part of parts) {
+      unitItems.push({
         kind: "unit_part",
         sortDepth: part.sortDepth,
         sortKey:
@@ -208,36 +252,18 @@ export function renderIso(state, refs) {
     }
   }
 
-  sceneItems.sort(compareSceneItems);
+  unitItems.sort(compareSceneItems);
 
-  for (const item of sceneItems) {
+  // --------------------------------
+  // Draw units after floor overlays
+  // --------------------------------
+  for (const item of unitItems) {
     item.render(worldScene);
   }
 
-  for (const item of overlayTileItems) {
-    if (state.ui.mode === "move" && item.reachableCost !== null) {
-      drawSceneMoveOverlay(state, item, worldUi, String(item.reachableCost), {
-        drawShapes: true,
-        drawLabels: true
-      });
-    }
-
-    drawScenePathOverlayForTile(state, item, worldUi, {
-      drawShapes: true,
-      drawLabels: true
-    });
-
-    drawSceneActionOverlayForTile(state, item, worldUi, {
-      drawShapes: true,
-      drawLabels: false
-    });
-
-    drawSceneFocusOverlayForTile(state, item, worldUi, {
-      drawShapes: true,
-      drawLabels: false
-    });
-  }
-
+  // --------------------------------
+  // Draw top-most overlays/UI last
+  // --------------------------------
   drawSceneActiveUnitOverlay(state, worldUi);
   drawSceneLosPreview(state, worldUi);
 }
