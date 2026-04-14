@@ -21,7 +21,7 @@ export function drawMech(state, unit, renderModel, parent, isActive = false) {
 
 export function getUnitVisualLevels(unit) {
   if (unit?.unitType === "pilot") {
-    return 2;
+    return 4;
   }
 
   return 8;
@@ -71,6 +71,7 @@ function drawIsoPrismUnit(state, unit, renderModel, group, footprint, isActive) 
   const anchorX = renderModel.iso.center.x;
   const anchorY = renderModel.iso.center.y;
 
+  // Anchor is the center of the footprint on the ground.
   const baseDiamond = {
     top:    { x: anchorX,         y: anchorY - halfH },
     right:  { x: anchorX + halfW, y: anchorY },
