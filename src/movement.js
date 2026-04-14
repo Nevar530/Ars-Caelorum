@@ -10,12 +10,13 @@ import { getUnitById } from "./mechs.js";
 import { canUnitOccupyCells } from "./scale/occupancy.js";
 import {
   getResolutionBoardSize,
+  getUnitFootprint,
   getUnitFootprintBounds,
   getUnitOccupiedCells,
   getUnitCenterPoint
 } from "./scale/scaleMath.js";
 
-const CARDINAL_STEPS = [
+const CARDINAL_DIRECTIONS = [
   { dx: 1, dy: 0 },
   { dx: -1, dy: 0 },
   { dx: 0, dy: 1 },
@@ -36,8 +37,17 @@ function makePreviewUnit(unit, x, y) {
   };
 }
 
-function getUnitAnchorTile(unit) {
-  return getTile(unit._movementMapRef, unit.x, unit.y);
+function getUnitStride(unit) {
+  const footprint = getUnitFootprint(unit);
+
+  if ((unit?.unitType ?? "mech") === "mech") {
+    return {
+      x: footprint.width,
+      y: footprint.height
+    };
+  }
+
+  return { x: 1, y: 1 };
 }
 
 function isFootprintInsideBoard(unit) {
@@ -50,6 +60,23 @@ function isFootprintInsideBoard(unit) {
     bounds.maxX < board.width &&
     bounds.maxY < board.height
   );
+}
+
+function getSupportElevationForUnit(state, unit) {
+  const occupiedCells = getUnitOccupiedCells(unit);
+  let maxElevation = null;
+
+  for (const cell of occupiedCells) {
+    const tile = getTile(state.map, cell.x, cell.y);
+    if (!tile) return null;
+
+    const elevation = getTileFootElevation(tile);
+    if (maxElevation === null || elevation > maxElevation) {
+      maxElevation = elevation;
+    }
+  }
+
+  return maxElevation;
 }
 
 function areOccupiedCellsStandable(state, unit) {
@@ -80,22 +107,17 @@ function canUnitOccupyAnchor(state, unit, x, y) {
   });
 }
 
-function getAnchorElevation(state, x, y) {
-  const tile = getTile(state.map, x, y);
-  if (!tile) return null;
-  return getTileFootElevation(tile);
-}
-
 function canTraverseBetweenAnchors(state, unit, fromX, fromY, toX, toY) {
-  const fromElevation = getAnchorElevation(state, fromX, fromY);
-  const toElevation = getAnchorElevation(state, toX, toY);
+  const fromUnit = makePreviewUnit(unit, fromX, fromY);
+  const toUnit = makePreviewUnit(unit, toX, toY);
+
+  const fromElevation = getSupportElevationForUnit(state, fromUnit);
+  const toElevation = getSupportElevationForUnit(state, toUnit);
 
   if (fromElevation === null || toElevation === null) {
     return false;
   }
 
-  // Keep the climb rule simple and stable for now.
-  // Destination footprint validity is the important truth pass.
   if (Math.abs(toElevation - fromElevation) > 1) {
     return false;
   }
@@ -150,9 +172,20 @@ export function isWithinBoard(x, y, scale = "base") {
   );
 }
 
-export function getNeighbors(x, y, _scale = "base") {
-  return CARDINAL_STEPS
-    .map((step) => ({ x: x + step.dx, y: y + step.dy }))
+export function getNeighbors(x, y, unitOrScale = "base") {
+  if (typeof unitOrScale === "string") {
+    return CARDINAL_DIRECTIONS
+      .map((step) => ({ x: x + step.dx, y: y + step.dy }))
+      .filter((pos) => isWithinBoard(pos.x, pos.y, "base"));
+  }
+
+  const stride = getUnitStride(unitOrScale);
+
+  return CARDINAL_DIRECTIONS
+    .map((step) => ({
+      x: x + (step.dx * stride.x),
+      y: y + (step.dy * stride.y)
+    }))
     .filter((pos) => isWithinBoard(pos.x, pos.y, "base"));
 }
 
@@ -175,8 +208,14 @@ export function canStepToTile(state, fromX, fromY, toX, toY, _resolution = "base
 }
 
 export function getTileMoveCost(state, fromX, fromY, toX, toY, _resolution = "base") {
-  const fromElevation = getAnchorElevation(state, fromX, fromY);
-  const toElevation = getAnchorElevation(state, toX, toY);
+  const activeUnit = getActiveUnit(state);
+  if (!activeUnit) return Infinity;
+
+  const fromUnit = makePreviewUnit(activeUnit, fromX, fromY);
+  const toUnit = makePreviewUnit(activeUnit, toX, toY);
+
+  const fromElevation = getSupportElevationForUnit(state, fromUnit);
+  const toElevation = getSupportElevationForUnit(state, toUnit);
 
   if (fromElevation === null || toElevation === null) {
     return Infinity;
@@ -208,7 +247,7 @@ export function getReachableTileMap(state) {
     const currentKey = coordKey(current.x, current.y);
     const currentCost = costs.get(currentKey) ?? 0;
 
-    for (const next of getNeighbors(current.x, current.y, "base")) {
+    for (const next of getNeighbors(current.x, current.y, activeUnit)) {
       if (!canTraverseBetweenAnchors(state, activeUnit, current.x, current.y, next.x, next.y)) {
         continue;
       }
@@ -230,7 +269,6 @@ export function getReachableTileMap(state) {
     }
   }
 
-  // Attach path data directly to the reachable map entries for stability.
   const result = new Map();
 
   for (const [key, cost] of costs.entries()) {
@@ -244,7 +282,8 @@ export function getReachableTileMap(state) {
       path: buildPath(previous, startKey, key),
       occupiedCells: getUnitOccupiedCells(previewUnit),
       footprintBounds: getUnitFootprintBounds(previewUnit),
-      centerPoint: getUnitCenterPoint(previewUnit)
+      centerPoint: getUnitCenterPoint(previewUnit),
+      supportElevation: getSupportElevationForUnit(state, previewUnit)
     });
   }
 
