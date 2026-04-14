@@ -189,5 +189,72 @@
     },
     "damage": 20,
     "notes": "Long-range precision weapon."
+  },
+
+  {
+    "id": "pilot_pistol_01",
+    "name": "Sidearm",
+    "category": "weapon",
+    "type": "direct",
+    "scale": "pilot",
+    "fireArc": {
+      "kind": "fan",
+      "range": 8
+    },
+    "range": {
+      "min": 1,
+      "max": 8
+    },
+    "losType": "direct",
+    "targetingMode": "direct_tile",
+    "effect": {
+      "kind": "single"
+    },
+    "damage": 3,
+    "notes": "Basic pilot sidearm for LOS and action testing."
+  },
+  {
+    "id": "pilot_rifle_01",
+    "name": "Carbine",
+    "category": "weapon",
+    "type": "direct",
+    "scale": "pilot",
+    "fireArc": {
+      "kind": "fan",
+      "range": 10
+    },
+    "range": {
+      "min": 2,
+      "max": 10
+    },
+    "losType": "direct",
+    "targetingMode": "direct_tile",
+    "effect": {
+      "kind": "single"
+    },
+    "damage": 4,
+    "notes": "Pilot carbine with slightly longer effective range."
+  },
+  {
+    "id": "pilot_smg_01",
+    "name": "SMG",
+    "category": "weapon",
+    "type": "direct",
+    "scale": "pilot",
+    "fireArc": {
+      "kind": "fan",
+      "range": 6
+    },
+    "range": {
+      "min": 1,
+      "max": 6
+    },
+    "losType": "direct",
+    "targetingMode": "direct_tile",
+    "effect": {
+      "kind": "single"
+    },
+    "damage": 3,
+    "notes": "Short-range pilot weapon for close combat testing."
   }
 ]
