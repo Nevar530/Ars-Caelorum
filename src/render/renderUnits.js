@@ -21,7 +21,7 @@ export function drawMech(state, unit, renderModel, parent, isActive = false) {
 
 export function getUnitVisualLevels(unit) {
   if (unit?.unitType === "pilot") {
-    return 4;
+    return 3;
   }
 
   return 8;
