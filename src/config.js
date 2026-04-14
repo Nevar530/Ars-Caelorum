@@ -1,9 +1,11 @@
+// src/config.js
+
 export const GAME_CONFIG = {
   baseGridIsTruth: true,
 
   footprintByUnitType: {
     pilot: { width: 1, height: 1 },
-    mech: { width: 4, height: 4 },
+    mech: { width: 3, height: 3 },
     structure: { width: 1, height: 1 }
   },
 
