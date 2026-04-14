@@ -21,9 +21,9 @@ export const CAMERA_CENTER = {
 
 export const LOS_HEIGHT_PROFILES = {
   mech: {
-    fire: 2,
-    chest: 2,
-    head: 4
+    fire: 3,
+    chest: 3,
+    head: 6
   },
   pilot: {
     fire: 1,
@@ -117,9 +117,6 @@ function updateTopdownFit(state, viewport) {
   const usableWidth = Math.max(200, viewport.width - (TOPDOWN_CONFIG.padding * 2));
   const usableHeight = Math.max(200, viewport.height - (TOPDOWN_CONFIG.padding * 2));
 
-  // Diamond board bounds:
-  // width  = (board.width + board.height) * cellSize
-  // height = (board.width + board.height) * (cellSize / 2)
   const cellSizeByWidth = usableWidth / (board.width + board.height);
   const cellSizeByHeight = (usableHeight * 2) / (board.width + board.height);
 
@@ -183,8 +180,6 @@ export function getMapScreenBoundsRaw(state) {
 
   if (state.ui?.viewMode === "top") {
     const cellSize = getTopdownCellSize(state);
-    const originX = state.camera?.topdownOriginX ?? 0;
-    const originY = state.camera?.topdownOriginY ?? 0;
 
     const corners = [
       projectTopDown(state, 0, 0),
@@ -338,15 +333,16 @@ export function getCurrentInteractionScale(state) {
 }
 
 function rotateSceneCoordContinuous(x, y, width, height, rotation = 0) {
-  switch ((((rotation % 4) + 4) % 4)) {
-    case 0:
-      return { x, y };
+  const rot = ((rotation % 4) + 4) % 4;
+
+  switch (rot) {
     case 1:
       return { x: height - y, y: x };
     case 2:
       return { x: width - x, y: height - y };
     case 3:
       return { x: y, y: width - x };
+    case 0:
     default:
       return { x, y };
   }
