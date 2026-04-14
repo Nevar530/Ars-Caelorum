@@ -11,9 +11,11 @@ import { getUnitById } from "../mechs.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG, projectScene } from "./projection.js";
 import {
-  getUnitFootprint,
   getUnitFootprintBounds
 } from "../scale/scaleMath.js";
+import {
+  getPrimaryOccupantAt
+} from "../scale/occupancy.js";
 
 const DETAIL_OVERLAY_LIFT = 0.02;
 const DETAIL_STROKE_WIDTH = 2;
@@ -28,6 +30,7 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
   const { drawShapes } = normalizeOptions(options);
 
   if (state.ui.mode !== "action-target") return;
+  if (!drawShapes) return;
 
   const key = `${item.x},${item.y}`;
   const fireArc = tileSetFromList(state.ui.action.fireArcTiles || []);
@@ -67,7 +70,21 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
     stroke = "rgba(255, 74, 74, 1)";
   }
 
-  if (!fill || !stroke || !drawShapes) return;
+  if (!fill || !stroke) return;
+
+  const occupantUnit = getUnitAtTile(state, item.x, item.y);
+
+  if (occupantUnit) {
+    drawOverlayForUnitFootprint(
+      state,
+      occupantUnit,
+      "action-preview-unit",
+      fill,
+      stroke,
+      parent
+    );
+    return;
+  }
 
   if (state.ui.viewMode === "top") {
     drawTopOverlayBox(item.screenX, item.screenY, fill, stroke, parent);
@@ -91,6 +108,19 @@ export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFA
       state,
       previewUnit,
       "focus-tile",
+      "rgba(240, 176, 0, 0.16)",
+      "rgba(240, 176, 0, 1)",
+      parent
+    );
+    return;
+  }
+
+  const occupantUnit = getUnitAtTile(state, item.x, item.y);
+  if (occupantUnit) {
+    drawOverlayForUnitFootprint(
+      state,
+      occupantUnit,
+      "focus-unit",
       "rgba(240, 176, 0, 0.16)",
       "rgba(240, 176, 0, 1)",
       parent
@@ -190,6 +220,23 @@ export function drawSceneMoveOverlay(state, item, parent, text, options = DEFAUL
     styleMoveCostLabel(label);
     parent.appendChild(label);
   }
+}
+
+export function drawSceneActiveUnitOverlay(state, parent) {
+  const activeUnit = getActiveUnit(state);
+  if (!activeUnit) return;
+
+  if (state.ui.mode === "move") return;
+  if (state.ui.mode === "face") return;
+
+  drawOverlayForUnitFootprint(
+    state,
+    activeUnit,
+    "active-unit-footprint",
+    "rgba(255, 255, 255, 0.06)",
+    "rgba(255, 255, 255, 0.7)",
+    parent
+  );
 }
 
 function drawOverlayForUnitFootprint(state, unit, className, fill, stroke, parent) {
@@ -321,12 +368,19 @@ export function drawTopOverlayBox(screenX, screenY, fill, stroke, parent) {
 }
 
 function drawTopOverlayBounds(bounds, fill, stroke, parent) {
+  const size = TOPDOWN_CONFIG.cellSize;
+
+  const width = bounds.width * size;
+  const height = bounds.height * size;
+  const x = bounds.minX * size;
+  const y = bounds.minY * size;
+
   const rect = svgEl("rect");
-  rect.setAttribute("x", 140 + (bounds.minX * TOPDOWN_CONFIG.cellSize) + 3);
-  rect.setAttribute("y", 120 + (bounds.minY * TOPDOWN_CONFIG.cellSize) + 3);
-  rect.setAttribute("width", (bounds.width * TOPDOWN_CONFIG.cellSize) - 6);
-  rect.setAttribute("height", (bounds.height * TOPDOWN_CONFIG.cellSize) - 6);
-  rect.setAttribute("rx", "8");
+  rect.setAttribute("x", x + 2);
+  rect.setAttribute("y", y + 2);
+  rect.setAttribute("width", Math.max(4, width - 4));
+  rect.setAttribute("height", Math.max(4, height - 4));
+  rect.setAttribute("rx", "10");
   rect.setAttribute("fill", fill);
   rect.setAttribute("stroke", stroke);
   rect.setAttribute("stroke-width", "2.5");
@@ -352,29 +406,21 @@ function getBoundsSupportElevation(state, bounds) {
   return maxElevation;
 }
 
-function getActiveUnit(state) {
-  const activeUnitId = state.turn?.activeUnitId ?? state.turn?.activeMechId ?? null;
-  return getUnitById(state.units ?? state.mechs ?? [], activeUnitId);
-}
-
 function getUnitLabelPoint(state, unit) {
+  const bounds = getUnitFootprintBounds(unit);
+
   if (state.ui.viewMode === "top") {
-    const bounds = getUnitFootprintBounds(unit);
     return {
-      x: 140 + ((bounds.minX + (bounds.width / 2)) * TOPDOWN_CONFIG.cellSize),
-      y: 120 + ((bounds.minY + (bounds.height / 2)) * TOPDOWN_CONFIG.cellSize)
+      x: (bounds.minX * TOPDOWN_CONFIG.cellSize) + ((bounds.width * TOPDOWN_CONFIG.cellSize) / 2),
+      y: (bounds.minY * TOPDOWN_CONFIG.cellSize) + ((bounds.height * TOPDOWN_CONFIG.cellSize) / 2) + 4
     };
   }
 
-  const bounds = getUnitFootprintBounds(unit);
-  const supportElevation = getBoundsSupportElevation(state, bounds);
-  const center = projectScene(
-    state,
-    bounds.minX + (bounds.width / 2),
-    bounds.minY + (bounds.height / 2),
-    supportElevation ?? 0,
-    1
-  );
+  const supportElevation = getBoundsSupportElevation(state, bounds) ?? 0;
+  const centerX = bounds.minX + (bounds.width / 2);
+  const centerY = bounds.minY + (bounds.height / 2);
+
+  const center = projectScene(state, centerX, centerY, supportElevation + DETAIL_OVERLAY_LIFT, 1);
 
   return {
     x: center.x,
@@ -382,11 +428,26 @@ function getUnitLabelPoint(state, unit) {
   };
 }
 
-export function styleMoveCostLabel(label) {
-  label.setAttribute("fill", "#dceeff");
-  label.setAttribute("font-size", "13");
-  label.setAttribute("font-weight", "700");
-  label.setAttribute("stroke", "rgba(0,0,0,0.65)");
-  label.setAttribute("stroke-width", "3");
+function styleMoveCostLabel(label) {
+  label.setAttribute("fill", "#ffffff");
+  label.setAttribute("stroke", "rgba(0,0,0,0.72)");
+  label.setAttribute("stroke-width", "4");
   label.setAttribute("paint-order", "stroke fill");
+  label.setAttribute("font-size", "18");
+  label.setAttribute("font-weight", "700");
+  label.setAttribute("text-anchor", "middle");
+  label.setAttribute("dominant-baseline", "middle");
+}
+
+function getActiveUnit(state) {
+  const activeId = state.turn?.activeUnitId ?? state.turn?.activeMechId ?? null;
+  if (!activeId) return null;
+
+  const units = state.units ?? state.mechs ?? [];
+  return getUnitById(units, activeId);
+}
+
+function getUnitAtTile(state, x, y) {
+  const occupant = getPrimaryOccupantAt(state, x, y);
+  return occupant?.unit ?? null;
 }
