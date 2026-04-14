@@ -29,8 +29,7 @@ import {
   ensureCameraState,
   updateCameraFraming,
   projectScene,
-  getSceneSortKey,
-  TOPDOWN_CONFIG
+  getSceneSortKey
 } from "./projection.js";
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
 import { makeText } from "../utils.js";
@@ -170,10 +169,10 @@ export function renderIso(state, refs) {
       state.ui?.viewMode === "top"
         ? {
             top: {
-              topLeftX: projectScene(state, bounds.minX, bounds.minY, 0, 1).x,
-              topLeftY: projectScene(state, bounds.minX, bounds.minY, 0, 1).y,
-              widthPx: footprint.width * TOPDOWN_CONFIG.cellSize,
-              heightPx: footprint.height * TOPDOWN_CONFIG.cellSize
+              center: {
+                x: projectedCenter.x,
+                y: projectedCenter.y
+              }
             }
           }
         : {
@@ -185,7 +184,7 @@ export function renderIso(state, refs) {
             }
           };
 
-    const footDepth = projectedCenter.y + (footprint.height * (RENDER_CONFIG.isoTileHeight / 2));
+    const footDepth = projectedCenter.y + (footprint.height * (state.ui?.viewMode === "top" ? 0.25 : RENDER_CONFIG.isoTileHeight / 2));
 
     sceneItems.push({
       kind: "unit",
@@ -196,7 +195,7 @@ export function renderIso(state, refs) {
         centerPoint.y,
         supportElevation,
         1
-      ) + UNIT_SORT_EPSILON,
+      ) + projectedCenter.x * 0.0001,
       render(parent) {
         const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
         const isActive = unit.instanceId === activeUnitId;
