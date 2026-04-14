@@ -5,6 +5,16 @@ import { getUnitFootprint } from "../scale/scaleMath.js";
 import { RENDER_CONFIG } from "../config.js";
 import { getTopdownCellSize } from "./projection.js";
 
+const SPRITE_RENDER_BOX = {
+  mech: { width: 128, height: 128 },
+  pilot: { width: 64, height: 64 }
+};
+
+const DEBUG_HEIGHTS = {
+  mech: { body: 3, head: 6 },
+  pilot: { body: 1, head: 2 }
+};
+
 export function drawMech(state, unit, renderModel, parent, isActive = false) {
   const items = getUnitRenderSceneItems(state, unit, renderModel, isActive);
 
@@ -15,14 +25,14 @@ export function drawMech(state, unit, renderModel, parent, isActive = false) {
 
 export function getUnitVisualLevels(unit) {
   if (unit?.unitType === "pilot") {
-    return 4;
+    return 2;
   }
 
-  return 8;
+  return 6;
 }
 
 export function getUnitCubeHeightPx(unit) {
-  return getUnitVisualLevels(unit) * RENDER_CONFIG.isoTileHeight;
+  return getUnitVisualLevels(unit) * RENDER_CONFIG.elevationStepPx;
 }
 
 export function getUnitRenderSceneItems(state, unit, renderModel, isActive = false) {
@@ -93,95 +103,61 @@ function buildTopUnitSceneItems(state, unit, renderModel, isActive) {
 }
 
 function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
-  const footprint = getUnitFootprint(unit);
-  const prismHeight = getUnitCubeHeightPx(unit);
-
-  const halfW = footprint.width * (RENDER_CONFIG.isoTileWidth / 2);
-  const halfH = footprint.height * (RENDER_CONFIG.isoTileHeight / 2);
-
   const anchorX = renderModel.iso.center.x;
   const anchorY = renderModel.iso.center.y;
 
-  const base = {
-    top: { x: anchorX, y: anchorY - halfH },
-    right: { x: anchorX + halfW, y: anchorY },
-    bottom: { x: anchorX, y: anchorY + halfH },
-    left: { x: anchorX - halfW, y: anchorY },
-    center: { x: anchorX, y: anchorY }
-  };
+  const spriteBox = getSpriteRenderBox(unit);
+  const spriteHref = getUnitSpritePath(state, unit);
 
-  const top = {
-    top: { x: base.top.x, y: base.top.y - prismHeight },
-    right: { x: base.right.x, y: base.right.y - prismHeight },
-    bottom: { x: base.bottom.x, y: base.bottom.y - prismHeight },
-    left: { x: base.left.x, y: base.left.y - prismHeight },
-    center: { x: base.center.x, y: base.center.y - prismHeight }
-  };
+  const items = [];
 
-  const leftFace = [top.left, top.bottom, base.bottom, base.left];
-  const rightFace = [top.right, top.bottom, base.bottom, base.right];
-  const topFace = [top.top, top.right, top.bottom, top.left];
+  items.push({
+    sortDepth: anchorY,
+    sortKey: anchorX,
+    render(parent) {
+      if (spriteHref) {
+        const image = svgEl("image");
+        image.setAttribute("x", String(anchorX - (spriteBox.width / 2)));
+        image.setAttribute("y", String(anchorY - spriteBox.height));
+        image.setAttribute("width", String(spriteBox.width));
+        image.setAttribute("height", String(spriteBox.height));
+        image.setAttribute("preserveAspectRatio", "xMidYMid meet");
+        image.setAttribute("href", spriteHref);
+        image.setAttributeNS("http://www.w3.org/1999/xlink", "href", spriteHref);
+        image.setAttribute("pointer-events", "none");
+        image.setAttribute("class", getSpriteClass(unit, isActive));
+        parent.appendChild(image);
+        return;
+      }
 
-  const leftDepth = maxY(leftFace);
-  const rightDepth = maxY(rightFace);
-  const topDepth = maxY(topFace);
-
-  const items = [
-    {
-      sortDepth: leftDepth,
-      sortKey: avgX(leftFace),
-      render(parent) {
-        const poly = makePolygon(leftFace, "mech-cube-left", "currentColor");
-        poly.removeAttribute("fill");
-        parent.appendChild(poly);
-      }
-    },
-    {
-      sortDepth: rightDepth,
-      sortKey: avgX(rightFace),
-      render(parent) {
-        const poly = makePolygon(rightFace, "mech-cube-right", "currentColor");
-        poly.removeAttribute("fill");
-        parent.appendChild(poly);
-      }
-    },
-    {
-      sortDepth: topDepth,
-      sortKey: avgX(topFace),
-      render(parent) {
-        const poly = makePolygon(topFace, getIsoTopClass(state, unit, isActive), "currentColor");
-        poly.removeAttribute("fill");
-        parent.appendChild(poly);
-      }
-    },
-    {
-      sortDepth: topDepth + 0.01,
-      sortKey: top.center.x,
-      render(parent) {
-        const line = svgEl("line");
-        const facing = getDiamondFacingLinePoints(state, unit, top);
-        line.setAttribute("x1", facing.x1);
-        line.setAttribute("y1", facing.y1);
-        line.setAttribute("x2", facing.x2);
-        line.setAttribute("y2", facing.y2);
-        line.setAttribute("class", getFacingLineClass(state, unit));
-        parent.appendChild(line);
-      }
-    },
-    {
-      sortDepth: topDepth + 0.02,
-      sortKey: top.center.x,
-      render(parent) {
-        const label = makeText(
-          top.center.x,
-          top.center.y + 6,
-          unit.name,
-          "mech-label"
-        );
-        parent.appendChild(label);
-      }
+      const fallback = buildIsoFallbackDiamond(anchorX, anchorY, unit);
+      const poly = makePolygon(fallback, getIsoTopClass(state, unit, isActive), "currentColor");
+      poly.removeAttribute("fill");
+      parent.appendChild(poly);
     }
-  ];
+  });
+
+  items.push({
+    sortDepth: anchorY + 0.01,
+    sortKey: anchorX,
+    render(parent) {
+      drawHeightPole(parent, unit, anchorX, anchorY);
+    }
+  });
+
+  items.push({
+    sortDepth: anchorY + 0.02,
+    sortKey: anchorX,
+    render(parent) {
+      const label = makeText(
+        anchorX,
+        anchorY - spriteBox.height + 12,
+        unit.name,
+        "mech-label"
+      );
+      parent.appendChild(label);
+    }
+  });
 
   return items;
 }
@@ -261,6 +237,86 @@ function getDiamondFacingLinePoints(state, unit, diamond) {
   }
 }
 
+function getSpriteRenderBox(unit) {
+  return SPRITE_RENDER_BOX[unit?.unitType ?? "mech"] ?? SPRITE_RENDER_BOX.mech;
+}
+
+function getSpriteClass(unit, isActive) {
+  const classes = ["unit-sprite", `unit-sprite-${unit?.unitType ?? "mech"}`];
+  if (isActive) classes.push("unit-sprite-active");
+  return classes.join(" ");
+}
+
+function getUnitSpritePath(state, unit) {
+  const forced = unit?.render?.sprite ?? unit?.image ?? null;
+  if (forced) return forced;
+
+  const facing = normalizeFacing(getWorldFacing(state, unit));
+  const unitType = unit?.unitType === "pilot" ? "pilot" : "mech";
+  const folder = unitType === "pilot" ? "pilot" : "mech";
+
+  // Temporary 2-facing art map:
+  // 0/1 => NE
+  // 2/3 => NW
+  const facingSuffix = facing === 0 || facing === 1 ? "NE" : "NW";
+
+  return `art/${folder}/${unitType}_${facingSuffix}.png`;
+}
+
+function drawHeightPole(parent, unit, anchorX, anchorY) {
+  const profile = DEBUG_HEIGHTS[unit?.unitType ?? "mech"] ?? DEBUG_HEIGHTS.mech;
+
+  const line = svgEl("line");
+  line.setAttribute("x1", String(anchorX));
+  line.setAttribute("y1", String(anchorY));
+  line.setAttribute("x2", String(anchorX));
+  line.setAttribute("y2", String(anchorY - (profile.head * RENDER_CONFIG.elevationStepPx)));
+  line.setAttribute("stroke", unit?.unitType === "pilot" ? "#7fd6ff" : "#ffd166");
+  line.setAttribute("stroke-width", "2");
+  line.setAttribute("stroke-dasharray", "4 4");
+  line.setAttribute("pointer-events", "none");
+  parent.appendChild(line);
+
+  const bodyDot = makePoleDot(
+    anchorX,
+    anchorY - (profile.body * RENDER_CONFIG.elevationStepPx),
+    unit?.unitType === "pilot" ? "#7fd6ff" : "#ffd166"
+  );
+  const headDot = makePoleDot(
+    anchorX,
+    anchorY - (profile.head * RENDER_CONFIG.elevationStepPx),
+    "#ff5c5c"
+  );
+
+  parent.appendChild(bodyDot);
+  parent.appendChild(headDot);
+}
+
+function makePoleDot(x, y, fill) {
+  const circle = svgEl("circle");
+  circle.setAttribute("cx", String(x));
+  circle.setAttribute("cy", String(y));
+  circle.setAttribute("r", "4");
+  circle.setAttribute("fill", fill);
+  circle.setAttribute("stroke", "#101418");
+  circle.setAttribute("stroke-width", "1.5");
+  circle.setAttribute("pointer-events", "none");
+  return circle;
+}
+
+function buildIsoFallbackDiamond(anchorX, anchorY, unit) {
+  const footprint = getUnitFootprint(unit);
+  const halfW = footprint.width * (RENDER_CONFIG.isoTileWidth / 2);
+  const halfH = footprint.height * (RENDER_CONFIG.isoTileHeight / 2);
+
+  return [
+    { x: anchorX, y: anchorY - halfH },
+    { x: anchorX + halfW, y: anchorY },
+    { x: anchorX, y: anchorY + halfH },
+    { x: anchorX - halfW, y: anchorY }
+  ];
+}
+
 function midpoint(a, b) {
   return {
     x: (a.x + b.x) / 2,
@@ -278,12 +334,4 @@ function lerpPoint(a, b, t) {
 function normalizeFacing(value) {
   const n = Number.isFinite(value) ? value : 0;
   return ((n % 4) + 4) % 4;
-}
-
-function maxY(points) {
-  return Math.max(...points.map((p) => p.y));
-}
-
-function avgX(points) {
-  return points.reduce((sum, p) => sum + p.x, 0) / points.length;
 }
