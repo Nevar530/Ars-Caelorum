@@ -15,7 +15,7 @@ export function drawMech(state, unit, renderModel, parent, isActive = false) {
     return;
   }
 
-  drawIsoStackedUnit(state, unit, renderModel, group, footprint, isActive);
+  drawIsoPrismUnit(state, unit, renderModel, group, footprint, isActive);
   parent.appendChild(group);
 }
 
@@ -62,95 +62,92 @@ function drawTopUnit(state, unit, renderModel, group, isActive) {
   group.appendChild(label);
 }
 
-function drawIsoStackedUnit(state, unit, renderModel, group, footprint, isActive) {
-  const levels = getUnitVisualLevels(unit);
-  const cubeHeight = RENDER_CONFIG.isoTileHeight;
+function drawIsoPrismUnit(state, unit, renderModel, group, footprint, isActive) {
+  const prismHeight = getUnitCubeHeightPx(unit);
 
-  // Stable old-school cube recipe, scaled by footprint.
   const halfW = footprint.width * (RENDER_CONFIG.isoTileWidth / 2);
   const halfH = footprint.height * (RENDER_CONFIG.isoTileHeight / 2);
 
-  // This is the screen-space center of the footprint on the ground.
   const anchorX = renderModel.iso.center.x;
   const anchorY = renderModel.iso.center.y;
 
-  let topMostDiamond = null;
+  const baseDiamond = {
+    top:    { x: anchorX,         y: anchorY - halfH },
+    right:  { x: anchorX + halfW, y: anchorY },
+    bottom: { x: anchorX,         y: anchorY + halfH },
+    left:   { x: anchorX - halfW, y: anchorY },
+    center: { x: anchorX,         y: anchorY }
+  };
 
-  for (let level = 0; level < levels; level += 1) {
-    const levelOffset = level * cubeHeight;
+  baseDiamond.points = [
+    baseDiamond.top,
+    baseDiamond.right,
+    baseDiamond.bottom,
+    baseDiamond.left
+  ];
 
-    const diamond = {
-      top:    { x: anchorX,         y: anchorY - cubeHeight - halfH - levelOffset },
-      right:  { x: anchorX + halfW, y: anchorY - cubeHeight - levelOffset },
-      bottom: { x: anchorX,         y: anchorY - cubeHeight + halfH - levelOffset },
-      left:   { x: anchorX - halfW, y: anchorY - cubeHeight - levelOffset }
-    };
+  const topDiamond = {
+    top:    { x: baseDiamond.top.x,    y: baseDiamond.top.y - prismHeight },
+    right:  { x: baseDiamond.right.x,  y: baseDiamond.right.y - prismHeight },
+    bottom: { x: baseDiamond.bottom.x, y: baseDiamond.bottom.y - prismHeight },
+    left:   { x: baseDiamond.left.x,   y: baseDiamond.left.y - prismHeight },
+    center: { x: baseDiamond.center.x, y: baseDiamond.center.y - prismHeight }
+  };
 
-    diamond.center = {
-      x: anchorX,
-      y: anchorY - cubeHeight - levelOffset
-    };
+  topDiamond.points = [
+    topDiamond.top,
+    topDiamond.right,
+    topDiamond.bottom,
+    topDiamond.left
+  ];
 
-    diamond.points = [
-      diamond.top,
-      diamond.right,
-      diamond.bottom,
-      diamond.left
-    ];
+  const leftFace = [
+    topDiamond.left,
+    topDiamond.bottom,
+    baseDiamond.bottom,
+    baseDiamond.left
+  ];
 
-    const leftFace = [
-      diamond.left,
-      diamond.bottom,
-      { x: diamond.bottom.x, y: diamond.bottom.y + cubeHeight },
-      { x: diamond.left.x, y: diamond.left.y + cubeHeight }
-    ];
+  const rightFace = [
+    topDiamond.right,
+    topDiamond.bottom,
+    baseDiamond.bottom,
+    baseDiamond.right
+  ];
 
-    const rightFace = [
-      diamond.right,
-      diamond.bottom,
-      { x: diamond.bottom.x, y: diamond.bottom.y + cubeHeight },
-      { x: diamond.right.x, y: diamond.right.y + cubeHeight }
-    ];
+  const leftPoly = makePolygon(leftFace, "mech-cube-left", "currentColor");
+  leftPoly.removeAttribute("fill");
 
-    const leftPoly = makePolygon(leftFace, "mech-cube-left", "currentColor");
-    leftPoly.removeAttribute("fill");
+  const rightPoly = makePolygon(rightFace, "mech-cube-right", "currentColor");
+  rightPoly.removeAttribute("fill");
 
-    const rightPoly = makePolygon(rightFace, "mech-cube-right", "currentColor");
-    rightPoly.removeAttribute("fill");
+  const topPoly = makePolygon(
+    topDiamond.points,
+    getIsoTopClass(state, unit, isActive),
+    "currentColor"
+  );
+  topPoly.removeAttribute("fill");
 
-    const topPoly = makePolygon(
-      diamond.points,
-      getIsoTopClass(state, unit, isActive),
-      "currentColor"
-    );
-    topPoly.removeAttribute("fill");
+  const facingLine = svgEl("line");
+  const facing = getIsoFacingLinePoints(state, unit, topDiamond);
+  facingLine.setAttribute("x1", facing.x1);
+  facingLine.setAttribute("y1", facing.y1);
+  facingLine.setAttribute("x2", facing.x2);
+  facingLine.setAttribute("y2", facing.y2);
+  facingLine.setAttribute("class", getFacingLineClass(state, unit));
 
-    group.appendChild(leftPoly);
-    group.appendChild(rightPoly);
-    group.appendChild(topPoly);
+  const label = makeText(
+    topDiamond.center.x,
+    topDiamond.center.y + 6,
+    unit.name,
+    "mech-label"
+  );
 
-    topMostDiamond = diamond;
-  }
-
-  if (topMostDiamond) {
-    const facingLine = svgEl("line");
-    const facing = getIsoFacingLinePoints(state, unit, topMostDiamond);
-    facingLine.setAttribute("x1", facing.x1);
-    facingLine.setAttribute("y1", facing.y1);
-    facingLine.setAttribute("x2", facing.x2);
-    facingLine.setAttribute("y2", facing.y2);
-    facingLine.setAttribute("class", getFacingLineClass(state, unit));
-
-    const label = makeText(
-      topMostDiamond.center.x,
-      topMostDiamond.center.y + 6,
-      unit.name,
-      "mech-label"
-    );
-
-    group.appendChild(facingLine);
-    group.appendChild(label);
-  }
+  group.appendChild(leftPoly);
+  group.appendChild(rightPoly);
+  group.appendChild(topPoly);
+  group.appendChild(facingLine);
+  group.appendChild(label);
 }
 
 export function getWorldFacing(state, unit) {
