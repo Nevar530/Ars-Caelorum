@@ -91,7 +91,7 @@ function areOccupiedCellsStandable(state, unit) {
   return true;
 }
 
-function canUnitOccupyAnchor(state, unit, x, y) {
+function canUnitOccupyOrigin(state, unit, x, y) {
   const previewUnit = makePreviewUnit(unit, x, y);
 
   if (!isFootprintInsideBoard(previewUnit)) {
@@ -107,7 +107,7 @@ function canUnitOccupyAnchor(state, unit, x, y) {
   });
 }
 
-function canTraverseBetweenAnchors(state, unit, fromX, fromY, toX, toY) {
+function canTraverseBetweenOrigins(state, unit, fromX, fromY, toX, toY) {
   const fromUnit = makePreviewUnit(unit, fromX, fromY);
   const toUnit = makePreviewUnit(unit, toX, toY);
 
@@ -122,7 +122,7 @@ function canTraverseBetweenAnchors(state, unit, fromX, fromY, toX, toY) {
     return false;
   }
 
-  return canUnitOccupyAnchor(state, unit, toX, toY);
+  return canUnitOccupyOrigin(state, unit, toX, toY);
 }
 
 function buildPath(previous, startKey, endKey) {
@@ -197,14 +197,14 @@ export function isTileBlocked(state, x, y, activeUnit = null, _resolution = "bas
     return false;
   }
 
-  return !canUnitOccupyAnchor(state, activeUnit, x, y);
+  return !canUnitOccupyOrigin(state, activeUnit, x, y);
 }
 
 export function canStepToTile(state, fromX, fromY, toX, toY, _resolution = "base") {
   const activeUnit = getActiveUnit(state);
   if (!activeUnit) return false;
 
-  return canTraverseBetweenAnchors(state, activeUnit, fromX, fromY, toX, toY);
+  return canTraverseBetweenOrigins(state, activeUnit, fromX, fromY, toX, toY);
 }
 
 export function getTileMoveCost(state, fromX, fromY, toX, toY, _resolution = "base") {
@@ -248,7 +248,7 @@ export function getReachableTileMap(state) {
     const currentCost = costs.get(currentKey) ?? 0;
 
     for (const next of getNeighbors(current.x, current.y, activeUnit)) {
-      if (!canTraverseBetweenAnchors(state, activeUnit, current.x, current.y, next.x, next.y)) {
+      if (!canTraverseBetweenOrigins(state, activeUnit, current.x, current.y, next.x, next.y)) {
         continue;
       }
 
