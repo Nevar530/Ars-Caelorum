@@ -4,10 +4,16 @@ import { RENDER_CONFIG } from "../config.js";
 import {
   getTile,
   getDetailRenderCells,
-  isDetailTileUniform
+  isDetailTileUniform,
+  getTileFootElevation
 } from "../map.js";
+import { getUnitById } from "../mechs.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG, projectScene } from "./projection.js";
+import {
+  getUnitFootprint,
+  getUnitFootprintBounds
+} from "../scale/scaleMath.js";
 
 const DETAIL_OVERLAY_LIFT = 0.02;
 const DETAIL_STROKE_WIDTH = 2;
@@ -77,6 +83,21 @@ export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFA
   if (item.x !== state.focus.x || item.y !== state.focus.y) return;
   if (!drawShapes) return;
 
+  const activeUnit = getActiveUnit(state);
+
+  if (state.ui.mode === "move" && activeUnit) {
+    const previewUnit = { ...activeUnit, x: state.focus.x, y: state.focus.y };
+    drawOverlayForUnitFootprint(
+      state,
+      previewUnit,
+      "focus-tile",
+      "rgba(240, 176, 0, 0.16)",
+      "rgba(240, 176, 0, 1)",
+      parent
+    );
+    return;
+  }
+
   if (state.ui.viewMode === "top") {
     drawTopOverlayBox(
       item.screenX,
@@ -106,38 +127,18 @@ export function drawScenePathOverlayForTile(state, item, parent, options = DEFAU
   const path = state.ui.previewPath || [];
   if (!path.length) return;
 
-  const step = path.find((p) => p.x === item.x && p.y === item.y);
-  if (!step) return;
+  const stepIndex = path.findIndex((p) => p.x === item.x && p.y === item.y);
+  if (stepIndex === -1) return;
 
-  if (state.ui.viewMode === "top") {
-    if (drawShapes) {
-      drawTopOverlayBox(
-        item.screenX,
-        item.screenY,
-        "rgba(240, 176, 0, 0.24)",
-        "rgba(240, 176, 0, 1)",
-        parent
-      );
-    }
+  const activeUnit = getActiveUnit(state);
+  if (!activeUnit) return;
 
-    if (drawLabels && step.cost !== undefined && step.cost !== null) {
-      const label = makeText(
-        item.screenX + (TOPDOWN_CONFIG.cellSize / 2),
-        item.screenY + (TOPDOWN_CONFIG.cellSize / 2),
-        String(step.cost),
-        "move-cost-label"
-      );
-      styleMoveCostLabel(label);
-      parent.appendChild(label);
-    }
-
-    return;
-  }
+  const previewUnit = { ...activeUnit, x: item.x, y: item.y };
 
   if (drawShapes) {
-    drawOverlayForTile(
+    drawOverlayForUnitFootprint(
       state,
-      item,
+      previewUnit,
       "move-path-tile",
       "rgba(240, 176, 0, 0.24)",
       "rgba(240, 176, 0, 1)",
@@ -145,11 +146,12 @@ export function drawScenePathOverlayForTile(state, item, parent, options = DEFAU
     );
   }
 
-  if (drawLabels && step.cost !== undefined && step.cost !== null) {
+  if (drawLabels) {
+    const labelPoint = getUnitLabelPoint(state, previewUnit);
     const label = makeText(
-      item.screenX,
-      item.screenY + (RENDER_CONFIG.isoTileHeight * 0.62),
-      String(step.cost),
+      labelPoint.x,
+      labelPoint.y,
+      String(stepIndex),
       "move-cost-label"
     );
     styleMoveCostLabel(label);
@@ -159,36 +161,17 @@ export function drawScenePathOverlayForTile(state, item, parent, options = DEFAU
 
 export function drawSceneMoveOverlay(state, item, parent, text, options = DEFAULT_DRAW_OPTIONS) {
   const { drawShapes, drawLabels } = normalizeOptions(options);
+  const activeUnit = getActiveUnit(state);
 
-  if (state.ui.viewMode === "top") {
-    if (drawShapes) {
-      drawTopOverlayBox(
-        item.screenX,
-        item.screenY,
-        "rgba(80, 180, 255, 0.24)",
-        "rgba(80, 180, 255, 0.92)",
-        parent
-      );
-    }
+  if (!activeUnit) return;
+  if (!item.reachableData) return;
 
-    if (drawLabels) {
-      const label = makeText(
-        item.screenX + (TOPDOWN_CONFIG.cellSize / 2),
-        item.screenY + (TOPDOWN_CONFIG.cellSize / 2),
-        text,
-        "move-cost-label"
-      );
-      styleMoveCostLabel(label);
-      parent.appendChild(label);
-    }
-
-    return;
-  }
+  const previewUnit = { ...activeUnit, x: item.reachableData.x, y: item.reachableData.y };
 
   if (drawShapes) {
-    drawOverlayForTile(
+    drawOverlayForUnitFootprint(
       state,
-      item,
+      previewUnit,
       "move-range-tile",
       "rgba(80, 180, 255, 0.24)",
       "rgba(80, 180, 255, 0.92)",
@@ -197,15 +180,50 @@ export function drawSceneMoveOverlay(state, item, parent, text, options = DEFAUL
   }
 
   if (drawLabels) {
+    const labelPoint = getUnitLabelPoint(state, previewUnit);
     const label = makeText(
-      item.screenX,
-      item.screenY + (RENDER_CONFIG.isoTileHeight * 0.62),
+      labelPoint.x,
+      labelPoint.y,
       text,
       "move-cost-label"
     );
     styleMoveCostLabel(label);
     parent.appendChild(label);
   }
+}
+
+function drawOverlayForUnitFootprint(state, unit, className, fill, stroke, parent) {
+  const bounds = getUnitFootprintBounds(unit);
+
+  if (state.ui.viewMode === "top") {
+    drawTopOverlayBounds(bounds, fill, stroke, parent);
+    return;
+  }
+
+  const supportElevation = getBoundsSupportElevation(state, bounds);
+  if (supportElevation === null) return;
+
+  const centerX = bounds.minX + (bounds.width / 2);
+  const centerY = bounds.minY + (bounds.height / 2);
+
+  const center = projectScene(state, centerX, centerY, supportElevation + DETAIL_OVERLAY_LIFT, 1);
+
+  const halfW = bounds.width * (RENDER_CONFIG.isoTileWidth / 2);
+  const halfH = bounds.height * (RENDER_CONFIG.isoTileHeight / 2);
+
+  const points = [
+    { x: center.x,         y: center.y - halfH },
+    { x: center.x + halfW, y: center.y },
+    { x: center.x,         y: center.y + halfH },
+    { x: center.x - halfW, y: center.y }
+  ];
+
+  const poly = makePolygon(points, className, fill);
+  poly.setAttribute("stroke", stroke);
+  poly.setAttribute("stroke-width", String(DIAMOND_STROKE_WIDTH));
+  poly.setAttribute("paint-order", "stroke fill");
+  poly.setAttribute("stroke-linejoin", "round");
+  parent.appendChild(poly);
 }
 
 function drawOverlayForTile(state, item, className, fill, stroke, parent) {
@@ -300,6 +318,68 @@ export function drawTopOverlayBox(screenX, screenY, fill, stroke, parent) {
   rect.setAttribute("stroke-width", "2.5");
   rect.setAttribute("paint-order", "stroke fill");
   parent.appendChild(rect);
+}
+
+function drawTopOverlayBounds(bounds, fill, stroke, parent) {
+  const rect = svgEl("rect");
+  rect.setAttribute("x", 140 + (bounds.minX * TOPDOWN_CONFIG.cellSize) + 3);
+  rect.setAttribute("y", 120 + (bounds.minY * TOPDOWN_CONFIG.cellSize) + 3);
+  rect.setAttribute("width", (bounds.width * TOPDOWN_CONFIG.cellSize) - 6);
+  rect.setAttribute("height", (bounds.height * TOPDOWN_CONFIG.cellSize) - 6);
+  rect.setAttribute("rx", "8");
+  rect.setAttribute("fill", fill);
+  rect.setAttribute("stroke", stroke);
+  rect.setAttribute("stroke-width", "2.5");
+  rect.setAttribute("paint-order", "stroke fill");
+  parent.appendChild(rect);
+}
+
+function getBoundsSupportElevation(state, bounds) {
+  let maxElevation = null;
+
+  for (let y = bounds.minY; y <= bounds.maxY; y += 1) {
+    for (let x = bounds.minX; x <= bounds.maxX; x += 1) {
+      const tile = getTile(state.map, x, y);
+      if (!tile) return null;
+
+      const elevation = getTileFootElevation(tile);
+      if (maxElevation === null || elevation > maxElevation) {
+        maxElevation = elevation;
+      }
+    }
+  }
+
+  return maxElevation;
+}
+
+function getActiveUnit(state) {
+  const activeUnitId = state.turn?.activeUnitId ?? state.turn?.activeMechId ?? null;
+  return getUnitById(state.units ?? state.mechs ?? [], activeUnitId);
+}
+
+function getUnitLabelPoint(state, unit) {
+  if (state.ui.viewMode === "top") {
+    const bounds = getUnitFootprintBounds(unit);
+    return {
+      x: 140 + ((bounds.minX + (bounds.width / 2)) * TOPDOWN_CONFIG.cellSize),
+      y: 120 + ((bounds.minY + (bounds.height / 2)) * TOPDOWN_CONFIG.cellSize)
+    };
+  }
+
+  const bounds = getUnitFootprintBounds(unit);
+  const supportElevation = getBoundsSupportElevation(state, bounds);
+  const center = projectScene(
+    state,
+    bounds.minX + (bounds.width / 2),
+    bounds.minY + (bounds.height / 2),
+    supportElevation ?? 0,
+    1
+  );
+
+  return {
+    x: center.x,
+    y: center.y + 6
+  };
 }
 
 export function styleMoveCostLabel(label) {
