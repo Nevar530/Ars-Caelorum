@@ -170,8 +170,8 @@ export function renderIso(state, refs) {
       state.ui?.viewMode === "top"
         ? {
             top: {
-              topLeftX: TOPDOWN_CONFIG.cellSize * bounds.minX + 140 + (state.camera?.offsetX ?? 0),
-              topLeftY: TOPDOWN_CONFIG.cellSize * bounds.minY + 120 + (state.camera?.offsetY ?? 0),
+              topLeftX: projectScene(state, bounds.minX, bounds.minY, 0, 1).x,
+              topLeftY: projectScene(state, bounds.minX, bounds.minY, 0, 1).y,
               widthPx: footprint.width * TOPDOWN_CONFIG.cellSize,
               heightPx: footprint.height * TOPDOWN_CONFIG.cellSize
             }
