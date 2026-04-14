@@ -5,11 +5,29 @@ import { getUnitById } from "./mechs.js";
 import { clampFocusToBoard, getPathToTile } from "./movement.js";
 import { moveAttackSelection, updateActionTargetPreview } from "./action.js";
 import { projectScene } from "./render/projection.js";
+import { getUnitFootprint } from "./scale/scaleMath.js";
 
 function getActiveUnit(state) {
   const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
   const units = state.units ?? state.mechs ?? [];
   return getUnitById(units, activeId);
+}
+
+function getFocusStep(state) {
+  const activeUnit = getActiveUnit(state);
+
+  if (state.ui.mode === "move" && activeUnit) {
+    const footprint = getUnitFootprint(activeUnit);
+
+    if ((activeUnit.unitType ?? "mech") === "mech") {
+      return {
+        dx: Math.max(1, footprint.width),
+        dy: Math.max(1, footprint.height)
+      };
+    }
+  }
+
+  return { dx: 1, dy: 1 };
 }
 
 export function bindInput(state, refs, actions) {
@@ -18,7 +36,6 @@ export function bindInput(state, refs, actions) {
 }
 
 export function snapFocusToActiveMech(state) {
-  // bridge wrapper name kept so current controllers do not break
   snapFocusToActiveUnit(state);
 }
 
@@ -28,8 +45,8 @@ export function snapFocusToActiveUnit(state) {
 
   state.focus.x = activeUnit.x;
   state.focus.y = activeUnit.y;
-  state.focus.scale = activeUnit.scale ?? "mech";
-  state.camera.zoomScale = activeUnit.scale ?? "mech";
+  state.focus.scale = activeUnit.scale ?? activeUnit.unitType ?? "mech";
+  state.camera.zoomScale = activeUnit.scale ?? activeUnit.unitType ?? "mech";
 }
 
 function bindEditorInput(state, refs, actions) {
@@ -232,7 +249,7 @@ function handleFacingKeys(key, state, actions) {
   else if (key === "arrowright" || key === "d") direction = "right";
   else return false;
 
-  const delta = getScreenRelativeBoardDelta(state, direction);
+  const delta = getScreenRelativeBoardDelta(state, direction, { dx: 1, dy: 1 });
   const facing = facingFromDelta(delta.dx, delta.dy);
 
   if (facing === null) return true;
@@ -254,11 +271,15 @@ function handleFocusKeys(key, state, actions) {
   else if (key === "arrowright" || key === "d") direction = "right";
   else return false;
 
-  const delta = getScreenRelativeBoardDelta(state, direction);
+  const step = getFocusStep(state);
+  const delta = getScreenRelativeBoardDelta(state, direction, step);
+  const activeUnit = state.ui.mode === "move" ? getActiveUnit(state) : null;
+
   const next = clampFocusToBoard(
     state.focus.x + delta.dx,
     state.focus.y + delta.dy,
-    state.focus.scale ?? "mech"
+    state.focus.scale ?? activeUnit?.scale ?? "mech",
+    activeUnit
   );
 
   state.focus.x = next.x;
@@ -306,14 +327,14 @@ function handleConfirmCancelKeys(key, state, actions) {
   return false;
 }
 
-function getScreenRelativeBoardDelta(state, direction) {
+function getScreenRelativeBoardDelta(state, direction, step = { dx: 1, dy: 1 }) {
   const origin = projectScene(state, state.focus.x, state.focus.y, 0);
 
   const candidates = [
-    { dx: 0, dy: -1 },
-    { dx: 1, dy: 0 },
-    { dx: 0, dy: 1 },
-    { dx: -1, dy: 0 }
+    { dx: 0, dy: -step.dy },
+    { dx: step.dx, dy: 0 },
+    { dx: 0, dy: step.dy },
+    { dx: -step.dx, dy: 0 }
   ];
 
   const targetVector = screenVectorForDirection(direction);
@@ -357,9 +378,9 @@ function screenVectorForDirection(direction) {
 }
 
 function facingFromDelta(dx, dy) {
-  if (dx === 0 && dy === -1) return 0;
-  if (dx === 1 && dy === 0) return 1;
-  if (dx === 0 && dy === 1) return 2;
-  if (dx === -1 && dy === 0) return 3;
+  if (dx === 0 && dy < 0) return 0;
+  if (dx > 0 && dy === 0) return 1;
+  if (dx === 0 && dy > 0) return 2;
+  if (dx < 0 && dy === 0) return 3;
   return null;
 }
