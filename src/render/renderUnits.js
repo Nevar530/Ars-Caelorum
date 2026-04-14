@@ -6,17 +6,11 @@ import { RENDER_CONFIG } from "../config.js";
 import { getTopdownCellSize } from "./projection.js";
 
 export function drawMech(state, unit, renderModel, parent, isActive = false) {
-  const footprint = getUnitFootprint(unit);
-  const group = svgEl("g");
+  const items = getUnitRenderSceneItems(state, unit, renderModel, isActive);
 
-  if (state.ui.viewMode === "top") {
-    drawTopUnit(state, unit, renderModel, group, footprint, isActive);
-    parent.appendChild(group);
-    return;
+  for (const item of items) {
+    item.render(parent);
   }
-
-  drawIsoPrismUnit(state, unit, renderModel, group, footprint, isActive);
-  parent.appendChild(group);
 }
 
 export function getUnitVisualLevels(unit) {
@@ -31,7 +25,16 @@ export function getUnitCubeHeightPx(unit) {
   return getUnitVisualLevels(unit) * RENDER_CONFIG.isoTileHeight;
 }
 
-function drawTopUnit(state, unit, renderModel, group, footprint, isActive) {
+export function getUnitRenderSceneItems(state, unit, renderModel, isActive = false) {
+  if (state.ui.viewMode === "top") {
+    return buildTopUnitSceneItems(state, unit, renderModel, isActive);
+  }
+
+  return buildIsoUnitSceneItems(state, unit, renderModel, isActive);
+}
+
+function buildTopUnitSceneItems(state, unit, renderModel, isActive) {
+  const footprint = getUnitFootprint(unit);
   const cellSize = getTopdownCellSize(state);
   const halfW = footprint.width * (cellSize / 2);
   const halfH = footprint.height * (cellSize / 4);
@@ -39,42 +42,58 @@ function drawTopUnit(state, unit, renderModel, group, footprint, isActive) {
   const anchorX = renderModel.top.center.x;
   const anchorY = renderModel.top.center.y;
 
-  const topDiamond = {
-    top:    { x: anchorX,         y: anchorY - halfH },
-    right:  { x: anchorX + halfW, y: anchorY },
-    bottom: { x: anchorX,         y: anchorY + halfH },
-    left:   { x: anchorX - halfW, y: anchorY },
-    center: { x: anchorX,         y: anchorY }
+  const diamond = {
+    top: { x: anchorX, y: anchorY - halfH },
+    right: { x: anchorX + halfW, y: anchorY },
+    bottom: { x: anchorX, y: anchorY + halfH },
+    left: { x: anchorX - halfW, y: anchorY },
+    center: { x: anchorX, y: anchorY }
   };
 
-  const body = makePolygon(
-    [topDiamond.top, topDiamond.right, topDiamond.bottom, topDiamond.left],
-    getTopBodyClass(isActive),
-    "currentColor"
-  );
-  body.removeAttribute("fill");
+  const topPoints = [diamond.top, diamond.right, diamond.bottom, diamond.left];
 
-  const facingLine = svgEl("line");
-  const linePoints = getDiamondFacingLinePoints(state, unit, topDiamond);
-  facingLine.setAttribute("x1", linePoints.x1);
-  facingLine.setAttribute("y1", linePoints.y1);
-  facingLine.setAttribute("x2", linePoints.x2);
-  facingLine.setAttribute("y2", linePoints.y2);
-  facingLine.setAttribute("class", getFacingLineClass(state, unit));
-
-  const label = makeText(
-    topDiamond.center.x,
-    topDiamond.center.y + 4,
-    unit.name,
-    "mech-label"
-  );
-
-  group.appendChild(body);
-  group.appendChild(facingLine);
-  group.appendChild(label);
+  return [
+    {
+      sortDepth: diamond.bottom.y,
+      sortKey: diamond.center.x,
+      render(parent) {
+        const poly = makePolygon(topPoints, getTopBodyClass(isActive), "currentColor");
+        poly.removeAttribute("fill");
+        parent.appendChild(poly);
+      }
+    },
+    {
+      sortDepth: diamond.bottom.y + 0.01,
+      sortKey: diamond.center.x,
+      render(parent) {
+        const line = svgEl("line");
+        const facing = getDiamondFacingLinePoints(state, unit, diamond);
+        line.setAttribute("x1", facing.x1);
+        line.setAttribute("y1", facing.y1);
+        line.setAttribute("x2", facing.x2);
+        line.setAttribute("y2", facing.y2);
+        line.setAttribute("class", getFacingLineClass(state, unit));
+        parent.appendChild(line);
+      }
+    },
+    {
+      sortDepth: diamond.bottom.y + 0.02,
+      sortKey: diamond.center.x,
+      render(parent) {
+        const label = makeText(
+          diamond.center.x,
+          diamond.center.y + 4,
+          unit.name,
+          "mech-label"
+        );
+        parent.appendChild(label);
+      }
+    }
+  ];
 }
 
-function drawIsoPrismUnit(state, unit, renderModel, group, footprint, isActive) {
+function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
+  const footprint = getUnitFootprint(unit);
   const prismHeight = getUnitCubeHeightPx(unit);
 
   const halfW = footprint.width * (RENDER_CONFIG.isoTileWidth / 2);
@@ -83,69 +102,88 @@ function drawIsoPrismUnit(state, unit, renderModel, group, footprint, isActive) 
   const anchorX = renderModel.iso.center.x;
   const anchorY = renderModel.iso.center.y;
 
-  const baseDiamond = {
-    top:    { x: anchorX,         y: anchorY - halfH },
-    right:  { x: anchorX + halfW, y: anchorY },
-    bottom: { x: anchorX,         y: anchorY + halfH },
-    left:   { x: anchorX - halfW, y: anchorY },
-    center: { x: anchorX,         y: anchorY }
+  const base = {
+    top: { x: anchorX, y: anchorY - halfH },
+    right: { x: anchorX + halfW, y: anchorY },
+    bottom: { x: anchorX, y: anchorY + halfH },
+    left: { x: anchorX - halfW, y: anchorY },
+    center: { x: anchorX, y: anchorY }
   };
 
-  const topDiamond = {
-    top:    { x: baseDiamond.top.x,    y: baseDiamond.top.y - prismHeight },
-    right:  { x: baseDiamond.right.x,  y: baseDiamond.right.y - prismHeight },
-    bottom: { x: baseDiamond.bottom.x, y: baseDiamond.bottom.y - prismHeight },
-    left:   { x: baseDiamond.left.x,   y: baseDiamond.left.y - prismHeight },
-    center: { x: baseDiamond.center.x, y: baseDiamond.center.y - prismHeight }
+  const top = {
+    top: { x: base.top.x, y: base.top.y - prismHeight },
+    right: { x: base.right.x, y: base.right.y - prismHeight },
+    bottom: { x: base.bottom.x, y: base.bottom.y - prismHeight },
+    left: { x: base.left.x, y: base.left.y - prismHeight },
+    center: { x: base.center.x, y: base.center.y - prismHeight }
   };
 
-  const leftFace = [
-    topDiamond.left,
-    topDiamond.bottom,
-    baseDiamond.bottom,
-    baseDiamond.left
+  const leftFace = [top.left, top.bottom, base.bottom, base.left];
+  const rightFace = [top.right, top.bottom, base.bottom, base.right];
+  const topFace = [top.top, top.right, top.bottom, top.left];
+
+  const leftDepth = maxY(leftFace);
+  const rightDepth = maxY(rightFace);
+  const topDepth = maxY(topFace);
+
+  const items = [
+    {
+      sortDepth: leftDepth,
+      sortKey: avgX(leftFace),
+      render(parent) {
+        const poly = makePolygon(leftFace, "mech-cube-left", "currentColor");
+        poly.removeAttribute("fill");
+        parent.appendChild(poly);
+      }
+    },
+    {
+      sortDepth: rightDepth,
+      sortKey: avgX(rightFace),
+      render(parent) {
+        const poly = makePolygon(rightFace, "mech-cube-right", "currentColor");
+        poly.removeAttribute("fill");
+        parent.appendChild(poly);
+      }
+    },
+    {
+      sortDepth: topDepth,
+      sortKey: avgX(topFace),
+      render(parent) {
+        const poly = makePolygon(topFace, getIsoTopClass(state, unit, isActive), "currentColor");
+        poly.removeAttribute("fill");
+        parent.appendChild(poly);
+      }
+    },
+    {
+      sortDepth: topDepth + 0.01,
+      sortKey: top.center.x,
+      render(parent) {
+        const line = svgEl("line");
+        const facing = getDiamondFacingLinePoints(state, unit, top);
+        line.setAttribute("x1", facing.x1);
+        line.setAttribute("y1", facing.y1);
+        line.setAttribute("x2", facing.x2);
+        line.setAttribute("y2", facing.y2);
+        line.setAttribute("class", getFacingLineClass(state, unit));
+        parent.appendChild(line);
+      }
+    },
+    {
+      sortDepth: topDepth + 0.02,
+      sortKey: top.center.x,
+      render(parent) {
+        const label = makeText(
+          top.center.x,
+          top.center.y + 6,
+          unit.name,
+          "mech-label"
+        );
+        parent.appendChild(label);
+      }
+    }
   ];
 
-  const rightFace = [
-    topDiamond.right,
-    topDiamond.bottom,
-    baseDiamond.bottom,
-    baseDiamond.right
-  ];
-
-  const leftPoly = makePolygon(leftFace, "mech-cube-left", "currentColor");
-  leftPoly.removeAttribute("fill");
-
-  const rightPoly = makePolygon(rightFace, "mech-cube-right", "currentColor");
-  rightPoly.removeAttribute("fill");
-
-  const topPoly = makePolygon(
-    [topDiamond.top, topDiamond.right, topDiamond.bottom, topDiamond.left],
-    getIsoTopClass(state, unit, isActive),
-    "currentColor"
-  );
-  topPoly.removeAttribute("fill");
-
-  const facingLine = svgEl("line");
-  const facing = getDiamondFacingLinePoints(state, unit, topDiamond);
-  facingLine.setAttribute("x1", facing.x1);
-  facingLine.setAttribute("y1", facing.y1);
-  facingLine.setAttribute("x2", facing.x2);
-  facingLine.setAttribute("y2", facing.y2);
-  facingLine.setAttribute("class", getFacingLineClass(state, unit));
-
-  const label = makeText(
-    topDiamond.center.x,
-    topDiamond.center.y + 6,
-    unit.name,
-    "mech-label"
-  );
-
-  group.appendChild(leftPoly);
-  group.appendChild(rightPoly);
-  group.appendChild(topPoly);
-  group.appendChild(facingLine);
-  group.appendChild(label);
+  return items;
 }
 
 export function getWorldFacing(state, unit) {
@@ -240,4 +278,12 @@ function lerpPoint(a, b, t) {
 function normalizeFacing(value) {
   const n = Number.isFinite(value) ? value : 0;
   return ((n % 4) + 4) % 4;
+}
+
+function maxY(points) {
+  return Math.max(...points.map((p) => p.y));
+}
+
+function avgX(points) {
+  return points.reduce((sum, p) => sum + p.x, 0) / points.length;
 }
