@@ -1,10 +1,15 @@
 // src/movement.js
 
-import { getTile, getTileRenderElevation } from "./map.js";
-import { canUnitOccupyCells } from "./scale/occupancy.js";
-import { getUnitById } from "./mechs.js";
+import { MAP_CONFIG } from "./config.js";
 import {
-  getUnitFootprint,
+  getTile,
+  getTileFootElevation,
+  isTileMechEnterable
+} from "./map.js";
+import { getUnitById } from "./mechs.js";
+import { canUnitOccupyCells } from "./scale/occupancy.js";
+import {
+  getResolutionBoardSize,
   getUnitFootprintBounds,
   getUnitOccupiedCells,
   getUnitCenterPoint
@@ -12,161 +17,99 @@ import {
 
 const CARDINAL_STEPS = [
   { dx: 1, dy: 0 },
-  { dx: 0, dy: 1 },
   { dx: -1, dy: 0 },
+  { dx: 0, dy: 1 },
   { dx: 0, dy: -1 }
 ];
 
-export function getReachableTiles(state) {
-  const unit = getActiveUnit(state);
-  if (!unit) return [];
-
-  const maxMove = Math.max(0, Number(unit.move ?? 0));
-  const startKey = makeKey(unit.x, unit.y);
-
-  const queue = [{ x: unit.x, y: unit.y, cost: 0 }];
-  const visited = new Map();
-  const previous = new Map();
-
-  visited.set(startKey, 0);
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-
-    for (const step of CARDINAL_STEPS) {
-      const nx = current.x + step.dx;
-      const ny = current.y + step.dy;
-      const nextCost = current.cost + 1;
-      const nextKey = makeKey(nx, ny);
-
-      if (nextCost > maxMove) continue;
-      if (visited.has(nextKey) && visited.get(nextKey) <= nextCost) continue;
-      if (!canUnitAnchorOccupy(state, unit, nx, ny)) continue;
-      if (!canTraverseBetweenAnchors(state, unit, current.x, current.y, nx, ny)) continue;
-
-      visited.set(nextKey, nextCost);
-      previous.set(nextKey, makeKey(current.x, current.y));
-      queue.push({ x: nx, y: ny, cost: nextCost });
-    }
-  }
-
-  const results = [];
-
-  for (const [key, cost] of visited.entries()) {
-    const [x, y] = parseKey(key);
-    const previewUnit = { ...unit, x, y };
-
-    results.push({
-      x,
-      y,
-      cost,
-      unitId: unit.instanceId,
-      footprintWidth: previewUnit.footprintWidth,
-      footprintHeight: previewUnit.footprintHeight,
-      occupiedCells: getUnitOccupiedCells(previewUnit),
-      footprintBounds: getUnitFootprintBounds(previewUnit),
-      centerPoint: getUnitCenterPoint(previewUnit),
-      path: buildPathFromPrevious(previous, startKey, key)
-    });
-  }
-
-  return results;
+function getActiveUnit(state) {
+  const activeId = state.turn?.activeUnitId ?? state.turn?.activeMechId ?? null;
+  const units = state.units ?? state.mechs ?? [];
+  return getUnitById(units, activeId);
 }
 
-export function getReachableTileMap(state) {
-  const map = new Map();
-
-  for (const tile of getReachableTiles(state)) {
-    map.set(makeKey(tile.x, tile.y), tile);
-  }
-
-  return map;
-}
-
-export function isTileReachable(state, x, y) {
-  return getReachableTileMap(state).has(makeKey(x, y));
-}
-
-export function getPreviewPath(state, x, y) {
-  const reachable = getReachableTileMap(state).get(makeKey(x, y));
-  return reachable?.path ?? [];
-}
-
-export function canUnitAnchorOccupy(state, unit, x, y) {
-  const testUnit = {
+function makePreviewUnit(unit, x, y) {
+  return {
     ...unit,
     x,
     y
   };
-
-  return canUnitOccupyCells(state, testUnit, {
-    ignoreUnitId: unit.instanceId
-  });
 }
 
-export function canTraverseBetweenAnchors(state, unit, fromX, fromY, toX, toY) {
-  const fromTile = getTile(state.map, fromX, fromY);
-  const toTile = getTile(state.map, toX, toY);
-
-  if (!toTile) return false;
-  if (!fromTile) return true;
-
-  const fromElevation = getTileRenderElevation(fromTile);
-  const toElevation = getTileRenderElevation(toTile);
-
-  // Keep it simple for now:
-  // one anchor step can climb / descend 1 terrain level.
-  return Math.abs(toElevation - fromElevation) <= 1;
+function getUnitAnchorTile(unit) {
+  return getTile(unit._movementMapRef, unit.x, unit.y);
 }
 
-export function moveActiveUnitTo(state, x, y) {
-  const unit = getActiveUnit(state);
-  if (!unit) return false;
+function isFootprintInsideBoard(unit) {
+  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const bounds = getUnitFootprintBounds(unit);
 
-  if (!isTileReachable(state, x, y)) {
-    return false;
+  return (
+    bounds.minX >= 0 &&
+    bounds.minY >= 0 &&
+    bounds.maxX < board.width &&
+    bounds.maxY < board.height
+  );
+}
+
+function areOccupiedCellsStandable(state, unit) {
+  const occupiedCells = getUnitOccupiedCells(unit);
+
+  for (const cell of occupiedCells) {
+    const tile = getTile(state.map, cell.x, cell.y);
+    if (!tile) return false;
+    if (!isTileMechEnterable(tile)) return false;
   }
-
-  unit.x = x;
-  unit.y = y;
-  unit.hasMoved = true;
-
-  state.focus = {
-    x,
-    y,
-    scale: unit.scale ?? unit.unitType ?? "pilot"
-  };
 
   return true;
 }
 
-export function getUnitMovementFootprint(state, unit, x, y) {
-  const testUnit = {
-    ...unit,
-    x,
-    y
-  };
+function canUnitOccupyAnchor(state, unit, x, y) {
+  const previewUnit = makePreviewUnit(unit, x, y);
 
-  return {
-    occupiedCells: getUnitOccupiedCells(testUnit),
-    footprintBounds: getUnitFootprintBounds(testUnit),
-    centerPoint: getUnitCenterPoint(testUnit)
-  };
+  if (!isFootprintInsideBoard(previewUnit)) {
+    return false;
+  }
+
+  if (!areOccupiedCellsStandable(state, previewUnit)) {
+    return false;
+  }
+
+  return canUnitOccupyCells(state, previewUnit, {
+    ignoreUnitId: unit.instanceId
+  });
 }
 
-function getActiveUnit(state) {
-  const activeUnitId = state.turn?.activeUnitId ?? state.turn?.activeMechId ?? null;
-
-  return getUnitById(state.units ?? state.mechs ?? [], activeUnitId);
+function getAnchorElevation(state, x, y) {
+  const tile = getTile(state.map, x, y);
+  if (!tile) return null;
+  return getTileFootElevation(tile);
 }
 
-function buildPathFromPrevious(previous, startKey, endKey) {
+function canTraverseBetweenAnchors(state, unit, fromX, fromY, toX, toY) {
+  const fromElevation = getAnchorElevation(state, fromX, fromY);
+  const toElevation = getAnchorElevation(state, toX, toY);
+
+  if (fromElevation === null || toElevation === null) {
+    return false;
+  }
+
+  // Keep the climb rule simple and stable for now.
+  // Destination footprint validity is the important truth pass.
+  if (Math.abs(toElevation - fromElevation) > 1) {
+    return false;
+  }
+
+  return canUnitOccupyAnchor(state, unit, toX, toY);
+}
+
+function buildPath(previous, startKey, endKey) {
   const path = [];
   let current = endKey;
 
   while (current) {
-    const [x, y] = parseKey(current);
-    path.unshift({ x, y });
+    const pos = parseCoordKey(current);
+    path.unshift(pos);
 
     if (current === startKey) {
       break;
@@ -178,11 +121,173 @@ function buildPathFromPrevious(previous, startKey, endKey) {
   return path;
 }
 
-function makeKey(x, y) {
-  return `${x},${y}`;
+export function clampFocusToBoard(x, y, scale = "base") {
+  const board = getResolutionBoardSize(scale, MAP_CONFIG);
+
+  return {
+    x: Math.max(0, Math.min(board.width - 1, Number(x ?? 0))),
+    y: Math.max(0, Math.min(board.height - 1, Number(y ?? 0)))
+  };
 }
 
-function parseKey(key) {
-  const [x, y] = key.split(",").map(Number);
-  return [x, y];
+export function coordKey(x, y) {
+  return `${Number(x)},${Number(y)}`;
+}
+
+export function parseCoordKey(key) {
+  const [x, y] = String(key).split(",").map(Number);
+  return { x, y };
+}
+
+export function isWithinBoard(x, y, scale = "base") {
+  const board = getResolutionBoardSize(scale, MAP_CONFIG);
+
+  return (
+    x >= 0 &&
+    y >= 0 &&
+    x < board.width &&
+    y < board.height
+  );
+}
+
+export function getNeighbors(x, y, _scale = "base") {
+  return CARDINAL_STEPS
+    .map((step) => ({ x: x + step.dx, y: y + step.dy }))
+    .filter((pos) => isWithinBoard(pos.x, pos.y, "base"));
+}
+
+export function isTileBlocked(state, x, y, activeUnit = null, _resolution = "base") {
+  if (!activeUnit) {
+    const tile = getTile(state.map, x, y);
+    if (!tile) return true;
+    if (!isTileMechEnterable(tile)) return true;
+    return false;
+  }
+
+  return !canUnitOccupyAnchor(state, activeUnit, x, y);
+}
+
+export function canStepToTile(state, fromX, fromY, toX, toY, _resolution = "base") {
+  const activeUnit = getActiveUnit(state);
+  if (!activeUnit) return false;
+
+  return canTraverseBetweenAnchors(state, activeUnit, fromX, fromY, toX, toY);
+}
+
+export function getTileMoveCost(state, fromX, fromY, toX, toY, _resolution = "base") {
+  const fromElevation = getAnchorElevation(state, fromX, fromY);
+  const toElevation = getAnchorElevation(state, toX, toY);
+
+  if (fromElevation === null || toElevation === null) {
+    return Infinity;
+  }
+
+  if (Math.abs(toElevation - fromElevation) > 1) {
+    return Infinity;
+  }
+
+  return 1 + Math.abs(toElevation - fromElevation);
+}
+
+export function getReachableTileMap(state) {
+  const activeUnit = getActiveUnit(state);
+  if (!activeUnit) return new Map();
+
+  const startKey = coordKey(activeUnit.x, activeUnit.y);
+  const maxMove = Math.max(0, Number(activeUnit.move ?? 0));
+
+  const costs = new Map();
+  const previous = new Map();
+  const queue = [{ x: activeUnit.x, y: activeUnit.y }];
+
+  costs.set(startKey, 0);
+  previous.set(startKey, null);
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    const currentKey = coordKey(current.x, current.y);
+    const currentCost = costs.get(currentKey) ?? 0;
+
+    for (const next of getNeighbors(current.x, current.y, "base")) {
+      if (!canTraverseBetweenAnchors(state, activeUnit, current.x, current.y, next.x, next.y)) {
+        continue;
+      }
+
+      const stepCost = getTileMoveCost(state, current.x, current.y, next.x, next.y, "base");
+      if (!Number.isFinite(stepCost)) continue;
+
+      const nextCost = currentCost + stepCost;
+      if (nextCost > maxMove) continue;
+
+      const nextKey = coordKey(next.x, next.y);
+      const existing = costs.get(nextKey);
+
+      if (existing === undefined || nextCost < existing) {
+        costs.set(nextKey, nextCost);
+        previous.set(nextKey, currentKey);
+        queue.push(next);
+      }
+    }
+  }
+
+  // Attach path data directly to the reachable map entries for stability.
+  const result = new Map();
+
+  for (const [key, cost] of costs.entries()) {
+    const pos = parseCoordKey(key);
+    const previewUnit = makePreviewUnit(activeUnit, pos.x, pos.y);
+
+    result.set(key, {
+      x: pos.x,
+      y: pos.y,
+      cost,
+      path: buildPath(previous, startKey, key),
+      occupiedCells: getUnitOccupiedCells(previewUnit),
+      footprintBounds: getUnitFootprintBounds(previewUnit),
+      centerPoint: getUnitCenterPoint(previewUnit)
+    });
+  }
+
+  return result;
+}
+
+export function getReachableTiles(state) {
+  return Array.from(getReachableTileMap(state).values());
+}
+
+export function canMoveActiveMechTo(state, x, y) {
+  return getReachableTileMap(state).has(coordKey(x, y));
+}
+
+export function canMoveActiveUnitTo(state, x, y) {
+  return canMoveActiveMechTo(state, x, y);
+}
+
+export function getPathToTile(state, targetX, targetY) {
+  const reachable = getReachableTileMap(state).get(coordKey(targetX, targetY));
+  return reachable?.path ?? [];
+}
+
+export function moveActiveUnitTo(state, x, y) {
+  const activeUnit = getActiveUnit(state);
+  if (!activeUnit) return false;
+
+  const reachable = getReachableTileMap(state).get(coordKey(x, y));
+  if (!reachable) return false;
+
+  activeUnit.x = Number(x);
+  activeUnit.y = Number(y);
+  activeUnit.hasMoved = true;
+
+  state.focus = {
+    x: activeUnit.x,
+    y: activeUnit.y,
+    scale: activeUnit.scale ?? activeUnit.unitType ?? "base"
+  };
+
+  return true;
+}
+
+export function moveActiveMechTo(state, x, y) {
+  return moveActiveUnitTo(state, x, y);
 }
