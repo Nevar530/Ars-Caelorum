@@ -2,9 +2,11 @@
 
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG } from "./projection.js";
+import { getUnitFootprint } from "../scale/scaleMath.js";
 import { RENDER_CONFIG } from "../config.js";
 
 export function drawMech(state, unit, renderModel, parent, isActive = false) {
+  const footprint = getUnitFootprint(unit);
   const group = svgEl("g");
 
   if (state.ui.viewMode === "top") {
@@ -13,18 +15,20 @@ export function drawMech(state, unit, renderModel, parent, isActive = false) {
     return;
   }
 
-  drawIsoCubeUnit(state, unit, renderModel, group, isActive);
+  drawIsoStackedUnit(state, unit, renderModel, group, footprint, isActive);
   parent.appendChild(group);
 }
 
-export function getUnitCubeHeightPx(unit) {
-  const tileHeight = RENDER_CONFIG.isoTileHeight;
-
+export function getUnitVisualLevels(unit) {
   if (unit?.unitType === "pilot") {
-    return 2 * tileHeight;
+    return 4;
   }
 
-  return 8 * tileHeight;
+  return 8;
+}
+
+export function getUnitCubeHeightPx(unit) {
+  return getUnitVisualLevels(unit) * RENDER_CONFIG.isoTileHeight;
 }
 
 function drawTopUnit(state, unit, renderModel, group, isActive) {
@@ -58,71 +62,95 @@ function drawTopUnit(state, unit, renderModel, group, isActive) {
   group.appendChild(label);
 }
 
-function drawIsoCubeUnit(state, unit, renderModel, group, isActive) {
-  const cubeHeight = getUnitCubeHeightPx(unit);
-  const base = renderModel.iso.base;
+function drawIsoStackedUnit(state, unit, renderModel, group, footprint, isActive) {
+  const levels = getUnitVisualLevels(unit);
+  const cubeHeight = RENDER_CONFIG.isoTileHeight;
 
-  const top = {
-    top: shiftPointY(base.top, -cubeHeight),
-    right: shiftPointY(base.right, -cubeHeight),
-    bottom: shiftPointY(base.bottom, -cubeHeight),
-    left: shiftPointY(base.left, -cubeHeight),
-    center: shiftPointY(base.center, -cubeHeight),
-    points: [
-      shiftPointY(base.top, -cubeHeight),
-      shiftPointY(base.right, -cubeHeight),
-      shiftPointY(base.bottom, -cubeHeight),
-      shiftPointY(base.left, -cubeHeight)
-    ]
-  };
+  // Stable old-school cube recipe, scaled by footprint.
+  const halfW = footprint.width * (RENDER_CONFIG.isoTileWidth / 2);
+  const halfH = footprint.height * (RENDER_CONFIG.isoTileHeight / 2);
 
-  const leftFace = [
-    top.left,
-    top.bottom,
-    base.bottom,
-    base.left
-  ];
+  // This is the screen-space center of the footprint on the ground.
+  const anchorX = renderModel.iso.center.x;
+  const anchorY = renderModel.iso.center.y;
 
-  const rightFace = [
-    top.right,
-    top.bottom,
-    base.bottom,
-    base.right
-  ];
+  let topMostDiamond = null;
 
-  const leftPoly = makePolygon(leftFace, "mech-cube-left", "currentColor");
-  leftPoly.removeAttribute("fill");
+  for (let level = 0; level < levels; level += 1) {
+    const levelOffset = level * cubeHeight;
 
-  const rightPoly = makePolygon(rightFace, "mech-cube-right", "currentColor");
-  rightPoly.removeAttribute("fill");
+    const diamond = {
+      top:    { x: anchorX,         y: anchorY - cubeHeight - halfH - levelOffset },
+      right:  { x: anchorX + halfW, y: anchorY - cubeHeight - levelOffset },
+      bottom: { x: anchorX,         y: anchorY - cubeHeight + halfH - levelOffset },
+      left:   { x: anchorX - halfW, y: anchorY - cubeHeight - levelOffset }
+    };
 
-  const topPoly = makePolygon(
-    top.points,
-    getIsoTopClass(state, unit, isActive),
-    "currentColor"
-  );
-  topPoly.removeAttribute("fill");
+    diamond.center = {
+      x: anchorX,
+      y: anchorY - cubeHeight - levelOffset
+    };
 
-  const facingLine = svgEl("line");
-  const facing = getIsoFacingLinePoints(state, unit, top);
-  facingLine.setAttribute("x1", facing.x1);
-  facingLine.setAttribute("y1", facing.y1);
-  facingLine.setAttribute("x2", facing.x2);
-  facingLine.setAttribute("y2", facing.y2);
-  facingLine.setAttribute("class", getFacingLineClass(state, unit));
+    diamond.points = [
+      diamond.top,
+      diamond.right,
+      diamond.bottom,
+      diamond.left
+    ];
 
-  const label = makeText(
-    top.center.x,
-    top.center.y - 10,
-    unit.name,
-    "mech-label"
-  );
+    const leftFace = [
+      diamond.left,
+      diamond.bottom,
+      { x: diamond.bottom.x, y: diamond.bottom.y + cubeHeight },
+      { x: diamond.left.x, y: diamond.left.y + cubeHeight }
+    ];
 
-  group.appendChild(leftPoly);
-  group.appendChild(rightPoly);
-  group.appendChild(topPoly);
-  group.appendChild(facingLine);
-  group.appendChild(label);
+    const rightFace = [
+      diamond.right,
+      diamond.bottom,
+      { x: diamond.bottom.x, y: diamond.bottom.y + cubeHeight },
+      { x: diamond.right.x, y: diamond.right.y + cubeHeight }
+    ];
+
+    const leftPoly = makePolygon(leftFace, "mech-cube-left", "currentColor");
+    leftPoly.removeAttribute("fill");
+
+    const rightPoly = makePolygon(rightFace, "mech-cube-right", "currentColor");
+    rightPoly.removeAttribute("fill");
+
+    const topPoly = makePolygon(
+      diamond.points,
+      getIsoTopClass(state, unit, isActive),
+      "currentColor"
+    );
+    topPoly.removeAttribute("fill");
+
+    group.appendChild(leftPoly);
+    group.appendChild(rightPoly);
+    group.appendChild(topPoly);
+
+    topMostDiamond = diamond;
+  }
+
+  if (topMostDiamond) {
+    const facingLine = svgEl("line");
+    const facing = getIsoFacingLinePoints(state, unit, topMostDiamond);
+    facingLine.setAttribute("x1", facing.x1);
+    facingLine.setAttribute("y1", facing.y1);
+    facingLine.setAttribute("x2", facing.x2);
+    facingLine.setAttribute("y2", facing.y2);
+    facingLine.setAttribute("class", getFacingLineClass(state, unit));
+
+    const label = makeText(
+      topMostDiamond.center.x,
+      topMostDiamond.center.y + 6,
+      unit.name,
+      "mech-label"
+    );
+
+    group.appendChild(facingLine);
+    group.appendChild(label);
+  }
 }
 
 export function getWorldFacing(state, unit) {
@@ -218,13 +246,6 @@ function getIsoFacingLinePoints(state, unit, topDiamond) {
       return { x1: center.x, y1: center.y, x2: end.x, y2: end.y };
     }
   }
-}
-
-function shiftPointY(point, dy) {
-  return {
-    x: point.x,
-    y: point.y + dy
-  };
 }
 
 function midpoint(a, b) {
