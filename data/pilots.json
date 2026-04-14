@@ -10,6 +10,7 @@
     "reaction": 2,
     "targeting": 2,
     "abilityPoints": 0,
+    "weapons": ["pilot_pistol_01"],
     "tabs": [],
     "image": null
   },
@@ -24,6 +25,7 @@
     "reaction": 2,
     "targeting": 3,
     "abilityPoints": 0,
+    "weapons": ["pilot_rifle_01"],
     "tabs": [],
     "image": null
   },
@@ -38,6 +40,7 @@
     "reaction": 3,
     "targeting": 1,
     "abilityPoints": 0,
+    "weapons": ["pilot_smg_01"],
     "tabs": [],
     "image": null
   },
@@ -52,6 +55,7 @@
     "reaction": 1,
     "targeting": 2,
     "abilityPoints": 0,
+    "weapons": ["pilot_pistol_01"],
     "tabs": [],
     "image": null
   }
