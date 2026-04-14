@@ -23,7 +23,8 @@ import {
   drawSceneMoveOverlay,
   drawScenePathOverlayForTile,
   drawSceneActionOverlayForTile,
-  drawSceneFocusOverlayForTile
+  drawSceneFocusOverlayForTile,
+  drawSceneActiveUnitOverlay
 } from "./renderOverlays.js";
 import {
   ensureCameraState,
@@ -237,6 +238,7 @@ export function renderIso(state, refs) {
     });
   }
 
+  drawSceneActiveUnitOverlay(state, worldUi);
   drawSceneLosPreview(state, worldUi);
 }
 
