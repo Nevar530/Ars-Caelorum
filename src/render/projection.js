@@ -4,7 +4,9 @@ import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
 import { normalizeScale, getResolutionBoardSize } from "../scale/scaleMath.js";
 
 export const TOPDOWN_CONFIG = {
-  cellSize: 14
+  minCellSize: 10,
+  maxCellSize: 26,
+  padding: 36
 };
 
 export const SCALE_ZOOM = {
@@ -14,9 +16,7 @@ export const SCALE_ZOOM = {
 
 export const CAMERA_CENTER = {
   isoX: 700,
-  isoY: 320,
-  topX: 320,
-  topY: 70
+  isoY: 320
 };
 
 export const LOS_HEIGHT_PROFILES = {
@@ -48,19 +48,33 @@ export function ensureCameraState(state) {
   if (!state.camera.zoomScale) {
     state.camera.zoomScale = getCurrentInteractionScale(state);
   }
+
+  if (typeof state.camera.topdownCellSize !== "number") {
+    state.camera.topdownCellSize = 14;
+  }
+
+  if (typeof state.camera.topdownOriginX !== "number") {
+    state.camera.topdownOriginX = 0;
+  }
+
+  if (typeof state.camera.topdownOriginY !== "number") {
+    state.camera.topdownOriginY = 0;
+  }
 }
 
 export function updateCameraFraming(state, refs) {
   const currentScale = getCurrentInteractionScale(state);
   state.camera.zoomScale = currentScale;
 
+  const viewport = getSceneViewport(refs);
+
   if (state.ui?.viewMode === "top") {
+    updateTopdownFit(state, viewport);
     state.camera.offsetX = 0;
     state.camera.offsetY = 0;
     return;
   }
 
-  const viewport = getSceneViewport(refs);
   const rawBounds = getMapScreenBoundsRaw(state);
   const offsetLimits = getCameraOffsetLimits(rawBounds, viewport);
 
@@ -96,6 +110,32 @@ export function updateCameraFraming(state, refs) {
 
   state.camera.offsetX = clamp(state.camera.offsetX, offsetLimits.minX, offsetLimits.maxX);
   state.camera.offsetY = clamp(state.camera.offsetY, offsetLimits.minY, offsetLimits.maxY);
+}
+
+function updateTopdownFit(state, viewport) {
+  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const usableWidth = Math.max(200, viewport.width - (TOPDOWN_CONFIG.padding * 2));
+  const usableHeight = Math.max(200, viewport.height - (TOPDOWN_CONFIG.padding * 2));
+
+  // Diamond board bounds:
+  // width  = (board.width + board.height) * cellSize
+  // height = (board.width + board.height) * (cellSize / 2)
+  const cellSizeByWidth = usableWidth / (board.width + board.height);
+  const cellSizeByHeight = (usableHeight * 2) / (board.width + board.height);
+
+  const cellSize = clamp(
+    Math.floor(Math.min(cellSizeByWidth, cellSizeByHeight)),
+    TOPDOWN_CONFIG.minCellSize,
+    TOPDOWN_CONFIG.maxCellSize
+  );
+
+  state.camera.topdownCellSize = cellSize;
+
+  const mapPixelWidth = (board.width + board.height) * cellSize;
+  const mapPixelHeight = ((board.width + board.height) * cellSize) / 2;
+
+  state.camera.topdownOriginX = Math.floor((viewport.width - mapPixelWidth) / 2) + (board.height * cellSize / 2);
+  state.camera.topdownOriginY = Math.floor((viewport.height - mapPixelHeight) / 2);
 }
 
 export function getSceneViewport(refs) {
@@ -142,13 +182,22 @@ export function getMapScreenBoundsRaw(state) {
   const board = getResolutionBoardSize("base", MAP_CONFIG);
 
   if (state.ui?.viewMode === "top") {
-    const cellSize = getTopdownCellSize("base");
+    const cellSize = getTopdownCellSize(state);
+    const originX = state.camera?.topdownOriginX ?? 0;
+    const originY = state.camera?.topdownOriginY ?? 0;
+
+    const corners = [
+      projectTopDown(state, 0, 0),
+      projectTopDown(state, board.width, 0),
+      projectTopDown(state, board.width, board.height),
+      projectTopDown(state, 0, board.height)
+    ];
 
     return {
-      minX: CAMERA_CENTER.topX,
-      minY: CAMERA_CENTER.topY,
-      maxX: CAMERA_CENTER.topX + (board.width * cellSize),
-      maxY: CAMERA_CENTER.topY + (board.height * cellSize)
+      minX: Math.min(...corners.map((p) => p.x - cellSize)),
+      maxX: Math.max(...corners.map((p) => p.x + cellSize)),
+      minY: Math.min(...corners.map((p) => p.y)),
+      maxY: Math.max(...corners.map((p) => p.y + cellSize))
     };
   }
 
@@ -209,26 +258,29 @@ export function projectIsoRaw(x, y, elevation = 0, rotation = 0, _size = 1) {
   };
 }
 
+// Top-down is now a flat diamond projection with the SAME rotation language as iso.
+// No square flattening.
 export function projectTopDown(state, x, y) {
-  const cellSize = getTopdownCellSize("base");
   const board = getResolutionBoardSize("base", MAP_CONFIG);
   const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
+  const cellSize = getTopdownCellSize(state);
+  const originX = state.camera?.topdownOriginX ?? 0;
+  const originY = state.camera?.topdownOriginY ?? 0;
 
   return {
-    x: CAMERA_CENTER.topX + (rotated.x * cellSize),
-    y: CAMERA_CENTER.topY + (rotated.y * cellSize)
+    x: ((rotated.x - rotated.y) * (cellSize / 2)) + originX,
+    y: ((rotated.x + rotated.y) * (cellSize / 4)) + originY
   };
 }
 
 export function getSceneSortKey(state, x, y, elevation = 0) {
-  if (state.ui?.viewMode === "top") {
-    const board = getResolutionBoardSize("base", MAP_CONFIG);
-    const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
-    return (rotated.y * 1000) + rotated.x;
-  }
-
   const board = getResolutionBoardSize("base", MAP_CONFIG);
   const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
+
+  if (state.ui?.viewMode === "top") {
+    return (rotated.x + rotated.y) * 1000 + rotated.x;
+  }
+
   return ((rotated.x + rotated.y) * 1000) + (elevation * 10);
 }
 
@@ -244,13 +296,7 @@ export function getLosHeights(baseElevation, scale = "mech") {
 
 export function projectLosPoint(state, x, y, height, _scale = "mech") {
   if (state.ui?.viewMode === "top") {
-    const top = projectTopDown(state, x, y);
-    const cellSize = getTopdownCellSize("base");
-
-    return {
-      x: top.x + (cellSize / 2),
-      y: top.y + (cellSize / 2)
-    };
+    return projectTopDown(state, x + 0.5, y + 0.5);
   }
 
   const projected = projectIso(state, x, y, height, 1);
@@ -275,8 +321,8 @@ export function getLosRayEndPoint(state, rayTrace, fallbackX, fallbackY, fallbac
   return projectLosPoint(state, fallbackX, fallbackY, fallbackHeight, scale);
 }
 
-export function getTopdownCellSize(_scale = "base") {
-  return TOPDOWN_CONFIG.cellSize;
+export function getTopdownCellSize(state) {
+  return state?.camera?.topdownCellSize ?? 14;
 }
 
 export function getZoomFactor(scale = "mech") {
