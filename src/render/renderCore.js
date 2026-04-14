@@ -18,7 +18,7 @@ import {
   renderEditorMiniTile,
   renderEditorDetailCell
 } from "./renderTerrain.js";
-import { drawMech } from "./renderUnits.js";
+import { getUnitRenderSceneItems } from "./renderUnits.js";
 import {
   drawSceneMoveOverlay,
   drawScenePathOverlayForTile,
@@ -40,7 +40,6 @@ import {
   getUnitOccupiedCells
 } from "../scale/scaleMath.js";
 
-const OVERLAY_SORT_EPSILON = 0.35;
 const UNIT_SORT_EPSILON = 0.25;
 
 export function renderAll(state, refs) {
@@ -184,24 +183,28 @@ export function renderIso(state, refs) {
             }
           };
 
-    const footDepth = projectedCenter.y + (footprint.height * (state.ui?.viewMode === "top" ? 0.25 : RENDER_CONFIG.isoTileHeight / 2));
+    const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
+    const isActive = unit.instanceId === activeUnitId;
 
-    sceneItems.push({
-      kind: "unit",
-      sortDepth: footDepth + UNIT_SORT_EPSILON,
-      sortKey: getSceneSortKey(
-        state,
-        centerPoint.x,
-        centerPoint.y,
-        supportElevation,
-        1
-      ) + projectedCenter.x * 0.0001,
-      render(parent) {
-        const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
-        const isActive = unit.instanceId === activeUnitId;
-        drawMech(state, unit, renderModel, parent, isActive);
-      }
-    });
+    const unitItems = getUnitRenderSceneItems(state, unit, renderModel, isActive);
+
+    for (const part of unitItems) {
+      sceneItems.push({
+        kind: "unit_part",
+        sortDepth: part.sortDepth,
+        sortKey:
+          (getSceneSortKey(
+            state,
+            centerPoint.x,
+            centerPoint.y,
+            supportElevation,
+            1
+          ) * 1000) +
+          part.sortKey +
+          UNIT_SORT_EPSILON,
+        render: part.render
+      });
+    }
   }
 
   sceneItems.sort(compareSceneItems);
