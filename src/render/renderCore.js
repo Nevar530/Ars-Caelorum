@@ -28,7 +28,8 @@ import {
   ensureCameraState,
   updateCameraFraming,
   projectScene,
-  getSceneSortKey
+  getSceneSortKey,
+  TOPDOWN_CONFIG
 } from "./projection.js";
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
 import { makeText } from "../utils.js";
@@ -39,7 +40,7 @@ import {
 } from "../scale/scaleMath.js";
 
 const OVERLAY_SORT_EPSILON = 0.35;
-const UNIT_SORT_EPSILON = 0.92;
+const UNIT_SORT_EPSILON = 0.25;
 
 export function renderAll(state, refs) {
   ensureCameraState(state);
@@ -57,9 +58,8 @@ export function renderIso(state, refs) {
   worldScene.innerHTML = "";
   worldUi.innerHTML = "";
 
-  const terrainItems = [];
-  const overlayTileItems = [];
   const sceneItems = [];
+  const overlayTileItems = [];
   const reachableMap = new Map();
 
   if (state.ui.mode === "move") {
@@ -76,16 +76,16 @@ export function renderIso(state, refs) {
       const renderElevation = getTileRenderElevation(tile);
       const projected = projectScene(state, x, y, renderElevation, 1);
       const hasDetailGeometry = !isDetailTileUniform(tile);
-      const parentSort = getSceneSortKey(state, x, y, renderElevation, 1);
 
       const tileItem = {
-        kind: "tile",
+        kind: "terrain",
+        sourceKind: "tile",
         x,
         y,
         elevation: renderElevation,
         screenX: projected.x,
         screenY: projected.y,
-        sortKey: parentSort,
+        sortKey: getSceneSortKey(state, x, y, renderElevation, 1),
         reachableCost: reachableMap.get(`${x},${y}`) ?? null,
         skipTerrain: hasDetailGeometry,
         size: 1,
@@ -96,13 +96,15 @@ export function renderIso(state, refs) {
           screenY: projected.y,
           leftFaceHeight: renderElevation,
           rightFaceHeight: renderElevation
-        })
+        }),
+        render(parent) {
+          if (tileItem.skipTerrain) return;
+          renderTerrainTile(state, tileItem, parent);
+        }
       };
 
-      terrainItems.push(tileItem);
+      sceneItems.push(tileItem);
       overlayTileItems.push(tileItem);
-
-      let tileOverlayDepth = tileItem.sortDepth;
 
       if (hasDetailGeometry) {
         const detailCells = getDetailRenderCells(map, x, y);
@@ -115,16 +117,10 @@ export function renderIso(state, refs) {
             cell.elevation,
             cell.size
           );
-          const cellSort = getSceneSortKey(
-            state,
-            cell.x,
-            cell.y,
-            cell.elevation,
-            cell.size
-          );
 
-          const detailItem = {
-            kind: "detail",
+          sceneItems.push({
+            kind: "terrain",
+            sourceKind: "detail",
             x: cell.x,
             y: cell.y,
             elevation: cell.elevation,
@@ -134,90 +130,20 @@ export function renderIso(state, refs) {
             rightFaceHeight: cell.rightFaceHeight,
             screenX: cellProjected.x,
             screenY: cellProjected.y,
-            sortKey: cellSort,
+            sortKey: getSceneSortKey(state, cell.x, cell.y, cell.elevation, cell.size),
             sortDepth: getTerrainDepth({
               size: cell.size,
               screenY: cellProjected.y,
               leftFaceHeight: cell.leftFaceHeight,
               rightFaceHeight: cell.rightFaceHeight
-            })
-          };
-
-          terrainItems.push(detailItem);
-          tileOverlayDepth = Math.max(tileOverlayDepth, detailItem.sortDepth);
+            }),
+            render(parent) {
+              renderTerrainTile(state, this, parent);
+            }
+          });
         }
       }
-
-      tileItem.overlaySortDepth = tileOverlayDepth + OVERLAY_SORT_EPSILON;
     }
-  }
-
-  terrainItems.sort(compareTerrainItems);
-
-  for (const item of terrainItems) {
-    if (item.kind === "tile" && item.skipTerrain) continue;
-
-    sceneItems.push({
-      kind: "terrain",
-      sortDepth: item.sortDepth,
-      sortKey: item.sortKey,
-      render(parent) {
-        renderTerrainTile(state, item, parent);
-      }
-    });
-  }
-
-  for (const item of overlayTileItems) {
-    sceneItems.push({
-      kind: "overlay-action",
-      sortDepth: item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON),
-      sortKey: item.sortKey,
-      render(parent) {
-        drawSceneActionOverlayForTile(state, item, parent, {
-          drawShapes: true,
-          drawLabels: false
-        });
-      }
-    });
-
-    sceneItems.push({
-      kind: "overlay-move",
-      sortDepth:
-        (item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON)) + 0.001,
-      sortKey: item.sortKey,
-      render(parent) {
-        drawSceneMoveOverlay(state, item, parent, String(item.reachableCost ?? ""), {
-          drawShapes: item.reachableCost !== null,
-          drawLabels: false
-        });
-      }
-    });
-
-    sceneItems.push({
-      kind: "overlay-path",
-      sortDepth:
-        (item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON)) + 0.002,
-      sortKey: item.sortKey,
-      render(parent) {
-        drawScenePathOverlayForTile(state, item, parent, {
-          drawShapes: true,
-          drawLabels: false
-        });
-      }
-    });
-
-    sceneItems.push({
-      kind: "overlay-focus",
-      sortDepth:
-        (item.overlaySortDepth ?? (item.sortDepth + OVERLAY_SORT_EPSILON)) + 0.003,
-      sortKey: item.sortKey,
-      render(parent) {
-        drawSceneFocusOverlayForTile(state, item, parent, {
-          drawShapes: true,
-          drawLabels: false
-        });
-      }
-    });
   }
 
   for (const unit of units) {
@@ -240,10 +166,10 @@ export function renderIso(state, refs) {
       state.ui?.viewMode === "top"
         ? {
             top: {
-              topLeftX: 140 + (bounds.minX * 28) + (state.camera?.offsetX ?? 0),
-              topLeftY: 120 + (bounds.minY * 28) + (state.camera?.offsetY ?? 0),
-              widthPx: footprint.width * 28,
-              heightPx: footprint.height * 28
+              topLeftX: TOPDOWN_CONFIG.cellSize * bounds.minX + 140 + (state.camera?.offsetX ?? 0),
+              topLeftY: TOPDOWN_CONFIG.cellSize * bounds.minY + 120 + (state.camera?.offsetY ?? 0),
+              widthPx: footprint.width * TOPDOWN_CONFIG.cellSize,
+              heightPx: footprint.height * TOPDOWN_CONFIG.cellSize
             }
           }
         : {
@@ -255,18 +181,20 @@ export function renderIso(state, refs) {
             }
           };
 
-    const halfH = footprint.height * (RENDER_CONFIG.isoTileHeight / 2);
+    // Sort by foot contact / front edge, not by full body height.
+    // This lets front terrain draw over the unit correctly.
+    const footDepth = projectedCenter.y + (footprint.height * (RENDER_CONFIG.isoTileHeight / 2));
 
     sceneItems.push({
       kind: "unit",
-      sortDepth: projectedCenter.y + halfH + UNIT_SORT_EPSILON,
+      sortDepth: footDepth + UNIT_SORT_EPSILON,
       sortKey: getSceneSortKey(
         state,
         centerPoint.x,
         centerPoint.y,
         tileElevation,
         1
-      ),
+      ) + UNIT_SORT_EPSILON,
       render(parent) {
         const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
         const isActive = unit.instanceId === activeUnitId;
@@ -293,6 +221,16 @@ export function renderIso(state, refs) {
       drawShapes: false,
       drawLabels: true
     });
+
+    drawSceneActionOverlayForTile(state, item, worldUi, {
+      drawShapes: false,
+      drawLabels: true
+    });
+
+    drawSceneFocusOverlayForTile(state, item, worldUi, {
+      drawShapes: false,
+      drawLabels: true
+    });
   }
 
   drawSceneLosPreview(state, worldUi);
@@ -316,33 +254,6 @@ function compareSceneItems(a, b) {
 
   if (a.sortKey !== b.sortKey) {
     return a.sortKey - b.sortKey;
-  }
-
-  return 0;
-}
-
-function compareTerrainItems(a, b) {
-  if (a.sortDepth !== b.sortDepth) {
-    return a.sortDepth - b.sortDepth;
-  }
-
-  if (a.sortKey !== b.sortKey) {
-    return a.sortKey - b.sortKey;
-  }
-
-  const aSize = a.size ?? 1;
-  const bSize = b.size ?? 1;
-
-  if (aSize !== bSize) {
-    return bSize - aSize;
-  }
-
-  if (a.screenY !== b.screenY) {
-    return a.screenY - b.screenY;
-  }
-
-  if (a.screenX !== b.screenX) {
-    return a.screenX - b.screenX;
   }
 
   return 0;
