@@ -1,16 +1,16 @@
 // src/render/renderUnits.js
 
 import { svgEl, makePolygon, makeText } from "../utils.js";
-import { TOPDOWN_CONFIG } from "./projection.js";
 import { getUnitFootprint } from "../scale/scaleMath.js";
 import { RENDER_CONFIG } from "../config.js";
+import { getTopdownCellSize } from "./projection.js";
 
 export function drawMech(state, unit, renderModel, parent, isActive = false) {
   const footprint = getUnitFootprint(unit);
   const group = svgEl("g");
 
   if (state.ui.viewMode === "top") {
-    drawTopUnit(state, unit, renderModel, group, isActive);
+    drawTopUnit(state, unit, renderModel, group, footprint, isActive);
     parent.appendChild(group);
     return;
   }
@@ -31,19 +31,31 @@ export function getUnitCubeHeightPx(unit) {
   return getUnitVisualLevels(unit) * RENDER_CONFIG.isoTileHeight;
 }
 
-function drawTopUnit(state, unit, renderModel, group, isActive) {
-  const { topLeftX, topLeftY, widthPx, heightPx } = renderModel.top;
+function drawTopUnit(state, unit, renderModel, group, footprint, isActive) {
+  const cellSize = getTopdownCellSize(state);
+  const halfW = footprint.width * (cellSize / 2);
+  const halfH = footprint.height * (cellSize / 4);
 
-  const body = svgEl("rect");
-  body.setAttribute("x", topLeftX);
-  body.setAttribute("y", topLeftY);
-  body.setAttribute("width", widthPx);
-  body.setAttribute("height", heightPx);
-  body.setAttribute("rx", unit.unitType === "pilot" ? "6" : "10");
-  body.setAttribute("class", getTopBodyClass(isActive));
+  const anchorX = renderModel.top.center.x;
+  const anchorY = renderModel.top.center.y;
+
+  const topDiamond = {
+    top:    { x: anchorX,         y: anchorY - halfH },
+    right:  { x: anchorX + halfW, y: anchorY },
+    bottom: { x: anchorX,         y: anchorY + halfH },
+    left:   { x: anchorX - halfW, y: anchorY },
+    center: { x: anchorX,         y: anchorY }
+  };
+
+  const body = makePolygon(
+    [topDiamond.top, topDiamond.right, topDiamond.bottom, topDiamond.left],
+    getTopBodyClass(isActive),
+    "currentColor"
+  );
+  body.removeAttribute("fill");
 
   const facingLine = svgEl("line");
-  const linePoints = getTopFacingLinePoints(state, unit, topLeftX, topLeftY, widthPx, heightPx);
+  const linePoints = getDiamondFacingLinePoints(state, unit, topDiamond);
   facingLine.setAttribute("x1", linePoints.x1);
   facingLine.setAttribute("y1", linePoints.y1);
   facingLine.setAttribute("x2", linePoints.x2);
@@ -51,8 +63,8 @@ function drawTopUnit(state, unit, renderModel, group, isActive) {
   facingLine.setAttribute("class", getFacingLineClass(state, unit));
 
   const label = makeText(
-    topLeftX + (widthPx / 2),
-    topLeftY + heightPx + 16,
+    topDiamond.center.x,
+    topDiamond.center.y + 4,
     unit.name,
     "mech-label"
   );
@@ -71,7 +83,6 @@ function drawIsoPrismUnit(state, unit, renderModel, group, footprint, isActive) 
   const anchorX = renderModel.iso.center.x;
   const anchorY = renderModel.iso.center.y;
 
-  // Anchor is the center of the footprint on the ground.
   const baseDiamond = {
     top:    { x: anchorX,         y: anchorY - halfH },
     right:  { x: anchorX + halfW, y: anchorY },
@@ -80,13 +91,6 @@ function drawIsoPrismUnit(state, unit, renderModel, group, footprint, isActive) 
     center: { x: anchorX,         y: anchorY }
   };
 
-  baseDiamond.points = [
-    baseDiamond.top,
-    baseDiamond.right,
-    baseDiamond.bottom,
-    baseDiamond.left
-  ];
-
   const topDiamond = {
     top:    { x: baseDiamond.top.x,    y: baseDiamond.top.y - prismHeight },
     right:  { x: baseDiamond.right.x,  y: baseDiamond.right.y - prismHeight },
@@ -94,13 +98,6 @@ function drawIsoPrismUnit(state, unit, renderModel, group, footprint, isActive) 
     left:   { x: baseDiamond.left.x,   y: baseDiamond.left.y - prismHeight },
     center: { x: baseDiamond.center.x, y: baseDiamond.center.y - prismHeight }
   };
-
-  topDiamond.points = [
-    topDiamond.top,
-    topDiamond.right,
-    topDiamond.bottom,
-    topDiamond.left
-  ];
 
   const leftFace = [
     topDiamond.left,
@@ -123,14 +120,14 @@ function drawIsoPrismUnit(state, unit, renderModel, group, footprint, isActive) 
   rightPoly.removeAttribute("fill");
 
   const topPoly = makePolygon(
-    topDiamond.points,
+    [topDiamond.top, topDiamond.right, topDiamond.bottom, topDiamond.left],
     getIsoTopClass(state, unit, isActive),
     "currentColor"
   );
   topPoly.removeAttribute("fill");
 
   const facingLine = svgEl("line");
-  const facing = getIsoFacingLinePoints(state, unit, topDiamond);
+  const facing = getDiamondFacingLinePoints(state, unit, topDiamond);
   facingLine.setAttribute("x1", facing.x1);
   facingLine.setAttribute("y1", facing.y1);
   facingLine.setAttribute("x2", facing.x2);
@@ -194,34 +191,14 @@ function getFacingLineClass(state, unit) {
   return isPreviewing ? "mech-top-facing-preview" : "mech-top-facing";
 }
 
-function getTopFacingLinePoints(state, unit, x, y, width, height) {
+function getDiamondFacingLinePoints(state, unit, diamond) {
   const facing = normalizeFacing(getWorldFacing(state, unit));
-  const cx = x + (width / 2);
-  const cy = y + (height / 2);
-  const reachX = width * 0.24;
-  const reachY = height * 0.24;
+  const center = diamond.center;
 
-  switch (facing) {
-    case 0:
-      return { x1: cx, y1: cy, x2: cx + reachX, y2: cy - reachY };
-    case 1:
-      return { x1: cx, y1: cy, x2: cx + reachX, y2: cy + reachY };
-    case 2:
-      return { x1: cx, y1: cy, x2: cx - reachX, y2: cy + reachY };
-    case 3:
-    default:
-      return { x1: cx, y1: cy, x2: cx - reachX, y2: cy - reachY };
-  }
-}
-
-function getIsoFacingLinePoints(state, unit, topDiamond) {
-  const facing = normalizeFacing(getWorldFacing(state, unit));
-  const center = topDiamond.center;
-
-  const northEast = midpoint(topDiamond.top, topDiamond.right);
-  const southEast = midpoint(topDiamond.right, topDiamond.bottom);
-  const southWest = midpoint(topDiamond.bottom, topDiamond.left);
-  const northWest = midpoint(topDiamond.left, topDiamond.top);
+  const northEast = midpoint(diamond.top, diamond.right);
+  const southEast = midpoint(diamond.right, diamond.bottom);
+  const southWest = midpoint(diamond.bottom, diamond.left);
+  const northWest = midpoint(diamond.left, diamond.top);
 
   const t = 0.72;
 
