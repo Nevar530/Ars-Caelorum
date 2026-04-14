@@ -9,7 +9,8 @@ export const SCALE_CLASS = {
 };
 
 export const ANCHOR_TYPE = {
-  CENTER: "center"
+  CENTER: "center",
+  FOOTPRINT_ORIGIN: "footprint_origin"
 };
 
 export function normalizeScale(scale) {
@@ -19,7 +20,8 @@ export function normalizeScale(scale) {
 }
 
 export function normalizeAnchorType(anchorType) {
-  return anchorType === ANCHOR_TYPE.CENTER ? ANCHOR_TYPE.CENTER : ANCHOR_TYPE.CENTER;
+  if (anchorType === ANCHOR_TYPE.FOOTPRINT_ORIGIN) return ANCHOR_TYPE.FOOTPRINT_ORIGIN;
+  return ANCHOR_TYPE.CENTER;
 }
 
 export function makePositionKey(x, y) {
@@ -54,7 +56,7 @@ export function getUnitAnchor(unit) {
   return {
     x: Number(unit?.x ?? 0),
     y: Number(unit?.y ?? 0),
-    anchorType: normalizeAnchorType(unit?.anchorType ?? GAME_CONFIG.anchorType),
+    anchorType: normalizeAnchorType(unit?.anchorType ?? ANCHOR_TYPE.FOOTPRINT_ORIGIN),
     scale: getUnitScaleClass(unit)
   };
 }
@@ -68,15 +70,14 @@ export function getUnitFootprint(unit) {
   };
 }
 
-// Even footprints are centered around the anchor.
-// 2x2 at anchor (10,10) -> x 9..10 and y 9..10
-// 4x4 at anchor (10,10) -> x 8..11 and y 8..11
-export function getFootprintBoundsFromAnchor(anchorX, anchorY, footprintWidth, footprintHeight) {
+// We store runtime x/y as footprint origin (top-left occupied cell).
+// This avoids fake integer "centers" for even-sized footprints like 4x4.
+export function getFootprintBoundsFromOrigin(originX, originY, footprintWidth, footprintHeight) {
   const width = Math.max(1, Number(footprintWidth ?? 1));
   const height = Math.max(1, Number(footprintHeight ?? 1));
 
-  const minX = Number(anchorX) - Math.floor(width / 2);
-  const minY = Number(anchorY) - Math.floor(height / 2);
+  const minX = Number(originX);
+  const minY = Number(originY);
   const maxX = minX + width - 1;
   const maxY = minY + height - 1;
 
@@ -94,11 +95,11 @@ export function getUnitFootprintBounds(unit) {
   const anchor = getUnitAnchor(unit);
   const footprint = getUnitFootprint(unit);
 
-  return getFootprintBoundsFromAnchor(anchor.x, anchor.y, footprint.width, footprint.height);
+  return getFootprintBoundsFromOrigin(anchor.x, anchor.y, footprint.width, footprint.height);
 }
 
-export function getOccupiedCellsFromAnchor(anchorX, anchorY, footprintWidth, footprintHeight) {
-  const bounds = getFootprintBoundsFromAnchor(anchorX, anchorY, footprintWidth, footprintHeight);
+export function getOccupiedCellsFromOrigin(originX, originY, footprintWidth, footprintHeight) {
+  const bounds = getFootprintBoundsFromOrigin(originX, originY, footprintWidth, footprintHeight);
   const cells = [];
 
   for (let y = bounds.minY; y <= bounds.maxY; y += 1) {
@@ -114,7 +115,7 @@ export function getUnitOccupiedCells(unit) {
   const anchor = getUnitAnchor(unit);
   const footprint = getUnitFootprint(unit);
 
-  return getOccupiedCellsFromAnchor(anchor.x, anchor.y, footprint.width, footprint.height);
+  return getOccupiedCellsFromOrigin(anchor.x, anchor.y, footprint.width, footprint.height);
 }
 
 export function getUnitCenterPoint(unit) {
@@ -166,7 +167,6 @@ export function getParentMechTileForPosition(x, y, _scale = "base") {
 }
 
 // Legacy dead bridge wrappers.
-// Keep them so old imports do not crash while we rewrite outward.
 export function mechTileToPilotCells(x, y) {
   return [{ x: Number(x), y: Number(y) }];
 }
