@@ -3,6 +3,7 @@
 import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
 import {
   getTile,
+  getTileFootElevation,
   getDetailGrid,
   getDetailRenderCells,
   isDetailTileUniform,
@@ -36,7 +37,8 @@ import { makeText } from "../utils.js";
 import {
   getUnitFootprint,
   getUnitFootprintBounds,
-  getUnitCenterPoint
+  getUnitCenterPoint,
+  getUnitOccupiedCells
 } from "../scale/scaleMath.js";
 
 const OVERLAY_SORT_EPSILON = 0.35;
@@ -64,7 +66,7 @@ export function renderIso(state, refs) {
 
   if (state.ui.mode === "move") {
     for (const tile of getReachableTiles(state)) {
-      reachableMap.set(`${tile.x},${tile.y}`, tile.cost);
+      reachableMap.set(`${tile.x},${tile.y}`, tile);
     }
   }
 
@@ -76,6 +78,7 @@ export function renderIso(state, refs) {
       const renderElevation = getTileRenderElevation(tile);
       const projected = projectScene(state, x, y, renderElevation, 1);
       const hasDetailGeometry = !isDetailTileUniform(tile);
+      const reachableData = reachableMap.get(`${x},${y}`) ?? null;
 
       const tileItem = {
         kind: "terrain",
@@ -86,7 +89,8 @@ export function renderIso(state, refs) {
         screenX: projected.x,
         screenY: projected.y,
         sortKey: getSceneSortKey(state, x, y, renderElevation, 1),
-        reachableCost: reachableMap.get(`${x},${y}`) ?? null,
+        reachableCost: reachableData?.cost ?? null,
+        reachableData,
         skipTerrain: hasDetailGeometry,
         size: 1,
         leftFaceHeight: renderElevation,
@@ -150,15 +154,15 @@ export function renderIso(state, refs) {
     const footprint = getUnitFootprint(unit);
     const bounds = getUnitFootprintBounds(unit);
     const centerPoint = getUnitCenterPoint(unit);
-    const anchorTile = getTile(map, unit.x, unit.y);
-    if (!anchorTile) continue;
+    const supportElevation = getUnitSupportElevation(state, unit);
 
-    const tileElevation = getTileRenderElevation(anchorTile);
+    if (supportElevation === null) continue;
+
     const projectedCenter = projectScene(
       state,
       centerPoint.x,
       centerPoint.y,
-      tileElevation,
+      supportElevation,
       1
     );
 
@@ -181,8 +185,6 @@ export function renderIso(state, refs) {
             }
           };
 
-    // Sort by foot contact / front edge, not by full body height.
-    // This lets front terrain draw over the unit correctly.
     const footDepth = projectedCenter.y + (footprint.height * (RENDER_CONFIG.isoTileHeight / 2));
 
     sceneItems.push({
@@ -192,7 +194,7 @@ export function renderIso(state, refs) {
         state,
         centerPoint.x,
         centerPoint.y,
-        tileElevation,
+        supportElevation,
         1
       ) + UNIT_SORT_EPSILON,
       render(parent) {
@@ -212,28 +214,45 @@ export function renderIso(state, refs) {
   for (const item of overlayTileItems) {
     if (state.ui.mode === "move" && item.reachableCost !== null) {
       drawSceneMoveOverlay(state, item, worldUi, String(item.reachableCost), {
-        drawShapes: false,
+        drawShapes: true,
         drawLabels: true
       });
     }
 
     drawScenePathOverlayForTile(state, item, worldUi, {
-      drawShapes: false,
+      drawShapes: true,
       drawLabels: true
     });
 
     drawSceneActionOverlayForTile(state, item, worldUi, {
-      drawShapes: false,
-      drawLabels: true
+      drawShapes: true,
+      drawLabels: false
     });
 
     drawSceneFocusOverlayForTile(state, item, worldUi, {
-      drawShapes: false,
-      drawLabels: true
+      drawShapes: true,
+      drawLabels: false
     });
   }
 
   drawSceneLosPreview(state, worldUi);
+}
+
+function getUnitSupportElevation(state, unit) {
+  const occupiedCells = getUnitOccupiedCells(unit);
+  let maxElevation = null;
+
+  for (const cell of occupiedCells) {
+    const tile = getTile(state.map, cell.x, cell.y);
+    if (!tile) return null;
+
+    const elevation = getTileFootElevation(tile);
+    if (maxElevation === null || elevation > maxElevation) {
+      maxElevation = elevation;
+    }
+  }
+
+  return maxElevation;
 }
 
 function getTerrainDepth(item) {
