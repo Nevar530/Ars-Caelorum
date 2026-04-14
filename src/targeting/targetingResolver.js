@@ -193,7 +193,7 @@ export function evaluateLosForTargets(state, mech, profile, candidateTiles) {
       tile.y,
       {
         attackerScale: mech.scale ?? "mech",
-        targetScale: profile.scale ?? "mech"
+        targetScale: tile.targetScale ?? profile.scale ?? "mech"
       }
     );
 
