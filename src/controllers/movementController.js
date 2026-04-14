@@ -1,3 +1,5 @@
+// src/controllers/movementController.js
+
 import { canMoveActiveMechTo, getPathToTile } from "../movement.js";
 
 function facingToLabel(facing) {
@@ -13,6 +15,12 @@ function facingToLabel(facing) {
     default:
       return "?";
   }
+}
+
+function sign(value) {
+  if (value > 0) return 1;
+  if (value < 0) return -1;
+  return 0;
 }
 
 export function createMovementController({
@@ -32,8 +40,8 @@ export function createMovementController({
 
     const last = path[path.length - 1];
     const prev = path[path.length - 2];
-    const dx = last.x - prev.x;
-    const dy = last.y - prev.y;
+    const dx = sign(last.x - prev.x);
+    const dy = sign(last.y - prev.y);
 
     if (dx === 0 && dy === -1) return 0;
     if (dx === 1 && dy === 0) return 1;
