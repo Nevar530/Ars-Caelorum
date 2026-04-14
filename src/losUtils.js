@@ -4,14 +4,14 @@ import { getTileEffectiveElevation } from "./map.js";
 
 const HEIGHT_PROFILES = {
   mech: {
+    fire: 3,
+    chest: 3,
+    head: 6
+  },
+  pilot: {
     fire: 1,
     chest: 1,
     head: 2
-  },
-  pilot: {
-    fire: 0.25,
-    chest: 0.125,
-    head: 0.25
   }
 };
 
