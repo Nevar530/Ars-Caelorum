@@ -6,8 +6,8 @@ import { RENDER_CONFIG } from "../config.js";
 import { getTopdownCellSize } from "./projection.js";
 
 const SPRITE_RENDER_BOX = {
-  mech: { width: 256, height: 256 },
-  pilot: { width: 96, height: 96 }
+  mech: { width: 128, height: 128 },
+  pilot: { width: 64, height: 64 }
 };
 
 const DEBUG_HEIGHTS = {
