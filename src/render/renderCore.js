@@ -17,7 +17,7 @@ import {
   renderEditorMiniTile,
   renderEditorDetailCell
 } from "./renderTerrain.js";
-import { drawMech, getUnitCubeHeightPx } from "./renderUnits.js";
+import { drawMech } from "./renderUnits.js";
 import {
   drawSceneMoveOverlay,
   drawScenePathOverlayForTile,
@@ -32,7 +32,11 @@ import {
 } from "./projection.js";
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
 import { makeText } from "../utils.js";
-import { getUnitFootprint, getUnitFootprintBounds } from "../scale/scaleMath.js";
+import {
+  getUnitFootprint,
+  getUnitFootprintBounds,
+  getUnitCenterPoint
+} from "../scale/scaleMath.js";
 
 const OVERLAY_SORT_EPSILON = 0.35;
 const UNIT_SORT_EPSILON = 0.92;
@@ -64,8 +68,8 @@ export function renderIso(state, refs) {
     }
   }
 
-  for (let y = 0; y < MAP_CONFIG.height; y++) {
-    for (let x = 0; x < MAP_CONFIG.width; x++) {
+  for (let y = 0; y < MAP_CONFIG.height; y += 1) {
+    for (let x = 0; x < MAP_CONFIG.width; x += 1) {
       const tile = getTile(map, x, y);
       if (!tile) continue;
 
@@ -217,77 +221,59 @@ export function renderIso(state, refs) {
   }
 
   for (const unit of units) {
-  const footprint = getUnitFootprint(unit);
-  const bounds = getUnitFootprintBounds(unit);
-  const anchorTile = getTile(map, unit.x, unit.y);
-  if (!anchorTile) continue;
+    const footprint = getUnitFootprint(unit);
+    const bounds = getUnitFootprintBounds(unit);
+    const centerPoint = getUnitCenterPoint(unit);
+    const anchorTile = getTile(map, unit.x, unit.y);
+    if (!anchorTile) continue;
 
-  const tileElevation = getTileRenderElevation(anchorTile);
+    const tileElevation = getTileRenderElevation(anchorTile);
+    const projectedCenter = projectScene(
+      state,
+      centerPoint.x,
+      centerPoint.y,
+      tileElevation,
+      1
+    );
 
-  const isoBase = {
-    top: projectScene(state, bounds.minX, bounds.minY, tileElevation, 1),
-    right: projectScene(state, bounds.maxX + 1, bounds.minY, tileElevation, 1),
-    bottom: projectScene(state, bounds.maxX + 1, bounds.maxY + 1, tileElevation, 1),
-    left: projectScene(state, bounds.minX, bounds.maxY + 1, tileElevation, 1)
-  };
-
-  isoBase.center = {
-    x: (isoBase.left.x + isoBase.right.x) / 2,
-    y: (isoBase.top.y + isoBase.bottom.y) / 2
-  };
-
-  
-  const cellSize = state.ui?.viewMode === "top" ? 28 : 0;
-
-  const renderModel =
-    state.ui?.viewMode === "top"
-      ? {
-          top: {
-            topLeftX: 140 + (bounds.minX * cellSize) + (state.camera?.offsetX ?? 0),
-            topLeftY: 120 + (bounds.minY * cellSize) + (state.camera?.offsetY ?? 0),
-            widthPx: footprint.width * cellSize,
-            heightPx: footprint.height * cellSize
-          }
-        }
-      : {
-          iso: {
-            base: {
-              top: isoBase.top,
-              right: isoBase.right,
-              bottom: isoBase.bottom,
-              left: isoBase.left,
-              center: isoBase.center
+    const renderModel =
+      state.ui?.viewMode === "top"
+        ? {
+            top: {
+              topLeftX: 140 + (bounds.minX * 28) + (state.camera?.offsetX ?? 0),
+              topLeftY: 120 + (bounds.minY * 28) + (state.camera?.offsetY ?? 0),
+              widthPx: footprint.width * 28,
+              heightPx: footprint.height * 28
             }
           }
-        };
+        : {
+            iso: {
+              center: {
+                x: projectedCenter.x,
+                y: projectedCenter.y
+              }
+            }
+          };
 
-  const sortKey = getSceneSortKey(
-    state,
-    bounds.minX + (footprint.width / 2),
-    bounds.minY + (footprint.height / 2),
-    tileElevation,
-    1
-  );
+    const halfH = footprint.height * (RENDER_CONFIG.isoTileHeight / 2);
 
-  const cubeHeightPx = getUnitCubeHeightPx(unit);
-
-  sceneItems.push({
-    kind: "unit",
-    sortDepth:
-      getUnitDepth({
-        size: Math.max(footprint.width, footprint.height),
-        screenY: isoBase.bottom.y,
-        terrainElevation: tileElevation,
-        cubeHeightPx
-      }) + UNIT_SORT_EPSILON,
-    sortKey,
-    render(parent) {
-      const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
-      const isActive = unit.instanceId === activeUnitId;
-      drawMech(state, unit, renderModel, parent, isActive);
-    }
-  });
-}
+    sceneItems.push({
+      kind: "unit",
+      sortDepth: projectedCenter.y + halfH + UNIT_SORT_EPSILON,
+      sortKey: getSceneSortKey(
+        state,
+        centerPoint.x,
+        centerPoint.y,
+        tileElevation,
+        1
+      ),
+      render(parent) {
+        const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
+        const isActive = unit.instanceId === activeUnitId;
+        drawMech(state, unit, renderModel, parent, isActive);
+      }
+    });
+  }
 
   sceneItems.sort(compareSceneItems);
 
@@ -323,15 +309,6 @@ function getTerrainDepth(item) {
   );
 }
 
-function getUnitDepth({ size, screenY, terrainElevation, cubeHeightPx }) {
-  return (
-    screenY +
-    (RENDER_CONFIG.isoTileHeight * size) +
-    (terrainElevation * RENDER_CONFIG.elevationStepPx) +
-    cubeHeightPx
-  );
-}
-
 function compareSceneItems(a, b) {
   if (a.sortDepth !== b.sortDepth) {
     return a.sortDepth - b.sortDepth;
@@ -355,6 +332,7 @@ function compareTerrainItems(a, b) {
 
   const aSize = a.size ?? 1;
   const bSize = b.size ?? 1;
+
   if (aSize !== bSize) {
     return bSize - aSize;
   }
@@ -388,8 +366,8 @@ export function renderEditor(state, refs) {
   const cellWidth = inner / MAP_CONFIG.width;
   const cellHeight = inner / MAP_CONFIG.height;
 
-  for (let y = 0; y < MAP_CONFIG.height; y++) {
-    for (let x = 0; x < MAP_CONFIG.width; x++) {
+  for (let y = 0; y < MAP_CONFIG.height; y += 1) {
+    for (let x = 0; x < MAP_CONFIG.width; x += 1) {
       const tile = getTile(map, x, y);
       const isSelected =
         x === state.ui.editor.selectedTile.x &&
@@ -424,8 +402,8 @@ function renderDetailEditor(state, parent, map, pad, inner) {
   const miniX = pad;
   const miniY = pad;
 
-  for (let y = 0; y < MAP_CONFIG.height; y++) {
-    for (let x = 0; x < MAP_CONFIG.width; x++) {
+  for (let y = 0; y < MAP_CONFIG.height; y += 1) {
+    for (let x = 0; x < MAP_CONFIG.width; x += 1) {
       const tile = getTile(map, x, y);
       const isSelected = x === selectedX && y === selectedY;
 
@@ -482,8 +460,8 @@ function renderDetailEditor(state, parent, map, pad, inner) {
   const gridSize = Math.min(detailBoxSize, inner);
   const cellSize = gridSize / detail.subdivisions;
 
-  for (let sy = 0; sy < detail.subdivisions; sy++) {
-    for (let sx = 0; sx < detail.subdivisions; sx++) {
+  for (let sy = 0; sy < detail.subdivisions; sy += 1) {
+    for (let sx = 0; sx < detail.subdivisions; sx += 1) {
       const detailCell = detail.cells[sy][sx];
 
       renderEditorDetailCell(
