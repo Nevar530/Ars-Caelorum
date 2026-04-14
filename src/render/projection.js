@@ -4,8 +4,7 @@ import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
 import { normalizeScale, getResolutionBoardSize } from "../scale/scaleMath.js";
 
 export const TOPDOWN_CONFIG = {
-  mechCellSize: 28,
-  cellSize: 28
+  cellSize: 14
 };
 
 export const SCALE_ZOOM = {
@@ -16,8 +15,8 @@ export const SCALE_ZOOM = {
 export const CAMERA_CENTER = {
   isoX: 700,
   isoY: 320,
-  topX: 140,
-  topY: 120
+  topX: 320,
+  topY: 70
 };
 
 export const LOS_HEIGHT_PROFILES = {
@@ -55,6 +54,12 @@ export function updateCameraFraming(state, refs) {
   const currentScale = getCurrentInteractionScale(state);
   state.camera.zoomScale = currentScale;
 
+  if (state.ui?.viewMode === "top") {
+    state.camera.offsetX = 0;
+    state.camera.offsetY = 0;
+    return;
+  }
+
   const viewport = getSceneViewport(refs);
   const rawBounds = getMapScreenBoundsRaw(state);
   const offsetLimits = getCameraOffsetLimits(rawBounds, viewport);
@@ -62,10 +67,7 @@ export function updateCameraFraming(state, refs) {
   const focusX = Number(state.focus?.x ?? 0);
   const focusY = Number(state.focus?.y ?? 0);
 
-  const focusScreen =
-    state.ui?.viewMode === "top"
-      ? projectTopDown(state, focusX, focusY)
-      : projectIso(state, focusX, focusY, 0, 1);
+  const focusScreen = projectIso(state, focusX, focusY, 0, 1);
 
   const deadZone = {
     left: viewport.width * 0.28,
@@ -209,16 +211,20 @@ export function projectIsoRaw(x, y, elevation = 0, rotation = 0, _size = 1) {
 
 export function projectTopDown(state, x, y) {
   const cellSize = getTopdownCellSize("base");
+  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
 
   return {
-    x: CAMERA_CENTER.topX + (x * cellSize) + (state.camera?.offsetX ?? 0),
-    y: CAMERA_CENTER.topY + (y * cellSize) + (state.camera?.offsetY ?? 0)
+    x: CAMERA_CENTER.topX + (rotated.x * cellSize),
+    y: CAMERA_CENTER.topY + (rotated.y * cellSize)
   };
 }
 
 export function getSceneSortKey(state, x, y, elevation = 0) {
   if (state.ui?.viewMode === "top") {
-    return (y * 1000) + x;
+    const board = getResolutionBoardSize("base", MAP_CONFIG);
+    const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
+    return (rotated.y * 1000) + rotated.x;
   }
 
   const board = getResolutionBoardSize("base", MAP_CONFIG);
