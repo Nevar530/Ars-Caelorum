@@ -12,8 +12,8 @@ import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG, projectScene, projectTileCenter } from "./projection.js";
 import {
   getUnitFootprintBounds,
-  getUnitCenterPoint,
-  getUnitCenterTile
+  getUnitCenterTile,
+  getUnitOccupiedCells
 } from "../scale/scaleMath.js";
 import {
   getPrimaryOccupantAt
@@ -22,11 +22,129 @@ import {
 const DETAIL_OVERLAY_LIFT = 0.02;
 const DETAIL_STROKE_WIDTH = 2;
 const DIAMOND_STROKE_WIDTH = 2.5;
+const OVERLAY_SORT_EPSILON = 0.05;
 
 const DEFAULT_DRAW_OPTIONS = {
   drawShapes: true,
   drawLabels: true
 };
+
+export function buildTerrainOverlaySceneItemsForTile(state, item) {
+  const sceneItems = [];
+  let overlayOrder = 0;
+
+  if (state.ui.mode === "move" && item.reachableData) {
+    sceneItems.push(
+      makeOverlaySceneItem(item, overlayOrder += 1, (parent) => {
+        drawSceneMoveOverlay(state, item, parent, String(item.reachableCost ?? ""), {
+          drawShapes: true,
+          drawLabels: false
+        });
+      })
+    );
+  }
+
+  sceneItems.push(
+    makeOverlaySceneItem(item, overlayOrder += 1, (parent) => {
+      drawScenePathOverlayForTile(state, item, parent, {
+        drawShapes: true,
+        drawLabels: false
+      });
+    })
+  );
+
+  sceneItems.push(
+    makeOverlaySceneItem(item, overlayOrder += 1, (parent) => {
+      drawSceneActionOverlayForTile(state, item, parent, {
+        drawShapes: true,
+        drawLabels: false
+      });
+    })
+  );
+
+  sceneItems.push(
+    makeOverlaySceneItem(item, overlayOrder += 1, (parent) => {
+      drawSceneFocusOverlayForTile(state, item, parent, {
+        drawShapes: true,
+        drawLabels: false
+      });
+    })
+  );
+
+  return sceneItems;
+}
+
+export function drawSceneUnitFootprintOverlays(state, parent) {
+  const activeUnit = getActiveUnit(state);
+  if (!activeUnit) return;
+
+  if (state.ui.mode !== "move" && state.ui.mode !== "face") {
+    drawOverlayForUnitFootprint(
+      state,
+      activeUnit,
+      "active-unit-footprint",
+      "rgba(255, 255, 255, 0.06)",
+      "rgba(255, 255, 255, 0.7)",
+      parent
+    );
+  }
+
+  const focusX = state.focus?.x;
+  const focusY = state.focus?.y;
+
+  if (typeof focusX !== "number" || typeof focusY !== "number") {
+    return;
+  }
+
+  if (state.ui.mode === "move") {
+    const previewUnit = { ...activeUnit, x: focusX, y: focusY };
+    drawOverlayForUnitFootprint(
+      state,
+      previewUnit,
+      "focus-tile",
+      "rgba(240, 176, 0, 0.16)",
+      "rgba(240, 176, 0, 1)",
+      parent
+    );
+    return;
+  }
+
+  const occupantUnit = getUnitAtTile(state, focusX, focusY);
+  if (!occupantUnit) return;
+
+  if (state.ui.mode === "action-target") {
+    const colors = getActionOverlayColorsForTile(state, focusX, focusY);
+    if (!colors) return;
+
+    drawOverlayForUnitFootprint(
+      state,
+      occupantUnit,
+      "action-preview-unit",
+      colors.fill,
+      colors.stroke,
+      parent
+    );
+    return;
+  }
+
+  drawOverlayForUnitFootprint(
+    state,
+    occupantUnit,
+    "focus-unit",
+    "rgba(240, 176, 0, 0.16)",
+    "rgba(240, 176, 0, 1)",
+    parent
+  );
+}
+
+function makeOverlaySceneItem(item, overlayOrder, render) {
+  return {
+    kind: "terrain_overlay",
+    sortDepth: item.sortDepth + OVERLAY_SORT_EPSILON,
+    sortKey: (item.sortKey * 100) + overlayOrder,
+    render
+  };
+}
 
 export function drawSceneActionOverlayForTile(state, item, parent, options = DEFAULT_DRAW_OPTIONS) {
   const { drawShapes } = normalizeOptions(options);
@@ -34,7 +152,135 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
   if (state.ui.mode !== "action-target") return;
   if (!drawShapes) return;
 
-  const key = `${item.x},${item.y}`;
+  const colors = getActionOverlayColorsForTile(state, item.x, item.y);
+  if (!colors) return;
+
+  if (state.ui.viewMode === "top") {
+    drawTopOverlayBox(item.screenX, item.screenY, colors.fill, colors.stroke, parent);
+    return;
+  }
+
+  drawOverlayForTile(state, item, "action-preview-tile", colors.fill, colors.stroke, parent);
+}
+
+export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFAULT_DRAW_OPTIONS) {
+  const { drawShapes } = normalizeOptions(options);
+
+  if (item.x !== state.focus.x || item.y !== state.focus.y) return;
+  if (!drawShapes) return;
+
+  if (state.ui.mode === "move") return;
+
+  const occupantUnit = getUnitAtTile(state, item.x, item.y);
+  if (occupantUnit) return;
+
+  if (state.ui.viewMode === "top") {
+    drawTopOverlayBox(
+      item.screenX,
+      item.screenY,
+      "rgba(240, 176, 0, 0.16)",
+      "rgba(240, 176, 0, 1)",
+      parent
+    );
+    return;
+  }
+
+  drawOverlayForTile(
+    state,
+    item,
+    "focus-tile",
+    "rgba(240, 176, 0, 0.16)",
+    "rgba(240, 176, 0, 1)",
+    parent
+  );
+}
+
+export function drawScenePathOverlayForTile(state, item, parent, options = DEFAULT_DRAW_OPTIONS) {
+  const { drawShapes, drawLabels } = normalizeOptions(options);
+
+  if (state.ui.mode !== "move") return;
+
+  const path = state.ui.previewPath || [];
+  if (!path.length) return;
+
+  const stepIndex = path.findIndex((p) => p.x === item.x && p.y === item.y);
+  if (stepIndex === -1) return;
+
+  if (drawShapes) {
+    if (state.ui.viewMode === "top") {
+      drawTopOverlayBox(
+        item.screenX,
+        item.screenY,
+        "rgba(240, 176, 0, 0.24)",
+        "rgba(240, 176, 0, 1)",
+        parent
+      );
+    } else {
+      drawOverlayForTile(
+        state,
+        item,
+        "move-path-tile",
+        "rgba(240, 176, 0, 0.24)",
+        "rgba(240, 176, 0, 1)",
+        parent
+      );
+    }
+  }
+
+  if (drawLabels) {
+    const labelPoint = getTileLabelPoint(item);
+    const label = makeText(
+      labelPoint.x,
+      labelPoint.y,
+      String(stepIndex),
+      "move-cost-label"
+    );
+    styleMoveCostLabel(label);
+    parent.appendChild(label);
+  }
+}
+
+export function drawSceneMoveOverlay(state, item, parent, text, options = DEFAULT_DRAW_OPTIONS) {
+  const { drawShapes, drawLabels } = normalizeOptions(options);
+
+  if (!item.reachableData) return;
+
+  if (drawShapes) {
+    if (state.ui.viewMode === "top") {
+      drawTopOverlayBox(
+        item.screenX,
+        item.screenY,
+        "rgba(80, 180, 255, 0.24)",
+        "rgba(80, 180, 255, 0.92)",
+        parent
+      );
+    } else {
+      drawOverlayForTile(
+        state,
+        item,
+        "move-range-tile",
+        "rgba(80, 180, 255, 0.24)",
+        "rgba(80, 180, 255, 0.92)",
+        parent
+      );
+    }
+  }
+
+  if (drawLabels) {
+    const labelPoint = getTileLabelPoint(item);
+    const label = makeText(
+      labelPoint.x,
+      labelPoint.y,
+      text,
+      "move-cost-label"
+    );
+    styleMoveCostLabel(label);
+    parent.appendChild(label);
+  }
+}
+
+function getActionOverlayColorsForTile(state, x, y) {
+  const key = `${x},${y}`;
   const fireArc = tileSetFromList(state.ui.action.fireArcTiles || []);
   const evaluatedTargetTiles = state.ui.action.evaluatedTargetTiles || [];
   const targetMap = new Map(
@@ -72,173 +318,8 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
     stroke = "rgba(255, 74, 74, 1)";
   }
 
-  if (!fill || !stroke) return;
-
-  const occupantUnit = getUnitAtTile(state, item.x, item.y);
-
-  if (occupantUnit) {
-    drawOverlayForUnitFootprint(
-      state,
-      occupantUnit,
-      "action-preview-unit",
-      fill,
-      stroke,
-      parent
-    );
-    return;
-  }
-
-  if (state.ui.viewMode === "top") {
-    drawTopOverlayBox(item.screenX, item.screenY, fill, stroke, parent);
-    return;
-  }
-
-  drawOverlayForTile(state, item, "action-preview-tile", fill, stroke, parent);
-}
-
-export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFAULT_DRAW_OPTIONS) {
-  const { drawShapes } = normalizeOptions(options);
-
-  if (item.x !== state.focus.x || item.y !== state.focus.y) return;
-  if (!drawShapes) return;
-
-  const activeUnit = getActiveUnit(state);
-
-  if (state.ui.mode === "move" && activeUnit) {
-    const previewUnit = { ...activeUnit, x: state.focus.x, y: state.focus.y };
-    drawOverlayForUnitFootprint(
-      state,
-      previewUnit,
-      "focus-tile",
-      "rgba(240, 176, 0, 0.16)",
-      "rgba(240, 176, 0, 1)",
-      parent
-    );
-    return;
-  }
-
-  const occupantUnit = getUnitAtTile(state, item.x, item.y);
-  if (occupantUnit) {
-    drawOverlayForUnitFootprint(
-      state,
-      occupantUnit,
-      "focus-unit",
-      "rgba(240, 176, 0, 0.16)",
-      "rgba(240, 176, 0, 1)",
-      parent
-    );
-    return;
-  }
-
-  if (state.ui.viewMode === "top") {
-    drawTopOverlayBox(
-      item.screenX,
-      item.screenY,
-      "rgba(240, 176, 0, 0.16)",
-      "rgba(240, 176, 0, 1)",
-      parent
-    );
-    return;
-  }
-
-  drawOverlayForTile(
-    state,
-    item,
-    "focus-tile",
-    "rgba(240, 176, 0, 0.16)",
-    "rgba(240, 176, 0, 1)",
-    parent
-  );
-}
-
-export function drawScenePathOverlayForTile(state, item, parent, options = DEFAULT_DRAW_OPTIONS) {
-  const { drawShapes, drawLabels } = normalizeOptions(options);
-
-  if (state.ui.mode !== "move") return;
-
-  const path = state.ui.previewPath || [];
-  if (!path.length) return;
-
-  const stepIndex = path.findIndex((p) => p.x === item.x && p.y === item.y);
-  if (stepIndex === -1) return;
-
-  const activeUnit = getActiveUnit(state);
-  if (!activeUnit) return;
-
-  const previewUnit = { ...activeUnit, x: item.x, y: item.y };
-
-  if (drawShapes) {
-    drawOverlayForUnitFootprint(
-      state,
-      previewUnit,
-      "move-path-tile",
-      "rgba(240, 176, 0, 0.24)",
-      "rgba(240, 176, 0, 1)",
-      parent
-    );
-  }
-
-  if (drawLabels) {
-    const labelPoint = getUnitLabelPoint(state, previewUnit);
-    const label = makeText(
-      labelPoint.x,
-      labelPoint.y,
-      String(stepIndex),
-      "move-cost-label"
-    );
-    styleMoveCostLabel(label);
-    parent.appendChild(label);
-  }
-}
-
-export function drawSceneMoveOverlay(state, item, parent, text, options = DEFAULT_DRAW_OPTIONS) {
-  const { drawShapes, drawLabels } = normalizeOptions(options);
-  const activeUnit = getActiveUnit(state);
-
-  if (!activeUnit) return;
-  if (!item.reachableData) return;
-
-  const previewUnit = { ...activeUnit, x: item.reachableData.x, y: item.reachableData.y };
-
-  if (drawShapes) {
-    drawOverlayForUnitFootprint(
-      state,
-      previewUnit,
-      "move-range-tile",
-      "rgba(80, 180, 255, 0.24)",
-      "rgba(80, 180, 255, 0.92)",
-      parent
-    );
-  }
-
-  if (drawLabels) {
-    const labelPoint = getUnitLabelPoint(state, previewUnit);
-    const label = makeText(
-      labelPoint.x,
-      labelPoint.y,
-      text,
-      "move-cost-label"
-    );
-    styleMoveCostLabel(label);
-    parent.appendChild(label);
-  }
-}
-
-export function drawSceneActiveUnitOverlay(state, parent) {
-  const activeUnit = getActiveUnit(state);
-  if (!activeUnit) return;
-
-  if (state.ui.mode === "move") return;
-  if (state.ui.mode === "face") return;
-
-  drawOverlayForUnitFootprint(
-    state,
-    activeUnit,
-    "active-unit-footprint",
-    "rgba(255, 255, 255, 0.06)",
-    "rgba(255, 255, 255, 0.7)",
-    parent
-  );
+  if (!fill || !stroke) return null;
+  return { fill, stroke };
 }
 
 function drawOverlayForUnitFootprint(state, unit, className, fill, stroke, parent) {
@@ -265,9 +346,9 @@ function drawOverlayForUnitFootprint(state, unit, className, fill, stroke, paren
   const halfH = bounds.height * (RENDER_CONFIG.isoTileHeight / 2);
 
   const points = [
-    { x: center.x,         y: center.y - halfH },
+    { x: center.x, y: center.y - halfH },
     { x: center.x + halfW, y: center.y },
-    { x: center.x,         y: center.y + halfH },
+    { x: center.x, y: center.y + halfH },
     { x: center.x - halfW, y: center.y }
   ];
 
@@ -323,6 +404,13 @@ function drawOverlayCellTop(state, cell, className, fill, stroke, parent) {
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
+}
+
+function getTileLabelPoint(item) {
+  return {
+    x: item.screenX,
+    y: item.screenY + (RENDER_CONFIG.isoTileHeight / 2) + 6
+  };
 }
 
 function normalizeOptions(options) {
@@ -395,37 +483,20 @@ function drawTopOverlayBounds(bounds, fill, stroke, parent) {
 }
 
 function getUnitSupportElevation(state, unit) {
-  const centerTile = getUnitCenterTile(unit);
-  const tile = getTile(state.map, centerTile.x, centerTile.y);
-  if (!tile) return null;
+  const occupiedCells = getUnitOccupiedCells(unit);
+  let maxElevation = null;
 
-  return getTileFootElevation(tile);
-}
+  for (const cell of occupiedCells) {
+    const tile = getTile(state.map, cell.x, cell.y);
+    if (!tile) return null;
 
-function getUnitLabelPoint(state, unit) {
-  const bounds = getUnitFootprintBounds(unit);
-
-  if (state.ui.viewMode === "top") {
-    return {
-      x: (bounds.minX * TOPDOWN_CONFIG.cellSize) + ((bounds.width * TOPDOWN_CONFIG.cellSize) / 2),
-      y: (bounds.minY * TOPDOWN_CONFIG.cellSize) + ((bounds.height * TOPDOWN_CONFIG.cellSize) / 2) + 4
-    };
+    const elevation = getTileFootElevation(tile);
+    if (maxElevation === null || elevation > maxElevation) {
+      maxElevation = elevation;
+    }
   }
 
-  const supportElevation = getUnitSupportElevation(state, unit) ?? 0;
-  const centerTile = getUnitCenterTile(unit);
-
-  const center = projectTileCenter(
-    state,
-    centerTile.x,
-    centerTile.y,
-    supportElevation + DETAIL_OVERLAY_LIFT
-  );
-
-  return {
-    x: center.x,
-    y: center.y + 6
-  };
+  return maxElevation;
 }
 
 function styleMoveCostLabel(label) {
