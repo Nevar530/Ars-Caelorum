@@ -214,7 +214,7 @@ export function createGameController({
     hideSplash,
     showSplash,
     clearTransientUi,
-    setPreviewSelectionFromFirstMech,
+    setPreviewSelectionFromFirstUnit,
     resetCombatToSetup,
     resetMapAndUnits,
     selectFocusedUnitIfPresent,
