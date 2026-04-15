@@ -48,10 +48,11 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
     class: definition.class ?? (isPilot ? "pilot" : ""),
     role: definition.role ?? "",
 
+    // RUNTIME x/y IS THE CENTER TILE.
     x: Number(overrides.x ?? 0),
     y: Number(overrides.y ?? 0),
     facing: facingToNumber(overrides.facing ?? definition.defaultFacing ?? 0),
-    anchorType: "footprint_origin",
+    anchorType: "center",
 
     footprintWidth: isPilot ? 1 : 3,
     footprintHeight: isPilot ? 1 : 3,
@@ -213,7 +214,6 @@ export function getUnitsAt(units, x, y, scale = null) {
     return unit.x === x && unit.y === y;
   });
 }
-
 
 export function getUnitAt(units, x, y, scale = null) {
   return getUnitsAt(units, x, y, scale).find(Boolean) ?? null;
