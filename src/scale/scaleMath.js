@@ -121,9 +121,12 @@ export function getUnitOccupiedCells(unit) {
 export function getUnitCenterPoint(unit) {
   const bounds = getUnitFootprintBounds(unit);
 
+  const centerTileX = bounds.minX + Math.floor(bounds.width / 2);
+  const centerTileY = bounds.minY + Math.floor(bounds.height / 2);
+
   return {
-    x: bounds.minX + Math.floor(bounds.width / 2),
-    y: bounds.minY + Math.floor(bounds.height / 2)
+    x: centerTileX + 0.5,
+    y: centerTileY + 0.5
   };
 }
 
