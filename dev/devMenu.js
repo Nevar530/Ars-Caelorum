@@ -626,13 +626,7 @@ class DevMenu {
   }
 
   syncToolbarVisibility() {
-    const toolbar = this.refs?.devToolbar;
-    if (!toolbar) return;
-
-    toolbar.style.display = "none";
-    toolbar.style.visibility = "hidden";
-    toolbar.style.pointerEvents = "none";
-    toolbar.style.opacity = "0";
+    return;
   }
 
   removeUnit(instanceId) {
