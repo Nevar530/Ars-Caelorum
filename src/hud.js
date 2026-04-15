@@ -1,7 +1,7 @@
 // src/hud.js
 
 import { getTile, tileTypeFromElevation } from "./map.js";
-import { getMechAt, getMechById } from "./mechs.js";
+import { getUnitAt, getUnitById } from "./mechs.js";
 import { getSelectedAttackMenuItems } from "./action.js";
 import { getLineOfSightResult } from "./los.js";
 
@@ -60,7 +60,7 @@ export function renderHud(state, refs) {
 ========================= */
 
 function renderActivePanel(state) {
-  const mech = getMechById(state.mechs, state.turn.activeMechId);
+  const mech = getUnitById(state.units, state.turn.activeUnitId);
 
   if (!mech) {
     return `
@@ -192,7 +192,7 @@ function renderTurnSummary(state) {
 
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
         ${order.map((id, i) => {
-          const unit = getMechById(state.mechs, id);
+          const unit = getUnitById(state.units, id);
           if (!unit) return "";
 
           const isActive = i === index;
@@ -224,8 +224,8 @@ function renderTurnSummary(state) {
 
 function renderContextPanel(state) {
   const tile = getTile(state.map, state.focus.x, state.focus.y);
-  const mech = getMechAt(state.mechs, state.focus.x, state.focus.y);
-  const active = getMechById(state.mechs, state.turn.activeMechId);
+  const mech = getUnitAt(state.units, state.focus.x, state.focus.y);
+  const active = getUnitById(state.units, state.turn.activeUnitId);
 
   if (mech && mech.instanceId !== active?.instanceId) {
     return `
