@@ -122,8 +122,8 @@ export function getUnitCenterPoint(unit) {
   const bounds = getUnitFootprintBounds(unit);
 
   return {
-    x: bounds.minX + (bounds.width / 2),
-    y: bounds.minY + (bounds.height / 2)
+    x: bounds.minX + Math.floor(bounds.width / 2),
+    y: bounds.minY + Math.floor(bounds.height / 2)
   };
 }
 
