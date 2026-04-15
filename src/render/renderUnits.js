@@ -113,7 +113,7 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
 
   const items = [];
 
-  const spriteSortDepth = anchorY + RENDER_CONFIG.isoTileHeight + UNIT_FRONT_TILE_BIAS;
+    const spriteSortDepth = anchorY + UNIT_FRONT_TILE_BIAS;
 
   items.push({
     sortDepth: spriteSortDepth,
