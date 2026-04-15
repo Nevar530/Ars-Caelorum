@@ -56,7 +56,7 @@ export function getUnitAnchor(unit) {
   return {
     x: Number(unit?.x ?? 0),
     y: Number(unit?.y ?? 0),
-    anchorType: normalizeAnchorType(unit?.anchorType ?? ANCHOR_TYPE.FOOTPRINT_ORIGIN),
+    anchorType: ANCHOR_TYPE.CENTER,
     scale: getUnitScaleClass(unit)
   };
 }
@@ -70,14 +70,23 @@ export function getUnitFootprint(unit) {
   };
 }
 
-// We store runtime x/y as footprint origin (top-left occupied cell).
-// This avoids fake integer "centers" for even-sized footprints like 4x4.
-export function getFootprintBoundsFromOrigin(originX, originY, footprintWidth, footprintHeight) {
+// Runtime x/y is the CENTER TILE for all units.
+// For odd footprints this is clean and exact:
+// 1x1 -> occupied tile
+// 3x3 -> middle tile
+// 5x5 -> middle tile
+export function getFootprintBoundsFromOrigin(centerTileX, centerTileY, footprintWidth, footprintHeight) {
   const width = Math.max(1, Number(footprintWidth ?? 1));
   const height = Math.max(1, Number(footprintHeight ?? 1));
 
-  const minX = Number(originX);
-  const minY = Number(originY);
+  const cx = Number(centerTileX ?? 0);
+  const cy = Number(centerTileY ?? 0);
+
+  const halfW = Math.floor(width / 2);
+  const halfH = Math.floor(height / 2);
+
+  const minX = cx - halfW;
+  const minY = cy - halfH;
   const maxX = minX + width - 1;
   const maxY = minY + height - 1;
 
@@ -98,8 +107,14 @@ export function getUnitFootprintBounds(unit) {
   return getFootprintBoundsFromOrigin(anchor.x, anchor.y, footprint.width, footprint.height);
 }
 
-export function getOccupiedCellsFromOrigin(originX, originY, footprintWidth, footprintHeight) {
-  const bounds = getFootprintBoundsFromOrigin(originX, originY, footprintWidth, footprintHeight);
+export function getOccupiedCellsFromOrigin(centerTileX, centerTileY, footprintWidth, footprintHeight) {
+  const bounds = getFootprintBoundsFromOrigin(
+    centerTileX,
+    centerTileY,
+    footprintWidth,
+    footprintHeight
+  );
+
   const cells = [];
 
   for (let y = bounds.minY; y <= bounds.maxY; y += 1) {
@@ -119,11 +134,9 @@ export function getUnitOccupiedCells(unit) {
 }
 
 export function getUnitCenterTile(unit) {
-  const bounds = getUnitFootprintBounds(unit);
-
   return {
-    x: bounds.minX + Math.floor(bounds.width / 2),
-    y: bounds.minY + Math.floor(bounds.height / 2)
+    x: Number(unit?.x ?? 0),
+    y: Number(unit?.y ?? 0)
   };
 }
 
@@ -137,12 +150,12 @@ export function getUnitCenterPoint(unit) {
 }
 
 export function getUnitPrimaryPosition(unit) {
-  const anchor = getUnitAnchor(unit);
+  const centerTile = getUnitCenterTile(unit);
 
   return {
-    x: anchor.x,
-    y: anchor.y,
-    scale: anchor.scale
+    x: centerTile.x,
+    y: centerTile.y,
+    scale: getUnitScaleClass(unit)
   };
 }
 
