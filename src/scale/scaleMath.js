@@ -118,15 +118,21 @@ export function getUnitOccupiedCells(unit) {
   return getOccupiedCellsFromOrigin(anchor.x, anchor.y, footprint.width, footprint.height);
 }
 
-export function getUnitCenterPoint(unit) {
+export function getUnitCenterTile(unit) {
   const bounds = getUnitFootprintBounds(unit);
 
-  const centerTileX = bounds.minX + Math.floor(bounds.width / 2);
-  const centerTileY = bounds.minY + Math.floor(bounds.height / 2);
+  return {
+    x: bounds.minX + Math.floor(bounds.width / 2),
+    y: bounds.minY + Math.floor(bounds.height / 2)
+  };
+}
+
+export function getUnitCenterPoint(unit) {
+  const centerTile = getUnitCenterTile(unit);
 
   return {
-    x: centerTileX + 0.5,
-    y: centerTileY + 0.5
+    x: centerTile.x + 0.5,
+    y: centerTile.y + 0.5
   };
 }
 
