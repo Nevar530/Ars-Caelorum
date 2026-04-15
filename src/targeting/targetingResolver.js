@@ -13,7 +13,10 @@ import {
 import { evaluateMissileTargetWithSpotter } from "./missileTargeting.js";
 
 function getActiveUnit(state) {
-  return getUnitById(state.units ?? state.mechs, state.turn.activeUnitId ?? state.turn.activeMechId);
+  return getUnitById(
+    state.units ?? state.mechs,
+    state.turn.activeUnitId ?? state.turn.activeMechId
+  );
 }
 
 export function normalizeWeaponToActionProfile(weapon) {
@@ -85,8 +88,13 @@ export function snapFocusToFirstValidTarget(state) {
   const activeUnit = getActiveUnit(state);
   const profile = state.ui.action.selectedAction;
 
+  if (!activeUnit || !profile) {
+    state.ui.action.effectTiles = [];
+    return;
+  }
+
   state.ui.action.effectTiles = getEffectTilesForTarget(
-    activeMech,
+    activeUnit,
     profile,
     first.x,
     first.y
@@ -97,7 +105,7 @@ export function updateActionTargetPreview(state) {
   const activeUnit = getActiveUnit(state);
   const profile = state.ui.action.selectedAction;
 
-  if (!activeMech || !profile) {
+  if (!activeUnit || !profile) {
     state.ui.action.fireArcTiles = [];
     state.ui.action.evaluatedTargetTiles = [];
     state.ui.action.validTargetTiles = [];
@@ -106,10 +114,10 @@ export function updateActionTargetPreview(state) {
   }
 
   const fireArcRange = profile.fireArc?.range ?? DEFAULT_FIRE_ARC_RANGE;
-  const fireArcTiles = getFireArcTiles(activeMech, fireArcRange);
-  const candidateTiles = getWeaponCandidateTiles(state, activeMech, profile);
+  const fireArcTiles = getFireArcTiles(activeUnit, fireArcRange);
+  const candidateTiles = getWeaponCandidateTiles(state, activeUnit, profile);
   const arcFilteredTiles = applyFireArcFilter(profile, fireArcTiles, candidateTiles);
-  const evaluatedTiles = evaluateLosForTargets(state, activeMech, profile, arcFilteredTiles);
+  const evaluatedTiles = evaluateLosForTargets(state, activeUnit, profile, arcFilteredTiles);
   const validTiles = evaluatedTiles.filter((tile) => tile.visible === true);
 
   state.ui.action.fireArcTiles = fireArcTiles;
@@ -122,7 +130,7 @@ export function updateActionTargetPreview(state) {
 
   if (focusedTile) {
     state.ui.action.effectTiles = getEffectTilesForTarget(
-      activeMech,
+      activeUnit,
       profile,
       focusedTile.x,
       focusedTile.y
@@ -146,7 +154,7 @@ export function applyFireArcFilter(profile, fireArcTiles, candidateTiles) {
   );
 }
 
-export function evaluateLosForTargets(state, mech, profile, candidateTiles) {
+export function evaluateLosForTargets(state, unit, profile, candidateTiles) {
   const targetingKind = profile.targeting?.kind;
   const isMissile = profile.weaponType === "missile";
 
@@ -156,17 +164,17 @@ export function evaluateLosForTargets(state, mech, profile, candidateTiles) {
       visible: true,
       cover: "none",
       los: null,
-      distance: manhattanDistance(mech.x, mech.y, tile.x, tile.y)
+      distance: manhattanDistance(unit.x, unit.y, tile.x, tile.y)
     }));
   }
 
   return candidateTiles.map((tile) => {
-    const distance = manhattanDistance(mech.x, mech.y, tile.x, tile.y);
+    const distance = manhattanDistance(unit.x, unit.y, tile.x, tile.y);
 
     if (isMissile) {
       const missileTarget = evaluateMissileTargetWithSpotter(
         state,
-        mech,
+        unit,
         profile,
         tile.x,
         tile.y
@@ -187,12 +195,12 @@ export function evaluateLosForTargets(state, mech, profile, candidateTiles) {
 
     const los = getLineOfSightResult(
       state,
-      mech.x,
-      mech.y,
+      unit.x,
+      unit.y,
       tile.x,
       tile.y,
       {
-        attackerScale: mech.scale ?? "mech",
+        attackerScale: unit.scale ?? "mech",
         targetScale: tile.targetScale ?? profile.scale ?? "mech"
       }
     );
