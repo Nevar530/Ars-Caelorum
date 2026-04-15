@@ -25,6 +25,7 @@ import {
   ensureCameraState,
   updateCameraFraming,
   projectScene,
+  projectTileCenter,
   getSceneSortKey
 } from "./projection.js";
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
@@ -159,17 +160,16 @@ export function renderIso(state, refs) {
   }
 
   for (const unit of units) {
-    const centerPoint = getUnitCenterPoint(unit);
+    const centerTile = getUnitCenterPoint(unit);
     const supportElevation = getUnitSupportElevation(state, unit);
 
     if (supportElevation === null) continue;
 
-    const projectedAnchor = projectScene(
+    const projectedAnchor = projectTileCenter(
       state,
-      centerPoint.x,
-      centerPoint.y,
-      supportElevation,
-      1
+      centerTile.x,
+      centerTile.y,
+      supportElevation
     );
 
     const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
@@ -205,8 +205,8 @@ export function renderIso(state, refs) {
         sortKey:
           (getSceneSortKey(
             state,
-            centerPoint.x,
-            centerPoint.y,
+            centerTile.x,
+            centerTile.y,
             supportElevation,
             1
           ) * 1000) +
@@ -377,9 +377,10 @@ function getUnitFootprintSortDepth(state, unit) {
   }
 
   if (maxDepth === null) {
-    const centerPoint = getUnitCenterPoint(unit);
+    const centerTile = getUnitCenterPoint(unit);
     const supportElevation = getUnitSupportElevation(state, unit) ?? 0;
-    const projected = projectScene(state, centerPoint.x, centerPoint.y, supportElevation, 1);
+    const projected = projectTileCenter(state, centerTile.x, centerTile.y, supportElevation);
+
     return projected.y;
   }
 
