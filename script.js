@@ -1,13 +1,13 @@
 import { createState } from "./src/state.js";
 import { createInitialMap } from "./src/map.js";
 import {
-  instantiateTestMechs,
-  getMechAt,
-  getMechById,
-  moveMechTo,
-  setMechFacing
+  instantiateTestUnits,
+  getUnitAt,
+  getUnitById,
+  moveUnitTo,
+  setUnitFacing
 } from "./src/mechs.js";
-import { bindInput, snapFocusToActiveMech as snapFocusHelper } from "./src/input.js";
+import { bindInput, snapFocusToActiveUnit as snapFocusHelper } from "./src/input.js";
 import { loadGameData } from "./src/dataLoader.js";
 import { bindHudInput } from "./src/hud.js";
 import { clearCombatTextMarkers } from "./src/combat/combatTextOverlay.js";
@@ -44,22 +44,22 @@ async function init() {
 
   const state = createState({
     map: createInitialMap(),
-    mechs: instantiateTestMechs(content),
+    mechs: instantiateTestUnits(content),
     rotation: 0,
     content
   });
 
   setDevLogSize(25);
 
-  function snapFocusToActiveMech() {
+  function snapFocusToActiveUnit() {
     snapFocusHelper(state);
   }
 
   const gameController = createGameController({
     state,
     refs,
-    instantiateTestMechs,
-    snapFocusToActiveMech,
+    instantiateTestUnits,
+    snapFocusToActiveUnit,
     logDev
   });
 
@@ -69,9 +69,9 @@ async function init() {
 
   const turnController = createTurnController({
     state,
-    getMechById,
+    getUnitById,
     clearTransientUi,
-    snapFocusToActiveMech,
+    snapFocusToActiveUnit,
     render: gameController.render,
     logDev,
     showSplash: gameController.showSplash,
@@ -80,10 +80,10 @@ async function init() {
 
   const movementController = createMovementController({
     state,
-    getMechById,
-    moveMechTo,
-    setMechFacing,
-    snapFocusToActiveMech,
+    getUnitById,
+    moveUnitTo,
+    setUnitFacing,
+    snapFocusToActiveUnit,
     clearTransientUi,
     render: gameController.render,
     logDev,
@@ -93,8 +93,8 @@ async function init() {
 
   const combatController = createCombatController({
     state,
-    getMechById,
-    getMechAt,
+    getUnitById,
+    getUnitAt,
     render: gameController.render,
     logDev,
     clearTransientUi,
@@ -104,7 +104,7 @@ async function init() {
 
   const actions = {
     render: gameController.render,
-    snapFocusToActiveMech,
+    snapFocusToActiveUnit,
 
     setEditorMode(mode) {
       state.ui.editor.mode = mode === "detail" ? "detail" : "mech";
@@ -112,7 +112,7 @@ async function init() {
     },
 
     selectFocusedMechIfPresent() {
-      return gameController.selectFocusedMechIfPresent(getMechAt);
+      return gameController.selectFocusedUnitIfPresent(getUnitAt);
     },
 
     openCommandMenu: gameController.openCommandMenu,
@@ -192,7 +192,7 @@ async function init() {
 
     startCombat: turnController.startCombat,
     clearTransientUi,
-    setActiveMechByCurrentTurnIndex: turnController.setActiveMechByCurrentTurnIndex,
+    setActiveUnitByCurrentTurnIndex: turnController.setActiveUnitByCurrentTurnIndex,
     rebuildOrdersAndLog: turnController.rebuildOrdersAndLog,
     resetCombatToSetup: gameController.resetCombatToSetup,
 
