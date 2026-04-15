@@ -31,7 +31,6 @@ import {
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
 import {
   getUnitCenterPoint,
-  getUnitFootprintBounds,
   getUnitOccupiedCells
 } from "../scale/scaleMath.js";
 
@@ -48,15 +47,13 @@ export function renderAll(state, refs) {
 export function renderIso(state, refs) {
   const { worldScene, worldUi } = refs;
   const units = state.units ?? state.mechs ?? [];
-  const mechUnits = units.filter((unit) => (unit?.unitType ?? "mech") === "mech");
   const { map } = state;
 
   worldScene.innerHTML = "";
   worldUi.innerHTML = "";
 
-  const behindTerrainItems = [];
-  const frontOccluderTerrainItems = [];
-  const unitItems = [];
+  const footprintLockedTerrainItems = [];
+  const sceneItems = [];
   const overlayTileItems = [];
   const reachableMap = new Map();
 
@@ -103,13 +100,7 @@ export function renderIso(state, refs) {
         }
       };
 
-      bucketTerrainItem(
-        state,
-        tileItem,
-        mechUnits,
-        behindTerrainItems,
-        frontOccluderTerrainItems
-      );
+      pushTerrainSceneItem(tileItem, units, footprintLockedTerrainItems, sceneItems);
       overlayTileItems.push(tileItem);
 
       if (hasDetailGeometry) {
@@ -148,20 +139,14 @@ export function renderIso(state, refs) {
             }
           };
 
-          bucketTerrainItem(
-            state,
-            detailItem,
-            mechUnits,
-            behindTerrainItems,
-            frontOccluderTerrainItems
-          );
+          pushTerrainSceneItem(detailItem, units, footprintLockedTerrainItems, sceneItems);
         }
       }
     }
   }
 
-  behindTerrainItems.sort(compareSceneItems);
-  for (const item of behindTerrainItems) {
+  footprintLockedTerrainItems.sort(compareSceneItems);
+  for (const item of footprintLockedTerrainItems) {
     item.render(worldScene);
   }
 
@@ -205,7 +190,7 @@ export function renderIso(state, refs) {
     const parts = getUnitRenderSceneItems(state, unit, renderModel, isActive);
 
     for (const part of parts) {
-      unitItems.push({
+      sceneItems.push({
         kind: "unit_part",
         sortDepth: footprintSortDepth + (part.sortDepth - projectedAnchor.y),
         sortKey:
@@ -223,13 +208,8 @@ export function renderIso(state, refs) {
     }
   }
 
-  unitItems.sort(compareSceneItems);
-  for (const item of unitItems) {
-    item.render(worldScene);
-  }
-
-  frontOccluderTerrainItems.sort(compareSceneItems);
-  for (const item of frontOccluderTerrainItems) {
+  sceneItems.sort(compareSceneItems);
+  for (const item of sceneItems) {
     item.render(worldScene);
   }
 
@@ -261,137 +241,42 @@ export function renderIso(state, refs) {
   drawSceneLosPreview(state, worldUi);
 }
 
-function bucketTerrainItem(state, item, mechUnits, behindTerrainItems, frontOccluderTerrainItems) {
-  if (isTerrainInsideAnyMechFootprint(item, mechUnits)) {
-    behindTerrainItems.push(item);
+function pushTerrainSceneItem(item, units, footprintLockedTerrainItems, sceneItems) {
+  if (isTerrainInsideAnyUnitFootprint(item, units)) {
+    footprintLockedTerrainItems.push(item);
     return;
   }
 
-  if (isTerrainFrontOccluderForAnyMech(state, item, mechUnits)) {
-    frontOccluderTerrainItems.push(item);
-    return;
-  }
-
-  behindTerrainItems.push(item);
+  sceneItems.push(item);
 }
 
-function isTerrainInsideAnyMechFootprint(item, mechUnits) {
-  return mechUnits.some((unit) => isTerrainInsideFootprint(item, unit));
+function isTerrainInsideAnyUnitFootprint(item, units) {
+  return units.some((unit) => isTerrainInsideUnitFootprint(item, unit));
 }
 
-function isTerrainInsideFootprint(item, unit) {
-  const bounds = getUnitFootprintBounds(unit);
+function isTerrainInsideUnitFootprint(item, unit) {
+  const occupiedCells = getUnitOccupiedCells(unit);
   const ix = Math.floor(item.x);
   const iy = Math.floor(item.y);
 
-  return ix >= bounds.minX && ix <= bounds.maxX && iy >= bounds.minY && iy <= bounds.maxY;
-}
-
-function isTerrainFrontOccluderForAnyMech(state, item, mechUnits) {
-  return mechUnits.some((unit) => isTerrainFrontOccluderForMech(state, item, unit));
-}
-
-function isTerrainFrontOccluderForMech(state, item, unit) {
-  const bounds = getUnitFootprintBounds(unit);
-  const ix = Math.floor(item.x);
-  const iy = Math.floor(item.y);
-  const rotation = normalizeRotation(state?.camera?.rotation ?? state?.rotation ?? 0);
-
-  // Never let terrain inside the mech footprint occlude the mech.
-  if (ix >= bounds.minX && ix <= bounds.maxX && iy >= bounds.minY && iy <= bounds.maxY) {
-    return false;
-  }
-
-  const centerTileX = Number(unit?.x ?? 0);
-  const centerTileY = Number(unit?.y ?? 0);
-
-  const supportTile = getTile(state.map, centerTileX, centerTileY);
-  const terrainTile = getTile(state.map, ix, iy);
-
-  if (!supportTile || !terrainTile) return false;
-
-  const supportElevation = getTileFootElevation(supportTile);
-  const terrainElevation = getTileFootElevation(terrainTile);
-
-  // Same-height floor stays behind. Front occluders must be higher.
-  if (terrainElevation <= supportElevation) {
-    return false;
-  }
-
-  // Camera-front edges by rotation:
-  // 0 = south + west
-  // 1 = south + east
-  // 2 = north + east
-  // 3 = north + west
-  switch (rotation) {
-    case 0:
-      return (
-        touchesSouthEdge(ix, iy, bounds) ||
-        touchesWestEdge(ix, iy, bounds) ||
-        touchesSouthWestCorner(ix, iy, bounds)
-      );
-    case 1:
-      return (
-        touchesSouthEdge(ix, iy, bounds) ||
-        touchesEastEdge(ix, iy, bounds) ||
-        touchesSouthEastCorner(ix, iy, bounds)
-      );
-    case 2:
-      return (
-        touchesNorthEdge(ix, iy, bounds) ||
-        touchesEastEdge(ix, iy, bounds) ||
-        touchesNorthEastCorner(ix, iy, bounds)
-      );
-    case 3:
-    default:
-      return (
-        touchesNorthEdge(ix, iy, bounds) ||
-        touchesWestEdge(ix, iy, bounds) ||
-        touchesNorthWestCorner(ix, iy, bounds)
-      );
-  }
-}
-
-function touchesSouthEdge(x, y, bounds) {
-  return y === bounds.maxY + 1 && x >= bounds.minX && x <= bounds.maxX;
-}
-
-function touchesNorthEdge(x, y, bounds) {
-  return y === bounds.minY - 1 && x >= bounds.minX && x <= bounds.maxX;
-}
-
-function touchesWestEdge(x, y, bounds) {
-  return x === bounds.minX - 1 && y >= bounds.minY && y <= bounds.maxY;
-}
-
-function touchesEastEdge(x, y, bounds) {
-  return x === bounds.maxX + 1 && y >= bounds.minY && y <= bounds.maxY;
-}
-
-function touchesSouthWestCorner(x, y, bounds) {
-  return x === bounds.minX - 1 && y === bounds.maxY + 1;
-}
-
-function touchesSouthEastCorner(x, y, bounds) {
-  return x === bounds.maxX + 1 && y === bounds.maxY + 1;
-}
-
-function touchesNorthWestCorner(x, y, bounds) {
-  return x === bounds.minX - 1 && y === bounds.minY - 1;
-}
-
-function touchesNorthEastCorner(x, y, bounds) {
-  return x === bounds.maxX + 1 && y === bounds.minY - 1;
+  return occupiedCells.some((cell) => cell.x === ix && cell.y === iy);
 }
 
 function getUnitSupportElevation(state, unit) {
-  const centerTileX = Number(unit?.x ?? 0);
-  const centerTileY = Number(unit?.y ?? 0);
+  const occupiedCells = getUnitOccupiedCells(unit);
+  let maxElevation = null;
 
-  const tile = getTile(state.map, centerTileX, centerTileY);
-  if (!tile) return null;
+  for (const cell of occupiedCells) {
+    const tile = getTile(state.map, cell.x, cell.y);
+    if (!tile) return null;
 
-  return getTileFootElevation(tile);
+    const elevation = getTileFootElevation(tile);
+    if (maxElevation === null || elevation > maxElevation) {
+      maxElevation = elevation;
+    }
+  }
+
+  return maxElevation;
 }
 
 function getUnitFootprintSortDepth(state, unit) {
@@ -449,11 +334,6 @@ function compareSceneItems(a, b) {
   }
 
   return 0;
-}
-
-function normalizeRotation(value) {
-  const n = Number.isFinite(value) ? value : 0;
-  return ((n % 4) + 4) % 4;
 }
 
 export function renderEditor(state, refs) {
