@@ -47,12 +47,15 @@ export function renderAll(state, refs) {
 export function renderIso(state, refs) {
   const { worldScene, worldUi } = refs;
   const units = state.units ?? state.mechs ?? [];
+  const mechUnits = units.filter((unit) => (unit?.unitType ?? "mech") === "mech");
   const { map } = state;
 
   worldScene.innerHTML = "";
   worldUi.innerHTML = "";
 
-  const sceneItems = [];
+  const behindTerrainItems = [];
+  const frontOccluderTerrainItems = [];
+  const unitItems = [];
   const overlayTileItems = [];
   const reachableMap = new Map();
 
@@ -99,7 +102,7 @@ export function renderIso(state, refs) {
         }
       };
 
-      sceneItems.push(tileItem);
+      bucketTerrainItem(state, tileItem, mechUnits, behindTerrainItems, frontOccluderTerrainItems);
       overlayTileItems.push(tileItem);
 
       if (hasDetailGeometry) {
@@ -114,7 +117,7 @@ export function renderIso(state, refs) {
             cell.size
           );
 
-          sceneItems.push({
+          const detailItem = {
             kind: "terrain",
             sourceKind: "detail",
             x: cell.x,
@@ -136,10 +139,23 @@ export function renderIso(state, refs) {
             render(parent) {
               renderTerrainTile(state, this, parent);
             }
-          });
+          };
+
+          bucketTerrainItem(
+            state,
+            detailItem,
+            mechUnits,
+            behindTerrainItems,
+            frontOccluderTerrainItems
+          );
         }
       }
     }
+  }
+
+  behindTerrainItems.sort(compareSceneItems);
+  for (const item of behindTerrainItems) {
+    item.render(worldScene);
   }
 
   for (const unit of units) {
@@ -183,7 +199,7 @@ export function renderIso(state, refs) {
     const parts = getUnitRenderSceneItems(state, unit, renderModel, isActive);
 
     for (const part of parts) {
-      sceneItems.push({
+      unitItems.push({
         kind: "unit_part",
         sortDepth: footprintSortDepth + (part.sortDepth - projectedCenter.y),
         sortKey:
@@ -201,9 +217,13 @@ export function renderIso(state, refs) {
     }
   }
 
-  sceneItems.sort(compareSceneItems);
+  unitItems.sort(compareSceneItems);
+  for (const item of unitItems) {
+    item.render(worldScene);
+  }
 
-  for (const item of sceneItems) {
+  frontOccluderTerrainItems.sort(compareSceneItems);
+  for (const item of frontOccluderTerrainItems) {
     item.render(worldScene);
   }
 
@@ -233,6 +253,92 @@ export function renderIso(state, refs) {
 
   drawSceneActiveUnitOverlay(state, worldUi);
   drawSceneLosPreview(state, worldUi);
+}
+
+function bucketTerrainItem(state, item, mechUnits, behindTerrainItems, frontOccluderTerrainItems) {
+  if (isTerrainInsideAnyMechFootprint(item, mechUnits)) {
+    behindTerrainItems.push(item);
+    return;
+  }
+
+  if (isTerrainFrontOccluderForAnyMech(state, item, mechUnits)) {
+    frontOccluderTerrainItems.push(item);
+    return;
+  }
+
+  behindTerrainItems.push(item);
+}
+
+function isTerrainInsideAnyMechFootprint(item, mechUnits) {
+  return mechUnits.some((unit) => isTerrainInsideFootprint(item, unit));
+}
+
+function isTerrainInsideFootprint(item, unit) {
+  const bounds = getUnitFootprintBounds(unit);
+  const ix = Math.floor(item.x);
+  const iy = Math.floor(item.y);
+
+  return ix >= bounds.minX && ix <= bounds.maxX && iy >= bounds.minY && iy <= bounds.maxY;
+}
+
+function isTerrainFrontOccluderForAnyMech(state, item, mechUnits) {
+  return mechUnits.some((unit) => isTerrainFrontOccluderForMech(state, item, unit));
+}
+
+function isTerrainFrontOccluderForMech(state, item, unit) {
+  const bounds = getUnitFootprintBounds(unit);
+  const ix = Math.floor(item.x);
+  const iy = Math.floor(item.y);
+  const rotation = normalizeRotation(state?.camera?.rotation ?? state?.rotation ?? 0);
+
+  // Camera-front edges by rotation:
+  // 0 = south + west
+  // 1 = south + east
+  // 2 = north + east
+  // 3 = north + west
+  switch (rotation) {
+    case 0:
+      return touchesSouthEdge(ix, iy, bounds) || touchesWestEdge(ix, iy, bounds) || touchesSouthWestCorner(ix, iy, bounds);
+    case 1:
+      return touchesSouthEdge(ix, iy, bounds) || touchesEastEdge(ix, iy, bounds) || touchesSouthEastCorner(ix, iy, bounds);
+    case 2:
+      return touchesNorthEdge(ix, iy, bounds) || touchesEastEdge(ix, iy, bounds) || touchesNorthEastCorner(ix, iy, bounds);
+    case 3:
+    default:
+      return touchesNorthEdge(ix, iy, bounds) || touchesWestEdge(ix, iy, bounds) || touchesNorthWestCorner(ix, iy, bounds);
+  }
+}
+
+function touchesSouthEdge(x, y, bounds) {
+  return y === bounds.maxY + 1 && x >= bounds.minX && x <= bounds.maxX;
+}
+
+function touchesNorthEdge(x, y, bounds) {
+  return y === bounds.minY - 1 && x >= bounds.minX && x <= bounds.maxX;
+}
+
+function touchesWestEdge(x, y, bounds) {
+  return x === bounds.minX - 1 && y >= bounds.minY && y <= bounds.maxY;
+}
+
+function touchesEastEdge(x, y, bounds) {
+  return x === bounds.maxX + 1 && y >= bounds.minY && y <= bounds.maxY;
+}
+
+function touchesSouthWestCorner(x, y, bounds) {
+  return x === bounds.minX - 1 && y === bounds.maxY + 1;
+}
+
+function touchesSouthEastCorner(x, y, bounds) {
+  return x === bounds.maxX + 1 && y === bounds.maxY + 1;
+}
+
+function touchesNorthWestCorner(x, y, bounds) {
+  return x === bounds.minX - 1 && y === bounds.minY - 1;
+}
+
+function touchesNorthEastCorner(x, y, bounds) {
+  return x === bounds.maxX + 1 && y === bounds.minY - 1;
 }
 
 function getUnitSupportElevation(state, unit) {
@@ -274,7 +380,6 @@ function getUnitFootprintSortDepth(state, unit) {
     const centerPoint = getUnitCenterPoint(unit);
     const supportElevation = getUnitSupportElevation(state, unit) ?? 0;
     const projected = projectScene(state, centerPoint.x, centerPoint.y, supportElevation, 1);
-
     return projected.y;
   }
 
@@ -302,6 +407,11 @@ function compareSceneItems(a, b) {
   }
 
   return 0;
+}
+
+function normalizeRotation(value) {
+  const n = Number.isFinite(value) ? value : 0;
+  return ((n % 4) + 4) % 4;
 }
 
 export function renderEditor(state, refs) {
