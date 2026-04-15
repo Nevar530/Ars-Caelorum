@@ -11,7 +11,9 @@ import { getUnitById } from "../mechs.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG, projectScene } from "./projection.js";
 import {
-  getUnitFootprintBounds
+  getUnitFootprintBounds,
+  getUnitCenterPoint,
+  getUnitCenterTile
 } from "../scale/scaleMath.js";
 import {
   getPrimaryOccupantAt
@@ -247,13 +249,18 @@ function drawOverlayForUnitFootprint(state, unit, className, fill, stroke, paren
     return;
   }
 
-  const supportElevation = getBoundsSupportElevation(state, bounds);
+  const supportElevation = getUnitSupportElevation(state, unit);
   if (supportElevation === null) return;
 
-  const centerX = bounds.minX + (bounds.width / 2);
-  const centerY = bounds.minY + (bounds.height / 2);
+  const centerPoint = getUnitCenterPoint(unit);
 
-  const center = projectScene(state, centerX, centerY, supportElevation + DETAIL_OVERLAY_LIFT, 1);
+  const center = projectScene(
+    state,
+    centerPoint.x,
+    centerPoint.y,
+    supportElevation + DETAIL_OVERLAY_LIFT,
+    1
+  );
 
   const halfW = bounds.width * (RENDER_CONFIG.isoTileWidth / 2);
   const halfH = bounds.height * (RENDER_CONFIG.isoTileHeight / 2);
@@ -388,22 +395,12 @@ function drawTopOverlayBounds(bounds, fill, stroke, parent) {
   parent.appendChild(rect);
 }
 
-function getBoundsSupportElevation(state, bounds) {
-  let maxElevation = null;
+function getUnitSupportElevation(state, unit) {
+  const centerTile = getUnitCenterTile(unit);
+  const tile = getTile(state.map, centerTile.x, centerTile.y);
+  if (!tile) return null;
 
-  for (let y = bounds.minY; y <= bounds.maxY; y += 1) {
-    for (let x = bounds.minX; x <= bounds.maxX; x += 1) {
-      const tile = getTile(state.map, x, y);
-      if (!tile) return null;
-
-      const elevation = getTileFootElevation(tile);
-      if (maxElevation === null || elevation > maxElevation) {
-        maxElevation = elevation;
-      }
-    }
-  }
-
-  return maxElevation;
+  return getTileFootElevation(tile);
 }
 
 function getUnitLabelPoint(state, unit) {
@@ -416,11 +413,16 @@ function getUnitLabelPoint(state, unit) {
     };
   }
 
-  const supportElevation = getBoundsSupportElevation(state, bounds) ?? 0;
-  const centerX = bounds.minX + (bounds.width / 2);
-  const centerY = bounds.minY + (bounds.height / 2);
+  const supportElevation = getUnitSupportElevation(state, unit) ?? 0;
+  const centerPoint = getUnitCenterPoint(unit);
 
-  const center = projectScene(state, centerX, centerY, supportElevation + DETAIL_OVERLAY_LIFT, 1);
+  const center = projectScene(
+    state,
+    centerPoint.x,
+    centerPoint.y,
+    supportElevation + DETAIL_OVERLAY_LIFT,
+    1
+  );
 
   return {
     x: center.x,
