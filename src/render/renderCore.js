@@ -103,7 +103,13 @@ export function renderIso(state, refs) {
         }
       };
 
-      bucketTerrainItem(state, tileItem, mechUnits, behindTerrainItems, frontOccluderTerrainItems);
+      bucketTerrainItem(
+        state,
+        tileItem,
+        mechUnits,
+        behindTerrainItems,
+        frontOccluderTerrainItems
+      );
       overlayTileItems.push(tileItem);
 
       if (hasDetailGeometry) {
@@ -173,7 +179,7 @@ export function renderIso(state, refs) {
     );
 
     const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
-    
+
     const renderModel =
       state.ui?.viewMode === "top"
         ? {
@@ -291,6 +297,27 @@ function isTerrainFrontOccluderForMech(state, item, unit) {
   const iy = Math.floor(item.y);
   const rotation = normalizeRotation(state?.camera?.rotation ?? state?.rotation ?? 0);
 
+  // Never let terrain inside the mech footprint occlude the mech.
+  if (ix >= bounds.minX && ix <= bounds.maxX && iy >= bounds.minY && iy <= bounds.maxY) {
+    return false;
+  }
+
+  const centerTileX = Number(unit?.x ?? 0);
+  const centerTileY = Number(unit?.y ?? 0);
+
+  const supportTile = getTile(state.map, centerTileX, centerTileY);
+  const terrainTile = getTile(state.map, ix, iy);
+
+  if (!supportTile || !terrainTile) return false;
+
+  const supportElevation = getTileFootElevation(supportTile);
+  const terrainElevation = getTileFootElevation(terrainTile);
+
+  // Same-height floor stays behind. Front occluders must be higher.
+  if (terrainElevation <= supportElevation) {
+    return false;
+  }
+
   // Camera-front edges by rotation:
   // 0 = south + west
   // 1 = south + east
@@ -298,14 +325,30 @@ function isTerrainFrontOccluderForMech(state, item, unit) {
   // 3 = north + west
   switch (rotation) {
     case 0:
-      return touchesSouthEdge(ix, iy, bounds) || touchesWestEdge(ix, iy, bounds) || touchesSouthWestCorner(ix, iy, bounds);
+      return (
+        touchesSouthEdge(ix, iy, bounds) ||
+        touchesWestEdge(ix, iy, bounds) ||
+        touchesSouthWestCorner(ix, iy, bounds)
+      );
     case 1:
-      return touchesSouthEdge(ix, iy, bounds) || touchesEastEdge(ix, iy, bounds) || touchesSouthEastCorner(ix, iy, bounds);
+      return (
+        touchesSouthEdge(ix, iy, bounds) ||
+        touchesEastEdge(ix, iy, bounds) ||
+        touchesSouthEastCorner(ix, iy, bounds)
+      );
     case 2:
-      return touchesNorthEdge(ix, iy, bounds) || touchesEastEdge(ix, iy, bounds) || touchesNorthEastCorner(ix, iy, bounds);
+      return (
+        touchesNorthEdge(ix, iy, bounds) ||
+        touchesEastEdge(ix, iy, bounds) ||
+        touchesNorthEastCorner(ix, iy, bounds)
+      );
     case 3:
     default:
-      return touchesNorthEdge(ix, iy, bounds) || touchesWestEdge(ix, iy, bounds) || touchesNorthWestCorner(ix, iy, bounds);
+      return (
+        touchesNorthEdge(ix, iy, bounds) ||
+        touchesWestEdge(ix, iy, bounds) ||
+        touchesNorthWestCorner(ix, iy, bounds)
+      );
   }
 }
 
@@ -342,12 +385,10 @@ function touchesNorthEastCorner(x, y, bounds) {
 }
 
 function getUnitSupportElevation(state, unit) {
-  const bounds = getUnitFootprintBounds(unit);
+  const centerTileX = Number(unit?.x ?? 0);
+  const centerTileY = Number(unit?.y ?? 0);
 
-  const supportX = bounds.minX + Math.floor(bounds.width / 2);
-  const supportY = bounds.minY + Math.floor(bounds.height / 2);
-
-  const tile = getTile(state.map, supportX, supportY);
+  const tile = getTile(state.map, centerTileX, centerTileY);
   if (!tile) return null;
 
   return getTileFootElevation(tile);
