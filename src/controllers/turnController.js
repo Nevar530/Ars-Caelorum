@@ -2,9 +2,9 @@ import { getActiveUnitFromPhaseOrder, rebuildRoundOrder } from "../initiative.js
 
 export function createTurnController({
   state,
-  getMechById,
+  getUnitById,
   clearTransientUi,
-  snapFocusToActiveMech,
+  snapFocusToActiveUnit,
   render,
   logDev,
   showSplash,
@@ -14,7 +14,7 @@ export function createTurnController({
     if (!Array.isArray(order)) return -1;
 
     for (let i = Math.max(0, startIndex); i < order.length; i += 1) {
-      const unit = getMechById(state.mechs, order[i]);
+      const unit = getUnitById(state.units, order[i]);
       if (!unit) continue;
       if (unit.status === "disabled") continue;
       return i;
@@ -23,14 +23,16 @@ export function createTurnController({
     return -1;
   }
 
-  function setActiveMechByCurrentTurnIndex() {
-    const activeMechId = getActiveUnitFromPhaseOrder(state);
+  function setActiveUnitByCurrentTurnIndex() {
+    const activeUnitId = getActiveUnitFromPhaseOrder(state);
 
-    state.turn.activeMechId = activeMechId ?? null;
-    state.selection.mechId = activeMechId ?? null;
+    state.turn.activeUnitId = activeUnitId ?? null;
+    state.turn.activeMechId = activeUnitId ?? null;
+    state.selection.unitId = activeUnitId ?? null;
+    state.selection.mechId = activeUnitId ?? null;
 
-    if (activeMechId) {
-      snapFocusToActiveMech();
+    if (activeUnitId) {
+      snapFocusToActiveUnit();
     }
   }
 
@@ -59,7 +61,7 @@ export function createTurnController({
     }
 
     clearTransientUi();
-    setActiveMechByCurrentTurnIndex();
+    setActiveUnitByCurrentTurnIndex();
 
     logDev("Phase changed to ACTION.");
     showSplash(`ROUND ${state.turn.round} — ACTION PHASE`);
@@ -77,7 +79,7 @@ export function createTurnController({
 
     state.turn.moveIndex = getNextEligiblePhaseIndex(state.turn.moveOrder, 0);
     state.turn.actionIndex = -1;
-    setActiveMechByCurrentTurnIndex();
+    setActiveUnitByCurrentTurnIndex();
 
     logDev(`Round advanced to ${state.turn.round}.`);
     logDev("Phase changed to MOVE.");
@@ -87,9 +89,9 @@ export function createTurnController({
   }
 
   function advanceMoveTurn() {
-    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-    if (activeMech) {
-      activeMech.hasMoved = true;
+    const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+    if (activeUnit) {
+      activeUnit.hasMoved = true;
     }
 
     state.turn.moveIndex = getNextEligiblePhaseIndex(
@@ -99,7 +101,7 @@ export function createTurnController({
 
     if (state.turn.moveIndex >= 0) {
       clearTransientUi();
-      setActiveMechByCurrentTurnIndex();
+      setActiveUnitByCurrentTurnIndex();
       render();
       return;
     }
@@ -108,9 +110,9 @@ export function createTurnController({
   }
 
   function advanceActionTurn() {
-    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-    if (activeMech) {
-      activeMech.hasActed = true;
+    const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+    if (activeUnit) {
+      activeUnit.hasActed = true;
     }
 
     state.turn.actionIndex = getNextEligiblePhaseIndex(
@@ -120,7 +122,7 @@ export function createTurnController({
 
     if (state.turn.actionIndex >= 0) {
       clearTransientUi();
-      setActiveMechByCurrentTurnIndex();
+      setActiveUnitByCurrentTurnIndex();
       render();
       return;
     }
@@ -130,7 +132,7 @@ export function createTurnController({
 
   function startCombat() {
     if (state.turn.combatStarted) return;
-    if (!state.mechs.length) return;
+    if (!state.units.length) return;
 
     clearTransientUi();
     clearCombatTextMarkers(state);
@@ -142,7 +144,7 @@ export function createTurnController({
 
     state.turn.moveIndex = getNextEligiblePhaseIndex(state.turn.moveOrder, 0);
     state.turn.actionIndex = -1;
-    setActiveMechByCurrentTurnIndex();
+    setActiveUnitByCurrentTurnIndex();
 
     logDev("Combat started.");
     logDev("Phase changed to MOVE.");
@@ -153,7 +155,7 @@ export function createTurnController({
 
   return {
     getNextEligiblePhaseIndex,
-    setActiveMechByCurrentTurnIndex,
+    setActiveUnitByCurrentTurnIndex,
     rebuildOrdersAndLog,
     beginActionPhase,
     endRoundAndBeginNext,
