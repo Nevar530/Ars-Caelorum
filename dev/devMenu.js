@@ -213,7 +213,7 @@ class DevMenu {
   }
 
   getRuntimeUnits() {
-    return Array.isArray(this.appState?.mechs) ? this.appState.mechs : [];
+    return Array.isArray(this.appState?.units) ? this.appState.units : (Array.isArray(this.appState?.mechs) ? this.appState.mechs : []);
   }
 
   buildDom() {
@@ -483,17 +483,20 @@ class DevMenu {
   }
 
   replaceUnitAtSpawn(newUnit) {
-    this.appState.mechs = [
+    this.appState.units = [
       ...this.getRuntimeUnits().filter((unit) => unit.spawnId !== newUnit.spawnId),
       newUnit
     ];
+    this.appState.mechs = this.appState.units;
   }
 
-  syncActiveMechAfterMutation(preferredInstanceId = null) {
-    const mechs = this.getRuntimeUnits();
+  syncActiveUnitAfterMutation(preferredInstanceId = null) {
+    const units = this.getRuntimeUnits();
 
-    if (mechs.length === 0) {
+    if (units.length === 0) {
+      this.appState.turn.activeUnitId = null;
       this.appState.turn.activeMechId = null;
+      this.appState.selection.unitId = null;
       this.appState.selection.mechId = null;
       this.appState.focus.x = 0;
       this.appState.focus.y = 0;
@@ -501,14 +504,17 @@ class DevMenu {
     }
 
     const preferred =
-      mechs.find((mech) => mech.instanceId === preferredInstanceId) ??
-      mechs.find((mech) => mech.instanceId === this.appState.turn.activeMechId) ??
-      mechs[0];
+      units.find((unit) => unit.instanceId === preferredInstanceId) ??
+      units.find((unit) => unit.instanceId === this.appState.turn.activeUnitId) ??
+      units[0];
 
+    this.appState.turn.activeUnitId = preferred.instanceId;
     this.appState.turn.activeMechId = preferred.instanceId;
+    this.appState.selection.unitId = preferred.instanceId;
     this.appState.selection.mechId = preferred.instanceId;
     this.appState.focus.x = preferred.x;
     this.appState.focus.y = preferred.y;
+    this.appState.focus.scale = preferred.scale ?? preferred.unitType ?? "mech";
   }
 
   spawnSelectedUnit() {
@@ -563,7 +569,7 @@ class DevMenu {
     newUnit.status = "operational";
 
     this.replaceUnitAtSpawn(newUnit);
-    this.syncActiveMechAfterMutation(newUnit.instanceId);
+    this.syncActiveUnitAfterMutation(newUnit.instanceId);
 
     if (existingUnit) {
       logDev(
@@ -593,9 +599,10 @@ class DevMenu {
     const unit = this.getRuntimeUnits().find((entry) => entry.instanceId === instanceId);
     if (!unit) return;
 
-    this.appState.mechs = this.getRuntimeUnits().filter(
+    this.appState.units = this.getRuntimeUnits().filter(
       (entry) => entry.instanceId !== instanceId
     );
+    this.appState.mechs = this.appState.units;
 
     this.appState.turn.moveOrder = this.appState.turn.moveOrder.filter(
       (id) => id !== instanceId
@@ -604,13 +611,15 @@ class DevMenu {
       (id) => id !== instanceId
     );
 
-    if (this.appState.turn.activeMechId === instanceId) {
+    if (this.appState.turn.activeUnitId === instanceId) {
+      this.appState.turn.activeUnitId = null;
       this.appState.turn.activeMechId = null;
     }
 
     logDev(`${unit.name} / ${unit.pilotName ?? "No Pilot"} removed from map.`);
 
     if (this.getRuntimeUnits().length === 0) {
+      this.appState.turn.activeUnitId = null;
       this.appState.turn.activeMechId = null;
       this.appState.turn.round = 1;
       this.appState.turn.phase = "setup";
@@ -624,6 +633,7 @@ class DevMenu {
       this.appState.turn.splashVisible = false;
       this.appState.turn.splashKind = null;
 
+      this.appState.selection.unitId = null;
       this.appState.selection.mechId = null;
       this.appState.selection.action = null;
 
@@ -638,7 +648,7 @@ class DevMenu {
       this.appState.focus.x = 0;
       this.appState.focus.y = 0;
     } else {
-      this.syncActiveMechAfterMutation();
+      this.syncActiveUnitAfterMutation();
     }
 
     this.render();
@@ -646,8 +656,10 @@ class DevMenu {
   }
 
   resetUnits() {
-    this.appState.mechs = [];
-    this.appState.turn.activeMechId = null;
+    this.appState.units = [];
+    this.appState.mechs = this.appState.units;
+    this.appState.turn.activeUnitId = null;
+      this.appState.turn.activeMechId = null;
     this.appState.turn.round = 1;
     this.appState.turn.phase = "setup";
     this.appState.turn.combatStarted = false;
@@ -660,7 +672,8 @@ class DevMenu {
     this.appState.turn.splashVisible = false;
     this.appState.turn.splashKind = null;
 
-    this.appState.selection.mechId = null;
+    this.appState.selection.unitId = null;
+      this.appState.selection.mechId = null;
     this.appState.selection.action = null;
 
     this.appState.ui.mode = "idle";
@@ -673,6 +686,8 @@ class DevMenu {
 
     this.appState.focus.x = 0;
     this.appState.focus.y = 0;
+
+    this.appState.mechs = this.appState.units;
 
     logDev("All units removed from map.");
     this.render();
