@@ -83,10 +83,6 @@ export function createCombatController({
       state.ui.action.lastConfirmed
     );
 
-    for (const line of hitResult.logs) {
-      logDev(line);
-    }
-
     for (const singleResult of hitResult.results) {
       addCombatTextMarker(
         state,
