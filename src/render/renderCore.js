@@ -4,19 +4,14 @@ import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
 import {
   getTile,
   getTileFootElevation,
-  getDetailGrid,
   getDetailRenderCells,
   isDetailTileUniform,
-  getTileRenderElevation,
-  getTileSummary,
-  formatDetailElevation
+  getTileRenderElevation
 } from "../map.js";
 import { getReachableTiles } from "../movement.js";
 import {
   renderTerrainTile,
-  renderEditorTile,
-  renderEditorMiniTile,
-  renderEditorDetailCell
+  renderEditorTile
 } from "./renderTerrain.js";
 import { getUnitRenderSceneItems } from "./renderUnits.js";
 import {
@@ -33,10 +28,7 @@ import {
   getSceneSortKey
 } from "./projection.js";
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
-import { makeText } from "../utils.js";
 import {
-  getUnitFootprint,
-  getUnitFootprintBounds,
   getUnitCenterPoint,
   getUnitOccupiedCells
 } from "../scale/scaleMath.js";
@@ -70,9 +62,6 @@ export function renderIso(state, refs) {
     }
   }
 
-  // --------------------------------
-  // Build terrain scene items
-  // --------------------------------
   for (let y = 0; y < MAP_CONFIG.height; y += 1) {
     for (let x = 0; x < MAP_CONFIG.width; x += 1) {
       const tile = getTile(map, x, y);
@@ -155,17 +144,10 @@ export function renderIso(state, refs) {
 
   terrainItems.sort(compareSceneItems);
 
-  // --------------------------------
-  // Draw terrain first
-  // --------------------------------
   for (const item of terrainItems) {
     item.render(worldScene);
   }
 
-  // --------------------------------
-  // Draw floor overlays INTO worldScene
-  // so sprites can appear above them
-  // --------------------------------
   for (const item of overlayTileItems) {
     if (state.ui.mode === "move" && item.reachableCost !== null) {
       drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost), {
@@ -190,12 +172,7 @@ export function renderIso(state, refs) {
     });
   }
 
-  // --------------------------------
-  // Build unit scene items
-  // --------------------------------
   for (const unit of units) {
-    const footprint = getUnitFootprint(unit);
-    const bounds = getUnitFootprintBounds(unit);
     const centerPoint = getUnitCenterPoint(unit);
     const supportElevation = getUnitSupportElevation(state, unit);
 
@@ -254,16 +231,10 @@ export function renderIso(state, refs) {
 
   unitItems.sort(compareSceneItems);
 
-  // --------------------------------
-  // Draw units after floor overlays
-  // --------------------------------
   for (const item of unitItems) {
     item.render(worldScene);
   }
 
-  // --------------------------------
-  // Draw top-most overlays/UI last
-  // --------------------------------
   drawSceneActiveUnitOverlay(state, worldUi);
   drawSceneLosPreview(state, worldUi);
 }
@@ -312,16 +283,13 @@ export function renderEditor(state, refs) {
   const { editor } = refs;
   const { map } = state;
 
+  if (!editor) return;
+
   editor.innerHTML = "";
 
   const pad = RENDER_CONFIG.editorPadding;
   const full = RENDER_CONFIG.editorSize;
   const inner = full - (pad * 2);
-
-  if (state.ui.editor.mode === "detail") {
-    renderDetailEditor(state, editor, map, pad, inner);
-    return;
-  }
 
   const cellWidth = inner / MAP_CONFIG.width;
   const cellHeight = inner / MAP_CONFIG.height;
@@ -329,6 +297,8 @@ export function renderEditor(state, refs) {
   for (let y = 0; y < MAP_CONFIG.height; y += 1) {
     for (let x = 0; x < MAP_CONFIG.width; x += 1) {
       const tile = getTile(map, x, y);
+      if (!tile) continue;
+
       const isSelected =
         x === state.ui.editor.selectedTile.x &&
         y === state.ui.editor.selectedTile.y;
@@ -348,109 +318,9 @@ export function renderEditor(state, refs) {
   }
 }
 
-function renderDetailEditor(state, parent, map, pad, inner) {
-  const selectedX = state.ui.editor.selectedTile.x;
-  const selectedY = state.ui.editor.selectedTile.y;
-  const selectedTile = getTile(map, selectedX, selectedY);
-  const detail = getDetailGrid(selectedTile);
-  const summary = getTileSummary(selectedTile);
-
-  const miniSize = 126;
-  const miniCellW = miniSize / MAP_CONFIG.width;
-  const miniCellH = miniSize / MAP_CONFIG.height;
-
-  const miniX = pad;
-  const miniY = pad;
-
-  for (let y = 0; y < MAP_CONFIG.height; y += 1) {
-    for (let x = 0; x < MAP_CONFIG.width; x += 1) {
-      const tile = getTile(map, x, y);
-      const isSelected = x === selectedX && y === selectedY;
-
-      renderEditorMiniTile(
-        tile,
-        x,
-        y,
-        miniX + (x * miniCellW),
-        miniY + (y * miniCellH),
-        miniCellW,
-        miniCellH,
-        parent,
-        { selected: isSelected }
-      );
-    }
-  }
-
-  const infoX = miniX + miniSize + 16;
-  const infoY = miniY + 20;
-
-  parent.appendChild(
-    makeText(infoX, infoY, `Tile ${selectedX},${selectedY}`, "editor-mode-title")
-  );
-
-  parent.appendChild(
-    makeText(
-      infoX,
-      infoY + 22,
-      `Base ${selectedTile?.elevation ?? 0} · Foot ${formatDetailElevation(summary?.mechFootFineElevation ?? 0)}`,
-      "editor-mode-sub"
-    )
-  );
-
-  parent.appendChild(
-    makeText(
-      infoX,
-      infoY + 44,
-      `Range ${formatDetailElevation(summary?.heightRangeFine ?? 0)} · ${summary?.mechEnterable ? "Mech Enterable" : "Mech Blocked"}`,
-      "editor-mode-sub"
-    )
-  );
-
-  parent.appendChild(
-    makeText(
-      infoX,
-      infoY + 66,
-      "Click map to change tile · Click big cells to edit detail",
-      "editor-mode-sub"
-    )
-  );
-
-  const detailBoxY = miniY + miniSize + 18;
-  const detailBoxSize = inner - miniSize - 18;
-  const gridSize = Math.min(detailBoxSize, inner);
-  const cellSize = gridSize / detail.subdivisions;
-
-  for (let sy = 0; sy < detail.subdivisions; sy += 1) {
-    for (let sx = 0; sx < detail.subdivisions; sx += 1) {
-      const detailCell = detail.cells[sy][sx];
-
-      renderEditorDetailCell(
-        detailCell,
-        selectedX,
-        selectedY,
-        sx,
-        sy,
-        pad + (sx * cellSize),
-        detailBoxY + (sy * cellSize),
-        cellSize,
-        cellSize,
-        parent,
-        {
-          large: true
-        }
-      );
-    }
-  }
-}
-
 function renderEditorUi(state, refs) {
   if (!refs.editorModeLabel) return;
 
-  if (state.ui.editor.mode === "detail") {
-    refs.editorModeLabel.textContent =
-      `Editor Mode: Detail Cells · Tile ${state.ui.editor.selectedTile.x},${state.ui.editor.selectedTile.y}`;
-    return;
-  }
-
-  refs.editorModeLabel.textContent = "Editor Mode: Base Grid";
+  refs.editorModeLabel.textContent =
+    `Editor Mode: Base Grid · Tile ${state.ui.editor.selectedTile.x},${state.ui.editor.selectedTile.y} · Left click raise · Right click lower`;
 }
