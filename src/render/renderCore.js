@@ -164,13 +164,13 @@ export function renderIso(state, refs) {
 
     if (supportElevation === null) continue;
 
-    const projectedCenter = projectScene(
-      state,
-      centerPoint.x,
-      centerPoint.y,
-      supportElevation,
-      1
-    );
+const projectedAnchor = projectScene(
+  state,
+  centerPoint.x,
+  centerPoint.y,
+  supportElevation,
+  1
+);
 
     const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
 
