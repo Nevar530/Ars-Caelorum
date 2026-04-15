@@ -8,13 +8,17 @@ import {
   isDetailTileUniform,
   getTileRenderElevation
 } from "../map.js";
+import { getReachableTiles } from "../movement.js";
 import {
   renderTerrainTile,
   renderEditorTile
 } from "./renderTerrain.js";
 import { getUnitRenderSceneItems } from "./renderUnits.js";
 import {
-  buildTerrainOverlaySceneItemsForTile,
+  drawSceneMoveOverlay,
+  drawScenePathOverlayForTile,
+  drawSceneActionOverlayForTile,
+  drawSceneFocusOverlayForTile,
   drawSceneActiveUnitOverlay
 } from "./renderOverlays.js";
 import {
@@ -48,8 +52,17 @@ export function renderIso(state, refs) {
   worldScene.innerHTML = "";
   worldUi.innerHTML = "";
 
+  const footprintLockedTerrainItems = [];
   const terrainSceneItems = [];
   const unitSceneItems = [];
+  const overlayTileItems = [];
+  const reachableMap = new Map();
+
+  if (state.ui.mode === "move") {
+    for (const tile of getReachableTiles(state)) {
+      reachableMap.set(`${tile.x},${tile.y}`, tile);
+    }
+  }
 
   for (let y = 0; y < MAP_CONFIG.height; y += 1) {
     for (let x = 0; x < MAP_CONFIG.width; x += 1) {
@@ -59,6 +72,7 @@ export function renderIso(state, refs) {
       const renderElevation = getTileRenderElevation(tile);
       const projected = projectScene(state, x, y, renderElevation, 1);
       const hasDetailGeometry = !isDetailTileUniform(tile);
+      const reachableData = reachableMap.get(`${x},${y}`) ?? null;
 
       const tileItem = {
         kind: "terrain",
@@ -69,6 +83,8 @@ export function renderIso(state, refs) {
         screenX: projected.x,
         screenY: projected.y,
         sortKey: getSceneSortKey(state, x, y, renderElevation, 1),
+        reachableCost: reachableData?.cost ?? null,
+        reachableData,
         skipTerrain: hasDetailGeometry,
         size: 1,
         leftFaceHeight: renderElevation,
@@ -85,8 +101,8 @@ export function renderIso(state, refs) {
         }
       };
 
-      pushTerrainSceneItem(tileItem, terrainSceneItems);
-      terrainSceneItems.push(...buildTerrainOverlaySceneItemsForTile(state, tileItem));
+      pushTerrainSceneItem(tileItem, units, footprintLockedTerrainItems, terrainSceneItems);
+      overlayTileItems.push(tileItem);
 
       if (hasDetailGeometry) {
         const detailCells = getDetailRenderCells(map, x, y);
@@ -124,7 +140,7 @@ export function renderIso(state, refs) {
             }
           };
 
-          pushTerrainSceneItem(detailItem, terrainSceneItems);
+          pushTerrainSceneItem(detailItem, units, footprintLockedTerrainItems, terrainSceneItems);
         }
       }
     }
@@ -188,9 +204,38 @@ export function renderIso(state, refs) {
     }
   }
 
+  footprintLockedTerrainItems.sort(compareSceneItems);
+  for (const item of footprintLockedTerrainItems) {
+    item.render(worldScene);
+  }
+
   terrainSceneItems.sort(compareSceneItems);
   for (const item of terrainSceneItems) {
     item.render(worldScene);
+  }
+
+  for (const item of overlayTileItems) {
+    if (state.ui.mode === "move" && item.reachableCost !== null) {
+      drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost), {
+        drawShapes: true,
+        drawLabels: false
+      });
+    }
+
+    drawScenePathOverlayForTile(state, item, worldScene, {
+      drawShapes: true,
+      drawLabels: false
+    });
+
+    drawSceneActionOverlayForTile(state, item, worldScene, {
+      drawShapes: true,
+      drawLabels: false
+    });
+
+    drawSceneFocusOverlayForTile(state, item, worldScene, {
+      drawShapes: true,
+      drawLabels: false
+    });
   }
 
   unitSceneItems.sort(compareSceneItems);
@@ -202,8 +247,25 @@ export function renderIso(state, refs) {
   drawSceneLosPreview(state, worldUi);
 }
 
-function pushTerrainSceneItem(item, terrainSceneItems) {
+function pushTerrainSceneItem(item, units, footprintLockedTerrainItems, terrainSceneItems) {
+  if (isTerrainInsideAnyUnitFootprint(item, units)) {
+    footprintLockedTerrainItems.push(item);
+    return;
+  }
+
   terrainSceneItems.push(item);
+}
+
+function isTerrainInsideAnyUnitFootprint(item, units) {
+  return units.some((unit) => isTerrainInsideUnitFootprint(item, unit));
+}
+
+function isTerrainInsideUnitFootprint(item, unit) {
+  const occupiedCells = getUnitOccupiedCells(unit);
+  const ix = Math.floor(item.x);
+  const iy = Math.floor(item.y);
+
+  return occupiedCells.some((cell) => cell.x === ix && cell.y === iy);
 }
 
 function getUnitSupportElevation(state, unit) {
@@ -250,6 +312,7 @@ function getUnitFootprintSortDepth(state, unit) {
     const centerTile = getUnitCenterPoint(unit);
     const supportElevation = getUnitSupportElevation(state, unit) ?? 0;
     const projected = projectTileCenter(state, centerTile.x, centerTile.y, supportElevation);
+
     return projected.y;
   }
 
