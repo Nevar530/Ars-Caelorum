@@ -15,9 +15,7 @@ const DEBUG_HEIGHTS = {
   pilot: { body: 1, head: 2 }
 };
 
-// This is the important fix:
-// sprite sorts slightly in front of the support tile it stands on.
-const UNIT_FRONT_TILE_BIAS = 1.0;
+const UNIT_FRONT_TILE_BIAS = 0.01;
 
 export function drawMech(state, unit, renderModel, parent, isActive = false) {
   const items = getUnitRenderSceneItems(state, unit, renderModel, isActive);
@@ -115,7 +113,6 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
 
   const items = [];
 
-  // This makes the unit stand in front of its support tile.
   const spriteSortDepth = anchorY + RENDER_CONFIG.isoTileHeight + UNIT_FRONT_TILE_BIAS;
 
   items.push({
