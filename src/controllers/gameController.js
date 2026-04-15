@@ -10,8 +10,8 @@ import { resetMap } from "../map.js";
 export function createGameController({
   state,
   refs,
-  instantiateTestMechs,
-  snapFocusToActiveMech,
+  instantiateTestUnits,
+  snapFocusToActiveUnit,
   logDev
 }) {
   let splashTimer = null;
@@ -56,14 +56,17 @@ export function createGameController({
     state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
   }
 
-  function setPreviewSelectionFromFirstMech() {
-    if (state.mechs.length > 0) {
-      state.selection.mechId = state.mechs[0].instanceId;
-      state.focus.x = state.mechs[0].x;
-      state.focus.y = state.mechs[0].y;
+  function setPreviewSelectionFromFirstUnit() {
+    if (state.units.length > 0) {
+      state.selection.unitId = state.units[0].instanceId;
+      state.selection.mechId = state.units[0].instanceId;
+      state.focus.x = state.units[0].x;
+      state.focus.y = state.units[0].y;
+      state.focus.scale = state.units[0].scale ?? state.units[0].unitType ?? "pilot";
       return;
     }
 
+    state.selection.unitId = null;
     state.selection.mechId = null;
     state.focus.x = 0;
     state.focus.y = 0;
@@ -74,6 +77,7 @@ export function createGameController({
     hideSplash();
     clearCombatTextMarkers(state);
 
+    state.turn.activeUnitId = null;
     state.turn.activeMechId = null;
     state.turn.round = 1;
     state.turn.phase = "setup";
@@ -84,12 +88,13 @@ export function createGameController({
     state.turn.actionIndex = -1;
     state.turn.lastInitiativeRolls = [];
 
-    setPreviewSelectionFromFirstMech();
+    setPreviewSelectionFromFirstUnit();
   }
 
   function resetMapAndUnits() {
     state.map = resetMap();
-    state.mechs = instantiateTestMechs(state.content);
+    state.units = instantiateTestUnits(state.content);
+    state.mechs = state.units;
 
     state.rotation = 0;
     state.camera.angle = 0;
@@ -98,25 +103,30 @@ export function createGameController({
 
     resetCombatToSetup();
 
-    logDev("Map reset and 4 test mechs reloaded.");
+    logDev("Map reset and test units reloaded.");
     render();
   }
 
-  function selectFocusedMechIfPresent(getMechAt) {
+  function selectFocusedUnitIfPresent(getUnitAt) {
     if (state.turn.combatStarted) return false;
     if (state.ui.mode !== "idle") return false;
     if (state.ui.commandMenu.open) return false;
 
-    const hoveredMech = getMechAt(state.mechs, state.focus.x, state.focus.y);
-    if (!hoveredMech) return false;
+    const hoveredUnit = getUnitAt(state.units, state.focus.x, state.focus.y);
+    if (!hoveredUnit) return false;
 
-    if (state.selection.mechId === hoveredMech.instanceId) {
+    if (state.selection.unitId === hoveredUnit.instanceId) {
       return true;
     }
 
-    state.selection.mechId = hoveredMech.instanceId;
+    state.selection.unitId = hoveredUnit.instanceId;
+    state.selection.mechId = hoveredUnit.instanceId;
 
-    logDev(`${hoveredMech.name} selected at (${hoveredMech.x},${hoveredMech.y}).`);
+    state.focus.x = hoveredUnit.x;
+    state.focus.y = hoveredUnit.y;
+    state.focus.scale = hoveredUnit.scale ?? hoveredUnit.unitType ?? "mech";
+
+    logDev(`${hoveredUnit.name} selected at (${hoveredUnit.x},${hoveredUnit.y}).`);
 
     return true;
   }
@@ -125,7 +135,7 @@ export function createGameController({
     if (!state.turn.combatStarted) return;
     if (state.ui.mode !== "idle") return;
 
-    snapFocusToActiveMech();
+    snapFocusToActiveUnit();
 
     state.ui.commandMenu.open = true;
     state.ui.commandMenu.index = 0;
@@ -207,7 +217,7 @@ export function createGameController({
     setPreviewSelectionFromFirstMech,
     resetCombatToSetup,
     resetMapAndUnits,
-    selectFocusedMechIfPresent,
+    selectFocusedUnitIfPresent,
     openCommandMenu,
     closeCommandMenu,
     moveMenuSelection,
