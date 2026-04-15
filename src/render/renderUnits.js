@@ -15,11 +15,7 @@ const DEBUG_HEIGHTS = {
   pilot: { body: 1, head: 2 }
 };
 
-// Temporary code-side mech split.
-// Tune this value against the current mech art.
-const MECH_SPRITE_SPLIT_Y = 96;
-
-const UNIT_SORT_EPSILON = 0.25;
+const UNIT_FRONT_TILE_BIAS = 0.01;
 
 export function drawMech(state, unit, renderModel, parent, isActive = false) {
   const items = getUnitRenderSceneItems(state, unit, renderModel, isActive);
@@ -117,87 +113,44 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
 
   const items = [];
 
-  if (unit?.unitType === "mech" && spriteInfo.href) {
-    const lowerSortDepth = anchorY + UNIT_SORT_EPSILON;
-    const upperSortDepth = anchorY - 0.5;
-
-    items.push({
-      sortDepth: upperSortDepth,
-      sortKey: anchorX,
-      render(parent) {
-        renderSpriteSlice({
-          parent,
-          href: spriteInfo.href,
-          anchorX,
-          anchorY,
-          width: spriteBox.width,
-          height: spriteBox.height,
-          mirrorX: spriteInfo.mirrorX,
-          clipTop: 0,
-          clipBottom: MECH_SPRITE_SPLIT_Y,
-          className: getSpriteClass(unit, isActive)
-        });
-      }
-    });
-
-    items.push({
-      sortDepth: lowerSortDepth,
-      sortKey: anchorX,
-      render(parent) {
-        renderSpriteSlice({
-          parent,
-          href: spriteInfo.href,
-          anchorX,
-          anchorY,
-          width: spriteBox.width,
-          height: spriteBox.height,
-          mirrorX: spriteInfo.mirrorX,
-          clipTop: MECH_SPRITE_SPLIT_Y,
-          clipBottom: spriteBox.height,
-          className: getSpriteClass(unit, isActive)
-        });
-      }
-    });
-  } else {
-    const spriteSortDepth = anchorY + UNIT_SORT_EPSILON;
-
-    items.push({
-      sortDepth: spriteSortDepth,
-      sortKey: anchorX,
-      render(parent) {
-        if (spriteInfo.href) {
-          const x = anchorX - (spriteBox.width / 2);
-          const y = anchorY - spriteBox.height;
-
-          const image = svgEl("image");
-          image.setAttribute("x", String(x));
-          image.setAttribute("y", String(y));
-          image.setAttribute("width", String(spriteBox.width));
-          image.setAttribute("height", String(spriteBox.height));
-          image.setAttribute("preserveAspectRatio", "xMidYMid meet");
-          image.setAttribute("href", spriteInfo.href);
-          image.setAttributeNS("http://www.w3.org/1999/xlink", "href", spriteInfo.href);
-          image.setAttribute("pointer-events", "none");
-          image.setAttribute("class", getSpriteClass(unit, isActive));
-
-          if (spriteInfo.mirrorX) {
-            image.setAttribute("transform", `translate(${anchorX * 2}, 0) scale(-1, 1)`);
-          }
-
-          parent.appendChild(image);
-          return;
-        }
-
-        const fallback = buildIsoFallbackDiamond(anchorX, anchorY, unit);
-        const poly = makePolygon(fallback, getIsoTopClass(state, unit, isActive), "currentColor");
-        poly.removeAttribute("fill");
-        parent.appendChild(poly);
-      }
-    });
-  }
+    const spriteSortDepth = anchorY + UNIT_FRONT_TILE_BIAS;
 
   items.push({
-    sortDepth: anchorY + 0.02,
+    sortDepth: spriteSortDepth,
+    sortKey: anchorX,
+    render(parent) {
+      if (spriteInfo.href) {
+        const x = anchorX - (spriteBox.width / 2);
+        const y = anchorY - spriteBox.height;
+
+        const image = svgEl("image");
+        image.setAttribute("x", String(x));
+        image.setAttribute("y", String(y));
+        image.setAttribute("width", String(spriteBox.width));
+        image.setAttribute("height", String(spriteBox.height));
+        image.setAttribute("preserveAspectRatio", "xMidYMid meet");
+        image.setAttribute("href", spriteInfo.href);
+        image.setAttributeNS("http://www.w3.org/1999/xlink", "href", spriteInfo.href);
+        image.setAttribute("pointer-events", "none");
+        image.setAttribute("class", getSpriteClass(unit, isActive));
+
+        if (spriteInfo.mirrorX) {
+          image.setAttribute("transform", `translate(${anchorX * 2}, 0) scale(-1, 1)`);
+        }
+
+        parent.appendChild(image);
+        return;
+      }
+
+      const fallback = buildIsoFallbackDiamond(anchorX, anchorY, unit);
+      const poly = makePolygon(fallback, getIsoTopClass(state, unit, isActive), "currentColor");
+      poly.removeAttribute("fill");
+      parent.appendChild(poly);
+    }
+  });
+
+  items.push({
+    sortDepth: spriteSortDepth + 0.01,
     sortKey: anchorX,
     render(parent) {
       drawHeightPole(parent, unit, anchorX, anchorY);
@@ -205,7 +158,7 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
   });
 
   items.push({
-    sortDepth: anchorY + 0.03,
+    sortDepth: spriteSortDepth + 0.02,
     sortKey: anchorX,
     render(parent) {
       const label = makeText(
@@ -219,59 +172,6 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
   });
 
   return items;
-}
-
-function renderSpriteSlice({
-  parent,
-  href,
-  anchorX,
-  anchorY,
-  width,
-  height,
-  mirrorX,
-  clipTop,
-  clipBottom,
-  className
-}) {
-  const x = anchorX - (width / 2);
-  const y = anchorY - height;
-  const clipHeight = Math.max(0, clipBottom - clipTop);
-
-  if (clipHeight <= 0) return;
-
-  const clipId = `mech-slice-${Math.random().toString(36).slice(2, 10)}`;
-
-  const defs = svgEl("defs");
-  const clipPath = svgEl("clipPath");
-  clipPath.setAttribute("id", clipId);
-
-  const rect = svgEl("rect");
-  rect.setAttribute("x", String(x));
-  rect.setAttribute("y", String(y + clipTop));
-  rect.setAttribute("width", String(width));
-  rect.setAttribute("height", String(clipHeight));
-
-  clipPath.appendChild(rect);
-  defs.appendChild(clipPath);
-  parent.appendChild(defs);
-
-  const image = svgEl("image");
-  image.setAttribute("x", String(x));
-  image.setAttribute("y", String(y));
-  image.setAttribute("width", String(width));
-  image.setAttribute("height", String(height));
-  image.setAttribute("preserveAspectRatio", "xMidYMid meet");
-  image.setAttribute("href", href);
-  image.setAttributeNS("http://www.w3.org/1999/xlink", "href", href);
-  image.setAttribute("pointer-events", "none");
-  image.setAttribute("class", className);
-  image.setAttribute("clip-path", `url(#${clipId})`);
-
-  if (mirrorX) {
-    image.setAttribute("transform", `translate(${anchorX * 2}, 0) scale(-1, 1)`);
-  }
-
-  parent.appendChild(image);
 }
 
 export function getWorldFacing(state, unit) {
