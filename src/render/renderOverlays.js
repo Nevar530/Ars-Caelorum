@@ -7,103 +7,26 @@ import {
   isDetailTileUniform,
   getTileFootElevation
 } from "../map.js";
-import { getReachableTiles } from "../movement.js";
 import { getUnitById } from "../mechs.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { TOPDOWN_CONFIG, projectScene, projectTileCenter } from "./projection.js";
 import {
   getUnitFootprintBounds,
+  getUnitCenterPoint,
   getUnitCenterTile
 } from "../scale/scaleMath.js";
-import { getPrimaryOccupantAt } from "../scale/occupancy.js";
+import {
+  getPrimaryOccupantAt
+} from "../scale/occupancy.js";
 
 const DETAIL_OVERLAY_LIFT = 0.02;
 const DETAIL_STROKE_WIDTH = 2;
 const DIAMOND_STROKE_WIDTH = 2.5;
-const OVERLAY_SORT_EPSILON = 0.05;
 
 const DEFAULT_DRAW_OPTIONS = {
   drawShapes: true,
   drawLabels: true
 };
-
-export function buildTerrainOverlaySceneItemsForTile(state, item) {
-  const sceneItems = [];
-  let overlayOrder = 0;
-
-  const reachableData = getReachableDataForTile(state, item.x, item.y);
-
-  if (state.ui.mode === "move" && reachableData) {
-    const overlayItem = {
-      ...item,
-      reachableData,
-      reachableCost: reachableData.cost ?? null
-    };
-
-    sceneItems.push(
-      makeOverlaySceneItem(
-        item,
-        overlayOrder += 1,
-        (parent) => {
-          drawSceneMoveOverlay(state, overlayItem, parent, String(overlayItem.reachableCost), {
-            drawShapes: true,
-            drawLabels: false
-          });
-        }
-      )
-    );
-  }
-
-  sceneItems.push(
-    makeOverlaySceneItem(
-      item,
-      overlayOrder += 1,
-      (parent) => {
-        drawScenePathOverlayForTile(state, item, parent, {
-          drawShapes: true,
-          drawLabels: false
-        });
-      }
-    )
-  );
-
-  sceneItems.push(
-    makeOverlaySceneItem(
-      item,
-      overlayOrder += 1,
-      (parent) => {
-        drawSceneActionOverlayForTile(state, item, parent, {
-          drawShapes: true,
-          drawLabels: false
-        });
-      }
-    )
-  );
-
-  sceneItems.push(
-    makeOverlaySceneItem(
-      item,
-      overlayOrder += 1,
-      (parent) => {
-        drawSceneFocusOverlayForTile(state, item, parent, {
-          drawShapes: true,
-          drawLabels: false
-        });
-      }
-    )
-  );
-
-  return sceneItems;
-}
-
-function makeOverlaySceneItem(item, overlayOrder, render) {
-  return {
-    kind: "terrain_overlay",
-    sortDepth: item.sortDepth + OVERLAY_SORT_EPSILON,
-    sortKey: (item.sortKey * 100) + overlayOrder,
-    render
-  };
-}
 
 export function drawSceneActionOverlayForTile(state, item, parent, options = DEFAULT_DRAW_OPTIONS) {
   const { drawShapes } = normalizeOptions(options);
@@ -342,9 +265,9 @@ function drawOverlayForUnitFootprint(state, unit, className, fill, stroke, paren
   const halfH = bounds.height * (RENDER_CONFIG.isoTileHeight / 2);
 
   const points = [
-    { x: center.x, y: center.y - halfH },
+    { x: center.x,         y: center.y - halfH },
     { x: center.x + halfW, y: center.y },
-    { x: center.x, y: center.y + halfH },
+    { x: center.x,         y: center.y + halfH },
     { x: center.x - halfW, y: center.y }
   ];
 
@@ -400,13 +323,6 @@ function drawOverlayCellTop(state, cell, className, fill, stroke, parent) {
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
-}
-
-function getReachableDataForTile(state, x, y) {
-  if (state.ui.mode !== "move") return null;
-
-  const reachableTiles = getReachableTiles(state);
-  return reachableTiles.find((tile) => tile.x === x && tile.y === y) ?? null;
 }
 
 function normalizeOptions(options) {
