@@ -2,14 +2,6 @@
 //
 // Dev menu for the live Ars Caelorum app.
 // Toggle key: `
-//
-// Important behavior:
-// - gameplay HUD stays in the main page layout
-// - dev menu is a separate overlay
-// - existing map editor sidebar is moved into the Map tab
-// - closing dev menu does NOT hide HUD
-// - devToolbar is dev-only visually, but its layout row stays reserved
-//   so the stage does not resize and push the HUD offscreen
 
 import { createMechInstance } from "../src/mechs.js";
 import { rebuildRoundOrder } from "../src/initiative.js";
@@ -23,7 +15,7 @@ import {
 const DEFAULT_DEV_STATE = {
   isOpen: false,
   activeTab: "units",
-  selectedMechId: "",
+  selectedFrameId: "",
   selectedPilotId: "",
   selectedSpawnId: "",
   selectedControlType: "PC",
@@ -49,6 +41,25 @@ function normalizeTeam(value) {
   return value === "enemy" ? "enemy" : "player";
 }
 
+function safeUpper(value) {
+  return String(value ?? "").toUpperCase();
+}
+
+function getUnitScale(unit) {
+  return unit?.scale ?? unit?.unitType ?? "mech";
+}
+
+function getUnitFootprintLabel(unit) {
+  const scale = getUnitScale(unit);
+  return scale === "pilot" ? "1x1" : "3x3";
+}
+
+function getUnitDisplayName(unit) {
+  const frame = unit?.name ?? "Unnamed Frame";
+  const pilot = unit?.pilotName ?? "No Pilot";
+  return { frame, pilot };
+}
+
 class DevMenu {
   constructor() {
     this.state = clone(DEFAULT_DEV_STATE);
@@ -69,8 +80,10 @@ class DevMenu {
     this.unitListEl = null;
     this.phaseOrderEl = null;
     this.roundPhaseEl = null;
+    this.runtimeStateEl = null;
+    this.mapStateEl = null;
 
-    this.mechSelectEl = null;
+    this.frameSelectEl = null;
     this.pilotSelectEl = null;
     this.spawnSelectEl = null;
     this.controlSelectEl = null;
@@ -206,7 +219,7 @@ class DevMenu {
     return this.appState?.content ?? {};
   }
 
-  getMechDefinitions() {
+  getFrameDefinitions() {
     return Array.isArray(this.getContent().mechs) ? this.getContent().mechs : [];
   }
 
@@ -219,7 +232,23 @@ class DevMenu {
   }
 
   getRuntimeUnits() {
-    return Array.isArray(this.appState?.units) ? this.appState.units : (Array.isArray(this.appState?.mechs) ? this.appState.mechs : []);
+    if (Array.isArray(this.appState?.units)) return this.appState.units;
+    if (Array.isArray(this.appState?.mechs)) return this.appState.mechs;
+    return [];
+  }
+
+  getRotationValue() {
+    return this.appState?.camera?.rotation ?? this.appState?.rotation ?? 0;
+  }
+
+  getViewLabel() {
+    const tactical =
+      this.appState?.camera?.tacticalView ??
+      this.appState?.ui?.tacticalView ??
+      this.appState?.tacticalView ??
+      false;
+
+    return tactical ? "TACTICAL" : "ISO";
   }
 
   buildDom() {
@@ -261,11 +290,11 @@ class DevMenu {
 
       <div id="ac-dev-tab-panel-units">
         <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-          <div style="font-weight:bold; margin-bottom:8px;">Spawn Unit</div>
+          <div style="font-weight:bold; margin-bottom:8px;">Spawn / Replace Unit</div>
 
           <label style="display:block; margin-bottom:6px;">
-            <div>Mech</div>
-            <select id="ac-dev-mech-select" style="width:100%;"></select>
+            <div>Frame</div>
+            <select id="ac-dev-frame-select" style="width:100%;"></select>
           </label>
 
           <label style="display:block; margin-bottom:6px;">
@@ -274,12 +303,12 @@ class DevMenu {
           </label>
 
           <label style="display:block; margin-bottom:6px;">
-            <div>Spawn</div>
+            <div>Spawn Point</div>
             <select id="ac-dev-spawn-select" style="width:100%;"></select>
           </label>
 
           <label style="display:block; margin-bottom:6px;">
-            <div>Control Type</div>
+            <div>Control</div>
             <select id="ac-dev-control-select" style="width:100%;">
               <option value="PC">PC</option>
               <option value="CPU">CPU</option>
@@ -295,7 +324,7 @@ class DevMenu {
           </label>
 
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button id="ac-dev-spawn-btn" type="button">Spawn / Replace</button>
+            <button id="ac-dev-spawn-btn" type="button">Spawn / Replace Unit</button>
             <button id="ac-dev-reset-btn" type="button">Reset Units</button>
             <button id="ac-dev-reroll-btn" type="button">Reroll Initiative</button>
             <button id="ac-dev-clearlog-btn" type="button">Clear Log</button>
@@ -303,7 +332,12 @@ class DevMenu {
         </div>
 
         <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-          <div style="font-weight:bold; margin-bottom:8px;">Combat State</div>
+          <div style="font-weight:bold; margin-bottom:8px;">Runtime State</div>
+          <div id="ac-dev-runtime-state"></div>
+        </div>
+
+        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+          <div style="font-weight:bold; margin-bottom:8px;">Round / Phase</div>
           <div id="ac-dev-round-phase"></div>
           <div id="ac-dev-phase-order" style="margin-top:8px;"></div>
         </div>
@@ -319,7 +353,12 @@ class DevMenu {
         </div>
       </div>
 
-          <div id="ac-dev-tab-panel-map" style="display:none;">
+      <div id="ac-dev-tab-panel-map" style="display:none;">
+        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+          <div style="font-weight:bold; margin-bottom:8px;">Map State</div>
+          <div id="ac-dev-map-state"></div>
+        </div>
+
         <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
           <div style="font-weight:bold; margin-bottom:8px;">Map Controls</div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -349,8 +388,10 @@ class DevMenu {
     this.unitListEl = panel.querySelector("#ac-dev-unit-list");
     this.phaseOrderEl = panel.querySelector("#ac-dev-phase-order");
     this.roundPhaseEl = panel.querySelector("#ac-dev-round-phase");
+    this.runtimeStateEl = panel.querySelector("#ac-dev-runtime-state");
+    this.mapStateEl = panel.querySelector("#ac-dev-map-state");
 
-    this.mechSelectEl = panel.querySelector("#ac-dev-mech-select");
+    this.frameSelectEl = panel.querySelector("#ac-dev-frame-select");
     this.pilotSelectEl = panel.querySelector("#ac-dev-pilot-select");
     this.spawnSelectEl = panel.querySelector("#ac-dev-spawn-select");
     this.controlSelectEl = panel.querySelector("#ac-dev-control-select");
@@ -382,20 +423,24 @@ class DevMenu {
 
     this.mapRotateLeftEl?.addEventListener("click", () => {
       this.refs?.rotateLeftButton?.click();
+      this.render();
     });
 
     this.mapRotateRightEl?.addEventListener("click", () => {
       this.refs?.rotateRightButton?.click();
+      this.render();
     });
 
     this.mapToggleViewEl?.addEventListener("click", () => {
       this.refs?.toggleViewButton?.click();
+      this.render();
     });
 
     this.mapResetEl?.addEventListener("click", () => {
       this.refs?.resetMapButton?.click();
+      this.render();
     });
-    
+
     this.panelEl.querySelector("#ac-dev-spawn-btn").addEventListener("click", () => {
       this.spawnSelectedUnit();
     });
@@ -413,8 +458,8 @@ class DevMenu {
       logDev("Dev log cleared.");
     });
 
-    this.mechSelectEl.addEventListener("change", (event) => {
-      this.state.selectedMechId = event.target.value;
+    this.frameSelectEl.addEventListener("change", (event) => {
+      this.state.selectedFrameId = event.target.value;
     });
 
     this.pilotSelectEl.addEventListener("change", (event) => {
@@ -443,14 +488,14 @@ class DevMenu {
   }
 
   populateSelectors() {
-    const mechs = this.getMechDefinitions();
+    const frames = this.getFrameDefinitions();
     const pilots = this.getPilotDefinitions();
     const spawnPoints = this.getSpawnPoints();
 
-    this.mechSelectEl.innerHTML = mechs
+    this.frameSelectEl.innerHTML = frames
       .map(
-        (mech) =>
-          `<option value="${mech.id}">${mech.name} [${mech.variant ?? ""}]</option>`
+        (frame) =>
+          `<option value="${frame.id}">${frame.name} [${frame.variant ?? ""}]</option>`
       )
       .join("");
 
@@ -468,13 +513,13 @@ class DevMenu {
       )
       .join("");
 
-    this.state.selectedMechId = mechs[0]?.id ?? "";
+    this.state.selectedFrameId = frames[0]?.id ?? "";
     this.state.selectedPilotId = pilots[0]?.id ?? "";
     this.state.selectedSpawnId = spawnPoints[0]?.id ?? "";
     this.state.selectedControlType = "PC";
     this.state.selectedTeam = "player";
 
-    if (this.state.selectedMechId) this.mechSelectEl.value = this.state.selectedMechId;
+    if (this.state.selectedFrameId) this.frameSelectEl.value = this.state.selectedFrameId;
     if (this.state.selectedPilotId) this.pilotSelectEl.value = this.state.selectedPilotId;
     if (this.state.selectedSpawnId) this.spawnSelectEl.value = this.state.selectedSpawnId;
     this.controlSelectEl.value = this.state.selectedControlType;
@@ -494,8 +539,7 @@ class DevMenu {
   }
 
   toggle(force) {
-    const nextState =
-      typeof force === "boolean" ? force : !this.state.isOpen;
+    const nextState = typeof force === "boolean" ? force : !this.state.isOpen;
 
     this.state.isOpen = nextState;
     this.panelEl.style.display = nextState ? "block" : "none";
@@ -506,8 +550,8 @@ class DevMenu {
     logDev(`Dev menu ${nextState ? "opened" : "closed"}.`);
   }
 
-  getMechDefinitionById(id) {
-    return this.getMechDefinitions().find((mech) => mech.id === id) ?? null;
+  getFrameDefinitionById(id) {
+    return this.getFrameDefinitions().find((frame) => frame.id === id) ?? null;
   }
 
   getPilotDefinitionById(id) {
@@ -540,6 +584,7 @@ class DevMenu {
       this.appState.selection.mechId = null;
       this.appState.focus.x = 0;
       this.appState.focus.y = 0;
+      this.appState.focus.scale = "mech";
       return;
     }
 
@@ -554,16 +599,16 @@ class DevMenu {
     this.appState.selection.mechId = preferred.instanceId;
     this.appState.focus.x = preferred.x;
     this.appState.focus.y = preferred.y;
-    this.appState.focus.scale = preferred.scale ?? preferred.unitType ?? "mech";
+    this.appState.focus.scale = getUnitScale(preferred);
   }
 
   spawnSelectedUnit() {
-    const mechDef = this.getMechDefinitionById(this.state.selectedMechId);
+    const frameDef = this.getFrameDefinitionById(this.state.selectedFrameId);
     const pilotDef = this.getPilotDefinitionById(this.state.selectedPilotId);
     const spawn = this.getSpawnPointById(this.state.selectedSpawnId);
 
-    if (!mechDef) {
-      logDev("Spawn failed: selected mech definition not found.");
+    if (!frameDef) {
+      logDev("Spawn failed: selected frame definition not found.");
       return;
     }
 
@@ -579,11 +624,11 @@ class DevMenu {
 
     const existingUnit = this.getUnitAtSpawn(spawn.id);
 
-    const newUnit = createMechInstance(mechDef, {
+    const newUnit = createMechInstance(frameDef, {
       instanceId: nextDevUnitId(),
       x: spawn.x,
       y: spawn.y,
-      facing: mechDef.defaultFacing
+      facing: frameDef.defaultFacing
     });
 
     newUnit.spawnId = spawn.id;
@@ -681,6 +726,7 @@ class DevMenu {
 
       this.appState.focus.x = 0;
       this.appState.focus.y = 0;
+      this.appState.focus.scale = "mech";
     } else {
       this.syncActiveUnitAfterMutation();
     }
@@ -692,8 +738,9 @@ class DevMenu {
   resetUnits() {
     this.appState.units = [];
     this.appState.mechs = this.appState.units;
+
     this.appState.turn.activeUnitId = null;
-      this.appState.turn.activeMechId = null;
+    this.appState.turn.activeMechId = null;
     this.appState.turn.round = 1;
     this.appState.turn.phase = "setup";
     this.appState.turn.combatStarted = false;
@@ -707,7 +754,7 @@ class DevMenu {
     this.appState.turn.splashKind = null;
 
     this.appState.selection.unitId = null;
-      this.appState.selection.mechId = null;
+    this.appState.selection.mechId = null;
     this.appState.selection.action = null;
 
     this.appState.ui.mode = "idle";
@@ -720,8 +767,7 @@ class DevMenu {
 
     this.appState.focus.x = 0;
     this.appState.focus.y = 0;
-
-    this.appState.mechs = this.appState.units;
+    this.appState.focus.scale = "mech";
 
     logDev("All units removed from map.");
     this.render();
@@ -751,18 +797,56 @@ class DevMenu {
   }
 
   render() {
+    this.renderRuntimeState();
     this.renderRoundPhase();
     this.renderPhaseOrder();
     this.renderUnits();
+    this.renderMapState();
     this.renderLog();
     this.setActiveTab(this.state.activeTab);
+  }
+
+  renderRuntimeState() {
+    const units = this.getRuntimeUnits();
+    const activeUnitId = this.appState?.turn?.activeUnitId ?? null;
+    const selectedUnitId = this.appState?.selection?.unitId ?? null;
+
+    const activeUnit = units.find((unit) => unit.instanceId === activeUnitId) ?? null;
+    const selectedUnit = units.find((unit) => unit.instanceId === selectedUnitId) ?? null;
+
+    const activeText = activeUnit
+      ? `${activeUnit.name} / ${activeUnit.pilotName ?? "No Pilot"}`
+      : "None";
+
+    const selectedText = selectedUnit
+      ? `${selectedUnit.name} / ${selectedUnit.pilotName ?? "No Pilot"}`
+      : "None";
+
+    const focus = this.appState?.focus ?? {};
+    const commandMenu = this.appState?.ui?.commandMenu ?? {};
+    const actionProfile = this.appState?.ui?.action?.selectedAction ?? null;
+
+    this.runtimeStateEl.innerHTML = `
+      <div>Units: <strong>${units.length}</strong></div>
+      <div>Mode: <strong>${safeUpper(this.appState?.ui?.mode ?? "idle")}</strong></div>
+      <div>Active Unit: <strong>${activeText}</strong></div>
+      <div>Selected Unit: <strong>${selectedText}</strong></div>
+      <div>Focus: <strong>(${focus.x ?? 0},${focus.y ?? 0})</strong> [${focus.scale ?? "-"}]</div>
+      <div>Selection Action: <strong>${this.appState?.selection?.action ?? "-"}</strong></div>
+      <div>Action Profile: <strong>${actionProfile?.name ?? actionProfile?.id ?? "-"}</strong></div>
+      <div>Command Menu: <strong>${commandMenu.open ? "OPEN" : "CLOSED"}</strong></div>
+      <div>View: <strong>${this.getViewLabel()}</strong></div>
+      <div>Rotation: <strong>${this.getRotationValue()}</strong></div>
+    `;
   }
 
   renderRoundPhase() {
     this.roundPhaseEl.innerHTML = `
       <div>Round: <strong>${this.appState.turn.round}</strong></div>
-      <div>Phase: <strong>${String(this.appState.turn.phase).toUpperCase()}</strong></div>
+      <div>Phase: <strong>${safeUpper(this.appState.turn.phase)}</strong></div>
       <div>Combat Started: <strong>${this.appState.turn.combatStarted ? "YES" : "NO"}</strong></div>
+      <div>Move Index: <strong>${this.appState.turn.moveIndex}</strong></div>
+      <div>Action Index: <strong>${this.appState.turn.actionIndex}</strong></div>
     `;
   }
 
@@ -844,24 +928,51 @@ class DevMenu {
       return;
     }
 
+    const activeUnitId = this.appState?.turn?.activeUnitId ?? null;
+    const selectedUnitId = this.appState?.selection?.unitId ?? null;
+
     this.unitListEl.innerHTML = units
-      .map(
-        (unit) => `
-          <div data-instance-id="${unit.instanceId}" style="padding:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.08);">
-            <div><strong>${unit.name}</strong> / ${unit.pilotName ?? "No Pilot"}</div>
-            <div style="opacity:0.8;">${unit.team ?? "-"} | ${unit.controlType ?? "-"} | ${unit.spawnId ?? "-"}</div>
-            <div style="opacity:0.8;">Pos (${unit.x},${unit.y}) | Facing ${unit.facing}</div>
-            <div style="opacity:0.8;">SHD ${unit.shield ?? unit.armor ?? "-"} | CORE ${unit.core ?? unit.structure ?? "-"} | MV ${unit.move}</div>
+      .map((unit) => {
+        const { frame, pilot } = getUnitDisplayName(unit);
+        const scale = getUnitScale(unit);
+        const footprint = getUnitFootprintLabel(unit);
+        const isActive = unit.instanceId === activeUnitId;
+        const isSelected = unit.instanceId === selectedUnitId;
+
+        return `
+          <div
+            data-instance-id="${unit.instanceId}"
+            style="
+              padding:8px;
+              margin-bottom:8px;
+              border:1px solid ${isActive ? "rgba(240,176,0,0.7)" : "rgba(255,255,255,0.08)"};
+              background:${isSelected ? "rgba(255,255,255,0.04)" : "transparent"};
+            "
+          >
+            <div style="display:flex; justify-content:space-between; gap:8px; margin-bottom:4px;">
+              <div>
+                <div><strong>${frame}</strong></div>
+                <div style="opacity:0.78;">Pilot: ${pilot}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="color:${isActive ? "#f0b000" : "#9fb3c8"};">${isActive ? "ACTIVE" : isSelected ? "SELECTED" : scale.toUpperCase()}</div>
+                <div style="opacity:0.65;">${footprint}</div>
+              </div>
+            </div>
+
+            <div style="opacity:0.8;">Team ${unit.team ?? "-"} | Control ${unit.controlType ?? "-"} | Spawn ${unit.spawnId ?? "-"}</div>
+            <div style="opacity:0.8;">Pos (${unit.x},${unit.y}) | Facing ${unit.facing ?? 0} | Scale ${scale}</div>
+            <div style="opacity:0.8;">Shield ${unit.shield ?? unit.armor ?? "-"} | Core ${unit.core ?? unit.structure ?? "-"} | Move ${unit.move ?? "-"}</div>
             <div style="opacity:0.8;">Reaction ${unit.reaction ?? "-"} | Targeting ${unit.targeting ?? "-"}</div>
-            <div style="opacity:0.8;">Init ${unit.initiative ?? "-"}</div>
+            <div style="opacity:0.8;">Init ${unit.initiative ?? "-"} | Status ${unit.status ?? "operational"}</div>
             <div style="opacity:0.8;">Moved ${unit.hasMoved ? "Y" : "N"} | Acted ${unit.hasActed ? "Y" : "N"} | Braced ${unit.isBraced ? "Y" : "N"}</div>
-            <div style="opacity:0.8;">Status ${unit.status ?? "operational"}</div>
+
             <div style="margin-top:6px;">
               <button type="button" class="ac-dev-remove-unit-btn">Remove</button>
             </div>
           </div>
-        `
-      )
+        `;
+      })
       .join("");
 
     const buttons = this.unitListEl.querySelectorAll(".ac-dev-remove-unit-btn");
@@ -874,6 +985,21 @@ class DevMenu {
         }
       });
     });
+  }
+
+  renderMapState() {
+    const focus = this.appState?.focus ?? {};
+    const selectedUnitId = this.appState?.selection?.unitId ?? null;
+    const units = this.getRuntimeUnits();
+    const selectedUnit = units.find((unit) => unit.instanceId === selectedUnitId) ?? null;
+
+    this.mapStateEl.innerHTML = `
+      <div>View: <strong>${this.getViewLabel()}</strong></div>
+      <div>Rotation: <strong>${this.getRotationValue()}</strong></div>
+      <div>Focus Tile: <strong>(${focus.x ?? 0},${focus.y ?? 0})</strong></div>
+      <div>Focus Scale: <strong>${focus.scale ?? "-"}</strong></div>
+      <div>Selected Unit: <strong>${selectedUnit ? `${selectedUnit.name} / ${selectedUnit.pilotName ?? "No Pilot"}` : "None"}</strong></div>
+    `;
   }
 
   renderLog() {
