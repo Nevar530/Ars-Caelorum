@@ -30,7 +30,8 @@ import {
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
 import {
   getUnitCenterPoint,
-  getUnitFootprintBounds
+  getUnitFootprintBounds,
+  getUnitOccupiedCells
 } from "../scale/scaleMath.js";
 
 const UNIT_SORT_EPSILON = 0.25;
@@ -155,6 +156,8 @@ export function renderIso(state, refs) {
       1
     );
 
+    const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
+
     const renderModel =
       state.ui?.viewMode === "top"
         ? {
@@ -182,7 +185,7 @@ export function renderIso(state, refs) {
     for (const part of parts) {
       sceneItems.push({
         kind: "unit_part",
-        sortDepth: part.sortDepth,
+        sortDepth: footprintSortDepth + (part.sortDepth - projectedCenter.y),
         sortKey:
           (getSceneSortKey(
             state,
@@ -242,6 +245,40 @@ function getUnitSupportElevation(state, unit) {
   if (!tile) return null;
 
   return getTileFootElevation(tile);
+}
+
+function getUnitFootprintSortDepth(state, unit) {
+  const occupiedCells = getUnitOccupiedCells(unit);
+  let maxDepth = null;
+
+  for (const cell of occupiedCells) {
+    const tile = getTile(state.map, cell.x, cell.y);
+    if (!tile) continue;
+
+    const renderElevation = getTileRenderElevation(tile);
+    const projected = projectScene(state, cell.x, cell.y, renderElevation, 1);
+
+    const depth = getTerrainDepth({
+      size: 1,
+      screenY: projected.y,
+      leftFaceHeight: renderElevation,
+      rightFaceHeight: renderElevation
+    });
+
+    if (maxDepth === null || depth > maxDepth) {
+      maxDepth = depth;
+    }
+  }
+
+  if (maxDepth === null) {
+    const centerPoint = getUnitCenterPoint(unit);
+    const supportElevation = getUnitSupportElevation(state, unit) ?? 0;
+    const projected = projectScene(state, centerPoint.x, centerPoint.y, supportElevation, 1);
+
+    return projected.y;
+  }
+
+  return maxDepth + UNIT_SORT_EPSILON;
 }
 
 function getTerrainDepth(item) {
