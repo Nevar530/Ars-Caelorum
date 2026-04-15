@@ -106,8 +106,8 @@ async function init() {
     render: gameController.render,
     snapFocusToActiveUnit,
 
-    setEditorMode(mode) {
-      state.ui.editor.mode = mode === "detail" ? "detail" : "mech";
+    setEditorMode() {
+      state.ui.editor.mode = "mech";
       gameController.render();
     },
 
