@@ -80,6 +80,12 @@ class DevMenu {
     this.editorSidebarOriginalParent = null;
     this.editorSidebarOriginalNextSibling = null;
 
+    this.mapEditorHostEl = null;
+    this.mapRotateLeftEl = null;
+    this.mapRotateRightEl = null;
+    this.mapToggleViewEl = null;
+    this.mapResetEl = null;
+
     this.initialized = false;
     this.unsubscribeLog = null;
 
@@ -160,7 +166,7 @@ class DevMenu {
   }
 
   mountExistingMapEditorIntoTab() {
-    if (!this.editorSidebarEl || !this.mapTabEl) return;
+    if (!this.editorSidebarEl || !this.mapEditorHostEl) return;
 
     this.editorSidebarEl.style.width = "100%";
     this.editorSidebarEl.style.maxWidth = "100%";
@@ -171,7 +177,7 @@ class DevMenu {
     this.editorSidebarEl.style.padding = "0";
     this.editorSidebarEl.style.boxShadow = "none";
 
-    this.mapTabEl.appendChild(this.editorSidebarEl);
+    this.mapEditorHostEl.appendChild(this.editorSidebarEl);
   }
 
   restoreExistingSidebar() {
@@ -313,7 +319,19 @@ class DevMenu {
         </div>
       </div>
 
-      <div id="ac-dev-tab-panel-map" style="display:none;"></div>
+          <div id="ac-dev-tab-panel-map" style="display:none;">
+        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+          <div style="font-weight:bold; margin-bottom:8px;">Map Controls</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="ac-dev-map-rotate-left" type="button">⟲ Rotate Left</button>
+            <button id="ac-dev-map-rotate-right" type="button">⟳ Rotate Right</button>
+            <button id="ac-dev-map-toggle-view" type="button">Toggle Tactical (R)</button>
+            <button id="ac-dev-map-reset" type="button">Reset Map</button>
+          </div>
+        </div>
+
+        <div id="ac-dev-map-editor-host"></div>
+      </div>
     `;
 
     root.appendChild(panel);
@@ -338,6 +356,12 @@ class DevMenu {
     this.controlSelectEl = panel.querySelector("#ac-dev-control-select");
     this.teamSelectEl = panel.querySelector("#ac-dev-team-select");
 
+    this.mapEditorHostEl = panel.querySelector("#ac-dev-map-editor-host");
+    this.mapRotateLeftEl = panel.querySelector("#ac-dev-map-rotate-left");
+    this.mapRotateRightEl = panel.querySelector("#ac-dev-map-rotate-right");
+    this.mapToggleViewEl = panel.querySelector("#ac-dev-map-toggle-view");
+    this.mapResetEl = panel.querySelector("#ac-dev-map-reset");
+
     this.mountExistingMapEditorIntoTab();
   }
 
@@ -356,6 +380,22 @@ class DevMenu {
       this.setActiveTab("map");
     });
 
+    this.mapRotateLeftEl?.addEventListener("click", () => {
+      this.refs?.rotateLeftButton?.click();
+    });
+
+    this.mapRotateRightEl?.addEventListener("click", () => {
+      this.refs?.rotateRightButton?.click();
+    });
+
+    this.mapToggleViewEl?.addEventListener("click", () => {
+      this.refs?.toggleViewButton?.click();
+    });
+
+    this.mapResetEl?.addEventListener("click", () => {
+      this.refs?.resetMapButton?.click();
+    });
+    
     this.panelEl.querySelector("#ac-dev-spawn-btn").addEventListener("click", () => {
       this.spawnSelectedUnit();
     });
@@ -589,10 +629,10 @@ class DevMenu {
     const toolbar = this.refs?.devToolbar;
     if (!toolbar) return;
 
-    toolbar.style.display = "flex";
-    toolbar.style.visibility = this.state.isOpen ? "visible" : "hidden";
-    toolbar.style.pointerEvents = this.state.isOpen ? "auto" : "none";
-    toolbar.style.opacity = this.state.isOpen ? "1" : "0";
+    toolbar.style.display = "none";
+    toolbar.style.visibility = "hidden";
+    toolbar.style.pointerEvents = "none";
+    toolbar.style.opacity = "0";
   }
 
   removeUnit(instanceId) {
