@@ -1,7 +1,7 @@
 // src/render/renderLosOverlay.js
 
 import { getTile, getTileEffectiveElevation } from "../map.js";
-import { getMechById } from "../mechs.js";
+import { getUnitById } from "../mechs.js";
 import {
   getLosHeights,
   getLosRayEndPoint,
@@ -12,20 +12,20 @@ import { svgEl } from "../utils.js";
 export function drawSceneLosPreview(state, parent) {
   if (state.ui.mode !== "action-target") return;
 
-  const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+  const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
   const profile = state.ui.action.selectedAction;
 
-  if (!activeMech || !profile) return;
+  if (!activeUnit || !profile) return;
 
   const focusedTarget = getFocusedEvaluatedTargetTile(state);
   if (!focusedTarget || !focusedTarget.los) return;
 
-  const attackerTile = getTile(state.map, activeMech.x, activeMech.y);
+  const attackerTile = getTile(state.map, activeUnit.x, activeUnit.y);
   const targetTile = getTile(state.map, focusedTarget.x, focusedTarget.y);
 
   if (!attackerTile || !targetTile) return;
 
-  const attackerScale = activeMech.scale ?? "mech";
+  const attackerScale = activeUnit.scale ?? "mech";
   const targetScale = profile.scale ?? "mech";
 
   const attackerBaseElevation = getTileEffectiveElevation(attackerTile);
@@ -36,8 +36,8 @@ export function drawSceneLosPreview(state, parent) {
 
   const attackerFirePoint = projectLosPoint(
     state,
-    activeMech.x,
-    activeMech.y,
+    activeUnit.x,
+    activeUnit.y,
     attackerHeights.fire
   );
 
