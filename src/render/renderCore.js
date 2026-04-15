@@ -53,7 +53,8 @@ export function renderIso(state, refs) {
   worldUi.innerHTML = "";
 
   const footprintLockedTerrainItems = [];
-  const sceneItems = [];
+  const terrainSceneItems = [];
+  const unitSceneItems = [];
   const overlayTileItems = [];
   const reachableMap = new Map();
 
@@ -100,7 +101,7 @@ export function renderIso(state, refs) {
         }
       };
 
-      pushTerrainSceneItem(tileItem, units, footprintLockedTerrainItems, sceneItems);
+      pushTerrainSceneItem(tileItem, units, footprintLockedTerrainItems, terrainSceneItems);
       overlayTileItems.push(tileItem);
 
       if (hasDetailGeometry) {
@@ -139,15 +140,10 @@ export function renderIso(state, refs) {
             }
           };
 
-          pushTerrainSceneItem(detailItem, units, footprintLockedTerrainItems, sceneItems);
+          pushTerrainSceneItem(detailItem, units, footprintLockedTerrainItems, terrainSceneItems);
         }
       }
     }
-  }
-
-  footprintLockedTerrainItems.sort(compareSceneItems);
-  for (const item of footprintLockedTerrainItems) {
-    item.render(worldScene);
   }
 
   for (const unit of units) {
@@ -190,7 +186,7 @@ export function renderIso(state, refs) {
     const parts = getUnitRenderSceneItems(state, unit, renderModel, isActive);
 
     for (const part of parts) {
-      sceneItems.push({
+      unitSceneItems.push({
         kind: "unit_part",
         sortDepth: footprintSortDepth + (part.sortDepth - projectedAnchor.y),
         sortKey:
@@ -208,8 +204,13 @@ export function renderIso(state, refs) {
     }
   }
 
-  sceneItems.sort(compareSceneItems);
-  for (const item of sceneItems) {
+  footprintLockedTerrainItems.sort(compareSceneItems);
+  for (const item of footprintLockedTerrainItems) {
+    item.render(worldScene);
+  }
+
+  terrainSceneItems.sort(compareSceneItems);
+  for (const item of terrainSceneItems) {
     item.render(worldScene);
   }
 
@@ -237,17 +238,22 @@ export function renderIso(state, refs) {
     });
   }
 
+  unitSceneItems.sort(compareSceneItems);
+  for (const item of unitSceneItems) {
+    item.render(worldScene);
+  }
+
   drawSceneActiveUnitOverlay(state, worldUi);
   drawSceneLosPreview(state, worldUi);
 }
 
-function pushTerrainSceneItem(item, units, footprintLockedTerrainItems, sceneItems) {
+function pushTerrainSceneItem(item, units, footprintLockedTerrainItems, terrainSceneItems) {
   if (isTerrainInsideAnyUnitFootprint(item, units)) {
     footprintLockedTerrainItems.push(item);
     return;
   }
 
-  sceneItems.push(item);
+  terrainSceneItems.push(item);
 }
 
 function isTerrainInsideAnyUnitFootprint(item, units) {
