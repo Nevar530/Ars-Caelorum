@@ -172,6 +172,8 @@ export function renderIso(state, refs) {
       1
     );
 
+    const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
+    
     const renderModel =
       state.ui?.viewMode === "top"
         ? {
