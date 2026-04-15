@@ -372,7 +372,15 @@ button:disabled {
 ========================================= */
 
 .combat-ribbon {
-  display: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  background: transparent;
+  border-bottom: 0;
+  min-height: 0;
+  height: 0;
+  overflow: hidden;
 }
 
 .combat-ribbon-summary {
@@ -476,7 +484,7 @@ button:disabled {
 
 .combat-overlay {
   position: absolute;
-  inset: 0 0 110px 0;
+  inset: 68px 0 110px 0;
   display: none;
   align-items: center;
   justify-content: center;
