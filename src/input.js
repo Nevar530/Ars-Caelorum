@@ -1,6 +1,6 @@
 // src/input.js
 
-import { changeElevation, changeDetailElevation } from "./map.js";
+import { changeElevation } from "./map.js";
 import { getUnitById } from "./mechs.js";
 import { clampFocusToBoard, getPathToTile } from "./movement.js";
 import { moveAttackSelection, updateActionTargetPreview } from "./action.js";
@@ -18,7 +18,7 @@ function getFocusStep(state) {
   if (state.ui.mode === "move" && activeUnit) {
     const footprint = getUnitFootprint(activeUnit);
 
-    if ((activeUnit.unitType ?? "mech") === "mech") {
+    if ((activeUnit.scale ?? activeUnit.unitType ?? "mech") === "mech") {
       return {
         dx: Math.max(1, footprint.width),
         dy: Math.max(1, footprint.height)
@@ -54,41 +54,18 @@ function bindEditorInput(state, refs, actions) {
   if (editorModeMechButton) {
     editorModeMechButton.addEventListener("click", () => {
       actions.setEditorMode("mech");
+      actions.render();
     });
   }
 
   if (editorModeDetailButton) {
-    editorModeDetailButton.addEventListener("click", () => {
-      actions.setEditorMode("detail");
-    });
+    editorModeDetailButton.style.display = "none";
+    editorModeDetailButton.disabled = true;
   }
 
+  if (!editor) return;
+
   editor.addEventListener("click", (event) => {
-    if (state.ui.editor.mode === "detail") {
-      const miniTile = event.target.closest(".editor-cell-mini");
-      if (miniTile) {
-        state.ui.editor.selectedTile.x = Number(miniTile.dataset.x);
-        state.ui.editor.selectedTile.y = Number(miniTile.dataset.y);
-        actions.render();
-        return;
-      }
-
-      const detailRect = event.target.closest(".editor-cell-detail");
-      if (!detailRect) return;
-
-      const mechX = Number(detailRect.dataset.mx);
-      const mechY = Number(detailRect.dataset.my);
-      const subX = Number(detailRect.dataset.sx);
-      const subY = Number(detailRect.dataset.sy);
-
-      state.ui.editor.selectedTile.x = mechX;
-      state.ui.editor.selectedTile.y = mechY;
-
-      changeDetailElevation(state.map, mechX, mechY, subX, subY, 1);
-      actions.render();
-      return;
-    }
-
     const tileRect = event.target.closest(".editor-cell");
     if (!tileRect) return;
 
@@ -97,6 +74,7 @@ function bindEditorInput(state, refs, actions) {
 
     state.ui.editor.selectedTile.x = x;
     state.ui.editor.selectedTile.y = y;
+    state.ui.editor.mode = "mech";
 
     changeElevation(state.map, x, y, 1);
     actions.render();
@@ -105,31 +83,6 @@ function bindEditorInput(state, refs, actions) {
   editor.addEventListener("contextmenu", (event) => {
     event.preventDefault();
 
-    if (state.ui.editor.mode === "detail") {
-      const miniTile = event.target.closest(".editor-cell-mini");
-      if (miniTile) {
-        state.ui.editor.selectedTile.x = Number(miniTile.dataset.x);
-        state.ui.editor.selectedTile.y = Number(miniTile.dataset.y);
-        actions.render();
-        return;
-      }
-
-      const detailRect = event.target.closest(".editor-cell-detail");
-      if (!detailRect) return;
-
-      const mechX = Number(detailRect.dataset.mx);
-      const mechY = Number(detailRect.dataset.my);
-      const subX = Number(detailRect.dataset.sx);
-      const subY = Number(detailRect.dataset.sy);
-
-      state.ui.editor.selectedTile.x = mechX;
-      state.ui.editor.selectedTile.y = mechY;
-
-      changeDetailElevation(state.map, mechX, mechY, subX, subY, -1);
-      actions.render();
-      return;
-    }
-
     const tileRect = event.target.closest(".editor-cell");
     if (!tileRect) return;
 
@@ -138,6 +91,7 @@ function bindEditorInput(state, refs, actions) {
 
     state.ui.editor.selectedTile.x = x;
     state.ui.editor.selectedTile.y = y;
+    state.ui.editor.mode = "mech";
 
     changeElevation(state.map, x, y, -1);
     actions.render();
@@ -155,19 +109,53 @@ function bindGameplayInput(state, refs, actions) {
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
 
-    if (handleRotationKeys(key, actions)) { event.preventDefault(); return; }
-    if (handleViewKeys(key, actions)) { event.preventDefault(); return; }
-    if (handleMenuNavigationKeys(key, state, actions)) { event.preventDefault(); return; }
-    if (handleIdleKeys(key, state, actions)) { event.preventDefault(); return; }
-    if (handleFacingKeys(key, state, actions)) { event.preventDefault(); return; }
-    if (handleFocusKeys(key, state, actions)) { event.preventDefault(); return; }
-    if (handleConfirmCancelKeys(key, state, actions)) { event.preventDefault(); }
+    if (handleRotationKeys(key, actions)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (handleViewKeys(key, actions)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (handleMenuNavigationKeys(key, state, actions)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (handleIdleKeys(key, state, actions)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (handleFacingKeys(key, state, actions)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (handleFocusKeys(key, state, actions)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (handleConfirmCancelKeys(key, state, actions)) {
+      event.preventDefault();
+    }
   });
 }
 
 function handleRotationKeys(key, actions) {
-  if (key === "q") { actions.rotateLeft(); return true; }
-  if (key === "e") { actions.rotateRight(); return true; }
+  if (key === "q") {
+    actions.rotateLeft();
+    return true;
+  }
+
+  if (key === "e") {
+    actions.rotateRight();
+    return true;
+  }
+
   return false;
 }
 
@@ -176,6 +164,7 @@ function handleViewKeys(key, actions) {
     actions.toggleView();
     return true;
   }
+
   return false;
 }
 
@@ -215,7 +204,7 @@ function handleIdleKeys(key, state, actions) {
   if (state.ui.mode !== "idle") return false;
 
   if (key === "tab") {
-    actions.snapFocusToActiveMech();
+    actions.snapFocusToActiveUnit?.();
     actions.render();
     return true;
   }
@@ -231,6 +220,7 @@ function handleIdleKeys(key, state, actions) {
     } else {
       actions.openCommandMenu();
     }
+
     return true;
   }
 
@@ -294,7 +284,8 @@ function handleFocusKeys(key, state, actions) {
   }
 
   if (!state.turn.combatStarted && state.ui.mode === "idle") {
-    actions.selectFocusedMechIfPresent();
+    actions.selectFocusedUnitIfPresent?.();
+    actions.selectFocusedMechIfPresent?.();
   }
 
   actions.render();
@@ -329,11 +320,16 @@ function getBoardDeltaFromScreenDirection(rotation, direction, step = { dx: 1, d
   const facing = getWorldFacingFromScreenDirection(rotation, direction);
 
   switch (facing) {
-    case 0: return { dx: 0, dy: -step.dy }; // north
-    case 1: return { dx: step.dx, dy: 0 };  // east
-    case 2: return { dx: 0, dy: step.dy };  // south
-    case 3: return { dx: -step.dx, dy: 0 }; // west
-    default: return { dx: 0, dy: 0 };
+    case 0:
+      return { dx: 0, dy: -step.dy }; // north
+    case 1:
+      return { dx: step.dx, dy: 0 }; // east
+    case 2:
+      return { dx: 0, dy: step.dy }; // south
+    case 3:
+      return { dx: -step.dx, dy: 0 }; // west
+    default:
+      return { dx: 0, dy: 0 };
   }
 }
 
@@ -343,18 +339,21 @@ function getWorldFacingFromScreenDirection(rotation, direction) {
 
   const rot = normalizeRotation(rotation);
 
-  // Camera rotation changes view only.
-  // World-facing truth must stay constant.
   return ((baseFacing - rot) + 4) % 4;
 }
 
 function screenDirectionToBaseFacing(direction) {
   switch (direction) {
-    case "up": return 0;
-    case "right": return 1;
-    case "down": return 2;
-    case "left": return 3;
-    default: return null;
+    case "up":
+      return 0;
+    case "right":
+      return 1;
+    case "down":
+      return 2;
+    case "left":
+      return 3;
+    default:
+      return null;
   }
 }
 
