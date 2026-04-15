@@ -15,11 +15,8 @@ import {
 } from "./renderTerrain.js";
 import { getUnitRenderSceneItems } from "./renderUnits.js";
 import {
-  drawSceneMoveOverlay,
-  drawScenePathOverlayForTile,
-  drawSceneActionOverlayForTile,
-  drawSceneFocusOverlayForTile,
-  drawSceneActiveUnitOverlay
+  buildTerrainOverlaySceneItemsForTile,
+  drawSceneUnitFootprintOverlays
 } from "./renderOverlays.js";
 import {
   ensureCameraState,
@@ -55,7 +52,6 @@ export function renderIso(state, refs) {
   const footprintLockedTerrainItems = [];
   const terrainSceneItems = [];
   const unitSceneItems = [];
-  const overlayTileItems = [];
   const reachableMap = new Map();
 
   if (state.ui.mode === "move") {
@@ -102,7 +98,7 @@ export function renderIso(state, refs) {
       };
 
       pushTerrainSceneItem(tileItem, units, footprintLockedTerrainItems, terrainSceneItems);
-      overlayTileItems.push(tileItem);
+      terrainSceneItems.push(...buildTerrainOverlaySceneItemsForTile(state, tileItem));
 
       if (hasDetailGeometry) {
         const detailCells = getDetailRenderCells(map, x, y);
@@ -214,36 +210,13 @@ export function renderIso(state, refs) {
     item.render(worldScene);
   }
 
-  for (const item of overlayTileItems) {
-    if (state.ui.mode === "move" && item.reachableCost !== null) {
-      drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost), {
-        drawShapes: true,
-        drawLabels: false
-      });
-    }
-
-    drawScenePathOverlayForTile(state, item, worldScene, {
-      drawShapes: true,
-      drawLabels: false
-    });
-
-    drawSceneActionOverlayForTile(state, item, worldScene, {
-      drawShapes: true,
-      drawLabels: false
-    });
-
-    drawSceneFocusOverlayForTile(state, item, worldScene, {
-      drawShapes: true,
-      drawLabels: false
-    });
-  }
+  drawSceneUnitFootprintOverlays(state, worldScene);
 
   unitSceneItems.sort(compareSceneItems);
   for (const item of unitSceneItems) {
     item.render(worldScene);
   }
 
-  drawSceneActiveUnitOverlay(state, worldUi);
   drawSceneLosPreview(state, worldUi);
 }
 
@@ -312,7 +285,6 @@ function getUnitFootprintSortDepth(state, unit) {
     const centerTile = getUnitCenterPoint(unit);
     const supportElevation = getUnitSupportElevation(state, unit) ?? 0;
     const projected = projectTileCenter(state, centerTile.x, centerTile.y, supportElevation);
-
     return projected.y;
   }
 
