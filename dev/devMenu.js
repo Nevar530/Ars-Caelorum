@@ -99,11 +99,13 @@ class DevMenu {
     this.mapRotateRightEl = null;
     this.mapToggleViewEl = null;
     this.mapResetEl = null;
-
-    this.mapUseFocusEl = null;
-    this.mapFocusSelectedEl = null;
     this.mapRaiseHeightEl = null;
     this.mapLowerHeightEl = null;
+
+    this.editorShellEl = null;
+    this.editorShellOriginalParent = null;
+    this.editorShellOriginalNextSibling = null;
+    this.mapEditorHostEl = null;
 
     this.initialized = false;
     this.unsubscribeLog = null;
@@ -114,26 +116,19 @@ class DevMenu {
   init({ state, render, refs }) {
     if (this.initialized) return this;
 
-    if (!state) {
-      throw new Error("DevMenu.init requires app state.");
-    }
-
-    if (typeof render !== "function") {
-      throw new Error("DevMenu.init requires a render function.");
-    }
-
-    if (!refs) {
-      throw new Error("DevMenu.init requires DOM refs.");
-    }
+    if (!state) throw new Error("DevMenu.init requires app state.");
+    if (typeof render !== "function") throw new Error("DevMenu.init requires a render function.");
+    if (!refs) throw new Error("DevMenu.init requires DOM refs.");
 
     this.appState = state;
     this.renderApp = render;
     this.refs = refs;
 
+    this.captureEditorShell();
     this.buildDom();
+    this.mountEditorIntoMapTab();
     this.bindEvents();
     this.populateSelectors();
-    this.ensureSelectedMapTile();
     this.render();
     this.syncToolbarVisibility();
 
@@ -155,13 +150,7 @@ class DevMenu {
       this.unsubscribeLog = null;
     }
 
-    if (this.refs?.devToolbar) {
-      const toolbar = this.refs.devToolbar;
-      toolbar.style.display = "";
-      toolbar.style.visibility = "";
-      toolbar.style.pointerEvents = "";
-      toolbar.style.opacity = "";
-    }
+    this.restoreEditorShell();
 
     if (this.rootEl && this.rootEl.parentNode) {
       this.rootEl.parentNode.removeChild(this.rootEl);
@@ -170,6 +159,63 @@ class DevMenu {
     this.rootEl = null;
     this.panelEl = null;
     this.initialized = false;
+  }
+
+  captureEditorShell() {
+    const shell = document.getElementById("editorShell");
+    this.editorShellEl = shell ?? null;
+
+    if (shell) {
+      this.editorShellOriginalParent = shell.parentNode;
+      this.editorShellOriginalNextSibling = shell.nextSibling;
+    }
+  }
+
+  mountEditorIntoMapTab() {
+    if (!this.editorShellEl || !this.mapEditorHostEl) return;
+
+    this.editorShellEl.style.display = "block";
+    this.editorShellEl.style.width = "100%";
+    this.editorShellEl.style.maxWidth = "100%";
+
+    const editor = this.editorShellEl.querySelector("#editor");
+    if (editor) {
+      editor.style.display = "block";
+      editor.style.width = "100%";
+      editor.style.height = "auto";
+      editor.style.background = "rgba(255,255,255,0.02)";
+      editor.style.border = "1px solid rgba(255,255,255,0.08)";
+      editor.style.marginTop = "8px";
+    }
+
+    this.mapEditorHostEl.appendChild(this.editorShellEl);
+  }
+
+  restoreEditorShell() {
+    if (!this.editorShellEl || !this.editorShellOriginalParent) return;
+
+    this.editorShellEl.style.display = "block";
+    this.editorShellEl.style.width = "";
+    this.editorShellEl.style.maxWidth = "";
+
+    const editor = this.editorShellEl.querySelector("#editor");
+    if (editor) {
+      editor.style.display = "";
+      editor.style.width = "";
+      editor.style.height = "";
+      editor.style.background = "";
+      editor.style.border = "";
+      editor.style.marginTop = "";
+    }
+
+    if (this.editorShellOriginalNextSibling) {
+      this.editorShellOriginalParent.insertBefore(
+        this.editorShellEl,
+        this.editorShellOriginalNextSibling
+      );
+    } else {
+      this.editorShellOriginalParent.appendChild(this.editorShellEl);
+    }
   }
 
   getContent() {
@@ -216,45 +262,22 @@ class DevMenu {
     };
   }
 
-  ensureSelectedMapTile() {
-    if (!this.appState?.ui?.editor?.selectedTile) return;
+  getSelectedTileInfo() {
     const selected = this.getSelectedMapTile();
-    this.appState.ui.editor.selectedTile.x = selected.x;
-    this.appState.ui.editor.selectedTile.y = selected.y;
-  }
-
-  setSelectedMapTile(x, y) {
-    if (!this.appState?.ui?.editor?.selectedTile) return;
-    this.appState.ui.editor.selectedTile.x = x;
-    this.appState.ui.editor.selectedTile.y = y;
-  }
-
-  syncSelectedMapTileToFocus() {
-    const focus = this.appState?.focus ?? { x: 0, y: 0 };
-    this.setSelectedMapTile(focus.x ?? 0, focus.y ?? 0);
-    logDev(`Map tile selection synced to focus (${focus.x ?? 0},${focus.y ?? 0}).`);
-    this.render();
-  }
-
-  syncFocusToSelectedMapTile() {
-    const selected = this.getSelectedMapTile();
-    this.appState.focus.x = selected.x;
-    this.appState.focus.y = selected.y;
-    logDev(`Focus moved to selected map tile (${selected.x},${selected.y}).`);
-    this.render();
-    this.renderApp();
+    const tile = getTile(this.appState.map, selected.x, selected.y);
+    const summary = getTileSummary(tile);
+    return { selected, tile, summary };
   }
 
   adjustSelectedTileHeight(delta) {
-    const selected = this.getSelectedMapTile();
-    const tileBefore = getTile(this.appState.map, selected.x, selected.y);
+    const { selected, tile } = this.getSelectedTileInfo();
 
-    if (!tileBefore) {
+    if (!tile) {
       logDev(`Height change failed: tile (${selected.x},${selected.y}) not found.`);
       return;
     }
 
-    const before = tileBefore.elevation ?? 0;
+    const before = tile.elevation ?? 0;
     changeElevation(this.appState.map, selected.x, selected.y, delta);
 
     const tileAfter = getTile(this.appState.map, selected.x, selected.y);
@@ -379,14 +402,6 @@ class DevMenu {
         </div>
 
         <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-          <div style="font-weight:bold; margin-bottom:8px;">Tile Selection</div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button id="ac-dev-map-use-focus" type="button">Use Focus Tile</button>
-            <button id="ac-dev-map-focus-selected" type="button">Focus Selected Tile</button>
-          </div>
-        </div>
-
-        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
           <div style="font-weight:bold; margin-bottom:8px;">Height Controls</div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button id="ac-dev-map-lower-height" type="button">Height -1</button>
@@ -403,6 +418,8 @@ class DevMenu {
             <button id="ac-dev-map-reset" type="button">Reset Map</button>
           </div>
         </div>
+
+        <div id="ac-dev-map-editor-host"></div>
       </div>
     `;
 
@@ -434,11 +451,10 @@ class DevMenu {
     this.mapRotateRightEl = panel.querySelector("#ac-dev-map-rotate-right");
     this.mapToggleViewEl = panel.querySelector("#ac-dev-map-toggle-view");
     this.mapResetEl = panel.querySelector("#ac-dev-map-reset");
-
-    this.mapUseFocusEl = panel.querySelector("#ac-dev-map-use-focus");
-    this.mapFocusSelectedEl = panel.querySelector("#ac-dev-map-focus-selected");
     this.mapRaiseHeightEl = panel.querySelector("#ac-dev-map-raise-height");
     this.mapLowerHeightEl = panel.querySelector("#ac-dev-map-lower-height");
+
+    this.mapEditorHostEl = panel.querySelector("#ac-dev-map-editor-host");
   }
 
   bindEvents() {
@@ -474,14 +490,6 @@ class DevMenu {
     this.mapResetEl?.addEventListener("click", () => {
       this.refs?.resetMapButton?.click();
       this.render();
-    });
-
-    this.mapUseFocusEl?.addEventListener("click", () => {
-      this.syncSelectedMapTileToFocus();
-    });
-
-    this.mapFocusSelectedEl?.addEventListener("click", () => {
-      this.syncFocusToSelectedMapTile();
     });
 
     this.mapRaiseHeightEl?.addEventListener("click", () => {
@@ -587,6 +595,8 @@ class DevMenu {
 
     this.unitsTabButtonEl.style.opacity = isUnits ? "1" : "0.65";
     this.mapTabButtonEl.style.opacity = isUnits ? "0.65" : "1";
+
+    this.render();
   }
 
   toggle(force) {
@@ -848,14 +858,16 @@ class DevMenu {
   }
 
   render() {
-    this.ensureSelectedMapTile();
     this.renderRuntimeState();
     this.renderRoundPhase();
     this.renderPhaseOrder();
     this.renderUnits();
     this.renderMapState();
     this.renderLog();
-    this.setActiveTab(this.state.activeTab);
+
+    if (this.state.activeTab === "map") {
+      this.renderApp();
+    }
   }
 
   renderRuntimeState() {
@@ -1044,19 +1056,17 @@ class DevMenu {
     const selectedUnitId = this.appState?.selection?.unitId ?? null;
     const units = this.getRuntimeUnits();
     const selectedUnit = units.find((unit) => unit.instanceId === selectedUnitId) ?? null;
-    const selectedTile = this.getSelectedMapTile();
-    const tile = getTile(this.appState.map, selectedTile.x, selectedTile.y);
-    const summary = getTileSummary(tile);
+
+    const { selected, tile, summary } = this.getSelectedTileInfo();
 
     this.mapStateEl.innerHTML = `
       <div>View: <strong>${this.getViewLabel()}</strong></div>
       <div>Rotation: <strong>${this.getRotationValue()}</strong></div>
       <div>Focus Tile: <strong>(${focus.x ?? 0},${focus.y ?? 0})</strong></div>
-      <div>Focus Scale: <strong>${focus.scale ?? "-"}</strong></div>
       <div>Selected Unit: <strong>${selectedUnit ? `${selectedUnit.name} / ${selectedUnit.pilotName ?? "No Pilot"}` : "None"}</strong></div>
       <div style="margin-top:8px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;">
-        <div>Selected Tile: <strong>(${selectedTile.x},${selectedTile.y})</strong></div>
-        <div>Base Height: <strong>${tile ? tile.elevation : "-"}</strong></div>
+        <div>Selected Tile: <strong>(${selected.x},${selected.y})</strong></div>
+        <div>Base Height: <strong>${tile?.elevation ?? "-"}</strong></div>
         <div>Min Height: <strong>${formatSummaryValue(summary?.minElevation)}</strong></div>
         <div>Max Height: <strong>${formatSummaryValue(summary?.maxElevation)}</strong></div>
         <div>Foot Height: <strong>${formatSummaryValue(summary?.mechFootElevation)}</strong></div>
