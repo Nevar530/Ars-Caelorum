@@ -30,7 +30,7 @@ import {
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
 import {
   getUnitCenterPoint,
-  getUnitOccupiedCells
+  getUnitFootprintBounds
 } from "../scale/scaleMath.js";
 
 const UNIT_SORT_EPSILON = 0.25;
@@ -51,8 +51,7 @@ export function renderIso(state, refs) {
   worldScene.innerHTML = "";
   worldUi.innerHTML = "";
 
-  const terrainItems = [];
-  const unitItems = [];
+  const sceneItems = [];
   const overlayTileItems = [];
   const reachableMap = new Map();
 
@@ -94,12 +93,12 @@ export function renderIso(state, refs) {
           rightFaceHeight: renderElevation
         }),
         render(parent) {
-          if (tileItem.skipTerrain) return;
-          renderTerrainTile(state, tileItem, parent);
+          if (this.skipTerrain) return;
+          renderTerrainTile(state, this, parent);
         }
       };
 
-      terrainItems.push(tileItem);
+      sceneItems.push(tileItem);
       overlayTileItems.push(tileItem);
 
       if (hasDetailGeometry) {
@@ -114,7 +113,7 @@ export function renderIso(state, refs) {
             cell.size
           );
 
-          terrainItems.push({
+          sceneItems.push({
             kind: "terrain",
             sourceKind: "detail",
             x: cell.x,
@@ -140,36 +139,6 @@ export function renderIso(state, refs) {
         }
       }
     }
-  }
-
-  terrainItems.sort(compareSceneItems);
-
-  for (const item of terrainItems) {
-    item.render(worldScene);
-  }
-
-  for (const item of overlayTileItems) {
-    if (state.ui.mode === "move" && item.reachableCost !== null) {
-      drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost), {
-        drawShapes: true,
-        drawLabels: false
-      });
-    }
-
-    drawScenePathOverlayForTile(state, item, worldScene, {
-      drawShapes: true,
-      drawLabels: false
-    });
-
-    drawSceneActionOverlayForTile(state, item, worldScene, {
-      drawShapes: true,
-      drawLabels: false
-    });
-
-    drawSceneFocusOverlayForTile(state, item, worldScene, {
-      drawShapes: true,
-      drawLabels: false
-    });
   }
 
   for (const unit of units) {
@@ -211,7 +180,7 @@ export function renderIso(state, refs) {
     const parts = getUnitRenderSceneItems(state, unit, renderModel, isActive);
 
     for (const part of parts) {
-      unitItems.push({
+      sceneItems.push({
         kind: "unit_part",
         sortDepth: part.sortDepth,
         sortKey:
@@ -229,10 +198,34 @@ export function renderIso(state, refs) {
     }
   }
 
-  unitItems.sort(compareSceneItems);
+  sceneItems.sort(compareSceneItems);
 
-  for (const item of unitItems) {
+  for (const item of sceneItems) {
     item.render(worldScene);
+  }
+
+  for (const item of overlayTileItems) {
+    if (state.ui.mode === "move" && item.reachableCost !== null) {
+      drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost), {
+        drawShapes: true,
+        drawLabels: false
+      });
+    }
+
+    drawScenePathOverlayForTile(state, item, worldScene, {
+      drawShapes: true,
+      drawLabels: false
+    });
+
+    drawSceneActionOverlayForTile(state, item, worldScene, {
+      drawShapes: true,
+      drawLabels: false
+    });
+
+    drawSceneFocusOverlayForTile(state, item, worldScene, {
+      drawShapes: true,
+      drawLabels: false
+    });
   }
 
   drawSceneActiveUnitOverlay(state, worldUi);
@@ -240,20 +233,15 @@ export function renderIso(state, refs) {
 }
 
 function getUnitSupportElevation(state, unit) {
-  const occupiedCells = getUnitOccupiedCells(unit);
-  let maxElevation = null;
+  const bounds = getUnitFootprintBounds(unit);
 
-  for (const cell of occupiedCells) {
-    const tile = getTile(state.map, cell.x, cell.y);
-    if (!tile) return null;
+  const supportX = bounds.minX + Math.floor(bounds.width / 2);
+  const supportY = bounds.minY + Math.floor(bounds.height / 2);
 
-    const elevation = getTileFootElevation(tile);
-    if (maxElevation === null || elevation > maxElevation) {
-      maxElevation = elevation;
-    }
-  }
+  const tile = getTile(state.map, supportX, supportY);
+  if (!tile) return null;
 
-  return maxElevation;
+  return getTileFootElevation(tile);
 }
 
 function getTerrainDepth(item) {
