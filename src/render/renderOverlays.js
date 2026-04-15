@@ -9,7 +9,7 @@ import {
 } from "../map.js";
 import { getUnitById } from "../mechs.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
-import { TOPDOWN_CONFIG, projectScene } from "./projection.js";
+import { TOPDOWN_CONFIG, projectScene, projectTileCenter } from "./projection.js";
 import {
   getUnitFootprintBounds,
   getUnitCenterPoint,
@@ -252,14 +252,13 @@ function drawOverlayForUnitFootprint(state, unit, className, fill, stroke, paren
   const supportElevation = getUnitSupportElevation(state, unit);
   if (supportElevation === null) return;
 
-  const centerPoint = getUnitCenterPoint(unit);
+  const centerTile = getUnitCenterTile(unit);
 
-  const center = projectScene(
+  const center = projectTileCenter(
     state,
-    centerPoint.x,
-    centerPoint.y,
-    supportElevation + DETAIL_OVERLAY_LIFT,
-    1
+    centerTile.x,
+    centerTile.y,
+    supportElevation + DETAIL_OVERLAY_LIFT
   );
 
   const halfW = bounds.width * (RENDER_CONFIG.isoTileWidth / 2);
@@ -414,14 +413,13 @@ function getUnitLabelPoint(state, unit) {
   }
 
   const supportElevation = getUnitSupportElevation(state, unit) ?? 0;
-  const centerPoint = getUnitCenterPoint(unit);
+  const centerTile = getUnitCenterTile(unit);
 
-  const center = projectScene(
+  const center = projectTileCenter(
     state,
-    centerPoint.x,
-    centerPoint.y,
-    supportElevation + DETAIL_OVERLAY_LIFT,
-    1
+    centerTile.x,
+    centerTile.y,
+    supportElevation + DETAIL_OVERLAY_LIFT
   );
 
   return {
