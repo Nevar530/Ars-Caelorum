@@ -214,6 +214,11 @@ export function getUnitsAt(units, x, y, scale = null) {
   });
 }
 
+
+export function getUnitAt(units, x, y, scale = null) {
+  return getUnitsAt(units, x, y, scale).find(Boolean) ?? null;
+}
+
 export function moveUnitTo(units, instanceId, x, y) {
   const unit = getUnitById(units, instanceId);
   if (!unit) return false;
