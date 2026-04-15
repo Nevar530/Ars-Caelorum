@@ -26,7 +26,7 @@ export function drawSceneLosPreview(state, parent) {
   if (!attackerTile || !targetTile) return;
 
   const attackerScale = activeUnit.scale ?? "mech";
-  const targetScale = profile.scale ?? "mech";
+  const targetScale = focusedTarget.targetScale ?? activeUnit?.scale ?? "pilot";
 
   const attackerBaseElevation = getTileEffectiveElevation(attackerTile);
   const targetBaseElevation = getTileEffectiveElevation(targetTile);
