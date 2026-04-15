@@ -1,6 +1,6 @@
 // src/controllers/movementController.js
 
-import { canMoveActiveMechTo, getPathToTile } from "../movement.js";
+import { canMoveActiveMechTo as canMoveActiveUnitTo, getPathToTile } from "../movement.js";
 
 function facingToLabel(facing) {
   switch (facing) {
@@ -25,10 +25,10 @@ function sign(value) {
 
 export function createMovementController({
   state,
-  getMechById,
-  moveMechTo,
-  setMechFacing,
-  snapFocusToActiveMech,
+  getUnitById,
+  moveUnitTo,
+  setUnitFacing,
+  snapFocusToActiveUnit,
   clearTransientUi,
   render,
   logDev,
@@ -54,37 +54,37 @@ export function createMovementController({
   function startMove() {
     if (!state.turn.combatStarted || state.turn.phase !== "move") return;
 
-    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-    if (!activeMech) return;
+    const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+    if (!activeUnit) return;
 
     state.ui.commandMenu.open = false;
 
     state.ui.preMove = {
-      mechId: activeMech.instanceId,
-      x: activeMech.x,
-      y: activeMech.y,
-      facing: activeMech.facing
+      unitId: activeUnit.instanceId,
+      x: activeUnit.x,
+      y: activeUnit.y,
+      facing: activeUnit.facing
     };
 
     state.ui.mode = "move";
     state.selection.action = "move";
     state.ui.facingPreview = null;
     state.ui.previewPath = [];
-    snapFocusToActiveMech();
+    snapFocusToActiveUnit();
 
     logDev(
-      `${activeMech.name} started movement from (${activeMech.x},${activeMech.y}).`
+      `${activeUnit.name} started movement from (${activeUnit.x},${activeUnit.y}).`
     );
 
     render();
   }
 
   function completeBraceForCurrentUnit() {
-    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-    if (!activeMech) return;
+    const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+    if (!activeUnit) return;
 
-    activeMech.isBraced = true;
-    logDev(`${activeMech.name} braced.`);
+    activeUnit.isBraced = true;
+    logDev(`${activeUnit.name} braced.`);
 
     clearTransientUi();
 
@@ -100,34 +100,34 @@ export function createMovementController({
 
   function confirmMoveOrFacing() {
     if (state.ui.mode === "move") {
-      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-      if (!activeMech) return true;
+      const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+      if (!activeUnit) return true;
 
-      if (canMoveActiveMechTo(state, state.focus.x, state.focus.y)) {
-        const fromX = activeMech.x;
-        const fromY = activeMech.y;
+      if (canMoveActiveUnitTo(state, state.focus.x, state.focus.y)) {
+        const fromX = activeUnit.x;
+        const fromY = activeUnit.y;
 
         const defaultFacing = getDefaultFacingFromPath(
           state.ui.previewPath,
-          activeMech.facing
+          activeUnit.facing
         );
 
-        moveMechTo(
-          state.mechs,
-          activeMech.instanceId,
+        moveUnitTo(
+          state.units,
+          activeUnit.instanceId,
           state.focus.x,
           state.focus.y
         );
 
         logDev(
-          `${activeMech.name} moved from (${fromX},${fromY}) to (${state.focus.x},${state.focus.y}).`
+          `${activeUnit.name} moved from (${fromX},${fromY}) to (${state.focus.x},${state.focus.y}).`
         );
 
         state.ui.mode = "face";
         state.selection.action = "face";
         state.ui.previewPath = [];
         state.ui.facingPreview = defaultFacing;
-        snapFocusToActiveMech();
+        snapFocusToActiveUnit();
         render();
       }
 
@@ -135,18 +135,18 @@ export function createMovementController({
     }
 
     if (state.ui.mode === "face") {
-      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-      if (!activeMech) return true;
+      const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+      if (!activeUnit) return true;
 
       if (state.ui.facingPreview !== null) {
-        setMechFacing(
-          state.mechs,
-          activeMech.instanceId,
+        setUnitFacing(
+          state.units,
+          activeUnit.instanceId,
           state.ui.facingPreview
         );
 
         logDev(
-          `${activeMech.name} facing set to ${facingToLabel(state.ui.facingPreview)}.`
+          `${activeUnit.name} facing set to ${facingToLabel(state.ui.facingPreview)}.`
         );
       }
 
@@ -167,7 +167,7 @@ export function createMovementController({
       state.ui.preMove = null;
       state.ui.commandMenu.open = true;
       state.ui.commandMenu.index = 0;
-      snapFocusToActiveMech();
+      snapFocusToActiveUnit();
       render();
       return true;
     }
@@ -176,14 +176,14 @@ export function createMovementController({
       const snap = state.ui.preMove;
 
       if (snap) {
-        moveMechTo(state.mechs, snap.mechId, snap.x, snap.y);
-        setMechFacing(state.mechs, snap.mechId, snap.facing);
+        moveUnitTo(state.units, snap.unitId, snap.x, snap.y);
+        setUnitFacing(state.units, snap.unitId, snap.facing);
       }
 
       state.ui.mode = "move";
       state.selection.action = "move";
       state.ui.facingPreview = null;
-      snapFocusToActiveMech();
+      snapFocusToActiveUnit();
       state.ui.previewPath = getPathToTile(state, state.focus.x, state.focus.y);
       render();
       return true;
