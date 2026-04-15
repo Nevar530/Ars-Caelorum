@@ -274,9 +274,9 @@ function getUnitSpriteInfo(state, unit) {
 
   switch (facing) {
     case 0:
-      return { href: `art/${folder}/${unitType}_NE.png`, mirrorX: false };
-    case 1:
       return { href: `art/${folder}/${unitType}_NW.png`, mirrorX: false };
+    case 1:
+      return { href: `art/${folder}/${unitType}_NE.png`, mirrorX: false };
     case 2:
       return { href: `art/${folder}/${unitType}_NE.png`, mirrorX: true };
     case 3:
