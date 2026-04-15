@@ -141,11 +141,9 @@ export function getUnitCenterTile(unit) {
 }
 
 export function getUnitCenterPoint(unit) {
-  const centerTile = getUnitCenterTile(unit);
-
   return {
-    x: centerTile.x + 0.5,
-    y: centerTile.y + 0.5
+    x: Number(unit?.x ?? 0),
+    y: Number(unit?.y ?? 0)
   };
 }
 
