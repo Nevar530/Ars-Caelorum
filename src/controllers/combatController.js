@@ -11,7 +11,7 @@ import { getPrimaryOccupantAt } from "../scale/occupancy.js";
 
 export function createCombatController({
   state,
-  getMechById,
+  getUnitById,
   render,
   logDev,
   clearTransientUi,
@@ -21,20 +21,20 @@ export function createCombatController({
   function startAttack() {
     if (!state.turn.combatStarted || state.turn.phase !== "action") return;
 
-    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-    if (!activeMech) return;
+    const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+    if (!activeUnit) return;
 
     if (!startAttackSelection(state)) return;
 
-    logDev(`${activeMech.name} entered attack selection.`);
+    logDev(`${activeUnit.name} entered attack selection.`);
     render();
   }
 
   function completeEndTurnForCurrentUnit() {
-    const activeMech = getMechById(state.mechs, state.turn.activeMechId);
-    if (!activeMech) return;
+    const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+    if (!activeUnit) return;
 
-    logDev(`${activeMech.name} ended action turn.`);
+    logDev(`${activeUnit.name} ended action turn.`);
     clearTransientUi();
     advanceActionTurn();
   }
@@ -50,11 +50,11 @@ export function createCombatController({
     }
   }
 
-  function handleConfirmedTarget(activeMech, selectedAttack) {
+  function handleConfirmedTarget(activeUnit, selectedAttack) {
     const targetX = state.focus.x;
     const targetY = state.focus.y;
     const targetEntry = getPrimaryOccupantAt(state, targetX, targetY, "mech", {
-      excludeUnitId: activeMech.instanceId
+      excludeUnitId: activeUnit.instanceId
     });
     const targetMech = targetEntry?.unit ?? null;
 
@@ -64,11 +64,11 @@ export function createCombatController({
 
     if (targetMech) {
       logDev(
-        `${activeMech.name} targeted ${targetMech.name} with ${selectedAttack.name}.`
+        `${activeUnit.name} targeted ${targetMech.name} with ${selectedAttack.name}.`
       );
     } else {
       logDev(
-        `${activeMech.name} targeted tile (${targetX},${targetY}) with ${selectedAttack.name}.`
+        `${activeUnit.name} targeted tile (${targetX},${targetY}) with ${selectedAttack.name}.`
       );
     }
 
@@ -78,7 +78,7 @@ export function createCombatController({
 
     const hitResult = resolveHit(
       state,
-      activeMech,
+      activeUnit,
       weapon,
       state.ui.action.lastConfirmed
     );
@@ -103,7 +103,7 @@ export function createCombatController({
 
       const damageResult = resolveDamage(
         state,
-        activeMech,
+        activeUnit,
         weapon,
         state.ui.action.lastConfirmed,
         singleResult
@@ -147,12 +147,12 @@ export function createCombatController({
     }
 
     if (state.ui.mode === "action-attack-select") {
-      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+      const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
 
       if (confirmAttackSelection(state)) {
         const selectedAttack = state.ui.action.selectedAction;
-        if (activeMech && selectedAttack) {
-          logDev(`${activeMech.name} selected attack ${selectedAttack.name}.`);
+        if (activeUnit && selectedAttack) {
+          logDev(`${activeUnit.name} selected attack ${selectedAttack.name}.`);
         }
         render();
       }
@@ -160,11 +160,11 @@ export function createCombatController({
     }
 
     if (state.ui.mode === "action-target") {
-      const activeMech = getMechById(state.mechs, state.turn.activeMechId);
+      const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
       const selectedAttack = state.ui.action.selectedAction;
 
-      if (activeMech && selectedAttack) {
-        handleConfirmedTarget(activeMech, selectedAttack);
+      if (activeUnit && selectedAttack) {
+        handleConfirmedTarget(activeUnit, selectedAttack);
       }
     }
   }
