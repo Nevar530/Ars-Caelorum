@@ -1,6 +1,6 @@
 // src/targeting/targetingResolver.js
 
-import { getMechById } from "../mechs.js";
+import { getUnitById } from "../mechs.js";
 import { getLineOfSightResult } from "../los.js";
 import { getFireArcTiles, toTileKeySet, DEFAULT_FIRE_ARC_RANGE } from "./fireArc.js";
 import {
@@ -12,8 +12,8 @@ import {
 } from "./rangeRules.js";
 import { evaluateMissileTargetWithSpotter } from "./missileTargeting.js";
 
-function getActiveMech(state) {
-  return getMechById(state.mechs, state.turn.activeMechId);
+function getActiveUnit(state) {
+  return getUnitById(state.units ?? state.mechs, state.turn.activeUnitId ?? state.turn.activeMechId);
 }
 
 export function normalizeWeaponToActionProfile(weapon) {
@@ -82,7 +82,7 @@ export function snapFocusToFirstValidTarget(state) {
   state.focus.x = first.x;
   state.focus.y = first.y;
 
-  const activeMech = getActiveMech(state);
+  const activeUnit = getActiveUnit(state);
   const profile = state.ui.action.selectedAction;
 
   state.ui.action.effectTiles = getEffectTilesForTarget(
@@ -94,7 +94,7 @@ export function snapFocusToFirstValidTarget(state) {
 }
 
 export function updateActionTargetPreview(state) {
-  const activeMech = getActiveMech(state);
+  const activeUnit = getActiveUnit(state);
   const profile = state.ui.action.selectedAction;
 
   if (!activeMech || !profile) {
