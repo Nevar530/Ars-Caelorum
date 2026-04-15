@@ -155,21 +155,26 @@ export function renderIso(state, refs) {
       1
     );
 
+    const projectedFoot = {
+      x: projectedCenter.x,
+      y: projectedCenter.y + (RENDER_CONFIG.isoTileHeight / 2)
+    };
+
     const renderModel =
       state.ui?.viewMode === "top"
         ? {
             top: {
               center: {
-                x: projectedCenter.x,
-                y: projectedCenter.y
+                x: projectedFoot.x,
+                y: projectedFoot.y
               }
             }
           }
         : {
             iso: {
               center: {
-                x: projectedCenter.x,
-                y: projectedCenter.y
+                x: projectedFoot.x,
+                y: projectedFoot.y
               }
             }
           };
