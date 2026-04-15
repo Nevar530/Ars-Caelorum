@@ -164,31 +164,29 @@ export function renderIso(state, refs) {
 
     if (supportElevation === null) continue;
 
-const projectedAnchor = projectScene(
-  state,
-  centerPoint.x,
-  centerPoint.y,
-  supportElevation,
-  1
-);
-
-    const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
+    const projectedAnchor = projectScene(
+      state,
+      centerPoint.x,
+      centerPoint.y,
+      supportElevation,
+      1
+    );
 
     const renderModel =
       state.ui?.viewMode === "top"
         ? {
             top: {
               center: {
-                x: projectedCenter.x,
-                y: projectedCenter.y
+                x: projectedAnchor.x,
+                y: projectedAnchor.y
               }
             }
           }
         : {
             iso: {
               center: {
-                x: projectedCenter.x,
-                y: projectedCenter.y
+                x: projectedAnchor.x,
+                y: projectedAnchor.y
               }
             }
           };
@@ -201,7 +199,7 @@ const projectedAnchor = projectScene(
     for (const part of parts) {
       unitItems.push({
         kind: "unit_part",
-        sortDepth: footprintSortDepth + (part.sortDepth - projectedCenter.y),
+        sortDepth: footprintSortDepth + (part.sortDepth - projectedAnchor.y),
         sortKey:
           (getSceneSortKey(
             state,
