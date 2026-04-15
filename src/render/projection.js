@@ -302,6 +302,19 @@ export function projectLosPoint(state, x, y, height, _scale = "mech") {
   };
 }
 
+export function projectTileCenter(state, x, y, elevation = 0) {
+  if (state.ui?.viewMode === "top") {
+    return projectTopDown(state, x + 0.5, y + 0.5);
+  }
+
+  const projected = projectIso(state, x, y, elevation, 1);
+
+  return {
+    x: projected.x,
+    y: projected.y + (RENDER_CONFIG.isoTileHeight / 2)
+  };
+}
+
 export function getLosRayEndPoint(state, rayTrace, fallbackX, fallbackY, fallbackHeight, scale = "mech") {
   if (rayTrace?.blocked && rayTrace?.blockingTile) {
     return projectLosPoint(
