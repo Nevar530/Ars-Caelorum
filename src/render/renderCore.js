@@ -210,7 +210,7 @@ const projectedAnchor = projectTileCenter(
         kind: "unit_part",
         sortDepth: footprintSortDepth + (part.sortDepth - projectedAnchor.y),
         sortKey:
-getSceneSortKey(
+getSceneSortKey((
   state,
   anchorTile.x,
   anchorTile.y,
