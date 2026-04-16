@@ -198,7 +198,13 @@ export function renderIso(state, refs) {
 
    const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
 
-if (state.ui?.viewMode !== "top") {
+const selectedUnitId = state.selection?.unitId ?? state.selection?.mechId ?? null;
+const activeUnitId = state.turn?.activeUnitId ?? state.turn?.activeMechId ?? null;
+const shouldShowStatusTag =
+  state.ui?.viewMode !== "top" &&
+  (unit.instanceId === selectedUnitId || unit.instanceId === activeUnitId);
+
+if (shouldShowStatusTag) {
   unitStatusTagItems.push({
     x: projectedAnchor.x,
     y: projectedAnchor.y,
