@@ -191,24 +191,39 @@ export function renderIso(state, refs) {
 
     const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
 
-    const renderModel =
-      state.ui?.viewMode === "top"
-        ? {
-            top: {
-              center: {
-                x: projectedAnchor.x,
-                y: projectedAnchor.y
-              }
-            }
+const projectedCenter = projectTileCenter(
+  state,
+  centerTile.x,
+  centerTile.y,
+  supportElevation
+);
+
+const renderModel =
+  state.ui?.viewMode === "top"
+    ? {
+        top: {
+          center: {
+            x: projectedAnchor.x,
+            y: projectedAnchor.y
+          },
+          logicCenter: {
+            x: projectedCenter.x,
+            y: projectedCenter.y
           }
-        : {
-            iso: {
-              center: {
-                x: projectedAnchor.x,
-                y: projectedAnchor.y
-              }
-            }
-          };
+        }
+      }
+    : {
+        iso: {
+          center: {
+            x: projectedAnchor.x,
+            y: projectedAnchor.y
+          },
+          logicCenter: {
+            x: projectedCenter.x,
+            y: projectedCenter.y
+          }
+        }
+      };
 
     const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
     const isActive = unit.instanceId === activeUnitId;
