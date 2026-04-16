@@ -239,8 +239,7 @@ const renderModel =
         }
       };
 
-    const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
-    const isActive = unit.instanceId === activeUnitId;
+        const isActive = unit.instanceId === activeUnitId;
 
     const parts = getUnitRenderSceneItems(state, unit, renderModel, isActive);
 
