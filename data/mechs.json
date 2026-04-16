@@ -13,7 +13,13 @@
     "abilities": [],
     "tubes": [],
     "defaultFacing": "S",
-    "image": null
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/mech/hero_001_NE.png",
+        "NW": "art/mech/hero_001_NW.png"
+      }
+    }
   },
   {
     "id": "mech_b",
@@ -29,7 +35,13 @@
     "abilities": [],
     "tubes": [],
     "defaultFacing": "S",
-    "image": null
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/mech/quad_001_NE.png",
+        "NW": "art/mech/quad_001_NW.png"
+      }
+    }
   },
   {
     "id": "mech_c",
@@ -45,7 +57,13 @@
     "abilities": [],
     "tubes": [],
     "defaultFacing": "S",
-    "image": null
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/mech/quad_001_NE.png",
+        "NW": "art/mech/quad_001_NW.png"
+      }
+    }
   },
   {
     "id": "mech_d",
@@ -61,6 +79,12 @@
     "abilities": [],
     "tubes": [],
     "defaultFacing": "S",
-    "image": null
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/mech/hero_001_NE.png",
+        "NW": "art/mech/hero_001_NW.png"
+      }
+    }
   }
 ]
