@@ -35,6 +35,8 @@ import {
 } from "../scale/scaleMath.js";
 
 const UNIT_SORT_EPSILON = 0.25;
+const OVERLAY_SORT_EPSILON = 0.05;
+const ACTIVE_OVERLAY_SORT_EPSILON = 0.08;
 
 function getBottomVisibleFootprintTile(state, unit, supportElevation) {
   const cells = getUnitOccupiedCells(unit);
@@ -78,6 +80,7 @@ export function renderIso(state, refs) {
   worldUi.innerHTML = "";
 
   const terrainSceneItems = [];
+  const overlaySceneItems = [];
   const unitSceneItems = [];
   const overlayTileItems = [];
   const reachableMap = new Map();
@@ -170,6 +173,58 @@ export function renderIso(state, refs) {
     }
   }
 
+  for (const item of overlayTileItems) {
+    if (state.ui.mode === "move" && item.reachableCost !== null) {
+      overlaySceneItems.push({
+        kind: "overlay_move",
+        sortDepth: item.sortDepth + OVERLAY_SORT_EPSILON,
+        sortKey: item.sortKey,
+        render(parent) {
+          drawSceneMoveOverlay(state, item, parent, String(item.reachableCost), {
+            drawShapes: true,
+            drawLabels: false
+          });
+        }
+      });
+    }
+
+    overlaySceneItems.push({
+      kind: "overlay_path",
+      sortDepth: item.sortDepth + OVERLAY_SORT_EPSILON,
+      sortKey: item.sortKey,
+      render(parent) {
+        drawScenePathOverlayForTile(state, item, parent, {
+          drawShapes: true,
+          drawLabels: false
+        });
+      }
+    });
+
+    overlaySceneItems.push({
+      kind: "overlay_action",
+      sortDepth: item.sortDepth + OVERLAY_SORT_EPSILON,
+      sortKey: item.sortKey,
+      render(parent) {
+        drawSceneActionOverlayForTile(state, item, parent, {
+          drawShapes: true,
+          drawLabels: false
+        });
+      }
+    });
+
+    overlaySceneItems.push({
+      kind: "overlay_focus",
+      sortDepth: item.sortDepth + OVERLAY_SORT_EPSILON,
+      sortKey: item.sortKey,
+      render(parent) {
+        drawSceneFocusOverlayForTile(state, item, parent, {
+          drawShapes: true,
+          drawLabels: false
+        });
+      }
+    });
+  }
+
   for (const unit of units) {
     const centerTile = getUnitCenterPoint(unit);
     const supportElevation = getUnitSupportElevation(state, unit);
@@ -248,41 +303,37 @@ export function renderIso(state, refs) {
     }
   }
 
-  // Draw all terrain-bound overlays first so terrain and units can occlude them.
-  for (const item of overlayTileItems) {
-    if (state.ui.mode === "move" && item.reachableCost !== null) {
-      drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost), {
-        drawShapes: true,
-        drawLabels: false
+  if (state.ui.mode !== "move" && state.ui.mode !== "face") {
+    const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
+    const activeUnit = units.find((unit) => unit.instanceId === activeUnitId) ?? null;
+
+    if (activeUnit) {
+      const centerTile = getUnitCenterPoint(activeUnit);
+      const supportElevation = getUnitSupportElevation(state, activeUnit) ?? 0;
+
+      overlaySceneItems.push({
+        kind: "overlay_active_unit",
+        sortDepth: getUnitFootprintSortDepth(state, activeUnit) + ACTIVE_OVERLAY_SORT_EPSILON,
+        sortKey: getSceneSortKey(
+          state,
+          centerTile.x,
+          centerTile.y,
+          supportElevation,
+          1
+        ),
+        render(parent) {
+          drawSceneActiveUnitOverlay(state, parent);
+        }
       });
     }
-
-    drawScenePathOverlayForTile(state, item, worldScene, {
-      drawShapes: true,
-      drawLabels: false
-    });
-
-    drawSceneActionOverlayForTile(state, item, worldScene, {
-      drawShapes: true,
-      drawLabels: false
-    });
-
-    drawSceneFocusOverlayForTile(state, item, worldScene, {
-      drawShapes: true,
-      drawLabels: false
-    });
   }
 
-  // Active unit ring is also map-space, not UI-space.
-  drawSceneActiveUnitOverlay(state, worldScene);
-
-  const mainSceneItems = [...terrainSceneItems, ...unitSceneItems];
+  const mainSceneItems = [...terrainSceneItems, ...overlaySceneItems, ...unitSceneItems];
   mainSceneItems.sort(compareSceneItems);
   for (const item of mainSceneItems) {
     item.render(worldScene);
   }
 
-  // LOS preview stays as a UI/debug overlay.
   drawSceneLosPreview(state, worldUi);
 }
 
