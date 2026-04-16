@@ -108,12 +108,15 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
   const anchorX = renderModel.iso.center.x;
   const anchorY = renderModel.iso.center.y;
 
+  const logicAnchorX = renderModel.iso.logicCenter?.x ?? anchorX;
+  const logicAnchorY = renderModel.iso.logicCenter?.y ?? anchorY;
+
   const spriteBox = getSpriteRenderBox(unit);
   const spriteInfo = getUnitSpriteInfo(state, unit);
 
   const items = [];
 
-    const spriteSortDepth = anchorY + UNIT_FRONT_TILE_BIAS;
+  const spriteSortDepth = anchorY + UNIT_FRONT_TILE_BIAS;
 
   items.push({
     sortDepth: spriteSortDepth,
@@ -149,15 +152,15 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
     }
   });
 
-if (shouldDrawHeightPole(state, unit)) {
-  items.push({
-    sortDepth: spriteSortDepth + 0.01,
-    sortKey: anchorX,
-    render(parent) {
-      drawHeightPole(parent, unit, anchorX, anchorY);
-    }
-  });
-}
+  if (shouldDrawHeightPole(state, unit)) {
+    items.push({
+      sortDepth: spriteSortDepth + 0.01,
+      sortKey: logicAnchorX,
+      render(parent) {
+        drawHeightPole(parent, unit, logicAnchorX, logicAnchorY);
+      }
+    });
+  }
 
   items.push({
     sortDepth: spriteSortDepth + 0.02,
