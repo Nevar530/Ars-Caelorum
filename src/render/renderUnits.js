@@ -177,37 +177,41 @@ export function getWorldFacing(state, unit) {
 
 export function drawIsoStatusPlate(parent, unit, anchorX, anchorY) {
   const isPilot = unit?.unitType === "pilot";
+  const text = `${unit.name ?? "UNIT"}: I:${unit.initiative ?? 0} S:${unit.shield ?? 0} C:${unit.core ?? 0}`;
 
-  const plateWidth = isPilot ? 74 : 118;
-  const plateHeight = isPilot ? 18 : 22;
-  const skew = isPilot ? 12 : 18;
+  const plateWidth = isPilot ? 124 : 148;
+  const plateHeight = 16;
   const plateCenterY = anchorY + (isPilot ? 12 : 16);
 
+  // 2:1 iso angle
+  const isoAngle =
+    Math.atan2(RENDER_CONFIG.isoTileHeight, RENDER_CONFIG.isoTileWidth) * (180 / Math.PI);
+
+  // plate only
+  const plateGroup = svgEl("g");
+  plateGroup.setAttribute(
+    "transform",
+    `translate(${anchorX} ${plateCenterY}) rotate(${isoAngle})`
+  );
+
+  const halfW = plateWidth / 2;
+  const halfH = plateHeight / 2;
+  const tail = isPilot ? 8 : 10;
+
   const points = [
-    { x: anchorX - (plateWidth / 2) - skew, y: plateCenterY - (plateHeight / 2) },
-    { x: anchorX + (plateWidth / 2) - skew, y: plateCenterY - (plateHeight / 2) },
-    { x: anchorX + (plateWidth / 2) + skew, y: plateCenterY + (plateHeight / 2) },
-    { x: anchorX - (plateWidth / 2) + skew, y: plateCenterY + (plateHeight / 2) }
+    { x: -halfW,         y: -halfH },
+    { x:  halfW,         y: -halfH },
+    { x:  halfW + tail,  y:  halfH },
+    { x: -halfW + tail,  y:  halfH }
   ];
 
   const plate = makePolygon(points, "unit-status-plate", "rgba(10, 14, 20, 0.88)");
-  parent.appendChild(plate);
+  plateGroup.appendChild(plate);
+  parent.appendChild(plateGroup);
 
-  const nameText = makeText(
-    anchorX,
-    plateCenterY - 4,
-    unit.name ?? "UNIT",
-    "unit-status-name"
-  );
-  parent.appendChild(nameText);
-
-  const statsText = makeText(
-    anchorX,
-    plateCenterY + 7,
-    `I:${unit.initiative ?? 0} S:${unit.shield ?? 0} C:${unit.core ?? 0}`,
-    "unit-status-stats"
-  );
-  parent.appendChild(statsText);
+  // text stays level for readability
+  const label = makeText(anchorX, plateCenterY + 0.5, text, "unit-status-text");
+  parent.appendChild(label);
 }
 
 function getTopBodyClass(isActive) {
