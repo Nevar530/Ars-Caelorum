@@ -248,7 +248,12 @@ export function renderIso(state, refs) {
     }
   }
 
-  // Draw all terrain-bound overlays first so terrain and units can occlude them.
+  const mainSceneItems = [...terrainSceneItems, ...unitSceneItems];
+  mainSceneItems.sort(compareSceneItems);
+  for (const item of mainSceneItems) {
+    item.render(worldScene);
+  }
+
   for (const item of overlayTileItems) {
     if (state.ui.mode === "move" && item.reachableCost !== null) {
       drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost), {
@@ -273,16 +278,7 @@ export function renderIso(state, refs) {
     });
   }
 
-  // Active unit ring is also map-space, not UI-space.
-  drawSceneActiveUnitOverlay(state, worldScene);
-
-  const mainSceneItems = [...terrainSceneItems, ...unitSceneItems];
-  mainSceneItems.sort(compareSceneItems);
-  for (const item of mainSceneItems) {
-    item.render(worldScene);
-  }
-
-  // LOS preview stays as a UI/debug overlay.
+  drawSceneActiveUnitOverlay(state, worldUi);
   drawSceneLosPreview(state, worldUi);
 }
 
