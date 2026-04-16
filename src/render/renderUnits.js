@@ -184,7 +184,6 @@ export function drawIsoStatusPlate(parent, unit, anchorX, anchorY) {
   const skew = isPilot ? 10 : 14;
   const plateCenterY = anchorY + (isPilot ? 12 : 16);
 
-  // keep the plate where it already was
   const points = [
     { x: anchorX - (plateWidth / 2) - skew, y: plateCenterY - (plateHeight / 2) },
     { x: anchorX + (plateWidth / 2) - skew, y: plateCenterY - (plateHeight / 2) },
@@ -195,18 +194,8 @@ export function drawIsoStatusPlate(parent, unit, anchorX, anchorY) {
   const plate = makePolygon(points, "unit-status-plate", "rgba(10, 14, 20, 0.88)");
   parent.appendChild(plate);
 
-  const isoAngle =
-    Math.atan2(RENDER_CONFIG.isoTileHeight, RENDER_CONFIG.isoTileWidth) * (180 / Math.PI);
-
-  const textGroup = svgEl("g");
-  textGroup.setAttribute(
-    "transform",
-    `translate(${anchorX} ${plateCenterY + 0.5}) rotate(${-isoAngle})`
-  );
-
-  const label = makeText(0, 0, text, "unit-status-text");
-  textGroup.appendChild(label);
-  parent.appendChild(textGroup);
+  const label = makeText(anchorX, plateCenterY + 0.5, text, "unit-status-text");
+  parent.appendChild(label);
 }
 
 function getTopBodyClass(isActive) {
