@@ -162,19 +162,13 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
     });
   }
 
-  items.push({
-    sortDepth: spriteSortDepth + 0.02,
-    sortKey: anchorX,
-    render(parent) {
-      const label = makeText(
-        anchorX,
-        anchorY - spriteBox.height + 12,
-        unit.name,
-        "mech-label"
-      );
-      parent.appendChild(label);
-    }
-  });
+items.push({
+  sortDepth: spriteSortDepth - 0.02,
+  sortKey: anchorX,
+  render(parent) {
+    drawIsoStatusPlate(parent, unit, anchorX, anchorY);
+  }
+});
 
   return items;
 }
