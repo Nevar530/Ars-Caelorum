@@ -183,15 +183,13 @@ export function drawIsoStatusPlate(parent, unit, anchorX, anchorY) {
   const plateHeight = 16;
   const plateCenterY = anchorY + (isPilot ? 12 : 16);
 
-  // 2:1 iso angle
   const isoAngle =
     Math.atan2(RENDER_CONFIG.isoTileHeight, RENDER_CONFIG.isoTileWidth) * (180 / Math.PI);
 
-  // plate only
-  const plateGroup = svgEl("g");
-  plateGroup.setAttribute(
+  const group = svgEl("g");
+  group.setAttribute(
     "transform",
-    `translate(${anchorX} ${plateCenterY}) rotate(${isoAngle})`
+    `translate(${anchorX} ${plateCenterY}) rotate(${-isoAngle})`
   );
 
   const halfW = plateWidth / 2;
@@ -199,19 +197,19 @@ export function drawIsoStatusPlate(parent, unit, anchorX, anchorY) {
   const tail = isPilot ? 8 : 10;
 
   const points = [
-    { x: -halfW,         y: -halfH },
-    { x:  halfW,         y: -halfH },
-    { x:  halfW + tail,  y:  halfH },
-    { x: -halfW + tail,  y:  halfH }
+    { x: -halfW,        y: -halfH },
+    { x:  halfW,        y: -halfH },
+    { x:  halfW + tail, y:  halfH },
+    { x: -halfW + tail, y:  halfH }
   ];
 
   const plate = makePolygon(points, "unit-status-plate", "rgba(10, 14, 20, 0.88)");
-  plateGroup.appendChild(plate);
-  parent.appendChild(plateGroup);
+  group.appendChild(plate);
 
-  // text stays level for readability
-  const label = makeText(anchorX, plateCenterY + 0.5, text, "unit-status-text");
-  parent.appendChild(label);
+  const label = makeText(0, 0.5, text, "unit-status-text");
+  group.appendChild(label);
+
+  parent.appendChild(group);
 }
 
 function getTopBodyClass(isActive) {
