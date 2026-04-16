@@ -183,6 +183,40 @@ export function getWorldFacing(state, unit) {
   return isPreviewing ? state.ui.facingPreview : unit.facing;
 }
 
+function drawIsoStatusPlate(parent, unit, anchorX, anchorY) {
+  const plateWidth = unit.unitType === "pilot" ? 76 : 112;
+  const plateHeight = 28;
+  const skew = 18;
+
+  const plateCenterY = anchorY + 18;
+
+  const points = [
+    { x: anchorX - plateWidth / 2 + skew, y: plateCenterY - plateHeight / 2 },
+    { x: anchorX + plateWidth / 2 + skew, y: plateCenterY - plateHeight / 2 },
+    { x: anchorX + plateWidth / 2 - skew, y: plateCenterY + plateHeight / 2 },
+    { x: anchorX - plateWidth / 2 - skew, y: plateCenterY + plateHeight / 2 }
+  ];
+
+  const plate = makePolygon(points, "unit-status-plate", "rgba(10, 14, 20, 0.82)");
+  parent.appendChild(plate);
+
+  const nameText = makeText(
+    anchorX,
+    plateCenterY - 4,
+    unit.name ?? "UNIT",
+    "unit-status-name"
+  );
+  parent.appendChild(nameText);
+
+  const statsText = makeText(
+    anchorX,
+    plateCenterY + 9,
+    `I:${unit.initiative ?? 0} S:${unit.currentShield ?? unit.shield ?? 0} C:${unit.currentCore ?? unit.core ?? 0}`,
+    "unit-status-stats"
+  );
+  parent.appendChild(statsText);
+}
+
 function getTopBodyClass(isActive) {
   return isActive ? "mech-top-body mech-top-body-active" : "mech-top-body";
 }
