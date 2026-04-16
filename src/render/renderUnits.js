@@ -162,14 +162,6 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
     });
   }
 
-items.push({
-  sortDepth: spriteSortDepth + 0.03,
-  sortKey: anchorX,
-  render(parent) {
-    drawIsoStatusPlate(parent, unit, anchorX, anchorY);
-  }
-});
-
   return items;
 }
 
@@ -183,7 +175,7 @@ export function getWorldFacing(state, unit) {
   return isPreviewing ? state.ui.facingPreview : unit.facing;
 }
 
-function drawIsoStatusPlate(parent, unit, anchorX, anchorY) {
+export function drawIsoStatusPlate(parent, unit, anchorX, anchorY) {
   const isPilot = unit?.unitType === "pilot";
 
   const plateWidth = isPilot ? 74 : 118;
