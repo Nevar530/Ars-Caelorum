@@ -102,31 +102,31 @@ export function getWeaponCandidateTiles(state, mech, profile) {
         })
         .filter(Boolean);
 
-case "direct_tile": {
-  const units = getStateUnits(state);
+    case "direct_tile": {
+      const units = getStateUnits(state);
 
-  return units.flatMap((unit) => {
-    if (!unit) return [];
-    if (unit.instanceId === mech.instanceId) return [];
-    if (unit.team === mech.team) return [];
+      return units.flatMap((unit) => {
+        if (!unit) return [];
+        if (unit.instanceId === mech.instanceId) return [];
+        if (unit.team === mech.team) return [];
 
-    const focusTile = getTargetFocusTile(unit);
-    const distance = manhattanDistance(mech.x, mech.y, focusTile.x, focusTile.y);
+        const focusTile = getTargetFocusTile(unit);
+        const distance = manhattanDistance(mech.x, mech.y, focusTile.x, focusTile.y);
 
-    if (distance < minRange || distance > maxRange) {
-      return [];
+        if (distance < minRange || distance > maxRange) {
+          return [];
+        }
+
+        return getTargetableCellsForUnit(unit).map((cell) => ({
+          x: cell.x,
+          y: cell.y,
+          targetMechId: unit.instanceId,
+          targetScale: unit.scale ?? unit.unitType ?? "mech",
+          targetFocusX: focusTile.x,
+          targetFocusY: focusTile.y
+        }));
+      });
     }
-
-    return [{
-      x: focusTile.x,
-      y: focusTile.y,
-      targetMechId: unit.instanceId,
-      targetScale: unit.scale ?? unit.unitType ?? "mech",
-      targetFocusX: focusTile.x,
-      targetFocusY: focusTile.y
-    }];
-  });
-}
 
     case "fire_arc_tile":
       return getTilesInRangeBand(mech.x, mech.y, minRange, maxRange);
