@@ -222,8 +222,12 @@ function getFacingLineClass(state, unit) {
   return isPreviewing ? "mech-top-facing-preview" : "mech-top-facing";
 }
 
+function getScreenFacing(state, unit) {
+  return normalizeFacing(getWorldFacing(state, unit) + (state.rotation ?? 0));
+}
+
 function getDiamondFacingLinePoints(state, unit, diamond) {
-  const facing = normalizeFacing(getWorldFacing(state, unit) + (state.rotation ?? 0));
+  const facing = getScreenFacing(state, unit);
   const center = diamond.center;
 
   const northEast = midpoint(diamond.top, diamond.right);
@@ -265,7 +269,7 @@ function getSpriteClass(unit, isActive) {
 }
 
 function getUnitSpriteInfo(state, unit) {
-  const facing = normalizeFacing(getWorldFacing(state, unit));
+  const facing = getScreenFacing(state, unit);
   const unitType = unit?.unitType === "pilot" ? "pilot" : "mech";
   const folder = unitType === "pilot" ? "pilot" : "mech";
 
