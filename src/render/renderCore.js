@@ -13,7 +13,7 @@ import {
   renderTerrainTile,
   renderEditorTile
 } from "./renderTerrain.js";
-import { getUnitRenderSceneItems } from "./renderUnits.js";
+import { getUnitRenderSceneItems, drawIsoStatusPlate } from "./renderUnits.js";
 import {
   drawSceneMoveOverlay,
   drawScenePathOverlayForTile,
@@ -81,6 +81,7 @@ export function renderIso(state, refs) {
   const unitSceneItems = [];
   const overlayTileItems = [];
   const reachableMap = new Map();
+  const unitStatusTagItems = [];
 
   if (state.ui.mode === "move") {
     for (const tile of getReachableTiles(state)) {
@@ -198,31 +199,40 @@ export function renderIso(state, refs) {
     const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
 
     const renderModel =
-      state.ui?.viewMode === "top"
-        ? {
-            top: {
-              center: {
-                x: projectedAnchor.x,
-                y: projectedAnchor.y
-              },
-              logicCenter: {
-                x: projectedCenter.x,
-                y: projectedCenter.y
-              }
-            }
+if (state.ui?.viewMode !== "top") {
+  unitStatusTagItems.push({
+    x: projectedAnchor.x,
+    y: projectedAnchor.y,
+    unit
+  });
+}
+
+const renderModel =
+  state.ui?.viewMode === "top"
+    ? {
+        top: {
+          center: {
+            x: projectedAnchor.x,
+            y: projectedAnchor.y
+          },
+          logicCenter: {
+            x: projectedCenter.x,
+            y: projectedCenter.y
           }
-        : {
-            iso: {
-              center: {
-                x: projectedAnchor.x,
-                y: projectedAnchor.y
-              },
-              logicCenter: {
-                x: projectedCenter.x,
-                y: projectedCenter.y
-              }
-            }
-          };
+        }
+      }
+    : {
+        iso: {
+          center: {
+            x: projectedAnchor.x,
+            y: projectedAnchor.y
+          },
+          logicCenter: {
+            x: projectedCenter.x,
+            y: projectedCenter.y
+          }
+        }
+      };
 
     const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
     const isActive = unit.instanceId === activeUnitId;
@@ -280,6 +290,9 @@ export function renderIso(state, refs) {
 
   drawSceneActiveUnitOverlay(state, worldUi);
   drawSceneLosPreview(state, worldUi);
+  for (const item of unitStatusTagItems) {
+  drawIsoStatusPlate(worldUi, item.unit, item.x, item.y);
+}
 }
 
 function getUnitSupportElevation(state, unit) {
