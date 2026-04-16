@@ -163,7 +163,7 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
   }
 
 items.push({
-  sortDepth: spriteSortDepth - 0.02,
+  sortDepth: spriteSortDepth - 0.03,
   sortKey: anchorX,
   render(parent) {
     drawIsoStatusPlate(parent, unit, anchorX, anchorY);
@@ -184,37 +184,29 @@ export function getWorldFacing(state, unit) {
 }
 
 function drawIsoStatusPlate(parent, unit, anchorX, anchorY) {
-  const plateWidth = unit.unitType === "pilot" ? 76 : 112;
-  const plateHeight = 28;
-  const skew = 18;
+  const isPilot = unit?.unitType === "pilot";
 
-  const plateCenterY = anchorY + 18;
+  const plateWidth = isPilot ? 74 : 118;
+  const plateHeight = isPilot ? 18 : 22;
+  const skew = isPilot ? 12 : 18;
 
+  // keep it below the unit, but close enough to feel attached
+  const plateCenterY = anchorY + (isPilot ? 12 : 16);
+
+  // slant the OTHER way
   const points = [
-    { x: anchorX - plateWidth / 2 + skew, y: plateCenterY - plateHeight / 2 },
-    { x: anchorX + plateWidth / 2 + skew, y: plateCenterY - plateHeight / 2 },
-    { x: anchorX + plateWidth / 2 - skew, y: plateCenterY + plateHeight / 2 },
-    { x: anchorX - plateWidth / 2 - skew, y: plateCenterY + plateHeight / 2 }
+    { x: anchorX - (plateWidth / 2) - skew, y: plateCenterY - (plateHeight / 2) },
+    { x: anchorX + (plateWidth / 2) - skew, y: plateCenterY - (plateHeight / 2) },
+    { x: anchorX + (plateWidth / 2) + skew, y: plateCenterY + (plateHeight / 2) },
+    { x: anchorX - (plateWidth / 2) + skew, y: plateCenterY + (plateHeight / 2) }
   ];
 
-  const plate = makePolygon(points, "unit-status-plate", "rgba(10, 14, 20, 0.82)");
+  const plate = makePolygon(points, "unit-status-plate", "rgba(10, 14, 20, 0.88)");
   parent.appendChild(plate);
 
-  const nameText = makeText(
-    anchorX,
-    plateCenterY - 4,
-    unit.name ?? "UNIT",
-    "unit-status-name"
-  );
-  parent.appendChild(nameText);
-
-  const statsText = makeText(
-    anchorX,
-    plateCenterY + 9,
-    `I:${unit.initiative ?? 0} S:${unit.currentShield ?? unit.shield ?? 0} C:${unit.currentCore ?? unit.core ?? 0}`,
-    "unit-status-stats"
-  );
-  parent.appendChild(statsText);
+  const text = `${unit.name ?? "UNIT"}: I:${unit.initiative ?? 0} S:${unit.shield ?? 0} C:${unit.core ?? 0}`;
+  const label = makeText(anchorX, plateCenterY + 1, text, "unit-status-text");
+  parent.appendChild(label);
 }
 
 function getTopBodyClass(isActive) {
