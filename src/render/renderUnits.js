@@ -220,7 +220,7 @@ function getFacingLineClass(state, unit) {
 }
 
 function getDiamondFacingLinePoints(state, unit, diamond) {
-  const facing = normalizeFacing(getWorldFacing(state, unit));
+  const facing = normalizeFacing(getWorldFacing(state, unit) + (state.rotation ?? 0));
   const center = diamond.center;
 
   const northEast = midpoint(diamond.top, diamond.right);
