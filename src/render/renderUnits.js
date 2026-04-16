@@ -149,6 +149,7 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
     }
   });
 
+if (shouldDrawHeightPole(state, unit)) {
   items.push({
     sortDepth: spriteSortDepth + 0.01,
     sortKey: anchorX,
@@ -156,6 +157,7 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
       drawHeightPole(parent, unit, anchorX, anchorY);
     }
   });
+
 
   items.push({
     sortDepth: spriteSortDepth + 0.02,
@@ -306,6 +308,18 @@ function getUnitSpriteInfo(state, unit) {
     default:
       return { href: `art/${folder}/${unitType}_NW.png`, mirrorX: true };
   }
+}
+
+function shouldDrawHeightPole(state, unit) {
+  if (state.ui?.mode !== "action-target") return false;
+
+  const targets = state.ui?.action?.evaluatedTargetTiles ?? [];
+  const focusedTarget =
+    targets.find((tile) => tile.x === state.focus.x && tile.y === state.focus.y) ?? null;
+
+  if (!focusedTarget) return false;
+
+  return focusedTarget.targetMechId === unit.instanceId;
 }
 
 function drawHeightPole(parent, unit, anchorX, anchorY) {
