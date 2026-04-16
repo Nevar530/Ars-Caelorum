@@ -196,9 +196,8 @@ export function renderIso(state, refs) {
       supportElevation
     );
 
-    const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
+   const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
 
-    const renderModel =
 if (state.ui?.viewMode !== "top") {
   unitStatusTagItems.push({
     x: projectedAnchor.x,
@@ -288,9 +287,10 @@ const renderModel =
     });
   }
 
-  drawSceneActiveUnitOverlay(state, worldUi);
-  drawSceneLosPreview(state, worldUi);
-  for (const item of unitStatusTagItems) {
+drawSceneActiveUnitOverlay(state, worldUi);
+drawSceneLosPreview(state, worldUi);
+
+for (const item of unitStatusTagItems) {
   drawIsoStatusPlate(worldUi, item.unit, item.x, item.y);
 }
 }
