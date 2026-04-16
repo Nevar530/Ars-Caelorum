@@ -396,6 +396,18 @@ button:disabled {
   pointer-events: none;
 }
 
+.unit-status-text {
+  fill: #f6f1d5;
+  font-size: 8px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  stroke: rgba(0, 0, 0, 0.82);
+  stroke-width: 2;
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+
 /* =========================================
    COMBAT RIBBON
 ========================================= */
