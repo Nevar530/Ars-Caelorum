@@ -7,7 +7,7 @@ import { getTopdownCellSize } from "./projection.js";
 
 const SPRITE_RENDER_BOX = {
   mech: { width: 192, height: 192 },
-  pilot: { width: 64, height: 64 }
+  pilot: { width: 32, height: 32 }
 };
 
 const DEBUG_HEIGHTS = {
