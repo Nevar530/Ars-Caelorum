@@ -77,7 +77,6 @@ export function renderIso(state, refs) {
   worldScene.innerHTML = "";
   worldUi.innerHTML = "";
 
-  const footprintLockedTerrainItems = [];
   const terrainSceneItems = [];
   const unitSceneItems = [];
   const overlayTileItems = [];
@@ -126,7 +125,7 @@ export function renderIso(state, refs) {
         }
       };
 
-      pushTerrainSceneItem(tileItem, units, footprintLockedTerrainItems, terrainSceneItems);
+      terrainSceneItems.push(tileItem);
       overlayTileItems.push(tileItem);
 
       if (hasDetailGeometry) {
@@ -165,7 +164,7 @@ export function renderIso(state, refs) {
             }
           };
 
-          pushTerrainSceneItem(detailItem, units, footprintLockedTerrainItems, terrainSceneItems);
+          terrainSceneItems.push(detailItem);
         }
       }
     }
@@ -189,41 +188,41 @@ export function renderIso(state, refs) {
       supportElevation
     );
 
+    const projectedCenter = projectTileCenter(
+      state,
+      centerTile.x,
+      centerTile.y,
+      supportElevation
+    );
+
     const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
 
-const projectedCenter = projectTileCenter(
-  state,
-  centerTile.x,
-  centerTile.y,
-  supportElevation
-);
-
-const renderModel =
-  state.ui?.viewMode === "top"
-    ? {
-        top: {
-          center: {
-            x: projectedAnchor.x,
-            y: projectedAnchor.y
-          },
-          logicCenter: {
-            x: projectedCenter.x,
-            y: projectedCenter.y
+    const renderModel =
+      state.ui?.viewMode === "top"
+        ? {
+            top: {
+              center: {
+                x: projectedAnchor.x,
+                y: projectedAnchor.y
+              },
+              logicCenter: {
+                x: projectedCenter.x,
+                y: projectedCenter.y
+              }
+            }
           }
-        }
-      }
-    : {
-        iso: {
-          center: {
-            x: projectedAnchor.x,
-            y: projectedAnchor.y
-          },
-          logicCenter: {
-            x: projectedCenter.x,
-            y: projectedCenter.y
-          }
-        }
-      };
+        : {
+            iso: {
+              center: {
+                x: projectedAnchor.x,
+                y: projectedAnchor.y
+              },
+              logicCenter: {
+                x: projectedCenter.x,
+                y: projectedCenter.y
+              }
+            }
+          };
 
     const activeUnitId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
     const isActive = unit.instanceId === activeUnitId;
@@ -249,64 +248,38 @@ const renderModel =
     }
   }
 
- footprintLockedTerrainItems.sort(compareSceneItems);
-for (const item of footprintLockedTerrainItems) {
-  item.render(worldScene);
-}
+  const mainSceneItems = [...terrainSceneItems, ...unitSceneItems];
+  mainSceneItems.sort(compareSceneItems);
+  for (const item of mainSceneItems) {
+    item.render(worldScene);
+  }
 
-const mainSceneItems = [...terrainSceneItems, ...unitSceneItems];
-mainSceneItems.sort(compareSceneItems);
-for (const item of mainSceneItems) {
-  item.render(worldScene);
-}
+  for (const item of overlayTileItems) {
+    if (state.ui.mode === "move" && item.reachableCost !== null) {
+      drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost), {
+        drawShapes: true,
+        drawLabels: false
+      });
+    }
 
-for (const item of overlayTileItems) {
-  if (state.ui.mode === "move" && item.reachableCost !== null) {
-    drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost), {
+    drawScenePathOverlayForTile(state, item, worldScene, {
+      drawShapes: true,
+      drawLabels: false
+    });
+
+    drawSceneActionOverlayForTile(state, item, worldScene, {
+      drawShapes: true,
+      drawLabels: false
+    });
+
+    drawSceneFocusOverlayForTile(state, item, worldScene, {
       drawShapes: true,
       drawLabels: false
     });
   }
 
-  drawScenePathOverlayForTile(state, item, worldScene, {
-    drawShapes: true,
-    drawLabels: false
-  });
-
-  drawSceneActionOverlayForTile(state, item, worldScene, {
-    drawShapes: true,
-    drawLabels: false
-  });
-
-  drawSceneFocusOverlayForTile(state, item, worldScene, {
-    drawShapes: true,
-    drawLabels: false
-  });
-}
-
   drawSceneActiveUnitOverlay(state, worldUi);
   drawSceneLosPreview(state, worldUi);
-}
-
-function pushTerrainSceneItem(item, units, footprintLockedTerrainItems, terrainSceneItems) {
-  if (isTerrainInsideAnyUnitFootprint(item, units)) {
-    footprintLockedTerrainItems.push(item);
-    return;
-  }
-
-  terrainSceneItems.push(item);
-}
-
-function isTerrainInsideAnyUnitFootprint(item, units) {
-  return units.some((unit) => isTerrainInsideUnitFootprint(item, unit));
-}
-
-function isTerrainInsideUnitFootprint(item, unit) {
-  const occupiedCells = getUnitOccupiedCells(unit);
-  const ix = Math.floor(item.x);
-  const iy = Math.floor(item.y);
-
-  return occupiedCells.some((cell) => cell.x === ix && cell.y === iy);
 }
 
 function getUnitSupportElevation(state, unit) {
