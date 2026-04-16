@@ -249,44 +249,40 @@ const renderModel =
     }
   }
 
-  footprintLockedTerrainItems.sort(compareSceneItems);
-  for (const item of footprintLockedTerrainItems) {
-    item.render(worldScene);
-  }
+ footprintLockedTerrainItems.sort(compareSceneItems);
+for (const item of footprintLockedTerrainItems) {
+  item.render(worldScene);
+}
 
-  terrainSceneItems.sort(compareSceneItems);
-  for (const item of terrainSceneItems) {
-    item.render(worldScene);
-  }
+const mainSceneItems = [...terrainSceneItems, ...unitSceneItems];
+mainSceneItems.sort(compareSceneItems);
+for (const item of mainSceneItems) {
+  item.render(worldScene);
+}
 
-  for (const item of overlayTileItems) {
-    if (state.ui.mode === "move" && item.reachableCost !== null) {
-      drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost), {
-        drawShapes: true,
-        drawLabels: false
-      });
-    }
-
-    drawScenePathOverlayForTile(state, item, worldScene, {
-      drawShapes: true,
-      drawLabels: false
-    });
-
-    drawSceneActionOverlayForTile(state, item, worldScene, {
-      drawShapes: true,
-      drawLabels: false
-    });
-
-    drawSceneFocusOverlayForTile(state, item, worldScene, {
+for (const item of overlayTileItems) {
+  if (state.ui.mode === "move" && item.reachableCost !== null) {
+    drawSceneMoveOverlay(state, item, worldScene, String(item.reachableCost), {
       drawShapes: true,
       drawLabels: false
     });
   }
 
-  unitSceneItems.sort(compareSceneItems);
-  for (const item of unitSceneItems) {
-    item.render(worldScene);
-  }
+  drawScenePathOverlayForTile(state, item, worldScene, {
+    drawShapes: true,
+    drawLabels: false
+  });
+
+  drawSceneActionOverlayForTile(state, item, worldScene, {
+    drawShapes: true,
+    drawLabels: false
+  });
+
+  drawSceneFocusOverlayForTile(state, item, worldScene, {
+    drawShapes: true,
+    drawLabels: false
+  });
+}
 
   drawSceneActiveUnitOverlay(state, worldUi);
   drawSceneLosPreview(state, worldUi);
