@@ -36,6 +36,21 @@ import {
 
 const UNIT_SORT_EPSILON = 0.25;
 
+function getBottomFootprintTile(unit) {
+  const cells = getUnitOccupiedCells(unit);
+  if (!cells || cells.length === 0) return null;
+
+  let best = cells[0];
+
+  for (const c of cells) {
+    // "lowest" in iso = highest y
+    if (c.y > best.y) best = c;
+    else if (c.y === best.y && c.x > best.x) best = c;
+  }
+
+  return best;
+}
+
 export function renderAll(state, refs) {
   ensureCameraState(state);
   updateCameraFraming(state, refs);
@@ -147,17 +162,22 @@ export function renderIso(state, refs) {
   }
 
   for (const unit of units) {
-    const centerTile = getUnitCenterPoint(unit);
-    const supportElevation = getUnitSupportElevation(state, unit);
+let anchorTile;
 
-    if (supportElevation === null) continue;
+if (unit.unitType === "mech") {
+  anchorTile = getBottomFootprintTile(unit);
+} else {
+  anchorTile = getUnitCenterPoint(unit);
+}
 
-    const projectedAnchor = projectTileCenter(
-      state,
-      centerTile.x,
-      centerTile.y,
-      supportElevation
-    );
+const supportElevation = getUnitSupportElevation(state, unit);
+
+const projectedAnchor = projectTileCenter(
+  state,
+  anchorTile.x,
+  anchorTile.y,
+  supportElevation
+);
 
     const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
 
@@ -190,13 +210,13 @@ export function renderIso(state, refs) {
         kind: "unit_part",
         sortDepth: footprintSortDepth + (part.sortDepth - projectedAnchor.y),
         sortKey:
-          (getSceneSortKey(
-            state,
-            centerTile.x,
-            centerTile.y,
-            supportElevation,
-            1
-          ) * 1000) +
+getSceneSortKey(
+  state,
+  anchorTile.x,
+  anchorTile.y,
+  supportElevation,
+  1
+) * 1000) +
           part.sortKey +
           UNIT_SORT_EPSILON,
         render: part.render
