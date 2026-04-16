@@ -12,7 +12,13 @@
     "abilityPoints": 0,
     "weapons": ["pilot_pistol_01"],
     "tabs": [],
-    "image": null
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/pilot/pilot_001_NE.png",
+        "NW": "art/pilot/pilot_001_NW.png"
+      }
+    }
   },
   {
     "id": "pilot_wedge",
@@ -27,7 +33,13 @@
     "abilityPoints": 0,
     "weapons": ["pilot_rifle_01"],
     "tabs": [],
-    "image": null
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/pilot/pilot_001_NE.png",
+        "NW": "art/pilot/pilot_001_NW.png"
+      }
+    }
   },
   {
     "id": "pilot_tom",
@@ -42,7 +54,13 @@
     "abilityPoints": 0,
     "weapons": ["pilot_smg_01"],
     "tabs": [],
-    "image": null
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/pilot/pilot_001_NE.png",
+        "NW": "art/pilot/pilot_001_NW.png"
+      }
+    }
   },
   {
     "id": "pilot_jerri",
@@ -57,6 +75,12 @@
     "abilityPoints": 0,
     "weapons": ["pilot_pistol_01"],
     "tabs": [],
-    "image": null
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/pilot/pilot_001_NE.png",
+        "NW": "art/pilot/pilot_001_NW.png"
+      }
+    }
   }
 ]
