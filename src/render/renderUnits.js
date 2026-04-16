@@ -157,7 +157,7 @@ if (shouldDrawHeightPole(state, unit)) {
       drawHeightPole(parent, unit, anchorX, anchorY);
     }
   });
-
+}
 
   items.push({
     sortDepth: spriteSortDepth + 0.02,
