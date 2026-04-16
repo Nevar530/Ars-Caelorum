@@ -260,15 +260,41 @@ function getSpriteClass(unit, isActive) {
 }
 
 function getUnitSpriteInfo(state, unit) {
-  const forced = unit?.render?.sprite ?? unit?.image ?? null;
-  if (forced) {
-    return { href: forced, mirrorX: false };
-  }
-
   const facing = normalizeFacing(getWorldFacing(state, unit));
   const unitType = unit?.unitType === "pilot" ? "pilot" : "mech";
   const folder = unitType === "pilot" ? "pilot" : "mech";
 
+  // Legacy single forced sprite still supported.
+  const forcedSingleSprite = unit?.render?.sprite ?? unit?.image ?? null;
+  if (forcedSingleSprite) {
+    return { href: forcedSingleSprite, mirrorX: false };
+  }
+
+  // New per-unit sprite map from JSON.
+  const spriteMap = unit?.render?.sprites ?? null;
+  if (spriteMap) {
+    switch (facing) {
+      case 0: { // N -> use NW art
+        const href = spriteMap.NW ?? `art/${folder}/${unitType}_NW.png`;
+        return { href, mirrorX: false };
+      }
+      case 1: { // E -> use NE art
+        const href = spriteMap.NE ?? `art/${folder}/${unitType}_NE.png`;
+        return { href, mirrorX: false };
+      }
+      case 2: { // S -> mirror NE
+        const href = spriteMap.NE ?? `art/${folder}/${unitType}_NE.png`;
+        return { href, mirrorX: true };
+      }
+      case 3:
+      default: { // W -> mirror NW
+        const href = spriteMap.NW ?? `art/${folder}/${unitType}_NW.png`;
+        return { href, mirrorX: true };
+      }
+    }
+  }
+
+  // Final fallback to generic default art.
   switch (facing) {
     case 0:
       return { href: `art/${folder}/${unitType}_NW.png`, mirrorX: false };
