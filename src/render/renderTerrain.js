@@ -123,7 +123,7 @@ function drawIsoTerrainCell(item, parent) {
   const type = fineElevation === null
     ? tileTypeFromElevation(elevation)
     : detailTypeFromFineElevation(fineElevation);
-  const colors = tileColors(type);
+  const colors = resolveTerrainColors(item, type, fineElevation);
 
   const halfW = (RENDER_CONFIG.isoTileWidth * size) / 2;
   const halfH = (RENDER_CONFIG.isoTileHeight * size) / 2;
@@ -184,7 +184,7 @@ function drawTopTerrainCell(state, item, parent) {
   const type = fineElevation === null
     ? tileTypeFromElevation(elevation)
     : detailTypeFromFineElevation(fineElevation);
-  const colors = tileColors(type);
+  const colors = resolveTerrainColors(item, type, fineElevation);
   const cellSize = getTopdownCellSize(state);
   const sizePx = cellSize * size;
 
@@ -213,6 +213,20 @@ function drawTopTerrainCell(state, item, parent) {
     label.setAttribute("font-size", "12");
     parent.appendChild(label);
   }
+}
+
+
+function resolveTerrainColors(tileLike, fallbackType, fineElevation = null) {
+  if (fineElevation !== null) {
+    return tileColors(fallbackType);
+  }
+
+  const top = editorCellColor(tileLike);
+  return {
+    top,
+    left: shiftHexBrightness(top, -28),
+    right: shiftHexBrightness(top, -16)
+  };
 }
 
 export function tileColors(type) {

@@ -79,13 +79,52 @@ function getSupportElevationForUnit(state, unit) {
   return maxElevation;
 }
 
+function isTileMovementBlocked(tile) {
+  if (!tile) return true;
+  if (!isTileMechEnterable(tile)) return true;
+  return String(tile.movementClass ?? "clear") === "impassable";
+}
+
+function getTileTerrainPenalty(tile) {
+  const movementClass = String(tile?.movementClass ?? "clear");
+
+  switch (movementClass) {
+    case "difficult":
+    case "hazard":
+      return 1;
+    case "impassable":
+      return Infinity;
+    default:
+      return 0;
+  }
+}
+
+function getUnitTerrainPenalty(state, unit) {
+  const occupiedCells = getUnitOccupiedCells(unit);
+  let highestPenalty = 0;
+
+  for (const cell of occupiedCells) {
+    const tile = getTile(state.map, cell.x, cell.y);
+    const penalty = getTileTerrainPenalty(tile);
+
+    if (!Number.isFinite(penalty)) {
+      return Infinity;
+    }
+
+    if (penalty > highestPenalty) {
+      highestPenalty = penalty;
+    }
+  }
+
+  return highestPenalty;
+}
+
 function areOccupiedCellsStandable(state, unit) {
   const occupiedCells = getUnitOccupiedCells(unit);
 
   for (const cell of occupiedCells) {
     const tile = getTile(state.map, cell.x, cell.y);
-    if (!tile) return false;
-    if (!isTileMechEnterable(tile)) return false;
+    if (isTileMovementBlocked(tile)) return false;
   }
 
   return true;
@@ -225,7 +264,12 @@ export function getTileMoveCost(state, fromX, fromY, toX, toY, _resolution = "ba
     return Infinity;
   }
 
-  return 1 + Math.abs(toElevation - fromElevation);
+  const terrainPenalty = getUnitTerrainPenalty(state, toUnit);
+  if (!Number.isFinite(terrainPenalty)) {
+    return Infinity;
+  }
+
+  return 1 + Math.abs(toElevation - fromElevation) + terrainPenalty;
 }
 
 export function getReachableTileMap(state) {
