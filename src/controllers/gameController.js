@@ -3,7 +3,7 @@ import {
   clearCombatTextMarkers,
   renderCombatTextOverlay
 } from "../combat/combatTextOverlay.js";
-import { renderHud } from "../hud.js";
+import { renderHud } from "../ui/hud.js";
 import { renderAll } from "../render.js";
 import { resetMap } from "../map.js";
 
