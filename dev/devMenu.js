@@ -128,6 +128,7 @@ class DevMenu {
     this.unsubscribeLog = null;
 
     this.handleKeyDown = this.handleKeyDown.bind(this);
+    this.handleMapEditorRuntimeUpdate = this.handleMapEditorRuntimeUpdate.bind(this);
   }
 
   init({ state, render, refs }) {
@@ -161,6 +162,7 @@ class DevMenu {
 
   destroy() {
     window.removeEventListener("keydown", this.handleKeyDown);
+    window.removeEventListener("ac:map-editor-updated", this.handleMapEditorRuntimeUpdate);
 
     if (this.unsubscribeLog) {
       this.unsubscribeLog();
@@ -432,6 +434,7 @@ class DevMenu {
 
   bindEvents() {
     window.addEventListener("keydown", this.handleKeyDown);
+    window.addEventListener("ac:map-editor-updated", this.handleMapEditorRuntimeUpdate);
 
     this.panelEl.querySelector("#ac-dev-close-btn").addEventListener("click", () => {
       this.toggle(false);
@@ -510,6 +513,12 @@ class DevMenu {
     this.teamSelectEl.addEventListener("change", (event) => {
       this.state.selectedTeam = event.target.value;
     });
+  }
+
+
+  handleMapEditorRuntimeUpdate() {
+    if (!this.state.isOpen || this.state.activeTab !== 'map') return;
+    this.renderMapState();
   }
 
   handleKeyDown(event) {
@@ -892,6 +901,15 @@ class DevMenu {
       this.editorShellEl.style.display = 'block';
       this.editorShellEl.style.width = '100%';
       this.editorShellEl.style.maxWidth = '100%';
+
+      const title = this.editorShellEl.querySelector('.panel-title');
+      if (title) title.textContent = 'Map Grid';
+
+      const subs = Array.from(this.editorShellEl.querySelectorAll('.panel-sub'));
+      if (subs[0]) subs[0].textContent = 'Left click paints · Right click samples';
+      if (subs[1]) subs[1].textContent = 'Top-down authoring view of the live map';
+      if (subs[2]) subs[2].textContent = 'R = Tactical View Toggle';
+
       const editor = this.editorShellEl.querySelector('#editor');
       if (editor) {
         editor.style.display = 'block';
