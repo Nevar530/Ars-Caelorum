@@ -131,44 +131,65 @@ export function instantiateTestUnits(content) {
     return [];
   }
 
+  const spawnIndex = new Map(
+    (Array.isArray(content?.spawnPoints) ? content.spawnPoints : []).map((spawn) => [spawn.id, spawn])
+  );
+
+  const atSpawn = (spawnId, fallbackX, fallbackY) => {
+    const spawn = spawnIndex.get(spawnId);
+    return {
+      x: Number(spawn?.x ?? fallbackX),
+      y: Number(spawn?.y ?? fallbackY)
+    };
+  };
+
+  const playerPilot = atSpawn("player_1", 30, 30);
+  const playerMech = atSpawn("player_2", 34, 30);
+  const enemyPilot = atSpawn("enemy_1", 10, 10);
+  const enemyMech = atSpawn("enemy_2", 14, 10);
+
   const setup = [
     {
       unitType: "pilot",
       definitionId: "pilot_biggs",
       instanceId: "player-pilot-1",
-      x: 30,
-      y: 30,
+      x: playerPilot.x,
+      y: playerPilot.y,
       team: "player",
-      controlType: "PC"
+      controlType: "PC",
+      spawnId: "player_1"
     },
     {
       unitType: "mech",
       definitionId: "mech_a",
       pilotId: "pilot_biggs",
       instanceId: "player-mech-1",
-      x: 34,
-      y: 30,
+      x: playerMech.x,
+      y: playerMech.y,
       team: "player",
-      controlType: "PC"
+      controlType: "PC",
+      spawnId: "player_2"
     },
     {
       unitType: "pilot",
       definitionId: "pilot_tom",
       instanceId: "enemy-pilot-1",
-      x: 10,
-      y: 10,
+      x: enemyPilot.x,
+      y: enemyPilot.y,
       team: "enemy",
-      controlType: "CPU"
+      controlType: "CPU",
+      spawnId: "enemy_1"
     },
     {
       unitType: "mech",
       definitionId: "mech_c",
       pilotId: "pilot_tom",
       instanceId: "enemy-mech-1",
-      x: 14,
-      y: 10,
+      x: enemyMech.x,
+      y: enemyMech.y,
       team: "enemy",
-      controlType: "CPU"
+      controlType: "CPU",
+      spawnId: "enemy_2"
     }
   ];
 
@@ -183,7 +204,8 @@ export function instantiateTestUnits(content) {
           x: entry.x,
           y: entry.y,
           team: entry.team,
-          controlType: entry.controlType
+          controlType: entry.controlType,
+          spawnId: entry.spawnId ?? null
         });
       }
 
@@ -197,7 +219,8 @@ export function instantiateTestUnits(content) {
         y: entry.y,
         team: entry.team,
         controlType: entry.controlType,
-        pilot
+        pilot,
+        spawnId: entry.spawnId ?? null
       });
     })
     .filter(Boolean);
