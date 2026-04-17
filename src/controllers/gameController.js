@@ -4,6 +4,7 @@ import {
   renderCombatTextOverlay
 } from "../combat/combatTextOverlay.js";
 import { renderHud } from "../ui/hud.js";
+import { renderHelpDrawer } from "../ui/helpDrawer.js";
 import { renderAll } from "../render.js";
 import { resetMap } from "../map.js";
 
@@ -19,6 +20,7 @@ export function createGameController({
   function render() {
     renderAll(state, refs);
     renderHud(state, refs);
+    renderHelpDrawer(state, refs);
     renderCombatTextOverlay(state, refs);
   }
 
@@ -197,6 +199,17 @@ export function createGameController({
     requestAnimationFrame(tick);
   }
 
+  function toggleHelpDrawer() {
+    state.ui.helpDrawer.open = !state.ui.helpDrawer.open;
+    render();
+  }
+
+  function closeHelpDrawer() {
+    if (!state.ui.helpDrawer.open) return;
+    state.ui.helpDrawer.open = false;
+    render();
+  }
+  
   function toggleView() {
     state.ui.viewMode = state.ui.viewMode === "iso" ? "top" : "iso";
 
@@ -222,6 +235,8 @@ export function createGameController({
     closeCommandMenu,
     moveMenuSelection,
     animateRotation,
-    toggleView
+    toggleView,
+    toggleHelpDrawer,
+    closeHelpDrawer
   };
 }
