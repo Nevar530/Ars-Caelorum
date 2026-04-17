@@ -1,5 +1,7 @@
 # Ars Caelorum
 
+**Launch Game:** [Open Ars Caelorum](https://nevar530.github.io/Ars-Caelorum/)
+
 Ars Caelorum is a sprite-based isometric tactical mech engine built in HTML, CSS, and JavaScript. The project is focused on a clean gameplay foundation first: occupancy-based movement, height-aware line of sight, tactical facing, mech and pilot scale sharing the same battlefield, and a full data-driven map authoring path that will later support terrain sprites, structures, and scenario design.
 
 The current build already supports playable tactical skirmish flow, a live dev environment, and a real map editor. Mechs use a 3x3 footprint, pilots use 1x1, both exist on the same board, and terrain now has authored presets and movement behavior. The game is still in active development, but it is no longer just a rendering sandbox or proof of concept. It now has a working engine core, a working authoring workflow, and a clear path forward.
