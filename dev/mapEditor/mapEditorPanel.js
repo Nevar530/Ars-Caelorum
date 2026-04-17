@@ -13,13 +13,18 @@ export function renderMapEditorPanel(root, viewModel = {}) {
   const editor = viewModel.editor ?? {};
   const selectedTile = viewModel.selectedTile ?? null;
   const selectedSummary = viewModel.selectedSummary ?? null;
+  const brushSummary = buildBrushSummary(editor);
 
   root.innerHTML = `
     <section class="map-editor-panel" style="display:grid; gap:12px;">
       <div style="padding:8px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03);">
         <div style="font-weight:700; margin-bottom:6px;">Authoring</div>
         <div style="opacity:0.82; margin-bottom:6px;">Left click paints the selected value. Right click samples the clicked tile.</div>
-        <div style="opacity:0.82;">Ground layer only in this pass. Structures come later.</div>
+        <div style="opacity:0.82; margin-bottom:6px;">Ground layer only in this pass. Structures come later.</div>
+        <div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.08);">
+          <div style="font-weight:700; margin-bottom:4px;">Current Brush</div>
+          <div style="opacity:0.92;">${escapeHtml(brushSummary)}</div>
+        </div>
       </div>
 
       <div style="padding:8px; border:1px solid rgba(255,255,255,0.08);">
@@ -155,4 +160,27 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
   return escapeHtml(value).replaceAll('"', '&quot;');
+}
+
+
+function buildBrushSummary(editor) {
+  const mode = editor?.mode ?? 'height';
+  const brushSize = Number(editor?.brushSize ?? 1);
+
+  switch (mode) {
+    case MAP_EDITOR_MODES.HEIGHT:
+      return `Painting Height = ${Number(editor?.selectedHeight ?? 0)} with ${brushSize}x${brushSize} brush`;
+    case MAP_EDITOR_MODES.TERRAIN_TYPE:
+      return `Painting Terrain Type = ${editor?.selectedTerrainTypeId ?? 'clear'} with ${brushSize}x${brushSize} brush`;
+    case MAP_EDITOR_MODES.TERRAIN_SPRITE:
+      return `Painting Terrain Sprite Id = ${editor?.selectedTerrainSpriteId || '(empty)'} with ${brushSize}x${brushSize} brush`;
+    case MAP_EDITOR_MODES.FLAG:
+      return `Painting Flag ${editor?.selectedFlagKey ?? 'impassable'} = ${editor?.selectedFlagValue ? 'true' : 'false'} with ${brushSize}x${brushSize} brush`;
+    case MAP_EDITOR_MODES.SPAWN:
+      return `Painting Spawn = ${(editor?.selectedSpawnTeam ?? 'player')}_${Number(editor?.selectedSpawnIndex ?? 0) + 1}`;
+    case MAP_EDITOR_MODES.ERASE:
+      return `Erasing map data with ${brushSize}x${brushSize} brush`;
+    default:
+      return `Painting ${String(mode)}`;
+  }
 }
