@@ -177,7 +177,7 @@ export function renderIso(state, refs) {
 
     if (supportElevation === null) continue;
 
-    const anchorTile =
+        const anchorTile =
       unit.unitType === "mech"
         ? getBottomVisibleFootprintTile(state, unit, supportElevation)
         : centerTile;
@@ -196,62 +196,72 @@ export function renderIso(state, refs) {
       supportElevation
     );
 
-   const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
+    const renderAnchor =
+      state.ui?.viewMode === "top"
+        ? projectedCenter
+        : projectedAnchor;
 
-const selectedUnitId = state.selection?.unitId ?? state.selection?.mechId ?? null;
-const activeUnitId = state.turn?.activeUnitId ?? state.turn?.activeMechId ?? null;
-const shouldShowStatusTag =
-  state.ui?.viewMode !== "top" &&
-  (unit.instanceId === selectedUnitId || unit.instanceId === activeUnitId);
+    const sortTile =
+      state.ui?.viewMode === "top"
+        ? centerTile
+        : anchorTile;
 
-if (shouldShowStatusTag) {
-  unitStatusTagItems.push({
-    x: projectedAnchor.x,
-    y: projectedAnchor.y,
-    unit
-  });
-}
+    const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
 
-const renderModel =
-  state.ui?.viewMode === "top"
-    ? {
-        top: {
-          center: {
-            x: projectedAnchor.x,
-            y: projectedAnchor.y
-          },
-          logicCenter: {
-            x: projectedCenter.x,
-            y: projectedCenter.y
+    const selectedUnitId = state.selection?.unitId ?? state.selection?.mechId ?? null;
+    const activeUnitId = state.turn?.activeUnitId ?? state.turn?.activeMechId ?? null;
+    const shouldShowStatusTag =
+      state.ui?.viewMode !== "top" &&
+      (unit.instanceId === selectedUnitId || unit.instanceId === activeUnitId);
+
+    if (shouldShowStatusTag) {
+      unitStatusTagItems.push({
+        x: projectedAnchor.x,
+        y: projectedAnchor.y,
+        unit
+      });
+    }
+
+    const renderModel =
+      state.ui?.viewMode === "top"
+        ? {
+            top: {
+              center: {
+                x: renderAnchor.x,
+                y: renderAnchor.y
+              },
+              logicCenter: {
+                x: projectedCenter.x,
+                y: projectedCenter.y
+              }
+            }
           }
-        }
-      }
-    : {
-        iso: {
-          center: {
-            x: projectedAnchor.x,
-            y: projectedAnchor.y
-          },
-          logicCenter: {
-            x: projectedCenter.x,
-            y: projectedCenter.y
-          }
-        }
-      };
+        : {
+            iso: {
+              center: {
+                x: projectedAnchor.x,
+                y: projectedAnchor.y
+              },
+              logicCenter: {
+                x: projectedCenter.x,
+                y: projectedCenter.y
+              }
+            }
+          };
 
-        const isActive = unit.instanceId === activeUnitId;
+    const isActive = unit.instanceId === activeUnitId;
 
     const parts = getUnitRenderSceneItems(state, unit, renderModel, isActive);
 
     for (const part of parts) {
       unitSceneItems.push({
         kind: "unit_part",
-        sortDepth: footprintSortDepth + (part.sortDepth - projectedAnchor.y),
+        sortDepth: footprintSortDepth + (part.sortDepth - renderAnchor.y),
         sortKey:
           (getSceneSortKey(
             state,
-            anchorTile.x,
-            anchorTile.y,
+            sortTile.x,
+            sortTile.y,
             supportElevation,
             1
           ) * 1000) +
@@ -260,7 +270,6 @@ const renderModel =
         render: part.render
       });
     }
-  }
 
   const mainSceneItems = [...terrainSceneItems, ...unitSceneItems];
   mainSceneItems.sort(compareSceneItems);
