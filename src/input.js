@@ -81,6 +81,9 @@ function bindEditorInput(state, refs, actions) {
       applyMapEditorAtTile(state, x, y);
     }
 
+    window.dispatchEvent(new CustomEvent("ac:map-editor-updated", {
+      detail: { x, y, source: "paint" }
+    }));
     actions.render();
   });
 
@@ -102,6 +105,9 @@ function bindEditorInput(state, refs, actions) {
       sampleMapEditorFromTile(state, x, y);
     }
 
+    window.dispatchEvent(new CustomEvent("ac:map-editor-updated", {
+      detail: { x, y, source: "sample" }
+    }));
     actions.render();
   });
 }
