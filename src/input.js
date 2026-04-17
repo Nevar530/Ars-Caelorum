@@ -109,6 +109,11 @@ function bindGameplayInput(state, refs, actions) {
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
 
+    if (handleHelpKeys(event, actions)) {
+      event.preventDefault();
+      return;
+    }
+
     if (handleRotationKeys(key, actions)) {
       event.preventDefault();
       return;
@@ -143,6 +148,21 @@ function bindGameplayInput(state, refs, actions) {
       event.preventDefault();
     }
   });
+}
+
+function handleHelpKeys(event, actions) {
+  const key = event.key.toLowerCase();
+
+  if (key === "f1") {
+    actions.toggleHelpDrawer?.();
+    return true;
+  }
+
+  if (key === "escape") {
+    actions.closeHelpDrawer?.();
+  }
+
+  return false;
 }
 
 function handleRotationKeys(key, actions) {
