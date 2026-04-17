@@ -9,7 +9,7 @@ import {
 } from "../map.js";
 import { getUnitById } from "../mechs.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
-import { TOPDOWN_CONFIG, projectScene, projectTileCenter } from "./projection.js";
+import { getTopdownCellSize, projectScene, projectTileCenter } from "./projection.js";
 import {
   getUnitFootprintBounds,
   getUnitCenterPoint,
@@ -89,7 +89,7 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
   }
 
   if (state.ui.viewMode === "top") {
-    drawTopOverlayBox(item.screenX, item.screenY, fill, stroke, parent);
+    drawTopOverlayBox(state, item.screenX, item.screenY, fill, stroke, parent);
     return;
   }
 
@@ -132,6 +132,7 @@ export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFA
 
   if (state.ui.viewMode === "top") {
     drawTopOverlayBox(
+      state,
       item.screenX,
       item.screenY,
       "rgba(240, 176, 0, 0.16)",
@@ -245,7 +246,7 @@ function drawOverlayForUnitFootprint(state, unit, className, fill, stroke, paren
   const bounds = getUnitFootprintBounds(unit);
 
   if (state.ui.viewMode === "top") {
-    drawTopOverlayBounds(bounds, fill, stroke, parent);
+    drawTopOverlayBounds(state, bounds, fill, stroke, parent);
     return;
   }
 
@@ -359,13 +360,15 @@ export function drawOverlayDiamond(screenX, screenY, className, fill, stroke, pa
   parent.appendChild(poly);
 }
 
-export function drawTopOverlayBox(screenX, screenY, fill, stroke, parent) {
+export function drawTopOverlayBox(state, screenX, screenY, fill, stroke, parent) {
+  const cellSize = getTopdownCellSize(state);
+
   const rect = svgEl("rect");
-  rect.setAttribute("x", screenX + 3);
-  rect.setAttribute("y", screenY + 3);
-  rect.setAttribute("width", TOPDOWN_CONFIG.cellSize - 6);
-  rect.setAttribute("height", TOPDOWN_CONFIG.cellSize - 6);
-  rect.setAttribute("rx", "8");
+  rect.setAttribute("x", screenX + 2);
+  rect.setAttribute("y", screenY + 2);
+  rect.setAttribute("width", Math.max(4, cellSize - 4));
+  rect.setAttribute("height", Math.max(4, cellSize - 4));
+  rect.setAttribute("rx", "6");
   rect.setAttribute("fill", fill);
   rect.setAttribute("stroke", stroke);
   rect.setAttribute("stroke-width", "2.5");
@@ -373,8 +376,8 @@ export function drawTopOverlayBox(screenX, screenY, fill, stroke, parent) {
   parent.appendChild(rect);
 }
 
-function drawTopOverlayBounds(bounds, fill, stroke, parent) {
-  const size = TOPDOWN_CONFIG.cellSize;
+function drawTopOverlayBounds(state, bounds, fill, stroke, parent) {
+  const size = getTopdownCellSize(state);
 
   const width = bounds.width * size;
   const height = bounds.height * size;
@@ -386,7 +389,7 @@ function drawTopOverlayBounds(bounds, fill, stroke, parent) {
   rect.setAttribute("y", y + 2);
   rect.setAttribute("width", Math.max(4, width - 4));
   rect.setAttribute("height", Math.max(4, height - 4));
-  rect.setAttribute("rx", "10");
+  rect.setAttribute("rx", "8");
   rect.setAttribute("fill", fill);
   rect.setAttribute("stroke", stroke);
   rect.setAttribute("stroke-width", "2.5");
@@ -406,9 +409,11 @@ function getUnitLabelPoint(state, unit) {
   const bounds = getUnitFootprintBounds(unit);
 
   if (state.ui.viewMode === "top") {
+    const size = getTopdownCellSize(state);
+
     return {
-      x: (bounds.minX * TOPDOWN_CONFIG.cellSize) + ((bounds.width * TOPDOWN_CONFIG.cellSize) / 2),
-      y: (bounds.minY * TOPDOWN_CONFIG.cellSize) + ((bounds.height * TOPDOWN_CONFIG.cellSize) / 2) + 4
+      x: (bounds.minX * size) + ((bounds.width * size) / 2),
+      y: (bounds.minY * size) + ((bounds.height * size) / 2) + 4
     };
   }
 
