@@ -7,11 +7,11 @@ import {
   formatDetailElevation
 } from "../map.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
-import { TOPDOWN_CONFIG } from "./projection.js";
+import { getTopdownCellSize } from "./projection.js";
 
 export function renderTerrainTile(state, item, parent) {
   if (state.ui.viewMode === "top") {
-    drawTopTerrainCell(item, parent);
+    drawTopTerrainCell(state, item, parent);
     return;
   }
 
@@ -170,7 +170,7 @@ function drawIsoTerrainCell(item, parent) {
   parent.appendChild(group);
 }
 
-function drawTopTerrainCell(item, parent) {
+function drawTopTerrainCell(state, item, parent) {
   const {
     x,
     y,
@@ -185,12 +185,14 @@ function drawTopTerrainCell(item, parent) {
     ? tileTypeFromElevation(elevation)
     : detailTypeFromFineElevation(fineElevation);
   const colors = tileColors(type);
+  const cellSize = getTopdownCellSize(state);
+  const sizePx = cellSize * size;
 
   const rect = svgEl("rect");
   rect.setAttribute("x", screenX);
   rect.setAttribute("y", screenY);
-  rect.setAttribute("width", TOPDOWN_CONFIG.cellSize * size);
-  rect.setAttribute("height", TOPDOWN_CONFIG.cellSize * size);
+  rect.setAttribute("width", sizePx);
+  rect.setAttribute("height", sizePx);
   rect.setAttribute("fill", colors.top);
   rect.setAttribute("stroke", "rgba(255,255,255,0.08)");
   rect.setAttribute("stroke-width", size < 1 ? "0.5" : "1");
@@ -201,8 +203,8 @@ function drawTopTerrainCell(item, parent) {
 
   if (size >= 1 && elevation > 0) {
     const label = makeText(
-      screenX + TOPDOWN_CONFIG.cellSize - 8,
-      screenY + 14,
+      screenX + sizePx - 6,
+      screenY + 13,
       Number.isInteger(elevation) ? String(elevation) : elevation.toFixed(2).replace(/\.?0+$/, ""),
       "top-elevation-label"
     );
