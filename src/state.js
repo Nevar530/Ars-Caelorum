@@ -6,7 +6,7 @@ export function createState({
   map,
   mechs = [],
   rotation = 0,
-  content = { mechs: [], weapons: [], sigils: [], attacks: [], pilots: [], spawnPoints: [] }
+  content = { mechs: [], weapons: [], sigils: [], attacks: [], pilots: [], spawnPoints: [], mapCatalog: null, defaultMap: null }
 }) {
   const units = Array.isArray(mechs) ? mechs : [];
   const previewUnit = units.length > 0 ? units[0] : null;
