@@ -1,10 +1,10 @@
 // src/input.js
 
-import { changeElevation } from "./map.js";
 import { getUnitById } from "./mechs.js";
 import { clampFocusToBoard, getPathToTile } from "./movement.js";
 import { moveAttackSelection, updateActionTargetPreview } from "./action.js";
 import { getUnitFootprint } from "./scale/scaleMath.js";
+import { applyMapEditorAtTile, ensureMapEditorState, sampleMapEditorFromTile } from "../dev/mapEditor/mapEditorActions.js";
 
 function getActiveUnit(state) {
   const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
@@ -76,7 +76,11 @@ function bindEditorInput(state, refs, actions) {
     state.ui.editor.selectedTile.y = y;
     state.ui.editor.mode = "mech";
 
-    changeElevation(state.map, x, y, 1);
+    const editorState = ensureMapEditorState(state);
+    if (editorState.isEnabled) {
+      applyMapEditorAtTile(state, x, y);
+    }
+
     actions.render();
   });
 
@@ -93,7 +97,11 @@ function bindEditorInput(state, refs, actions) {
     state.ui.editor.selectedTile.y = y;
     state.ui.editor.mode = "mech";
 
-    changeElevation(state.map, x, y, -1);
+    const editorState = ensureMapEditorState(state);
+    if (editorState.isEnabled) {
+      sampleMapEditorFromTile(state, x, y);
+    }
+
     actions.render();
   });
 }
