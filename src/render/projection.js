@@ -4,6 +4,9 @@ import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
 import { normalizeScale, getResolutionBoardSize } from "../scale/scaleMath.js";
 
 export const TOPDOWN_CONFIG = {
+  minCellSize: 10,
+  maxCellSize: 28,
+  padding: 24,
   cellSize: Math.round(RENDER_CONFIG.isoTileWidth / 2)
 };
 
@@ -58,14 +61,6 @@ export function ensureCameraState(state) {
   if (typeof state.camera.topdownOriginY !== "number") {
     state.camera.topdownOriginY = 0;
   }
-
-  if (typeof state.camera.lastIsoFocusScreenX !== "number") {
-    state.camera.lastIsoFocusScreenX = CAMERA_CENTER.isoX;
-  }
-
-  if (typeof state.camera.lastIsoFocusScreenY !== "number") {
-    state.camera.lastIsoFocusScreenY = CAMERA_CENTER.isoY;
-  }
 }
 
 export function updateCameraFraming(state, refs) {
@@ -74,11 +69,8 @@ export function updateCameraFraming(state, refs) {
 
   const viewport = getSceneViewport(refs);
 
-  const focusX = Number(state.focus?.x ?? 0);
-  const focusY = Number(state.focus?.y ?? 0);
-
   if (state.ui?.viewMode === "top") {
-    updateTopdownFit(state, viewport, focusX, focusY);
+    updateTopdownFit(state, viewport);
     state.camera.offsetX = 0;
     state.camera.offsetY = 0;
     return;
@@ -87,10 +79,9 @@ export function updateCameraFraming(state, refs) {
   const rawBounds = getMapScreenBoundsRaw(state);
   const offsetLimits = getCameraOffsetLimits(rawBounds, viewport);
 
+  const focusX = Number(state.focus?.x ?? 0);
+  const focusY = Number(state.focus?.y ?? 0);
   const focusScreen = projectIso(state, focusX, focusY, 0, 1);
-
-  state.camera.lastIsoFocusScreenX = focusScreen.x;
-  state.camera.lastIsoFocusScreenY = focusScreen.y;
 
   const deadZone = {
     left: viewport.width * 0.28,
@@ -121,28 +112,27 @@ export function updateCameraFraming(state, refs) {
   state.camera.offsetY = clamp(state.camera.offsetY, offsetLimits.minY, offsetLimits.maxY);
 }
 
-function updateTopdownFit(state, viewport, focusX, focusY) {
+function updateTopdownFit(state, viewport) {
   const board = getResolutionBoardSize("base", MAP_CONFIG);
-  const cellSize = TOPDOWN_CONFIG.cellSize;
+  const usableWidth = Math.max(200, viewport.width - (TOPDOWN_CONFIG.padding * 2));
+  const usableHeight = Math.max(200, viewport.height - (TOPDOWN_CONFIG.padding * 2));
+
+  const cellSizeByWidth = usableWidth / board.width;
+  const cellSizeByHeight = usableHeight / board.height;
+
+  const cellSize = clamp(
+    Math.floor(Math.min(cellSizeByWidth, cellSizeByHeight)),
+    TOPDOWN_CONFIG.minCellSize,
+    TOPDOWN_CONFIG.maxCellSize
+  );
 
   state.camera.topdownCellSize = cellSize;
 
-  const rotatedFocus = rotateSceneCoordContinuous(
-    focusX + 0.5,
-    focusY + 0.5,
-    board.width,
-    board.height,
-    state.rotation
-  );
+  const mapPixelWidth = board.width * cellSize;
+  const mapPixelHeight = board.height * cellSize;
 
-  const fallbackX = viewport.width * 0.5;
-  const fallbackY = viewport.height * 0.5;
-
-  const targetScreenX = state.camera.lastIsoFocusScreenX ?? fallbackX;
-  const targetScreenY = state.camera.lastIsoFocusScreenY ?? fallbackY;
-
-  state.camera.topdownOriginX = Math.round(targetScreenX - (rotatedFocus.x * cellSize));
-  state.camera.topdownOriginY = Math.round(targetScreenY - (rotatedFocus.y * cellSize));
+  state.camera.topdownOriginX = Math.floor((viewport.width - mapPixelWidth) / 2);
+  state.camera.topdownOriginY = Math.floor((viewport.height - mapPixelHeight) / 2);
 }
 
 export function getSceneViewport(refs) {
@@ -189,8 +179,6 @@ export function getMapScreenBoundsRaw(state) {
   const board = getResolutionBoardSize("base", MAP_CONFIG);
 
   if (state.ui?.viewMode === "top") {
-    const cellSize = getTopdownCellSize(state);
-
     const corners = [
       projectTopDown(state, 0, 0),
       projectTopDown(state, board.width, 0),
@@ -264,15 +252,13 @@ export function projectIsoRaw(x, y, elevation = 0, rotation = 0, _size = 1) {
 }
 
 export function projectTopDown(state, x, y) {
-  const board = getResolutionBoardSize("base", MAP_CONFIG);
-  const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
   const cellSize = getTopdownCellSize(state);
   const originX = state.camera?.topdownOriginX ?? 0;
   const originY = state.camera?.topdownOriginY ?? 0;
 
   return {
-    x: originX + (rotated.x * cellSize),
-    y: originY + (rotated.y * cellSize)
+    x: originX + (x * cellSize),
+    y: originY + (y * cellSize)
   };
 }
 
@@ -281,7 +267,7 @@ export function getSceneSortKey(state, x, y, elevation = 0) {
   const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
 
   if (state.ui?.viewMode === "top") {
-    return (rotated.y * 1000) + rotated.x;
+    return (y * 1000) + x;
   }
 
   return ((rotated.x + rotated.y) * 1000) + (elevation * 10);
