@@ -1,7 +1,7 @@
 // src/render/renderUnits.js
 
 import { svgEl, makePolygon, makeText } from "../utils.js";
-import { getUnitFootprint } from "../scale/scaleMath.js";
+import { getUnitFootprint, getUnitFootprintBounds } from "../scale/scaleMath.js";
 import { RENDER_CONFIG } from "../config.js";
 import { getTopdownCellSize } from "./projection.js";
 
@@ -46,40 +46,73 @@ export function getUnitRenderSceneItems(state, unit, renderModel, isActive = fal
 }
 
 function buildTopUnitSceneItems(state, unit, renderModel, isActive) {
-  const footprint = getUnitFootprint(unit);
+  const bounds = getUnitFootprintBounds(unit);
   const cellSize = getTopdownCellSize(state);
-  const halfW = footprint.width * (cellSize / 2);
-  const halfH = footprint.height * (cellSize / 4);
+
+  const widthPx = bounds.width * cellSize;
+  const heightPx = bounds.height * cellSize;
 
   const anchorX = renderModel.top.center.x;
   const anchorY = renderModel.top.center.y;
 
-  const diamond = {
-    top: { x: anchorX, y: anchorY - halfH },
-    right: { x: anchorX + halfW, y: anchorY },
-    bottom: { x: anchorX, y: anchorY + halfH },
-    left: { x: anchorX - halfW, y: anchorY },
-    center: { x: anchorX, y: anchorY }
-  };
+  const left = anchorX - (widthPx / 2);
+  const top = anchorY - (heightPx / 2);
+  const right = left + widthPx;
+  const bottom = top + heightPx;
 
-  const topPoints = [diamond.top, diamond.right, diamond.bottom, diamond.left];
+  const pad = unit?.unitType === "pilot"
+    ? Math.max(3, Math.floor(cellSize * 0.22))
+    : Math.max(4, Math.floor(cellSize * 0.16));
+
+  const bodyX = left + pad;
+  const bodyY = top + pad;
+  const bodyW = Math.max(8, widthPx - (pad * 2));
+  const bodyH = Math.max(8, heightPx - (pad * 2));
+
+  const centerX = anchorX;
+  const centerY = anchorY;
 
   return [
     {
-      sortDepth: diamond.bottom.y,
-      sortKey: diamond.center.x,
+      sortDepth: bottom,
+      sortKey: centerX,
       render(parent) {
-        const poly = makePolygon(topPoints, getTopBodyClass(isActive), "currentColor");
-        poly.removeAttribute("fill");
-        parent.appendChild(poly);
+        if (unit?.unitType === "pilot") {
+          const circle = svgEl("circle");
+          circle.setAttribute("cx", String(centerX));
+          circle.setAttribute("cy", String(centerY));
+          circle.setAttribute("r", String(Math.max(5, Math.floor(cellSize * 0.28))));
+          circle.setAttribute("class", getTopBodyClass(isActive));
+          circle.setAttribute("fill", "rgba(18, 28, 40, 0.92)");
+          parent.appendChild(circle);
+        } else {
+          const rect = svgEl("rect");
+          rect.setAttribute("x", String(bodyX));
+          rect.setAttribute("y", String(bodyY));
+          rect.setAttribute("width", String(bodyW));
+          rect.setAttribute("height", String(bodyH));
+          rect.setAttribute("rx", String(Math.max(4, Math.floor(cellSize * 0.18))));
+          rect.setAttribute("class", getTopBodyClass(isActive));
+          rect.setAttribute("fill", "rgba(18, 28, 40, 0.92)");
+          parent.appendChild(rect);
+
+          const cockpit = svgEl("rect");
+          cockpit.setAttribute("x", String(bodyX + (bodyW * 0.22)));
+          cockpit.setAttribute("y", String(bodyY + (bodyH * 0.22)));
+          cockpit.setAttribute("width", String(bodyW * 0.56));
+          cockpit.setAttribute("height", String(bodyH * 0.22));
+          cockpit.setAttribute("rx", "3");
+          cockpit.setAttribute("class", "mech-top-facing");
+          parent.appendChild(cockpit);
+        }
       }
     },
     {
-      sortDepth: diamond.bottom.y + 0.01,
-      sortKey: diamond.center.x,
+      sortDepth: bottom + 0.01,
+      sortKey: centerX,
       render(parent) {
         const line = svgEl("line");
-        const facing = getDiamondFacingLinePoints(state, unit, diamond);
+        const facing = getTopFacingLinePoints(state, unit, centerX, centerY, bodyW, bodyH);
         line.setAttribute("x1", facing.x1);
         line.setAttribute("y1", facing.y1);
         line.setAttribute("x2", facing.x2);
@@ -89,12 +122,12 @@ function buildTopUnitSceneItems(state, unit, renderModel, isActive) {
       }
     },
     {
-      sortDepth: diamond.bottom.y + 0.02,
-      sortKey: diamond.center.x,
+      sortDepth: bottom + 0.02,
+      sortKey: centerX,
       render(parent) {
         const label = makeText(
-          diamond.center.x,
-          diamond.center.y + 4,
+          centerX,
+          top - 8,
           unit.name,
           "mech-label"
         );
@@ -264,6 +297,24 @@ function getDiamondFacingLinePoints(state, unit, diamond) {
       const end = lerpPoint(center, northWest, t);
       return { x1: center.x, y1: center.y, x2: end.x, y2: end.y };
     }
+  }
+}
+
+function getTopFacingLinePoints(state, unit, centerX, centerY, width, height) {
+  const facing = getScreenFacing(state, unit);
+  const reachX = Math.max(8, width * 0.36);
+  const reachY = Math.max(8, height * 0.36);
+
+  switch (facing) {
+    case 0:
+      return { x1: centerX, y1: centerY, x2: centerX, y2: centerY - reachY };
+    case 1:
+      return { x1: centerX, y1: centerY, x2: centerX + reachX, y2: centerY };
+    case 2:
+      return { x1: centerX, y1: centerY, x2: centerX, y2: centerY + reachY };
+    case 3:
+    default:
+      return { x1: centerX, y1: centerY, x2: centerX - reachX, y2: centerY };
   }
 }
 
