@@ -1,5 +1,4 @@
 // Ars Caelorum — Map Catalog Loader
-// New module scaffold only. Not wired into runtime yet.
 
 export async function loadMapCatalog(path = './data/maps/mapList.json') {
   const response = await fetch(path);
