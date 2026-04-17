@@ -1,5 +1,5 @@
 import { createState } from "./src/state.js";
-import { createInitialMap } from "./src/map.js";
+import { createInitialMap, normalizeMapDefinition } from "./src/map.js";
 import {
   instantiateTestUnits,
   getUnitAt,
@@ -44,7 +44,7 @@ async function init() {
   const content = await loadGameData();
 
   const state = createState({
-    map: createInitialMap(),
+    map: content.defaultMap ? normalizeMapDefinition(content.defaultMap) : createInitialMap(),
     mechs: instantiateTestUnits(content),
     rotation: 0,
     content
