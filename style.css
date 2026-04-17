@@ -901,6 +901,113 @@ button:disabled {
 }
 
 /* =========================================
+   HELP DRAWER
+========================================= */
+
+.hud {
+  position: relative;
+}
+
+.help-drawer {
+  position: absolute;
+  right: 14px;
+  bottom: 100%;
+  width: 360px;
+  max-width: min(360px, calc(100vw - 28px));
+  background: rgba(15, 23, 32, 0.96);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.35);
+  transform: translateY(calc(100% - 34px));
+  opacity: 0.95;
+  pointer-events: none;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+  overflow: hidden;
+  z-index: 20;
+}
+
+.help-drawer.is-open {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.help-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.help-drawer-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #f0b000;
+}
+
+.help-drawer-hotkey {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.help-drawer-body {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px 12px;
+}
+
+.help-section {
+  display: grid;
+  gap: 6px;
+}
+
+.help-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f0b000;
+}
+
+.help-list {
+  display: grid;
+  gap: 4px;
+}
+
+.help-row {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 10px;
+  align-items: center;
+  min-height: 22px;
+}
+
+.help-key {
+  font-size: 11px;
+  font-weight: 700;
+  color: #dfe8ef;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  padding: 4px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.help-label {
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* =========================================
    RESPONSIVE HUD
 ========================================= */
 
