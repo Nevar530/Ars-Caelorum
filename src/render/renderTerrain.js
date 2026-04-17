@@ -27,7 +27,7 @@ export function renderEditorTile(tile, x, y, px, py, cellWidth, cellHeight, pare
   rect.setAttribute("y", py);
   rect.setAttribute("width", cellWidth);
   rect.setAttribute("height", cellHeight);
-  rect.setAttribute("fill", editorCellColor(tile.elevation));
+  rect.setAttribute("fill", editorCellColor(tile));
   rect.setAttribute("class", isSelected ? "editor-cell editor-cell-selected" : "editor-cell");
   rect.dataset.x = String(x);
   rect.dataset.y = String(y);
@@ -50,7 +50,7 @@ export function renderEditorMiniTile(tile, x, y, px, py, cellWidth, cellHeight, 
   rect.setAttribute("y", py);
   rect.setAttribute("width", cellWidth);
   rect.setAttribute("height", cellHeight);
-  rect.setAttribute("fill", editorCellColor(tile.elevation));
+  rect.setAttribute("fill", editorCellColor(tile));
   rect.setAttribute(
     "class",
     options.selected ? "editor-cell-mini editor-cell-mini-selected" : "editor-cell-mini"
@@ -238,13 +238,21 @@ export function tileColors(type) {
   }
 }
 
-export function editorCellColor(elevation) {
-  if (elevation >= 5) return "#d97706";
-  if (elevation >= 4) return "#b45309";
-  if (elevation >= 3) return "#8b6b4a";
-  if (elevation >= 2) return "#5e7751";
-  if (elevation >= 1) return "#4e6b86";
-  return "#243241";
+export function editorCellColor(tileOrElevation) {
+  const tile = typeof tileOrElevation === 'object' && tileOrElevation !== null
+    ? tileOrElevation
+    : { elevation: Number(tileOrElevation) || 0, terrainTypeId: 'clear', flags: {}, spawnId: null };
+
+  const baseColor = terrainBaseColor(tile.terrainTypeId);
+  const elevation = Number(tile.elevation ?? 0);
+  let color = shiftHexBrightness(baseColor, Math.max(-35, Math.min(35, elevation * 8)));
+
+  if (tile.flags?.hazard) color = shiftHexBrightness('#b94d2f', Math.max(-20, elevation * 6));
+  if (tile.flags?.impassable) color = mixHex(color, '#2b2b2b', 0.35);
+  if (tile.flags?.difficult) color = mixHex(color, '#8f7d2f', 0.18);
+  if (tile.spawnId) color = mixHex(color, tile.spawnId.startsWith('enemy_') ? '#8c2b2b' : '#2b5f9b', 0.25);
+
+  return color;
 }
 
 export function editorDetailCellColor(fineElevation) {
@@ -258,4 +266,52 @@ export function editorDetailCellColor(fineElevation) {
     default:
       return "#243241";
   }
+}
+
+function terrainBaseColor(terrainTypeId) {
+  switch (terrainTypeId) {
+    case 'rough': return '#7a6f4d';
+    case 'water': return '#3f6fa5';
+    case 'road': return '#666666';
+    case 'hazard': return '#a85a2d';
+    case 'clear':
+    default:
+      return '#4f8a3c';
+  }
+}
+
+function shiftHexBrightness(hex, amount) {
+  const { r, g, b } = hexToRgb(hex);
+  return rgbToHex(clamp255(r + amount), clamp255(g + amount), clamp255(b + amount));
+}
+
+function mixHex(a, b, ratio = 0.5) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  const t = Math.max(0, Math.min(1, ratio));
+  return rgbToHex(
+    Math.round(ca.r + ((cb.r - ca.r) * t)),
+    Math.round(ca.g + ((cb.g - ca.g) * t)),
+    Math.round(ca.b + ((cb.b - ca.b) * t))
+  );
+}
+
+function hexToRgb(hex) {
+  const normalized = String(hex).replace('#', '').trim();
+  const value = normalized.length === 3
+    ? normalized.split('').map((ch) => ch + ch).join('')
+    : normalized.padStart(6, '0').slice(0, 6);
+  return {
+    r: Number.parseInt(value.slice(0, 2), 16),
+    g: Number.parseInt(value.slice(2, 4), 16),
+    b: Number.parseInt(value.slice(4, 6), 16)
+  };
+}
+
+function rgbToHex(r, g, b) {
+  return `#${[r, g, b].map((value) => clamp255(value).toString(16).padStart(2, '0')).join('')}`;
+}
+
+function clamp255(value) {
+  return Math.max(0, Math.min(255, Math.round(value)));
 }
