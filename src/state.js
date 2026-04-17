@@ -78,8 +78,11 @@ export function createState({
         open: false,
         index: 0,
         items: getCommandMenuItemsForPhase("setup")
+      },
+
+      helpDrawer: {
+        open: false
       }
-    },
 
     camera: {
       angle: rotation * 90,
