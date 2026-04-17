@@ -94,7 +94,7 @@ export function createGameController({
   }
 
   function resetMapAndUnits() {
-    state.map = resetMap();
+    state.map = resetMap(state.content?.defaultMap ?? null);
     state.units = instantiateTestUnits(state.content);
     state.mechs = state.units;
 
