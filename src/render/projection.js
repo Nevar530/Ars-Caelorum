@@ -117,8 +117,8 @@ function updateTopdownFit(state, viewport) {
   const usableWidth = Math.max(200, viewport.width - (TOPDOWN_CONFIG.padding * 2));
   const usableHeight = Math.max(200, viewport.height - (TOPDOWN_CONFIG.padding * 2));
 
-  const cellSizeByWidth = usableWidth / (board.width + board.height);
-  const cellSizeByHeight = (usableHeight * 2) / (board.width + board.height);
+  const cellSizeByWidth = usableWidth / board.width;
+  const cellSizeByHeight = usableHeight / board.height;
 
   const cellSize = clamp(
     Math.floor(Math.min(cellSizeByWidth, cellSizeByHeight)),
@@ -128,10 +128,10 @@ function updateTopdownFit(state, viewport) {
 
   state.camera.topdownCellSize = cellSize;
 
-  const mapPixelWidth = (board.width + board.height) * cellSize;
-  const mapPixelHeight = ((board.width + board.height) * cellSize) / 2;
+  const mapPixelWidth = board.width * cellSize;
+  const mapPixelHeight = board.height * cellSize;
 
-  state.camera.topdownOriginX = Math.floor((viewport.width - mapPixelWidth) / 2) + (board.height * cellSize / 2);
+  state.camera.topdownOriginX = Math.floor((viewport.width - mapPixelWidth) / 2);
   state.camera.topdownOriginY = Math.floor((viewport.height - mapPixelHeight) / 2);
 }
 
@@ -189,10 +189,10 @@ export function getMapScreenBoundsRaw(state) {
     ];
 
     return {
-      minX: Math.min(...corners.map((p) => p.x - cellSize)),
-      maxX: Math.max(...corners.map((p) => p.x + cellSize)),
+      minX: Math.min(...corners.map((p) => p.x)),
+      maxX: Math.max(...corners.map((p) => p.x)),
       minY: Math.min(...corners.map((p) => p.y)),
-      maxY: Math.max(...corners.map((p) => p.y + cellSize))
+      maxY: Math.max(...corners.map((p) => p.y))
     };
   }
 
@@ -253,8 +253,6 @@ export function projectIsoRaw(x, y, elevation = 0, rotation = 0, _size = 1) {
   };
 }
 
-// Top-down is now a flat diamond projection with the SAME rotation language as iso.
-// No square flattening.
 export function projectTopDown(state, x, y) {
   const board = getResolutionBoardSize("base", MAP_CONFIG);
   const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
@@ -263,8 +261,8 @@ export function projectTopDown(state, x, y) {
   const originY = state.camera?.topdownOriginY ?? 0;
 
   return {
-    x: ((rotated.x - rotated.y) * (cellSize / 2)) + originX,
-    y: ((rotated.x + rotated.y) * (cellSize / 4)) + originY
+    x: originX + (rotated.x * cellSize),
+    y: originY + (rotated.y * cellSize)
   };
 }
 
@@ -273,7 +271,7 @@ export function getSceneSortKey(state, x, y, elevation = 0) {
   const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
 
   if (state.ui?.viewMode === "top") {
-    return (rotated.x + rotated.y) * 1000 + rotated.x;
+    return (rotated.y * 1000) + rotated.x;
   }
 
   return ((rotated.x + rotated.y) * 1000) + (elevation * 10);
