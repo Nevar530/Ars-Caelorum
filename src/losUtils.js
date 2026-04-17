@@ -1,6 +1,6 @@
 // src/losUtils.js
 
-import { getTileEffectiveElevation } from "./map.js";
+import { getTile, getTileEffectiveElevation } from "./map.js";
 
 const HEIGHT_PROFILES = {
   mech: {
@@ -40,7 +40,7 @@ export function traceRay(z1, z2, sampledTiles, state) {
     const t = (i + 1) / (totalSteps + 1);
     const rayHeight = z1 + (z2 - z1) * t;
 
-    const tile = state.map[pos.y]?.[pos.x];
+    const tile = getTile(state.map, pos.x, pos.y);
 
     if (!tile) {
       return {
