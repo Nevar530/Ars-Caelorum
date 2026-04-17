@@ -1,7 +1,9 @@
 // src/render/renderCore.js
 
-import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
+import { RENDER_CONFIG } from "../config.js";
 import {
+  getMapHeight,
+  getMapWidth,
   getTile,
   getTileFootElevation,
   getDetailRenderCells,
@@ -89,8 +91,11 @@ export function renderIso(state, refs) {
     }
   }
 
-  for (let y = 0; y < MAP_CONFIG.height; y += 1) {
-    for (let x = 0; x < MAP_CONFIG.width; x += 1) {
+  const mapWidth = getMapWidth(map);
+  const mapHeight = getMapHeight(map);
+
+  for (let y = 0; y < mapHeight; y += 1) {
+    for (let x = 0; x < mapWidth; x += 1) {
       const tile = getTile(map, x, y);
       if (!tile) continue;
 
@@ -396,11 +401,13 @@ export function renderEditor(state, refs) {
   const full = RENDER_CONFIG.editorSize;
   const inner = full - (pad * 2);
 
-  const cellWidth = inner / MAP_CONFIG.width;
-  const cellHeight = inner / MAP_CONFIG.height;
+  const mapWidth = Math.max(1, getMapWidth(map));
+  const mapHeight = Math.max(1, getMapHeight(map));
+  const cellWidth = inner / mapWidth;
+  const cellHeight = inner / mapHeight;
 
-  for (let y = 0; y < MAP_CONFIG.height; y += 1) {
-    for (let x = 0; x < MAP_CONFIG.width; x += 1) {
+  for (let y = 0; y < mapHeight; y += 1) {
+    for (let x = 0; x < mapWidth; x += 1) {
       const tile = getTile(map, x, y);
       if (!tile) continue;
 
