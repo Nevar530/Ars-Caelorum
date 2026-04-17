@@ -1,15 +1,17 @@
 // src/los.js
 
-import { MAP_CONFIG } from "./config.js";
-import { getTile } from "./map.js";
+import { getMapHeight, getMapWidth, getTile } from "./map.js";
 import { getHeightsForScale, traceRay } from "./losUtils.js";
 
-export function isTileOnBoard(x, y) {
+export function isTileOnBoard(x, y, map = null) {
+  const width = getMapWidth(map);
+  const height = getMapHeight(map);
+
   return (
     x >= 0 &&
     y >= 0 &&
-    x < MAP_CONFIG.mechWidth &&
-    y < MAP_CONFIG.mechHeight
+    x < width &&
+    y < height
   );
 }
 
@@ -77,7 +79,7 @@ function buildSameTileResult(line) {
 }
 
 function getLosResultInternal(state, fromX, fromY, toX, toY, options = {}) {
-  if (!isTileOnBoard(fromX, fromY) || !isTileOnBoard(toX, toY)) {
+  if (!isTileOnBoard(fromX, fromY, state.map) || !isTileOnBoard(toX, toY, state.map)) {
     return buildInvalidLosResult("out_of_bounds");
   }
 
