@@ -1,0 +1,15 @@
+{
+  "defaultMapId": "default",
+  "maps": [
+    {
+      "id": "default",
+      "name": "Default Test Map",
+      "path": "./data/maps/default.json"
+    },
+    {
+      "id": "blank_32",
+      "name": "Blank 32x32",
+      "path": "./data/maps/blank_32.json"
+    }
+  ]
+}
