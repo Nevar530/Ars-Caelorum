@@ -1,0 +1,26 @@
+[
+  {
+    "id": "grass",
+    "label": "Grass"
+  },
+  {
+    "id": "rock",
+    "label": "Rock"
+  },
+  {
+    "id": "sand",
+    "label": "Sand"
+  },
+  {
+    "id": "water",
+    "label": "Water"
+  },
+  {
+    "id": "asphalt",
+    "label": "Asphalt"
+  },
+  {
+    "id": "concrete",
+    "label": "Concrete"
+  }
+]

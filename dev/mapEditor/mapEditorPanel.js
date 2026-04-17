@@ -1,19 +1,24 @@
 // Ars Caelorum — Map Editor Panel
 
-import { DEFAULT_TERRAIN_TYPES, MAP_EDITOR_BRUSH_SIZES, MAP_EDITOR_FLAG_KEYS, MAP_EDITOR_MODES } from './mapEditorState.js';
+import { DEFAULT_MOVEMENT_CLASSES, DEFAULT_TERRAIN_PRESETS, MAP_EDITOR_BRUSH_SIZES, MAP_EDITOR_MODES } from './mapEditorState.js';
 
 export function renderMapEditorPanel(root, viewModel = {}) {
   if (!root) return;
 
-  const terrainTypes = Array.isArray(viewModel.terrainTypes) && viewModel.terrainTypes.length
-    ? viewModel.terrainTypes
-    : DEFAULT_TERRAIN_TYPES;
+  const terrainPresets = Array.isArray(viewModel.terrainPresets) && viewModel.terrainPresets.length
+    ? viewModel.terrainPresets
+    : DEFAULT_TERRAIN_PRESETS;
+
+  const movementClasses = Array.isArray(viewModel.movementClasses) && viewModel.movementClasses.length
+    ? viewModel.movementClasses
+    : DEFAULT_MOVEMENT_CLASSES;
 
   const mapOptions = Array.isArray(viewModel.mapOptions) ? viewModel.mapOptions : [];
   const editor = viewModel.editor ?? {};
   const selectedTile = viewModel.selectedTile ?? null;
   const selectedSummary = viewModel.selectedSummary ?? null;
-  const brushSummary = buildBrushSummary(editor);
+  const brushSummary = buildBrushSummary(editor, terrainPresets);
+  const activePreset = terrainPresets.find((entry) => entry.id === editor.selectedTerrainPresetId) ?? terrainPresets[0] ?? null;
 
   root.innerHTML = `
     <section class="map-editor-panel" style="display:grid; gap:12px;">
@@ -47,7 +52,7 @@ export function renderMapEditorPanel(root, viewModel = {}) {
         <div style="font-weight:700; margin-bottom:8px;">Brush</div>
         <div style="display:grid; gap:8px; grid-template-columns:repeat(3, 1fr);">
           <label style="display:block;">
-            <div>Mode</div>
+            <div>Paint Mode</div>
             <select id="ac-map-editor-mode-select" style="width:100%;">
               ${Object.values(MAP_EDITOR_MODES).map((mode) => `<option value="${mode}" ${mode === editor.mode ? 'selected' : ''}>${formatModeLabel(mode)}</option>`).join('')}
             </select>
@@ -60,49 +65,15 @@ export function renderMapEditorPanel(root, viewModel = {}) {
             </select>
           </label>
 
-          <label style="display:block;">
-            <div>Height</div>
-            <input id="ac-map-editor-height-input" type="number" min="0" max="12" step="1" value="${escapeAttr(editor.selectedHeight ?? 0)}" style="width:100%;" />
-          </label>
-
-          <label style="display:block; grid-column:1 / span 2;">
-            <div>Terrain Type</div>
-            <select id="ac-map-editor-terrain-type" style="width:100%;">
-              ${terrainTypes.map((type) => `<option value="${escapeAttr(type.id)}" ${type.id === editor.selectedTerrainTypeId ? 'selected' : ''}>${escapeHtml(type.label ?? type.id)}</option>`).join('')}
-            </select>
-          </label>
-
-          <label style="display:block;">
-            <div>Terrain Sprite Id</div>
-            <input id="ac-map-editor-terrain-sprite" type="text" value="${escapeAttr(editor.selectedTerrainSpriteId ?? '')}" placeholder="grass_001_top" style="width:100%;" />
-          </label>
-
-          <label style="display:block;">
-            <div>Flag</div>
-            <select id="ac-map-editor-flag-key" style="width:100%;">
-              ${MAP_EDITOR_FLAG_KEYS.map((flagKey) => `<option value="${flagKey}" ${flagKey === editor.selectedFlagKey ? 'selected' : ''}>${escapeHtml(flagKey)}</option>`).join('')}
-            </select>
-          </label>
-
-          <label style="display:block;">
-            <div>Flag Value</div>
-            <select id="ac-map-editor-flag-value" style="width:100%;">
-              <option value="true" ${editor.selectedFlagValue ? 'selected' : ''}>true</option>
-              <option value="false" ${!editor.selectedFlagValue ? 'selected' : ''}>false</option>
-            </select>
-          </label>
-
-          <label style="display:block;">
-            <div>Spawn Brush</div>
-            <select id="ac-map-editor-spawn-brush" style="width:100%;">
-              ${['player_1','player_2','player_3','player_4','enemy_1','enemy_2','enemy_3','enemy_4'].map((spawnId) => {
-                const [team, rawIndex] = spawnId.split('_');
-                const selected = team === editor.selectedSpawnTeam && (Number(rawIndex) - 1) === editor.selectedSpawnIndex;
-                return `<option value="${spawnId}" ${selected ? 'selected' : ''}>${escapeHtml(spawnId)}</option>`;
-              }).join('')}
-            </select>
-          </label>
+          ${renderModeFields(editor, terrainPresets, movementClasses)}
         </div>
+
+        ${activePreset ? `
+          <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08); opacity:0.86;">
+            <div>Preset Sprite Set: <strong>${escapeHtml(activePreset.spriteSetId ?? '-')}</strong></div>
+            <div>Preset Default Behavior: <strong>${escapeHtml(activePreset.movementClass ?? 'clear')}</strong></div>
+          </div>
+        ` : ''}
       </div>
 
       <div style="padding:8px; border:1px solid rgba(255,255,255,0.08);">
@@ -125,9 +96,9 @@ export function renderMapEditorPanel(root, viewModel = {}) {
         ${selectedTile ? `
           <div>Tile: <strong>(${selectedTile.x},${selectedTile.y})</strong></div>
           <div>Height: <strong>${escapeHtml(selectedTile.elevation ?? 0)}</strong></div>
-          <div>Type: <strong>${escapeHtml(selectedTile.terrainTypeId ?? 'clear')}</strong></div>
-          <div>Sprite: <strong>${escapeHtml(selectedTile.terrainSpriteId ?? '-')}</strong></div>
-          <div>Flags: <strong>${formatFlags(selectedTile.flags)}</strong></div>
+          <div>Preset: <strong>${escapeHtml(selectedTile.terrainTypeId ?? 'grass')}</strong></div>
+          <div>Behavior: <strong>${escapeHtml(selectedTile.movementClass ?? 'clear')}</strong></div>
+          <div>Sprite Set: <strong>${escapeHtml(selectedTile.terrainSpriteId ?? '-')}</strong></div>
           <div>Spawn: <strong>${escapeHtml(selectedTile.spawnId ?? '-')}</strong></div>
           <div style="margin-top:6px; opacity:0.8;">Foot Height ${escapeHtml(selectedSummary?.mechFootElevation ?? '-')} · Enterable ${selectedSummary?.mechEnterable ? 'YES' : 'NO'}</div>
         ` : '<div style="opacity:0.8;">No tile selected.</div>'}
@@ -138,15 +109,65 @@ export function renderMapEditorPanel(root, viewModel = {}) {
   `;
 }
 
-function formatFlags(flags) {
-  const enabled = Object.entries(flags ?? {}).filter(([, value]) => Boolean(value)).map(([key]) => key);
-  return enabled.length ? enabled.join(', ') : '-';
+function renderModeFields(editor, terrainPresets, movementClasses) {
+  switch (editor.mode) {
+    case MAP_EDITOR_MODES.HEIGHT:
+      return `
+        <label style="display:block;">
+          <div>Height</div>
+          <input id="ac-map-editor-height-input" type="number" min="0" max="12" step="1" value="${escapeAttr(editor.selectedHeight ?? 0)}" style="width:100%;" />
+        </label>
+      `;
+    case MAP_EDITOR_MODES.TERRAIN_PRESET:
+      return `
+        <label style="display:block; grid-column: span 2;">
+          <div>Terrain Preset</div>
+          <select id="ac-map-editor-terrain-preset" style="width:100%;">
+            ${terrainPresets.map((type) => `<option value="${escapeAttr(type.id)}" ${type.id === editor.selectedTerrainPresetId ? 'selected' : ''}>${escapeHtml(type.label ?? type.id)}</option>`).join('')}
+          </select>
+        </label>
+        <label style="display:block;">
+          <div>Behavior Override</div>
+          <select id="ac-map-editor-movement-class" style="width:100%;">
+            ${movementClasses.map((entry) => `<option value="${escapeAttr(entry.id)}" ${entry.id === editor.selectedMovementClass ? 'selected' : ''}>${escapeHtml(entry.label ?? entry.id)}</option>`).join('')}
+          </select>
+        </label>
+      `;
+    case MAP_EDITOR_MODES.MOVEMENT_CLASS:
+      return `
+        <label style="display:block; grid-column: span 2;">
+          <div>Tile Behavior</div>
+          <select id="ac-map-editor-movement-class" style="width:100%;">
+            ${movementClasses.map((entry) => `<option value="${escapeAttr(entry.id)}" ${entry.id === editor.selectedMovementClass ? 'selected' : ''}>${escapeHtml(entry.label ?? entry.id)}</option>`).join('')}
+          </select>
+        </label>
+      `;
+    case MAP_EDITOR_MODES.SPAWN:
+      return `
+        <label style="display:block; grid-column: span 2;">
+          <div>Spawn Brush</div>
+          <select id="ac-map-editor-spawn-brush" style="width:100%;">
+            ${['player_1','player_2','player_3','player_4','enemy_1','enemy_2','enemy_3','enemy_4'].map((spawnId) => {
+              const [team, rawIndex] = spawnId.split('_');
+              const selected = team === editor.selectedSpawnTeam && (Number(rawIndex) - 1) === editor.selectedSpawnIndex;
+              return `<option value="${spawnId}" ${selected ? 'selected' : ''}>${escapeHtml(spawnId)}</option>`;
+            }).join('')}
+          </select>
+        </label>
+      `;
+    case MAP_EDITOR_MODES.ERASE:
+      return `
+        <div style="grid-column: span 2; opacity:0.82; align-self:end; padding-bottom:8px;">Erase resets the tile to grass / clear and removes any spawn marker.</div>
+      `;
+    default:
+      return '';
+  }
 }
 
 function formatModeLabel(mode) {
   switch (mode) {
-    case 'terrainType': return 'Terrain Type';
-    case 'terrainSprite': return 'Terrain Sprite';
+    case 'terrainPreset': return 'Terrain Preset';
+    case 'movementClass': return 'Tile Behavior';
     default: return mode.charAt(0).toUpperCase() + mode.slice(1);
   }
 }
@@ -162,25 +183,23 @@ function escapeAttr(value) {
   return escapeHtml(value).replaceAll('"', '&quot;');
 }
 
-
-function buildBrushSummary(editor) {
+function buildBrushSummary(editor, terrainPresets) {
   const mode = editor?.mode ?? 'height';
   const brushSize = Number(editor?.brushSize ?? 1);
+  const presetLabel = terrainPresets.find((entry) => entry.id === editor?.selectedTerrainPresetId)?.label ?? (editor?.selectedTerrainPresetId ?? 'Grass');
 
   switch (mode) {
     case MAP_EDITOR_MODES.HEIGHT:
-      return `Painting Height = ${Number(editor?.selectedHeight ?? 0)} with ${brushSize}x${brushSize} brush`;
-    case MAP_EDITOR_MODES.TERRAIN_TYPE:
-      return `Painting Terrain Type = ${editor?.selectedTerrainTypeId ?? 'clear'} with ${brushSize}x${brushSize} brush`;
-    case MAP_EDITOR_MODES.TERRAIN_SPRITE:
-      return `Painting Terrain Sprite Id = ${editor?.selectedTerrainSpriteId || '(empty)'} with ${brushSize}x${brushSize} brush`;
-    case MAP_EDITOR_MODES.FLAG:
-      return `Painting Flag ${editor?.selectedFlagKey ?? 'impassable'} = ${editor?.selectedFlagValue ? 'true' : 'false'} with ${brushSize}x${brushSize} brush`;
+      return `Painting Height = ${editor?.selectedHeight ?? 0} with ${brushSize}x${brushSize} brush`;
+    case MAP_EDITOR_MODES.TERRAIN_PRESET:
+      return `Painting Preset = ${presetLabel} (${editor?.selectedMovementClass ?? 'clear'}) with ${brushSize}x${brushSize} brush`;
+    case MAP_EDITOR_MODES.MOVEMENT_CLASS:
+      return `Painting Behavior = ${editor?.selectedMovementClass ?? 'clear'} with ${brushSize}x${brushSize} brush`;
     case MAP_EDITOR_MODES.SPAWN:
-      return `Painting Spawn = ${(editor?.selectedSpawnTeam ?? 'player')}_${Number(editor?.selectedSpawnIndex ?? 0) + 1}`;
+      return `Painting Spawn = ${(editor?.selectedSpawnTeam ?? 'player')}_${(Number(editor?.selectedSpawnIndex ?? 0) + 1)} with ${brushSize}x${brushSize} brush`;
     case MAP_EDITOR_MODES.ERASE:
-      return `Erasing map data with ${brushSize}x${brushSize} brush`;
+      return `Erasing to Grass / Clear with ${brushSize}x${brushSize} brush`;
     default:
-      return `Painting ${String(mode)}`;
+      return `Painting with ${brushSize}x${brushSize} brush`;
   }
 }

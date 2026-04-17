@@ -1,0 +1,38 @@
+{
+  "grass": {
+    "label": "Grass",
+    "spriteSetId": "grass_001",
+    "baseColor": "#5f8f4f",
+    "movementClass": "clear"
+  },
+  "rock": {
+    "label": "Rock",
+    "spriteSetId": "rock_001",
+    "baseColor": "#7a7a72",
+    "movementClass": "difficult"
+  },
+  "sand": {
+    "label": "Sand",
+    "spriteSetId": "sand_001",
+    "baseColor": "#c8b27a",
+    "movementClass": "difficult"
+  },
+  "water": {
+    "label": "Water",
+    "spriteSetId": "water_001",
+    "baseColor": "#4c7ea8",
+    "movementClass": "impassable"
+  },
+  "asphalt": {
+    "label": "Asphalt",
+    "spriteSetId": "asphalt_001",
+    "baseColor": "#4c4f55",
+    "movementClass": "clear"
+  },
+  "concrete": {
+    "label": "Concrete",
+    "spriteSetId": "concrete_001",
+    "baseColor": "#9a9a94",
+    "movementClass": "clear"
+  }
+}

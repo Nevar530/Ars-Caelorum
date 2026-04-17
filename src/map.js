@@ -79,13 +79,9 @@ function createTile(x, y, elevation = 0, overrides = {}) {
     x,
     y,
     elevation,
-    terrainTypeId: overrides.terrainTypeId ?? "clear",
-    terrainSpriteId: overrides.terrainSpriteId ?? null,
-    flags: {
-      impassable: Boolean(overrides.flags?.impassable),
-      difficult: Boolean(overrides.flags?.difficult),
-      hazard: Boolean(overrides.flags?.hazard)
-    },
+    terrainTypeId: overrides.terrainTypeId ?? "grass",
+    terrainSpriteId: overrides.terrainSpriteId ?? "grass_001",
+    movementClass: overrides.movementClass ?? "clear",
     spawnId: overrides.spawnId ?? null,
     detail,
     summary: null
@@ -160,7 +156,7 @@ function attachMapMetadata(map, metadata = {}) {
         ? [...metadata.terrainTypes]
         : Array.isArray(map.terrainTypes)
           ? [...map.terrainTypes]
-          : ["clear", "rough", "water", "road", "hazard"],
+          : ["grass", "rock", "sand", "water", "asphalt", "concrete"],
       writable: true,
       configurable: true
     }
@@ -190,7 +186,7 @@ function buildMapFromFlatTiles(definition = {}) {
         createTile(x, y, Number(rawTile.elevation ?? 0), {
           terrainTypeId: rawTile.terrainTypeId,
           terrainSpriteId: rawTile.terrainSpriteId,
-          flags: rawTile.flags,
+          movementClass: rawTile.movementClass,
           spawnId: rawTile.spawnId,
           detail: rawTile.detail
         })

@@ -1,18 +1,13 @@
 // Ars Caelorum — Runtime Map Schema Helpers
-// New module scaffold only. Not wired into runtime yet.
 
 export function createDefaultTile(x, y, elevation = 0) {
   return {
     x,
     y,
     elevation,
-    terrainTypeId: 'clear',
-    terrainSpriteId: null,
-    flags: {
-      impassable: false,
-      difficult: false,
-      hazard: false
-    },
+    terrainTypeId: 'grass',
+    terrainSpriteId: 'grass_001',
+    movementClass: 'clear',
     spawnId: null,
     detail: null,
     summary: null
@@ -32,7 +27,7 @@ export function createBlankMapDefinition({ id = 'new_map', name = 'New Map', wid
     name,
     width,
     height,
-    terrainTypes: ['clear', 'rough', 'water', 'road', 'hazard'],
+    terrainTypes: ['grass', 'rock', 'sand', 'water', 'asphalt', 'concrete'],
     spawns: {
       player: [null, null, null, null],
       enemy: [null, null, null, null]

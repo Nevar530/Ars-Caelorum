@@ -1,16 +1,15 @@
 // Ars Caelorum — Map Editor Actions
 
-import { MAP_CONFIG } from '../../src/config.js';
 import { changeElevation, getMapHeight, getMapWidth, getTile, normalizeMapDefinition } from '../../src/map.js';
-import { createBlankMapDefinition } from '../../src/maps/mapSchema.js';
-import { getBrushedTileCoords } from './mapBrush.js';
 import { createMapEditorState, MAP_EDITOR_MODES } from './mapEditorState.js';
-import { buildSpawnId } from '../../src/maps/mapSpawns.js';
+import { getBrushedTileCoords } from './mapBrush.js';
 import { buildMapDefinitionFromRuntimeMap } from './mapSerialization.js';
+import { createBlankMapDefinition } from '../../src/maps/mapSchema.js';
 
 export function ensureMapEditorState(state) {
-  if (!state.mapEditor) {
-    state.mapEditor = createMapEditorState({
+  if (!state.ui.mapEditor) {
+    state.ui.mapEditor = createMapEditorState({
+      activeMapId: state.map?.id ?? 'default',
       pendingResize: {
         width: getMapWidth(state.map) || 32,
         height: getMapHeight(state.map) || 32,
@@ -18,38 +17,38 @@ export function ensureMapEditorState(state) {
       }
     });
   }
-  return state.mapEditor;
+
+  return state.ui.mapEditor;
 }
 
-export function setMapEditorEnabled(state, isEnabled) {
-  ensureMapEditorState(state).isEnabled = Boolean(isEnabled);
+export function setMapEditorEnabled(state, value) {
+  ensureMapEditorState(state).isEnabled = Boolean(value);
 }
 
 export function setMapEditorMode(state, mode) {
-  ensureMapEditorState(state).mode = mode;
+  ensureMapEditorState(state).mode = String(mode || MAP_EDITOR_MODES.HEIGHT);
 }
 
 export function setMapEditorBrushSize(state, brushSize) {
   ensureMapEditorState(state).brushSize = Math.max(1, Number(brushSize) || 1);
 }
 
-export function setMapEditorHeight(state, selectedHeight) {
-  const clamped = Math.max(MAP_CONFIG.minElevation, Math.min(MAP_CONFIG.maxElevation, Number(selectedHeight) || 0));
-  ensureMapEditorState(state).selectedHeight = clamped;
+export function setMapEditorHeight(state, height) {
+  ensureMapEditorState(state).selectedHeight = Math.max(0, Number(height) || 0);
 }
 
-export function setMapEditorTerrainType(state, terrainTypeId) {
-  ensureMapEditorState(state).selectedTerrainTypeId = String(terrainTypeId || 'clear');
-}
-
-export function setMapEditorTerrainSprite(state, terrainSpriteId) {
-  ensureMapEditorState(state).selectedTerrainSpriteId = terrainSpriteId == null ? '' : String(terrainSpriteId);
-}
-
-export function setMapEditorFlag(state, selectedFlagKey, selectedFlagValue = true) {
+export function setMapEditorTerrainPreset(state, presetId) {
   const editor = ensureMapEditorState(state);
-  editor.selectedFlagKey = String(selectedFlagKey || 'impassable');
-  editor.selectedFlagValue = Boolean(selectedFlagValue);
+  editor.selectedTerrainPresetId = String(presetId || 'grass');
+
+  const definition = getTerrainDefinition(state, editor.selectedTerrainPresetId);
+  if (definition?.movementClass) {
+    editor.selectedMovementClass = definition.movementClass;
+  }
+}
+
+export function setMapEditorMovementClass(state, movementClass) {
+  ensureMapEditorState(state).selectedMovementClass = String(movementClass || 'clear');
 }
 
 export function setMapEditorSpawnBrush(state, team, index) {
@@ -67,6 +66,19 @@ export function setMapEditorPendingResize(state, width, height, anchor = 'topLef
   };
 }
 
+function getTerrainDefinition(state, presetId) {
+  return state?.content?.terrainDefinitions?.[presetId] ?? null;
+}
+
+function getTerrainDefaults(state, presetId) {
+  const definition = getTerrainDefinition(state, presetId) ?? {};
+  return {
+    terrainTypeId: presetId || 'grass',
+    terrainSpriteId: definition.spriteSetId ?? null,
+    movementClass: definition.movementClass ?? 'clear'
+  };
+}
+
 function ensureMapSpawns(map) {
   if (!map.spawns) {
     map.spawns = { player: [null, null, null, null], enemy: [null, null, null, null] };
@@ -75,6 +87,10 @@ function ensureMapSpawns(map) {
   if (!Array.isArray(map.spawns.enemy)) map.spawns.enemy = [null, null, null, null];
   while (map.spawns.player.length < 4) map.spawns.player.push(null);
   while (map.spawns.enemy.length < 4) map.spawns.enemy.push(null);
+}
+
+function buildSpawnId(team, index) {
+  return `${team}_${index + 1}`;
 }
 
 function syncLegacySpawnPoints(state) {
@@ -114,18 +130,15 @@ function applyHeightBrush(state, tile, editor) {
   }
 }
 
-function applyTerrainTypeBrush(tile, editor) {
-  tile.terrainTypeId = editor.selectedTerrainTypeId ?? 'clear';
+function applyTerrainPresetBrush(state, tile, editor) {
+  const defaults = getTerrainDefaults(state, editor.selectedTerrainPresetId);
+  tile.terrainTypeId = defaults.terrainTypeId;
+  tile.terrainSpriteId = defaults.terrainSpriteId;
+  tile.movementClass = editor.selectedMovementClass || defaults.movementClass;
 }
 
-function applyTerrainSpriteBrush(tile, editor) {
-  const nextValue = String(editor.selectedTerrainSpriteId ?? '').trim();
-  tile.terrainSpriteId = nextValue || null;
-}
-
-function applyFlagBrush(tile, editor) {
-  tile.flags = tile.flags ?? { impassable: false, difficult: false, hazard: false };
-  tile.flags[editor.selectedFlagKey] = Boolean(editor.selectedFlagValue);
+function applyMovementClassBrush(tile, editor) {
+  tile.movementClass = editor.selectedMovementClass ?? 'clear';
 }
 
 function applySpawnBrush(state, tile, editor) {
@@ -140,8 +153,10 @@ function applySpawnBrush(state, tile, editor) {
 }
 
 function applyEraseBrush(state, tile) {
-  tile.terrainSpriteId = null;
-  tile.flags = { impassable: false, difficult: false, hazard: false };
+  const defaults = getTerrainDefaults(state, 'grass');
+  tile.terrainTypeId = defaults.terrainTypeId;
+  tile.terrainSpriteId = defaults.terrainSpriteId;
+  tile.movementClass = defaults.movementClass;
   if (tile.spawnId) {
     const [team, rawIndex] = String(tile.spawnId).split('_');
     const index = Number(rawIndex) - 1;
@@ -165,14 +180,11 @@ export function applyMapEditorAtTile(state, originX, originY) {
       case MAP_EDITOR_MODES.HEIGHT:
         applyHeightBrush(state, tile, editor);
         break;
-      case MAP_EDITOR_MODES.TERRAIN_TYPE:
-        applyTerrainTypeBrush(tile, editor);
+      case MAP_EDITOR_MODES.TERRAIN_PRESET:
+        applyTerrainPresetBrush(state, tile, editor);
         break;
-      case MAP_EDITOR_MODES.TERRAIN_SPRITE:
-        applyTerrainSpriteBrush(tile, editor);
-        break;
-      case MAP_EDITOR_MODES.FLAG:
-        applyFlagBrush(tile, editor);
+      case MAP_EDITOR_MODES.MOVEMENT_CLASS:
+        applyMovementClassBrush(tile, editor);
         break;
       case MAP_EDITOR_MODES.SPAWN:
         applySpawnBrush(state, tile, editor);
@@ -195,12 +207,8 @@ export function sampleMapEditorFromTile(state, x, y) {
   if (!tile) return editor;
 
   editor.selectedHeight = Number(tile.elevation ?? 0);
-  editor.selectedTerrainTypeId = tile.terrainTypeId ?? 'clear';
-  editor.selectedTerrainSpriteId = tile.terrainSpriteId ?? '';
-
-  const activeFlag = Object.entries(tile.flags ?? {}).find(([, value]) => value === true) ?? ['impassable', false];
-  editor.selectedFlagKey = activeFlag[0];
-  editor.selectedFlagValue = Boolean(activeFlag[1]);
+  editor.selectedTerrainPresetId = tile.terrainTypeId ?? 'grass';
+  editor.selectedMovementClass = tile.movementClass ?? 'clear';
 
   if (tile.spawnId) {
     const [team, rawIndex] = String(tile.spawnId).split('_');

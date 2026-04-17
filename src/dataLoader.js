@@ -1,14 +1,16 @@
 import { normalizeMapDefinition, getMapSpawns } from "./map.js";
 
 export async function loadGameData() {
-  const [mechs, weapons, sigils, attacks, pilots, spawnPoints, mapCatalog] = await Promise.all([
+  const [mechs, weapons, sigils, attacks, pilots, spawnPoints, mapCatalog, terrainList, terrainDefinitions] = await Promise.all([
     loadJson("./data/mechs.json"),
     loadJson("./data/weapons.json"),
     loadJson("./data/sigils.json"),
     loadJson("./data/attacks.json"),
     loadJson("./data/pilots.json"),
     loadJson("./data/spawnPoints.json"),
-    loadJson("./data/maps/mapList.json").catch(() => null)
+    loadJson("./data/maps/mapList.json").catch(() => null),
+    loadJson("./data/terrain/terrainList.json").catch(() => []),
+    loadJson("./data/terrain/terrain.json").catch(() => ({}))
   ]);
 
   const defaultMap = await loadDefaultMap(mapCatalog).catch(() => null);
@@ -24,6 +26,8 @@ export async function loadGameData() {
       ? mapSpawnsToLegacySpawnPoints(getMapSpawns(normalizedDefaultMap))
       : spawnPoints,
     mapCatalog,
+    terrainList,
+    terrainDefinitions,
     defaultMap: normalizedDefaultMap
   };
 }

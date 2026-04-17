@@ -18,13 +18,12 @@ import {
   resizeRuntimeMap,
   setMapEditorBrushSize,
   setMapEditorEnabled,
-  setMapEditorFlag,
+  setMapEditorMovementClass,
   setMapEditorHeight,
   setMapEditorMode,
   setMapEditorPendingResize,
   setMapEditorSpawnBrush,
-  setMapEditorTerrainSprite,
-  setMapEditorTerrainType
+  setMapEditorTerrainPreset
 } from "./mapEditor/mapEditorActions.js";
 import { renderMapEditorPanel } from "./mapEditor/mapEditorPanel.js";
 import { buildMapDefinitionFromRuntimeMap, downloadMapDefinition, parseMapDefinition } from "./mapEditor/mapSerialization.js";
@@ -870,21 +869,30 @@ class DevMenu {
   buildMapEditorViewModel() {
     const editor = this.getMapEditorState();
     const { selected, tile, summary } = this.getSelectedTileInfo();
-    const terrainTypes = Array.isArray(this.appState?.map?.terrainTypes)
-      ? this.appState.map.terrainTypes.map((id) => ({ id, label: String(id).replace(/_/g, ' ') }))
+    const terrainPresets = Array.isArray(this.appState?.content?.terrainList)
+      ? this.appState.content.terrainList.map((entry) => ({
+          ...entry,
+          ...(this.appState?.content?.terrainDefinitions?.[entry.id] ?? {})
+        }))
       : [];
 
     return {
       editor,
-      terrainTypes,
+      terrainPresets,
+      movementClasses: [
+        { id: 'clear', label: 'Clear' },
+        { id: 'difficult', label: 'Difficult' },
+        { id: 'impassable', label: 'Impassable' },
+        { id: 'hazard', label: 'Hazard' }
+      ],
       mapOptions: this.getMapCatalogEntries(),
       selectedTile: tile ? {
         x: selected.x,
         y: selected.y,
         elevation: tile.elevation ?? 0,
-        terrainTypeId: tile.terrainTypeId ?? 'clear',
+        terrainTypeId: tile.terrainTypeId ?? 'grass',
         terrainSpriteId: tile.terrainSpriteId ?? null,
-        flags: tile.flags ?? {},
+        movementClass: tile.movementClass ?? 'clear',
         spawnId: tile.spawnId ?? null
       } : null,
       selectedSummary: summary
@@ -940,17 +948,11 @@ class DevMenu {
       case 'ac-map-editor-height-input':
         setMapEditorHeight(this.appState, target.value);
         break;
-      case 'ac-map-editor-terrain-type':
-        setMapEditorTerrainType(this.appState, target.value);
+      case 'ac-map-editor-terrain-preset':
+        setMapEditorTerrainPreset(this.appState, target.value);
         break;
-      case 'ac-map-editor-terrain-sprite':
-        setMapEditorTerrainSprite(this.appState, target.value);
-        break;
-      case 'ac-map-editor-flag-key':
-        setMapEditorFlag(this.appState, target.value, this.getMapEditorState().selectedFlagValue);
-        break;
-      case 'ac-map-editor-flag-value':
-        setMapEditorFlag(this.appState, this.getMapEditorState().selectedFlagKey, target.value === 'true');
+      case 'ac-map-editor-movement-class':
+        setMapEditorMovementClass(this.appState, target.value);
         break;
       case 'ac-map-editor-spawn-brush': {
         const [team, rawIndex] = String(target.value).split('_');
@@ -1258,7 +1260,8 @@ class DevMenu {
       <div style="margin-top:8px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;">
         <div>Selected Tile: <strong>(${selected.x},${selected.y})</strong></div>
         <div>Base Height: <strong>${tile?.elevation ?? "-"}</strong></div>
-        <div>Type: <strong>${tile?.terrainTypeId ?? '-'}</strong></div>
+        <div>Preset: <strong>${tile?.terrainTypeId ?? '-'}</strong></div>
+        <div>Behavior: <strong>${tile?.movementClass ?? 'clear'}</strong></div>
         <div>Spawn: <strong>${tile?.spawnId ?? '-'}</strong></div>
         <div>Min Height: <strong>${formatSummaryValue(summary?.minElevation)}</strong></div>
         <div>Max Height: <strong>${formatSummaryValue(summary?.maxElevation)}</strong></div>

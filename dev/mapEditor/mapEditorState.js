@@ -4,25 +4,26 @@ export const MAP_EDITOR_BRUSH_SIZES = [1, 2, 3, 4];
 
 export const MAP_EDITOR_MODES = Object.freeze({
   HEIGHT: 'height',
-  TERRAIN_TYPE: 'terrainType',
-  TERRAIN_SPRITE: 'terrainSprite',
-  FLAG: 'flag',
+  TERRAIN_PRESET: 'terrainPreset',
+  MOVEMENT_CLASS: 'movementClass',
   SPAWN: 'spawn',
   ERASE: 'erase'
 });
 
-export const MAP_EDITOR_FLAG_KEYS = Object.freeze([
-  'impassable',
-  'difficult',
-  'hazard'
+export const DEFAULT_MOVEMENT_CLASSES = Object.freeze([
+  { id: 'clear', label: 'Clear' },
+  { id: 'difficult', label: 'Difficult' },
+  { id: 'impassable', label: 'Impassable' },
+  { id: 'hazard', label: 'Hazard' }
 ]);
 
-export const DEFAULT_TERRAIN_TYPES = Object.freeze([
-  { id: 'clear', label: 'Clear', baseColor: '#4f8a3c' },
-  { id: 'rough', label: 'Rough', baseColor: '#6f6a45' },
-  { id: 'water', label: 'Water', baseColor: '#3d6ea8' },
-  { id: 'road', label: 'Road', baseColor: '#666666' },
-  { id: 'hazard', label: 'Hazard', baseColor: '#a85a2d' }
+export const DEFAULT_TERRAIN_PRESETS = Object.freeze([
+  { id: 'grass', label: 'Grass', baseColor: '#5f8f4f', spriteSetId: 'grass_001', movementClass: 'clear' },
+  { id: 'rock', label: 'Rock', baseColor: '#7a7a72', spriteSetId: 'rock_001', movementClass: 'difficult' },
+  { id: 'sand', label: 'Sand', baseColor: '#c8b27a', spriteSetId: 'sand_001', movementClass: 'difficult' },
+  { id: 'water', label: 'Water', baseColor: '#4c7ea8', spriteSetId: 'water_001', movementClass: 'impassable' },
+  { id: 'asphalt', label: 'Asphalt', baseColor: '#4c4f55', spriteSetId: 'asphalt_001', movementClass: 'clear' },
+  { id: 'concrete', label: 'Concrete', baseColor: '#9a9a94', spriteSetId: 'concrete_001', movementClass: 'clear' }
 ]);
 
 export const DEFAULT_MAP_EDITOR_STATE = Object.freeze({
@@ -31,10 +32,8 @@ export const DEFAULT_MAP_EDITOR_STATE = Object.freeze({
   mode: MAP_EDITOR_MODES.HEIGHT,
   brushSize: 1,
   selectedHeight: 0,
-  selectedTerrainTypeId: 'clear',
-  selectedTerrainSpriteId: '',
-  selectedFlagKey: 'impassable',
-  selectedFlagValue: true,
+  selectedTerrainPresetId: 'grass',
+  selectedMovementClass: 'clear',
   selectedSpawnTeam: 'player',
   selectedSpawnIndex: 0,
   hoverTiles: [],

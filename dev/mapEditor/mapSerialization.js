@@ -16,13 +16,9 @@ export function buildMapDefinitionFromRuntimeMap(map) {
         x,
         y,
         elevation: Number(tile.elevation ?? 0),
-        terrainTypeId: tile.terrainTypeId ?? 'clear',
+        terrainTypeId: tile.terrainTypeId ?? 'grass',
         terrainSpriteId: tile.terrainSpriteId ?? null,
-        flags: {
-          impassable: Boolean(tile.flags?.impassable),
-          difficult: Boolean(tile.flags?.difficult),
-          hazard: Boolean(tile.flags?.hazard)
-        },
+        movementClass: tile.movementClass ?? 'clear',
         spawnId: tile.spawnId ?? null,
         detail: structuredClone(tile.detail ?? null)
       });
@@ -34,7 +30,7 @@ export function buildMapDefinitionFromRuntimeMap(map) {
     name: map?.name ?? 'Exported Map',
     width,
     height,
-    terrainTypes: Array.isArray(map?.terrainTypes) ? [...map.terrainTypes] : ['clear', 'rough', 'water', 'road', 'hazard'],
+    terrainTypes: Array.isArray(map?.terrainTypes) ? [...map.terrainTypes] : ['grass', 'rock', 'sand', 'water', 'asphalt', 'concrete'],
     spawns: structuredClone(map?.spawns ?? { player: [null, null, null, null], enemy: [null, null, null, null] }),
     tiles
   };

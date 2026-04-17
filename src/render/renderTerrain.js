@@ -241,15 +241,26 @@ export function tileColors(type) {
 export function editorCellColor(tileOrElevation) {
   const tile = typeof tileOrElevation === 'object' && tileOrElevation !== null
     ? tileOrElevation
-    : { elevation: Number(tileOrElevation) || 0, terrainTypeId: 'clear', flags: {}, spawnId: null };
+    : { elevation: Number(tileOrElevation) || 0, terrainTypeId: 'grass', movementClass: 'clear', spawnId: null };
 
   const baseColor = terrainBaseColor(tile.terrainTypeId);
   const elevation = Number(tile.elevation ?? 0);
   let color = shiftHexBrightness(baseColor, Math.max(-35, Math.min(35, elevation * 8)));
 
-  if (tile.flags?.hazard) color = shiftHexBrightness('#b94d2f', Math.max(-20, elevation * 6));
-  if (tile.flags?.impassable) color = mixHex(color, '#2b2b2b', 0.35);
-  if (tile.flags?.difficult) color = mixHex(color, '#8f7d2f', 0.18);
+  switch (tile.movementClass) {
+    case 'hazard':
+      color = mixHex(color, '#b94d2f', 0.45);
+      break;
+    case 'impassable':
+      color = mixHex(color, '#2b2b2b', 0.42);
+      break;
+    case 'difficult':
+      color = mixHex(color, '#8f7d2f', 0.28);
+      break;
+    default:
+      break;
+  }
+
   if (tile.spawnId) color = mixHex(color, tile.spawnId.startsWith('enemy_') ? '#8c2b2b' : '#2b5f9b', 0.25);
 
   return color;
@@ -257,26 +268,20 @@ export function editorCellColor(tileOrElevation) {
 
 export function editorDetailCellColor(fineElevation) {
   const type = detailTypeFromFineElevation(fineElevation);
-
-  switch (type) {
-    case "peak":
-      return "#8b6b4a";
-    case "high":
-      return "#4e6b86";
-    default:
-      return "#243241";
-  }
+  const colors = tileColors(type);
+  return colors.top;
 }
 
 function terrainBaseColor(terrainTypeId) {
   switch (terrainTypeId) {
-    case 'rough': return '#7a6f4d';
-    case 'water': return '#3f6fa5';
-    case 'road': return '#666666';
-    case 'hazard': return '#a85a2d';
-    case 'clear':
+    case 'rock': return '#7a7a72';
+    case 'sand': return '#c8b27a';
+    case 'water': return '#4c7ea8';
+    case 'asphalt': return '#4c4f55';
+    case 'concrete': return '#9a9a94';
+    case 'grass':
     default:
-      return '#4f8a3c';
+      return '#5f8f4f';
   }
 }
 
