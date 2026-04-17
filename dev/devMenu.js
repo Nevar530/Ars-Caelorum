@@ -5,13 +5,30 @@
 
 import { createMechInstance } from "../src/mechs.js";
 import { rebuildRoundOrder } from "../src/initiative.js";
-import { changeElevation, getTile, getTileSummary } from "../src/map.js";
+import { getMapHeight, getMapWidth, getTile, getTileSummary } from "../src/map.js";
 import {
   logDev,
   clearDevLog,
   getDevLogFormatted,
   subscribeToDevLog
 } from "./devLogger.js";
+import {
+  ensureMapEditorState,
+  replaceRuntimeMapFromDefinition,
+  resizeRuntimeMap,
+  setMapEditorBrushSize,
+  setMapEditorEnabled,
+  setMapEditorFlag,
+  setMapEditorHeight,
+  setMapEditorMode,
+  setMapEditorPendingResize,
+  setMapEditorSpawnBrush,
+  setMapEditorTerrainSprite,
+  setMapEditorTerrainType
+} from "./mapEditor/mapEditorActions.js";
+import { renderMapEditorPanel } from "./mapEditor/mapEditorPanel.js";
+import { buildMapDefinitionFromRuntimeMap, downloadMapDefinition, parseMapDefinition } from "./mapEditor/mapSerialization.js";
+import { loadMapDefinition } from "./mapEditor/mapCatalog.js";
 
 const DEFAULT_DEV_STATE = {
   isOpen: false,
@@ -172,23 +189,7 @@ class DevMenu {
   }
 
   mountEditorIntoMapTab() {
-    if (!this.editorShellEl || !this.mapEditorHostEl) return;
-
-    this.editorShellEl.style.display = "block";
-    this.editorShellEl.style.width = "100%";
-    this.editorShellEl.style.maxWidth = "100%";
-
-    const editor = this.editorShellEl.querySelector("#editor");
-    if (editor) {
-      editor.style.display = "block";
-      editor.style.width = "100%";
-      editor.style.height = "auto";
-      editor.style.background = "rgba(255,255,255,0.02)";
-      editor.style.border = "1px solid rgba(255,255,255,0.08)";
-      editor.style.marginTop = "8px";
-    }
-
-    this.mapEditorHostEl.appendChild(this.editorShellEl);
+    this.renderMapEditorPanelIntoHost();
   }
 
   restoreEditorShell() {
@@ -270,27 +271,9 @@ class DevMenu {
   }
 
   adjustSelectedTileHeight(delta) {
-    const { selected, tile } = this.getSelectedTileInfo();
-
-    if (!tile) {
-      logDev(`Height change failed: tile (${selected.x},${selected.y}) not found.`);
-      return;
-    }
-
-    const before = tile.elevation ?? 0;
-    changeElevation(this.appState.map, selected.x, selected.y, delta);
-
-    const tileAfter = getTile(this.appState.map, selected.x, selected.y);
-    const after = tileAfter?.elevation ?? before;
-
-    if (before === after) {
-      logDev(`Tile (${selected.x},${selected.y}) height unchanged at ${after}.`);
-    } else {
-      logDev(`Tile (${selected.x},${selected.y}) height: ${before} -> ${after}.`);
-    }
-
+    const editor = ensureMapEditorState(this.appState);
+    setMapEditorHeight(this.appState, Number(editor.selectedHeight ?? 0) + delta);
     this.render();
-    this.renderApp();
   }
 
   buildDom() {
@@ -402,14 +385,6 @@ class DevMenu {
         </div>
 
         <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-          <div style="font-weight:bold; margin-bottom:8px;">Height Controls</div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button id="ac-dev-map-lower-height" type="button">Height -1</button>
-            <button id="ac-dev-map-raise-height" type="button">Height +1</button>
-          </div>
-        </div>
-
-        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
           <div style="font-weight:bold; margin-bottom:8px;">Map Controls</div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button id="ac-dev-map-rotate-left" type="button">⟲ Rotate Left</button>
@@ -451,8 +426,6 @@ class DevMenu {
     this.mapRotateRightEl = panel.querySelector("#ac-dev-map-rotate-right");
     this.mapToggleViewEl = panel.querySelector("#ac-dev-map-toggle-view");
     this.mapResetEl = panel.querySelector("#ac-dev-map-reset");
-    this.mapRaiseHeightEl = panel.querySelector("#ac-dev-map-raise-height");
-    this.mapLowerHeightEl = panel.querySelector("#ac-dev-map-lower-height");
 
     this.mapEditorHostEl = panel.querySelector("#ac-dev-map-editor-host");
   }
@@ -492,13 +465,14 @@ class DevMenu {
       this.render();
     });
 
-    this.mapRaiseHeightEl?.addEventListener("click", () => {
-      this.adjustSelectedTileHeight(1);
+    this.mapEditorHostEl?.addEventListener("change", (event) => {
+      this.handleMapEditorChange(event);
     });
 
-    this.mapLowerHeightEl?.addEventListener("click", () => {
-      this.adjustSelectedTileHeight(-1);
+    this.mapEditorHostEl?.addEventListener("click", (event) => {
+      this.handleMapEditorClick(event);
     });
+
 
     this.panelEl.querySelector("#ac-dev-spawn-btn").addEventListener("click", () => {
       this.spawnSelectedUnit();
@@ -596,6 +570,7 @@ class DevMenu {
     this.unitsTabButtonEl.style.opacity = isUnits ? "1" : "0.65";
     this.mapTabButtonEl.style.opacity = isUnits ? "0.65" : "1";
 
+    setMapEditorEnabled(this.appState, this.state.isOpen && this.state.activeTab === 'map');
     this.render();
   }
 
@@ -605,6 +580,7 @@ class DevMenu {
     this.state.isOpen = nextState;
     this.panelEl.style.display = nextState ? "block" : "none";
 
+    setMapEditorEnabled(this.appState, nextState && this.state.activeTab === 'map');
     this.syncToolbarVisibility();
     this.render();
 
@@ -857,6 +833,200 @@ class DevMenu {
     this.renderApp();
   }
 
+  getMapEditorState() {
+    return ensureMapEditorState(this.appState);
+  }
+
+  getMapCatalogEntries() {
+    const maps = Array.isArray(this.appState?.content?.mapCatalog?.maps)
+      ? this.appState.content.mapCatalog.maps
+      : [];
+
+    return maps.map((entry) => ({
+      id: entry?.id ?? '',
+      label: entry?.label ?? entry?.name ?? entry?.id ?? 'map',
+      path: entry?.path ?? ''
+    }));
+  }
+
+  getSelectedCatalogMapId() {
+    return this.mapEditorHostEl?.querySelector('#ac-map-editor-map-select')?.value ?? this.getMapEditorState().activeMapId;
+  }
+
+  getSelectedCatalogEntry() {
+    const selectedId = this.getSelectedCatalogMapId();
+    return this.getMapCatalogEntries().find((entry) => entry.id === selectedId) ?? null;
+  }
+
+  buildMapEditorViewModel() {
+    const editor = this.getMapEditorState();
+    const { selected, tile, summary } = this.getSelectedTileInfo();
+    const terrainTypes = Array.isArray(this.appState?.map?.terrainTypes)
+      ? this.appState.map.terrainTypes.map((id) => ({ id, label: String(id).replace(/_/g, ' ') }))
+      : [];
+
+    return {
+      editor,
+      terrainTypes,
+      mapOptions: this.getMapCatalogEntries(),
+      selectedTile: tile ? {
+        x: selected.x,
+        y: selected.y,
+        elevation: tile.elevation ?? 0,
+        terrainTypeId: tile.terrainTypeId ?? 'clear',
+        terrainSpriteId: tile.terrainSpriteId ?? null,
+        flags: tile.flags ?? {},
+        spawnId: tile.spawnId ?? null
+      } : null,
+      selectedSummary: summary
+    };
+  }
+
+  renderMapEditorPanelIntoHost() {
+    if (!this.mapEditorHostEl) return;
+
+    renderMapEditorPanel(this.mapEditorHostEl, this.buildMapEditorViewModel());
+
+    const slot = this.mapEditorHostEl.querySelector('#ac-map-editor-canvas-slot');
+    if (slot && this.editorShellEl) {
+      this.editorShellEl.style.display = 'block';
+      this.editorShellEl.style.width = '100%';
+      this.editorShellEl.style.maxWidth = '100%';
+      const editor = this.editorShellEl.querySelector('#editor');
+      if (editor) {
+        editor.style.display = 'block';
+        editor.style.width = '100%';
+        editor.style.height = 'auto';
+        editor.style.background = 'rgba(255,255,255,0.02)';
+        editor.style.border = '1px solid rgba(255,255,255,0.08)';
+        editor.style.marginTop = '8px';
+      }
+      slot.appendChild(this.editorShellEl);
+    }
+  }
+
+  handleMapEditorChange(event) {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    switch (target.id) {
+      case 'ac-map-editor-map-select':
+        this.getMapEditorState().activeMapId = target.value;
+        break;
+      case 'ac-map-editor-mode-select':
+        setMapEditorMode(this.appState, target.value);
+        break;
+      case 'ac-map-editor-brush-size':
+        setMapEditorBrushSize(this.appState, target.value);
+        break;
+      case 'ac-map-editor-height-input':
+        setMapEditorHeight(this.appState, target.value);
+        break;
+      case 'ac-map-editor-terrain-type':
+        setMapEditorTerrainType(this.appState, target.value);
+        break;
+      case 'ac-map-editor-terrain-sprite':
+        setMapEditorTerrainSprite(this.appState, target.value);
+        break;
+      case 'ac-map-editor-flag-key':
+        setMapEditorFlag(this.appState, target.value, this.getMapEditorState().selectedFlagValue);
+        break;
+      case 'ac-map-editor-flag-value':
+        setMapEditorFlag(this.appState, this.getMapEditorState().selectedFlagKey, target.value === 'true');
+        break;
+      case 'ac-map-editor-spawn-brush': {
+        const [team, rawIndex] = String(target.value).split('_');
+        setMapEditorSpawnBrush(this.appState, team, (Number(rawIndex) || 1) - 1);
+        break;
+      }
+      case 'ac-map-editor-resize-width':
+      case 'ac-map-editor-resize-height': {
+        const width = this.mapEditorHostEl?.querySelector('#ac-map-editor-resize-width')?.value;
+        const height = this.mapEditorHostEl?.querySelector('#ac-map-editor-resize-height')?.value;
+        setMapEditorPendingResize(this.appState, width, height);
+        break;
+      }
+      case 'ac-map-editor-import-input':
+        if (target.files?.[0]) {
+          this.importMapFromFile(target.files[0]);
+        }
+        break;
+      default:
+        return;
+    }
+
+    this.render();
+  }
+
+  async handleMapEditorClick(event) {
+    const button = event.target.closest('[data-map-editor-action]');
+    if (!button) return;
+
+    const action = button.getAttribute('data-map-editor-action');
+
+    try {
+      switch (action) {
+        case 'load-selected-map':
+          await this.loadSelectedMap();
+          break;
+        case 'export-map':
+          this.exportCurrentMap();
+          break;
+        case 'import-map':
+          this.mapEditorHostEl?.querySelector('#ac-map-editor-import-input')?.click();
+          break;
+        case 'apply-resize':
+          this.applyResizeFromEditor();
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      console.error(error);
+      logDev(`Map editor action failed: ${error.message}`);
+    }
+  }
+
+  async loadSelectedMap() {
+    const entry = this.getSelectedCatalogEntry();
+    if (!entry?.path) {
+      logDev('Map load failed: selected catalog entry has no path.');
+      return;
+    }
+
+    const definition = await loadMapDefinition(entry.path);
+    replaceRuntimeMapFromDefinition(this.appState, definition);
+    this.getMapEditorState().activeMapId = entry.id;
+    this.refs?.resetMapButton?.click();
+    this.populateSelectors();
+    logDev(`Loaded map ${entry.id}.`);
+  }
+
+  async importMapFromFile(file) {
+    const text = await file.text();
+    const definition = parseMapDefinition(text);
+    replaceRuntimeMapFromDefinition(this.appState, definition);
+    this.getMapEditorState().activeMapId = definition?.id ?? 'imported_map';
+    this.refs?.resetMapButton?.click();
+    this.populateSelectors();
+    logDev(`Imported map ${definition?.name ?? definition?.id ?? file.name}.`);
+  }
+
+  exportCurrentMap() {
+    const definition = buildMapDefinitionFromRuntimeMap(this.appState.map);
+    const fileNameBase = definition.id || 'map_export';
+    downloadMapDefinition(`${fileNameBase}.json`, definition);
+    logDev(`Exported map ${fileNameBase}.json.`);
+  }
+
+  applyResizeFromEditor() {
+    const editor = this.getMapEditorState();
+    resizeRuntimeMap(this.appState, editor.pendingResize.width, editor.pendingResize.height);
+    this.refs?.resetMapButton?.click();
+    this.populateSelectors();
+    logDev(`Map resized to ${editor.pendingResize.width}x${editor.pendingResize.height}.`);
+  }
+
   render() {
     this.renderRuntimeState();
     this.renderRoundPhase();
@@ -1058,15 +1228,20 @@ class DevMenu {
     const selectedUnit = units.find((unit) => unit.instanceId === selectedUnitId) ?? null;
 
     const { selected, tile, summary } = this.getSelectedTileInfo();
+    const mapWidth = getMapWidth(this.appState.map);
+    const mapHeight = getMapHeight(this.appState.map);
 
     this.mapStateEl.innerHTML = `
       <div>View: <strong>${this.getViewLabel()}</strong></div>
       <div>Rotation: <strong>${this.getRotationValue()}</strong></div>
+      <div>Map Size: <strong>${mapWidth}x${mapHeight}</strong></div>
       <div>Focus Tile: <strong>(${focus.x ?? 0},${focus.y ?? 0})</strong></div>
       <div>Selected Unit: <strong>${selectedUnit ? `${selectedUnit.name} / ${selectedUnit.pilotName ?? "No Pilot"}` : "None"}</strong></div>
       <div style="margin-top:8px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;">
         <div>Selected Tile: <strong>(${selected.x},${selected.y})</strong></div>
         <div>Base Height: <strong>${tile?.elevation ?? "-"}</strong></div>
+        <div>Type: <strong>${tile?.terrainTypeId ?? '-'}</strong></div>
+        <div>Spawn: <strong>${tile?.spawnId ?? '-'}</strong></div>
         <div>Min Height: <strong>${formatSummaryValue(summary?.minElevation)}</strong></div>
         <div>Max Height: <strong>${formatSummaryValue(summary?.maxElevation)}</strong></div>
         <div>Foot Height: <strong>${formatSummaryValue(summary?.mechFootElevation)}</strong></div>
@@ -1074,6 +1249,8 @@ class DevMenu {
         <div>Mech Enterable: <strong>${summary?.mechEnterable ? "YES" : "NO"}</strong></div>
       </div>
     `;
+
+    this.renderMapEditorPanelIntoHost();
   }
 
   renderLog() {
