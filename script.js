@@ -9,7 +9,7 @@ import {
 } from "./src/mechs.js";
 import { bindInput, snapFocusToActiveUnit as snapFocusHelper } from "./src/input.js";
 import { loadGameData } from "./src/dataLoader.js";
-import { bindHudInput } from "./src/hud.js";
+import { bindHudInput } from "./src/ui/hud.js";
 import { clearCombatTextMarkers } from "./src/combat/combatTextOverlay.js";
 import { initializeDevMenu } from "./dev/devMenu.js";
 import { logDev, setDevLogSize } from "./dev/devLogger.js";
