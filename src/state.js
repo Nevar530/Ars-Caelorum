@@ -83,7 +83,8 @@ export function createState({
       helpDrawer: {
         open: false
       }
-
+},
+    
     camera: {
       angle: rotation * 90,
       isTurning: false,
