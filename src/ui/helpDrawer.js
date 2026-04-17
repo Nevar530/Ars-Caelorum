@@ -95,11 +95,6 @@ export function renderHelpDrawer(state, refs) {
   refs.helpDrawer.setAttribute("aria-hidden", open ? "false" : "true");
 
   refs.helpDrawer.innerHTML = `
-    <div class="help-drawer-header">
-      <div class="help-drawer-title">HELP</div>
-      <div class="help-drawer-hotkey">F1</div>
-    </div>
-
     <div class="help-drawer-body">
       ${sections.map(section => `
         <div class="help-section">
@@ -114,6 +109,11 @@ export function renderHelpDrawer(state, refs) {
           </div>
         </div>
       `).join("")}
+    </div>
+
+    <div class="help-drawer-header">
+      <div class="help-drawer-title">HELP</div>
+      <div class="help-drawer-hotkey">F1</div>
     </div>
   `;
 }
