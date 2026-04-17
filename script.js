@@ -35,6 +35,7 @@ const refs = {
   hudLeft: document.getElementById("hudLeft"),
   hudCenter: document.getElementById("hudCenter"),
   hudRight: document.getElementById("hudRight"),
+  helpDrawer: document.getElementById("helpDrawer"),
   combatRibbon: document.getElementById("combatRibbon"),
   combatOverlay: document.getElementById("combatOverlay")
 };
@@ -105,7 +106,9 @@ async function init() {
   const actions = {
     render: gameController.render,
     snapFocusToActiveUnit,
-
+    toggleHelpDrawer: gameController.toggleHelpDrawer,
+    closeHelpDrawer: gameController.closeHelpDrawer,
+    
     setEditorMode() {
       state.ui.editor.mode = "mech";
       gameController.render();
