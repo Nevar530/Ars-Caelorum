@@ -1,5 +1,5 @@
-import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
-import { getTile, rotateCoord } from "../map.js";
+import { RENDER_CONFIG } from "../config.js";
+import { getMapHeight, getMapWidth, getTile, rotateCoord } from "../map.js";
 import { getMechById } from "../mechs.js";
 
 const TOPDOWN_CONFIG = {
@@ -137,8 +137,8 @@ function projectMarkerAnchor(state, x, y, elevation, stackIndex = 0) {
     const rotated = rotateCoord(
       x,
       y,
-      MAP_CONFIG.mechWidth,
-      MAP_CONFIG.mechHeight,
+      getMapWidth(state.map),
+      getMapHeight(state.map),
       turns
     );
 
@@ -173,16 +173,16 @@ function projectSceneBase(state, x, y, elevation) {
   const startRot = rotateCoord(
     x,
     y,
-    MAP_CONFIG.mechWidth,
-    MAP_CONFIG.mechHeight,
+    getMapWidth(state.map),
+    getMapHeight(state.map),
     startTurns
   );
 
   const nextRot = rotateCoord(
     x,
     y,
-    MAP_CONFIG.mechWidth,
-    MAP_CONFIG.mechHeight,
+    getMapWidth(state.map),
+    getMapHeight(state.map),
     nextTurns
   );
 
