@@ -177,7 +177,7 @@ export function renderIso(state, refs) {
 
     if (supportElevation === null) continue;
 
-        const anchorTile =
+    const anchorTile =
       unit.unitType === "mech"
         ? getBottomVisibleFootprintTile(state, unit, supportElevation)
         : centerTile;
@@ -250,7 +250,6 @@ export function renderIso(state, refs) {
           };
 
     const isActive = unit.instanceId === activeUnitId;
-
     const parts = getUnitRenderSceneItems(state, unit, renderModel, isActive);
 
     for (const part of parts) {
@@ -270,9 +269,11 @@ export function renderIso(state, refs) {
         render: part.render
       });
     }
+  }
 
   const mainSceneItems = [...terrainSceneItems, ...unitSceneItems];
   mainSceneItems.sort(compareSceneItems);
+
   for (const item of mainSceneItems) {
     item.render(worldScene);
   }
@@ -301,12 +302,12 @@ export function renderIso(state, refs) {
     });
   }
 
-drawSceneActiveUnitOverlay(state, worldUi);
-drawSceneLosPreview(state, worldUi);
+  drawSceneActiveUnitOverlay(state, worldUi);
+  drawSceneLosPreview(state, worldUi);
 
-for (const item of unitStatusTagItems) {
-  drawIsoStatusPlate(worldUi, item.unit, item.x, item.y);
-}
+  for (const item of unitStatusTagItems) {
+    drawIsoStatusPlate(worldUi, item.unit, item.x, item.y);
+  }
 }
 
 function getUnitSupportElevation(state, unit) {
