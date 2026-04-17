@@ -915,33 +915,10 @@ button:disabled {
   max-width: min(360px, calc(100vw - 28px));
 
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
 
-  background: rgba(15, 23, 32, 0.97);
-  border: 1px solid var(--line);
-  border-bottom: none;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
-  box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.42);
-
-  transform: translateY(100%);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-
-  transition:
-    transform 180ms ease,
-    opacity 180ms ease,
-    visibility 180ms ease;
-
-  overflow: hidden;
   z-index: 200;
-}
-
-.help-drawer.is-open {
-  transform: translateY(0);
-  opacity: 1;
-  visibility: visible;
+  pointer-events: none;
 }
 
 .help-drawer-header {
@@ -951,9 +928,14 @@ button:disabled {
   gap: 10px;
   padding: 8px 12px;
 
-  background: rgba(255, 255, 255, 0.04);
-  border-top: 1px solid var(--line-soft);
+  background: rgba(15, 23, 32, 0.97);
+  border: 1px solid var(--line);
   border-bottom: none;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.28);
+
+  transform: translateY(1px);
 }
 
 .help-drawer-title {
@@ -975,6 +957,30 @@ button:disabled {
   justify-content: flex-end;
   gap: 10px;
   padding: 12px 12px 10px;
+
+  background: rgba(15, 23, 32, 0.97);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.42);
+
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  visibility: hidden;
+
+  transition:
+    max-height 180ms ease,
+    opacity 180ms ease,
+    visibility 180ms ease,
+    padding 180ms ease;
+}
+
+.help-drawer.is-open .help-drawer-body {
+  max-height: 520px;
+  opacity: 1;
+  visibility: visible;
 }
 
 .help-section {
