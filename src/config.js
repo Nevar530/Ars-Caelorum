@@ -35,7 +35,7 @@ export const RENDER_CONFIG = {
   elevationStepPx: 24,
   originX: 700,
   originY: 140,
-  editorSize: 420,
+  editorSize: 760,
   editorPadding: 18,
   showCoords: false
 };

@@ -21,6 +21,7 @@ export function renderTerrainTile(state, item, parent) {
 export function renderEditorTile(tile, x, y, px, py, cellWidth, cellHeight, parent, options = {}) {
   const group = svgEl("g");
   const isSelected = options.selected === true;
+  const isPreview = options.preview === true;
 
   const rect = svgEl("rect");
   rect.setAttribute("x", px);
@@ -31,16 +32,72 @@ export function renderEditorTile(tile, x, y, px, py, cellWidth, cellHeight, pare
   rect.setAttribute("class", isSelected ? "editor-cell editor-cell-selected" : "editor-cell");
   rect.dataset.x = String(x);
   rect.dataset.y = String(y);
-
-  const label = makeText(
-    px + (cellWidth / 2),
-    py + (cellHeight / 2),
-    String(tile.elevation),
-    "editor-text"
-  );
-
   group.appendChild(rect);
-  group.appendChild(label);
+
+  if (isPreview) {
+    const preview = svgEl("rect");
+    preview.setAttribute("x", px + 1.5);
+    preview.setAttribute("y", py + 1.5);
+    preview.setAttribute("width", Math.max(0, cellWidth - 3));
+    preview.setAttribute("height", Math.max(0, cellHeight - 3));
+    preview.setAttribute("class", "editor-brush-preview");
+    preview.dataset.x = String(x);
+    preview.dataset.y = String(y);
+    group.appendChild(preview);
+  }
+
+  const showLabel = cellWidth >= 18 && cellHeight >= 18;
+  if (showLabel) {
+    const label = makeText(
+      px + (cellWidth / 2),
+      py + (cellHeight / 2),
+      String(tile.elevation),
+      cellWidth >= 26 ? "editor-detail-text-large" : "editor-text"
+    );
+    group.appendChild(label);
+  }
+
+  if (tile.spawnId) {
+    const marker = svgEl("circle");
+    marker.setAttribute("cx", px + (cellWidth * 0.18));
+    marker.setAttribute("cy", py + (cellHeight * 0.18));
+    marker.setAttribute("r", Math.max(5, Math.min(cellWidth, cellHeight) * 0.13));
+    marker.setAttribute("class", tile.spawnId.startsWith("enemy_") ? "editor-spawn-marker editor-spawn-marker-enemy" : "editor-spawn-marker editor-spawn-marker-player");
+    group.appendChild(marker);
+
+    const spawnLabel = makeText(
+      px + (cellWidth * 0.18),
+      py + (cellHeight * 0.18),
+      String(tile.spawnId).split("_")[1] ?? "",
+      "editor-spawn-text"
+    );
+    group.appendChild(spawnLabel);
+  }
+
+  if (tile.movementClass && tile.movementClass !== "clear") {
+    const badgeWidth = Math.max(12, cellWidth * 0.28);
+    const badgeHeight = Math.max(10, cellHeight * 0.2);
+    const badge = svgEl("rect");
+    badge.setAttribute("x", px + cellWidth - badgeWidth - 2);
+    badge.setAttribute("y", py + 2);
+    badge.setAttribute("rx", 3);
+    badge.setAttribute("ry", 3);
+    badge.setAttribute("width", badgeWidth);
+    badge.setAttribute("height", badgeHeight);
+    badge.setAttribute("class", `editor-movement-badge editor-movement-badge-${tile.movementClass}`);
+    group.appendChild(badge);
+
+    if (cellWidth >= 24) {
+      const badgeText = makeText(
+        px + cellWidth - (badgeWidth / 2) - 2,
+        py + 2 + (badgeHeight / 2),
+        movementClassLabel(tile.movementClass),
+        "editor-badge-text"
+      );
+      group.appendChild(badgeText);
+    }
+  }
+
   parent.appendChild(group);
 }
 
@@ -278,6 +335,15 @@ export function editorCellColor(tileOrElevation) {
   if (tile.spawnId) color = mixHex(color, tile.spawnId.startsWith('enemy_') ? '#8c2b2b' : '#2b5f9b', 0.25);
 
   return color;
+}
+
+function movementClassLabel(movementClass) {
+  switch (movementClass) {
+    case 'difficult': return 'D';
+    case 'hazard': return 'H';
+    case 'impassable': return 'X';
+    default: return '';
+  }
 }
 
 export function editorDetailCellColor(fineElevation) {

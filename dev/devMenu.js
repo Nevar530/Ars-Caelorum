@@ -23,7 +23,8 @@ import {
   setMapEditorMode,
   setMapEditorPendingResize,
   setMapEditorSpawnBrush,
-  setMapEditorTerrainPreset
+  setMapEditorTerrainPreset,
+  setMapEditorStatus
 } from "./mapEditor/mapEditorActions.js";
 import { renderMapEditorPanel } from "./mapEditor/mapEditorPanel.js";
 import { buildMapDefinitionFromRuntimeMap, downloadMapDefinition, parseMapDefinition } from "./mapEditor/mapSerialization.js";
@@ -289,7 +290,7 @@ class DevMenu {
 
     const panel = document.createElement("div");
     panel.id = "ac-dev-panel";
-    panel.style.width = "420px";
+    panel.style.width = "760px";
     panel.style.height = "100%";
     panel.style.background = "rgba(10, 12, 18, 0.96)";
     panel.style.color = "#d8e1ea";
@@ -866,6 +867,54 @@ class DevMenu {
     return this.getMapCatalogEntries().find((entry) => entry.id === selectedId) ?? null;
   }
 
+
+  validateCurrentMap() {
+    const issues = [];
+    const warnings = [];
+    const map = this.appState?.map;
+    const width = getMapWidth(map);
+    const height = getMapHeight(map);
+
+    if (!map) {
+      issues.push('No active map loaded.');
+      return { issues, warnings };
+    }
+
+    const spawns = map.spawns ?? { player: [], enemy: [] };
+    const seenCoords = new Map();
+
+    for (const team of ['player', 'enemy']) {
+      const entries = Array.isArray(spawns[team]) ? spawns[team] : [];
+      for (let i = 0; i < 4; i += 1) {
+        const spawn = entries[i] ?? null;
+        const label = `${team}_${i + 1}`;
+        if (!spawn) {
+          warnings.push(`Missing ${label}.`);
+          continue;
+        }
+        if (spawn.x < 0 || spawn.y < 0 || spawn.x >= width || spawn.y >= height) {
+          issues.push(`${label} is out of bounds.`);
+          continue;
+        }
+        const key = `${spawn.x},${spawn.y}`;
+        if (seenCoords.has(key)) {
+          warnings.push(`${label} overlaps ${seenCoords.get(key)} at (${spawn.x},${spawn.y}).`);
+        } else {
+          seenCoords.set(key, label);
+        }
+      }
+    }
+
+    for (const unit of this.getRuntimeUnits()) {
+      if (!Number.isFinite(unit?.x) || !Number.isFinite(unit?.y)) continue;
+      if (unit.x < 0 || unit.y < 0 || unit.x >= width || unit.y >= height) {
+        issues.push(`Unit ${unit.name ?? unit.instanceId} is out of bounds.`);
+      }
+    }
+
+    return { issues, warnings };
+  }
+
   buildMapEditorViewModel() {
     const editor = this.getMapEditorState();
     const { selected, tile, summary } = this.getSelectedTileInfo();
@@ -875,6 +924,7 @@ class DevMenu {
           ...(this.appState?.content?.terrainDefinitions?.[entry.id] ?? {})
         }))
       : [];
+    const validation = this.validateCurrentMap();
 
     return {
       editor,
@@ -895,7 +945,10 @@ class DevMenu {
         movementClass: tile.movementClass ?? 'clear',
         spawnId: tile.spawnId ?? null
       } : null,
-      selectedSummary: summary
+      selectedSummary: summary,
+      validation,
+      statusMessage: editor.statusMessage ?? '',
+      statusTone: editor.statusTone ?? 'info'
     };
   }
 
@@ -914,14 +967,15 @@ class DevMenu {
       if (title) title.textContent = 'Map Grid';
 
       const subs = Array.from(this.editorShellEl.querySelectorAll('.panel-sub'));
-      if (subs[0]) subs[0].textContent = 'Left click paints · Right click samples';
+      if (subs[0]) subs[0].textContent = 'Left click paints · Right click samples · Hover shows brush';
       if (subs[1]) subs[1].textContent = 'Top-down authoring view of the live map';
-      if (subs[2]) subs[2].textContent = 'R = Tactical View Toggle';
+      if (subs[2]) subs[2].textContent = 'Bigger grid for spawn icons and brush preview';
 
       const editor = this.editorShellEl.querySelector('#editor');
       if (editor) {
         editor.style.display = 'block';
         editor.style.width = '100%';
+        editor.style.maxWidth = '100%';
         editor.style.height = 'auto';
         editor.style.background = 'rgba(255,255,255,0.02)';
         editor.style.border = '1px solid rgba(255,255,255,0.08)';
@@ -998,6 +1052,10 @@ class DevMenu {
         case 'apply-resize':
           this.applyResizeFromEditor();
           break;
+        case 'validate-map':
+          setMapEditorStatus(this.appState, 'Map validated. Check issues and warnings below.', 'success');
+          this.render();
+          break;
         default:
           break;
       }
@@ -1019,6 +1077,7 @@ class DevMenu {
     this.getMapEditorState().activeMapId = entry.id;
     this.refs?.resetMapButton?.click();
     this.populateSelectors();
+    setMapEditorStatus(this.appState, `Loaded map ${entry.id}.`, 'success');
     logDev(`Loaded map ${entry.id}.`);
   }
 
@@ -1029,6 +1088,7 @@ class DevMenu {
     this.getMapEditorState().activeMapId = definition?.id ?? 'imported_map';
     this.refs?.resetMapButton?.click();
     this.populateSelectors();
+    setMapEditorStatus(this.appState, `Imported map ${definition?.name ?? definition?.id ?? file.name}.`, 'success');
     logDev(`Imported map ${definition?.name ?? definition?.id ?? file.name}.`);
   }
 
@@ -1036,15 +1096,47 @@ class DevMenu {
     const definition = buildMapDefinitionFromRuntimeMap(this.appState.map);
     const fileNameBase = definition.id || 'map_export';
     downloadMapDefinition(`${fileNameBase}.json`, definition);
+    setMapEditorStatus(this.appState, `Exported map ${fileNameBase}.json.`, 'success');
     logDev(`Exported map ${fileNameBase}.json.`);
   }
 
   applyResizeFromEditor() {
     const editor = this.getMapEditorState();
-    resizeRuntimeMap(this.appState, editor.pendingResize.width, editor.pendingResize.height);
+    const nextWidth = Number(editor.pendingResize.width) || 1;
+    const nextHeight = Number(editor.pendingResize.height) || 1;
+
+    const blockedSpawns = [];
+    const spawns = this.appState?.map?.spawns ?? {};
+    for (const team of ['player', 'enemy']) {
+      const entries = Array.isArray(spawns[team]) ? spawns[team] : [];
+      entries.forEach((spawn, index) => {
+        if (!spawn) return;
+        if (spawn.x >= nextWidth || spawn.y >= nextHeight) {
+          blockedSpawns.push(`${team}_${index + 1}`);
+        }
+      });
+    }
+
+    const blockedUnits = this.getRuntimeUnits()
+      .filter((unit) => unit.x >= nextWidth || unit.y >= nextHeight)
+      .map((unit) => unit.name ?? unit.instanceId);
+
+    if (blockedSpawns.length || blockedUnits.length) {
+      const parts = [];
+      if (blockedSpawns.length) parts.push(`spawns out of bounds: ${blockedSpawns.join(', ')}`);
+      if (blockedUnits.length) parts.push(`units out of bounds: ${blockedUnits.join(', ')}`);
+      const message = `Resize blocked — ${parts.join(' · ')}`;
+      setMapEditorStatus(this.appState, message, 'error');
+      logDev(message);
+      this.render();
+      return;
+    }
+
+    resizeRuntimeMap(this.appState, nextWidth, nextHeight);
     this.refs?.resetMapButton?.click();
     this.populateSelectors();
-    logDev(`Map resized to ${editor.pendingResize.width}x${editor.pendingResize.height}.`);
+    setMapEditorStatus(this.appState, `Map resized to ${nextWidth}x${nextHeight}.`, 'success');
+    logDev(`Map resized to ${nextWidth}x${nextHeight}.`);
   }
 
   render() {

@@ -5,6 +5,7 @@ import { clampFocusToBoard, getPathToTile } from "./movement.js";
 import { moveAttackSelection, updateActionTargetPreview } from "./action.js";
 import { getUnitFootprint } from "./scale/scaleMath.js";
 import { applyMapEditorAtTile, ensureMapEditorState, sampleMapEditorFromTile } from "../dev/mapEditor/mapEditorActions.js";
+import { getBrushedTileCoords } from "../dev/mapEditor/mapBrush.js";
 
 function getActiveUnit(state) {
   const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
@@ -48,6 +49,14 @@ export function snapFocusToActiveUnit(state) {
   state.camera.zoomScale = activeUnit.scale ?? activeUnit.unitType ?? "mech";
 }
 
+
+function updateEditorHover(state, x, y) {
+  const editorState = ensureMapEditorState(state);
+  const mapWidth = state.map?.width ?? state.map?.mechWidth ?? 0;
+  const mapHeight = state.map?.height ?? state.map?.mechHeight ?? 0;
+  editorState.hoverTiles = getBrushedTileCoords(x, y, editorState.brushSize, mapWidth, mapHeight);
+}
+
 function bindEditorInput(state, refs, actions) {
   const { editor, editorModeMechButton, editorModeDetailButton } = refs;
 
@@ -65,6 +74,28 @@ function bindEditorInput(state, refs, actions) {
 
   if (!editor) return;
 
+
+  editor.addEventListener("mousemove", (event) => {
+    const tileRect = event.target.closest(".editor-cell");
+    if (!tileRect) return;
+    const x = Number(tileRect.dataset.x);
+    const y = Number(tileRect.dataset.y);
+    updateEditorHover(state, x, y);
+    window.dispatchEvent(new CustomEvent("ac:map-editor-updated", {
+      detail: { x, y, source: "hover" }
+    }));
+    actions.render();
+  });
+
+  editor.addEventListener("mouseleave", () => {
+    const editorState = ensureMapEditorState(state);
+    editorState.hoverTiles = [];
+    window.dispatchEvent(new CustomEvent("ac:map-editor-updated", {
+      detail: { source: "hover-clear" }
+    }));
+    actions.render();
+  });
+
   editor.addEventListener("click", (event) => {
     const tileRect = event.target.closest(".editor-cell");
     if (!tileRect) return;
@@ -77,6 +108,7 @@ function bindEditorInput(state, refs, actions) {
     state.ui.editor.mode = "mech";
 
     const editorState = ensureMapEditorState(state);
+    updateEditorHover(state, x, y);
     if (editorState.isEnabled) {
       applyMapEditorAtTile(state, x, y);
     }
@@ -101,6 +133,7 @@ function bindEditorInput(state, refs, actions) {
     state.ui.editor.mode = "mech";
 
     const editorState = ensureMapEditorState(state);
+    updateEditorHover(state, x, y);
     if (editorState.isEnabled) {
       sampleMapEditorFromTile(state, x, y);
     }

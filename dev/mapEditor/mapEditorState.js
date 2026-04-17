@@ -37,6 +37,8 @@ export const DEFAULT_MAP_EDITOR_STATE = Object.freeze({
   selectedSpawnTeam: 'player',
   selectedSpawnIndex: 0,
   hoverTiles: [],
+  statusMessage: '',
+  statusTone: 'info',
   pendingResize: {
     width: 32,
     height: 32,

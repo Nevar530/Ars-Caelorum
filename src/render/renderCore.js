@@ -404,6 +404,7 @@ export function renderEditor(state, refs) {
   if (!editor) return;
 
   editor.innerHTML = "";
+  editor.setAttribute("viewBox", `0 0 ${RENDER_CONFIG.editorSize} ${RENDER_CONFIG.editorSize}`);
 
   const pad = RENDER_CONFIG.editorPadding;
   const full = RENDER_CONFIG.editorSize;
@@ -423,6 +424,9 @@ export function renderEditor(state, refs) {
         x === state.ui.editor.selectedTile.x &&
         y === state.ui.editor.selectedTile.y;
 
+      const hoverTiles = state.ui?.mapEditor?.hoverTiles ?? [];
+      const isPreview = hoverTiles.some((coord) => coord.x === x && coord.y === y);
+
       renderEditorTile(
         tile,
         x,
@@ -432,7 +436,7 @@ export function renderEditor(state, refs) {
         cellWidth,
         cellHeight,
         editor,
-        { selected: isSelected }
+        { selected: isSelected, preview: isPreview }
       );
     }
   }
@@ -441,6 +445,8 @@ export function renderEditor(state, refs) {
 function renderEditorUi(state, refs) {
   if (!refs.editorModeLabel) return;
 
+  const editorState = state.ui?.mapEditor ?? {};
+  const hoverCount = Array.isArray(editorState.hoverTiles) ? editorState.hoverTiles.length : 0;
   refs.editorModeLabel.textContent =
-    `Editor Mode: Base Grid · Tile ${state.ui.editor.selectedTile.x},${state.ui.editor.selectedTile.y} · Left click raise · Right click lower`;
+    `Map Editor · Tile ${state.ui.editor.selectedTile.x},${state.ui.editor.selectedTile.y} · Brush ${editorState.brushSize ?? 1}x${editorState.brushSize ?? 1} · Preview ${hoverCount}`;
 }

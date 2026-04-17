@@ -1127,3 +1127,65 @@ button:disabled {
   stroke-width: 3.5;
 }
 }
+
+
+/* =========================================
+   MAP EDITOR POLISH
+========================================= */
+
+.editor-brush-preview {
+  fill: rgba(255, 214, 92, 0.12);
+  stroke: rgba(255, 214, 92, 0.95);
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.editor-spawn-marker {
+  stroke: rgba(255,255,255,0.9);
+  stroke-width: 1.25;
+  pointer-events: none;
+}
+
+.editor-spawn-marker-player {
+  fill: #2b5f9b;
+}
+
+.editor-spawn-marker-enemy {
+  fill: #8c2b2b;
+}
+
+.editor-spawn-text {
+  fill: #ffffff;
+  font-size: 10px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  font-weight: 700;
+}
+
+.editor-movement-badge {
+  stroke: rgba(255,255,255,0.35);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.editor-movement-badge-difficult {
+  fill: rgba(143,125,47,0.88);
+}
+
+.editor-movement-badge-hazard {
+  fill: rgba(185,77,47,0.9);
+}
+
+.editor-movement-badge-impassable {
+  fill: rgba(43,43,43,0.92);
+}
+
+.editor-badge-text {
+  fill: #ffffff;
+  font-size: 10px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  font-weight: 700;
+}

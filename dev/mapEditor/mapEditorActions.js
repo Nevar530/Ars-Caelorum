@@ -66,6 +66,13 @@ export function setMapEditorPendingResize(state, width, height, anchor = 'topLef
   };
 }
 
+
+export function setMapEditorStatus(state, message = '', tone = 'info') {
+  const editor = ensureMapEditorState(state);
+  editor.statusMessage = String(message || '');
+  editor.statusTone = tone === 'error' ? 'error' : tone === 'success' ? 'success' : 'info';
+}
+
 function getTerrainDefinition(state, presetId) {
   return state?.content?.terrainDefinitions?.[presetId] ?? null;
 }
@@ -199,6 +206,7 @@ export function applyMapEditorAtTile(state, originX, originY) {
 
   state.content.defaultMap = buildMapDefinitionFromRuntimeMap(state.map);
   syncLegacySpawnPoints(state);
+  setMapEditorStatus(state, '');
 }
 
 export function sampleMapEditorFromTile(state, x, y) {
@@ -228,6 +236,7 @@ export function replaceRuntimeMapFromDefinition(state, mapDefinition) {
   editor.activeMapId = normalized.id ?? editor.activeMapId;
   editor.pendingResize.width = getMapWidth(normalized);
   editor.pendingResize.height = getMapHeight(normalized);
+  setMapEditorStatus(state, '');
   return normalized;
 }
 
