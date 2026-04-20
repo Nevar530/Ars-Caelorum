@@ -63,10 +63,17 @@ export function ensureCameraState(state) {
     state.camera.topdownOriginY = 0;
   }
 
-  if (!state.camera.zoomLevel) {
-    state.camera.zoomLevel = resolveDefaultZoomLevel(state);
+  if (!isValidZoomLevel(state.camera.zoomLevel)) {
+    // Compatibility: if older code stored the level in zoomScale, accept it.
+    if (isValidZoomLevel(state.camera.zoomScale)) {
+      state.camera.zoomLevel = state.camera.zoomScale;
+    } else {
+      state.camera.zoomLevel = resolveDefaultZoomLevel(state);
+    }
   }
 
+  // Keep a legacy value alive only if missing.
+  // Do NOT overwrite it every frame or +/- manual zoom gets stomped.
   if (!state.camera.zoomScale) {
     state.camera.zoomScale = getCurrentInteractionScale(state);
   }
@@ -79,8 +86,6 @@ export function updateCameraFraming(state, refs) {
   const viewport = getSceneViewport(refs);
   const svg = refs?.worldScene?.ownerSVGElement ?? refs?.board ?? null;
 
-  // Keep old compatibility field alive for places that still expect "pilot"/"mech" scale.
-  state.camera.zoomScale = getCurrentInteractionScale(state);
   state.camera.offsetX = 0;
   state.camera.offsetY = 0;
 
@@ -177,6 +182,7 @@ function getIsoTargetFrameBounds(state, zoomLevel) {
   const preset = CAMERA_ZOOM_CONFIG.iso?.[zoomLevel] ?? CAMERA_ZOOM_CONFIG.iso?.mech ?? {};
   const focus = getCameraFocusTarget(state);
 
+  // Config is now the truth.
   const spanX = Math.max(0.1, Number(preset.spanX ?? 2));
   const spanY = Math.max(0.1, Number(preset.spanY ?? 2));
   const padPxX = Math.max(0, Number(preset.padPxX ?? 24));
@@ -184,9 +190,6 @@ function getIsoTargetFrameBounds(state, zoomLevel) {
   const padPxBottom = Math.max(0, Number(preset.padPxBottom ?? 30));
   const liftTiles = Number(preset.liftTiles ?? 0);
 
-  // Use the tile support elevation only for the focus anchor.
-  // We do NOT widen the box to "fit the mech" or "fit the pilot".
-  // That keeps camera truth in config and makes the mech feel big next to the pilot.
   const tile = getTile(state.map, focus.x, focus.y);
   const supportElevation = tile ? getTileFootElevation(tile) : 0;
 
@@ -261,10 +264,20 @@ function resolveDefaultZoomLevel(state) {
   return "mech";
 }
 
+function isValidZoomLevel(value) {
+  return CAMERA_ZOOM_CONFIG.levels.includes(value);
+}
+
 function normalizeZoomLevel(zoomLevel, state) {
-  if (zoomLevel === "map" || zoomLevel === "mech" || zoomLevel === "pilot") {
+  if (isValidZoomLevel(zoomLevel)) {
     return zoomLevel;
   }
+
+  // Compatibility path if older code still uses zoomScale for the current level.
+  if (isValidZoomLevel(state?.camera?.zoomScale)) {
+    return state.camera.zoomScale;
+  }
+
   return resolveDefaultZoomLevel(state);
 }
 
@@ -447,9 +460,11 @@ export function getZoomFactor(scale = "mech") {
 }
 
 export function getCurrentInteractionScale(state) {
+  const activeUnit = getActiveUnit(state);
+
   return normalizeScale(
+    activeUnit?.scale ??
     state?.focus?.scale ??
-    state?.camera?.zoomScale ??
     "pilot"
   );
 }
