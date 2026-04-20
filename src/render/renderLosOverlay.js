@@ -65,7 +65,7 @@ export function drawSceneLosPreview(state, parent) {
 
   if (isMissile) {
     const isValid = focusedTarget.visible === true;
-    const missileColor = isValid ? "#c66bff" : "#ff4a4a";
+    const missileColor = isValid ? "#52d092" : "#ff4a4a";
 
     let sourceFirePoint = attackerFirePoint;
 
@@ -94,9 +94,9 @@ export function drawSceneLosPreview(state, parent) {
       }
     }
 
-    drawLosLine(parent, sourceFirePoint, headEndPoint, missileColor, 2.5, true);
+    drawLosLine(parent, sourceFirePoint, headEndPoint, missileColor, 3.5, true);
 
-    const arcColor = isValid ? "#c66bff" : "#111111";
+    const arcColor = isValid ? "#ffffff" : "#111111";
     const impactPoint = projectLosPoint(
       state,
       focusedTarget.x,
@@ -121,8 +121,8 @@ export function drawSceneLosPreview(state, parent) {
     headColor = "#52d092";
   }
 
-  drawLosLine(parent, attackerFirePoint, chestEndPoint, chestColor, 2.25, false);
-  drawLosLine(parent, attackerFirePoint, headEndPoint, headColor, 2.75, true);
+  drawLosLine(parent, attackerFirePoint, chestEndPoint, chestColor, 3, false);
+  drawLosLine(parent, attackerFirePoint, headEndPoint, headColor, 3.5, true);
 
   drawLosEndpoint(parent, attackerFirePoint, headColor);
   drawLosEndpoint(parent, chestEndPoint, chestColor);
@@ -144,11 +144,11 @@ export function drawLosLine(parent, from, to, color, width = 3, dashed = false) 
   glow.setAttribute("x2", to.x);
   glow.setAttribute("y2", to.y);
   glow.setAttribute("stroke", color);
-  glow.setAttribute("stroke-width", String(width + 2.5));
+  glow.setAttribute("stroke-width", String(width + 4));
   glow.setAttribute("stroke-linecap", "round");
   glow.setAttribute("opacity", "0.18");
   if (dashed) {
-    glow.setAttribute("stroke-dasharray", "7 5");
+    glow.setAttribute("stroke-dasharray", "8 6");
   }
 
   const line = svgEl("line");
@@ -160,7 +160,7 @@ export function drawLosLine(parent, from, to, color, width = 3, dashed = false) 
   line.setAttribute("stroke-width", String(width));
   line.setAttribute("stroke-linecap", "round");
   if (dashed) {
-    line.setAttribute("stroke-dasharray", "7 5");
+    line.setAttribute("stroke-dasharray", "8 6");
   }
 
   parent.appendChild(glow);
@@ -184,9 +184,9 @@ export function drawArcLine(parent, from, to, color) {
   );
   glow.setAttribute("fill", "none");
   glow.setAttribute("stroke", color);
-  glow.setAttribute("stroke-width", "5.5");
+  glow.setAttribute("stroke-width", "8");
   glow.setAttribute("stroke-linecap", "round");
-  glow.setAttribute("stroke-dasharray", "8 6");
+  glow.setAttribute("stroke-dasharray", "10 7");
   glow.setAttribute("opacity", color === "#111111" ? "0.22" : "0.2");
 
   const path = svgEl("path");
@@ -196,9 +196,9 @@ export function drawArcLine(parent, from, to, color) {
   );
   path.setAttribute("fill", "none");
   path.setAttribute("stroke", color);
-  path.setAttribute("stroke-width", "2.5");
+  path.setAttribute("stroke-width", "3.5");
   path.setAttribute("stroke-linecap", "round");
-  path.setAttribute("stroke-dasharray", "8 6");
+  path.setAttribute("stroke-dasharray", "10 7");
 
   parent.appendChild(glow);
   parent.appendChild(path);
@@ -208,14 +208,14 @@ export function drawLosEndpoint(parent, point, color) {
   const outer = svgEl("circle");
   outer.setAttribute("cx", point.x);
   outer.setAttribute("cy", point.y);
-  outer.setAttribute("r", "4.75");
+  outer.setAttribute("r", "6");
   outer.setAttribute("fill", color);
   outer.setAttribute("opacity", "0.22");
 
   const inner = svgEl("circle");
   inner.setAttribute("cx", point.x);
   inner.setAttribute("cy", point.y);
-  inner.setAttribute("r", "2.25");
+  inner.setAttribute("r", "2.75");
   inner.setAttribute("fill", color);
 
   parent.appendChild(outer);
