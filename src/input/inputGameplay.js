@@ -28,6 +28,11 @@ export function bindGameplayInput(state, refs, actions) {
       return;
     }
 
+    if (handleZoomKeys(event, key, actions)) {
+      event.preventDefault();
+      return;
+    }
+
     if (handleViewKeys(key, actions)) {
       event.preventDefault();
       return;
@@ -88,6 +93,21 @@ function handleRotationKeys(key, actions) {
   return false;
 }
 
+
+function handleZoomKeys(event, key, actions) {
+  if (key === "+" || key === "=" || (event.shiftKey && key === "+")) {
+    actions.zoomIn?.();
+    return true;
+  }
+
+  if (key === "-" || key === "_") {
+    actions.zoomOut?.();
+    return true;
+  }
+
+  return false;
+}
+
 function handleViewKeys(key, actions) {
   if (key === "r") {
     actions.toggleView();
@@ -133,7 +153,7 @@ function handleIdleKeys(key, state, actions) {
   if (state.ui.mode !== "idle") return false;
 
   if (key === "tab") {
-    actions.snapFocusToActiveUnit?.();
+    actions.snapFocusToActiveUnit?.({ resetZoom: true });
     actions.render();
     return true;
   }

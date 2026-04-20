@@ -89,6 +89,7 @@ export function createState({
     camera: {
       angle: rotation * 90,
       isTurning: false,
+      zoomMode: previewUnit?.scale ?? "map",
       zoomScale: previewUnit?.scale ?? "pilot"
     },
 

@@ -1,4 +1,4 @@
-import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
+import { CAMERA_ZOOM_CONFIG, MAP_CONFIG, RENDER_CONFIG } from "../config.js";
 import { getTile, getMapWidth, getMapHeight } from "../map.js";
 import { getUnitById } from "../mechs.js";
 import { getUnitFootprint, normalizeScale } from "../scale/scaleMath.js";
@@ -11,6 +11,7 @@ export const TOPDOWN_CONFIG = {
 };
 
 export const SCALE_ZOOM = {
+  map: 1,
   mech: 1,
   pilot: 1
 };
@@ -46,8 +47,12 @@ export function ensureCameraState(state) {
     state.camera.offsetY = 0;
   }
 
+  if (!state.camera.zoomMode) {
+    state.camera.zoomMode = getDefaultZoomModeForState(state);
+  }
+
   if (!state.camera.zoomScale) {
-    state.camera.zoomScale = getCurrentInteractionScale(state);
+    state.camera.zoomScale = state.camera.zoomMode;
   }
 
   if (typeof state.camera.topdownCellSize !== "number") {
@@ -64,8 +69,9 @@ export function ensureCameraState(state) {
 }
 
 export function updateCameraFraming(state, refs) {
-  const currentScale = getCurrentInteractionScale(state);
-  state.camera.zoomScale = currentScale;
+  const currentZoomMode = getCameraZoomMode(state);
+  state.camera.zoomMode = currentZoomMode;
+  state.camera.zoomScale = currentZoomMode;
 
   const viewport = getSceneViewport(refs);
 
@@ -90,14 +96,15 @@ function updateTopdownFit(state, viewport) {
   const usableWidth = Math.max(200, viewport.width - (TOPDOWN_CONFIG.padding * 2));
   const usableHeight = Math.max(200, viewport.height - (TOPDOWN_CONFIG.padding * 2));
 
+  const zoomMode = getCameraZoomMode(state);
+  const preset = CAMERA_ZOOM_CONFIG.topdown?.[zoomMode] ?? null;
+
   let desiredCols = mapWidth;
   let desiredRows = mapHeight;
 
-  if (target.unit) {
-    const radius = getCameraRadius(target.unit);
-    const footprint = getUnitFootprint(target.unit);
-    desiredCols = Math.max(8, (radius * 2) + footprint.width + 4);
-    desiredRows = Math.max(8, (radius * 2) + footprint.height + 4);
+  if (zoomMode !== "map" && target.unit && preset) {
+    desiredCols = Math.max(8, Number(preset.cols ?? mapWidth));
+    desiredRows = Math.max(8, Number(preset.rows ?? mapHeight));
   }
 
   const cellSize = clamp(
@@ -111,7 +118,7 @@ function updateTopdownFit(state, viewport) {
   const mapPixelWidth = mapWidth * cellSize;
   const mapPixelHeight = mapHeight * cellSize;
 
-  if (!target.unit) {
+  if (zoomMode === "map" || !target.unit) {
     state.camera.topdownOriginX = Math.floor((viewport.width - mapPixelWidth) / 2);
     state.camera.topdownOriginY = Math.floor((viewport.height - mapPixelHeight) / 2);
     return;
@@ -140,23 +147,20 @@ function updateIsoViewBox(state, refs, viewport) {
   const mapWidth = Math.max(1, getMapWidth(state.map));
   const mapHeight = Math.max(1, getMapHeight(state.map));
   const target = getCameraTarget(state);
-  const interactionRadius = target.unit ? getCameraRadius(target.unit) : 8;
-  const footprint = target.unit ? getUnitFootprint(target.unit) : { width: 1, height: 1 };
+  const zoomMode = getCameraZoomMode(state);
   const supportElevation = Number(getTile(state.map, target.x, target.y)?.elevation ?? 0);
 
-  const spanX = interactionRadius + Math.ceil(footprint.width / 2) + 2;
-  const spanY = interactionRadius + Math.ceil(footprint.height / 2) + 2;
-
-  const rawBounds = getIsoTargetFrameBounds(
-    state,
-    target.x,
-    target.y,
-    supportElevation,
-    spanX,
-    spanY,
-    mapWidth,
-    mapHeight
-  );
+  const rawBounds = zoomMode === "map"
+    ? getIsoMapFrameBounds(state, mapWidth, mapHeight)
+    : getIsoTargetFrameBounds(
+      state,
+      target.x,
+      target.y,
+      supportElevation,
+      zoomMode,
+      mapWidth,
+      mapHeight
+    );
 
   let frameWidth = rawBounds.maxX - rawBounds.minX;
   let frameHeight = rawBounds.maxY - rawBounds.minY;
@@ -181,7 +185,10 @@ function updateIsoViewBox(state, refs, viewport) {
   applyBoardViewBox(refs, viewBoxX, viewBoxY, frameWidth, frameHeight);
 }
 
-function getIsoTargetFrameBounds(state, focusX, focusY, supportElevation, spanX, spanY, mapWidth, mapHeight) {
+function getIsoTargetFrameBounds(state, focusX, focusY, supportElevation, zoomMode, mapWidth, mapHeight) {
+  const preset = CAMERA_ZOOM_CONFIG.iso?.[zoomMode] ?? CAMERA_ZOOM_CONFIG.iso?.mech ?? { spanX: 10, spanY: 10 };
+  const spanX = Math.max(2, Number(preset.spanX ?? 10));
+  const spanY = Math.max(2, Number(preset.spanY ?? 10));
   const corners = [
     projectIsoRaw(focusX - spanX, focusY - spanY, 0, state.rotation, 1, mapWidth, mapHeight),
     projectIsoRaw(focusX + spanX + 1, focusY - spanY, 0, state.rotation, 1, mapWidth, mapHeight),
@@ -274,6 +281,18 @@ export function getMapScreenBoundsRaw(state) {
     maxX: Math.max(...points.map((p) => p.x)),
     minY: Math.min(...points.map((p) => p.y)),
     maxY: Math.max(...points.map((p) => p.y)) + RENDER_CONFIG.isoTileHeight
+  };
+}
+
+
+function getIsoMapFrameBounds(state, mapWidth, mapHeight) {
+  const raw = getMapScreenBoundsRaw(state);
+
+  return {
+    minX: raw.minX - 80,
+    maxX: raw.maxX + 80,
+    minY: raw.minY - 120,
+    maxY: raw.maxY + 80
   };
 }
 
@@ -407,11 +426,27 @@ export function getZoomFactor(scale = "mech") {
 }
 
 export function getCurrentInteractionScale(state) {
-  return normalizeScale(
-    state.camera?.zoomScale ??
-    state.focus?.scale ??
-    "pilot"
-  );
+  return getCameraZoomMode(state);
+}
+
+function getDefaultZoomModeForState(state) {
+  const units = Array.isArray(state?.units) ? state.units : [];
+  const activeUnit = getUnitById(units, state?.turn?.activeUnitId ?? null);
+
+  if (!state?.turn?.combatStarted || !activeUnit) {
+    return "map";
+  }
+
+  return normalizeScale(activeUnit?.scale ?? activeUnit?.unitType ?? "mech");
+}
+
+export function getCameraZoomMode(state) {
+  const requested = String(state?.camera?.zoomMode ?? "").toLowerCase();
+  if (requested === "map" || requested === "mech" || requested === "pilot") {
+    return requested;
+  }
+
+  return getDefaultZoomModeForState(state);
 }
 
 function getCameraTarget(state) {
@@ -433,21 +468,6 @@ function getCameraTarget(state) {
     x: Number(state?.focus?.x ?? 0),
     y: Number(state?.focus?.y ?? 0)
   };
-}
-
-function getCameraRadius(unit) {
-  const move = Math.max(1, Number(unit?.move ?? 0));
-  const scale = normalizeScale(unit?.scale ?? unit?.unitType ?? "mech");
-
-  if (scale === "pilot") {
-    return move + Math.floor(move / 2);
-  }
-
-  if (scale === "structure") {
-    return Math.max(4, move);
-  }
-
-  return Math.max(6, move * 2);
 }
 
 function getViewBoxLimits(minEdge, maxEdge, span) {

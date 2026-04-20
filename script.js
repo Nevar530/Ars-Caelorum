@@ -54,8 +54,8 @@ async function init() {
 
   setDevLogSize(25);
 
-  function snapFocusToActiveUnit() {
-    snapFocusHelper(state);
+  function snapFocusToActiveUnit(options = {}) {
+    snapFocusHelper(state, options);
   }
 
   const gameController = createGameController({
@@ -210,6 +210,8 @@ async function init() {
     },
 
     toggleView: gameController.toggleView,
+    zoomIn: gameController.zoomIn,
+    zoomOut: gameController.zoomOut,
     startMove: movementController.startMove,
     startAttack: combatController.startAttack,
     waitTurn: combatController.waitTurn,

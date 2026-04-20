@@ -64,6 +64,8 @@ export function createGameController({
       state.focus.x = state.units[0].x;
       state.focus.y = state.units[0].y;
       state.focus.scale = state.units[0].scale ?? state.units[0].unitType ?? "pilot";
+      state.camera.zoomMode = "map";
+      state.camera.zoomScale = state.camera.zoomMode;
       return;
     }
 
@@ -122,6 +124,7 @@ export function createGameController({
     state.focus.x = hoveredUnit.x;
     state.focus.y = hoveredUnit.y;
     state.focus.scale = hoveredUnit.scale ?? hoveredUnit.unitType ?? "mech";
+    state.camera.zoomScale = state.camera.zoomMode ?? state.focus.scale;
 
     logDev(`${hoveredUnit.name} selected at (${hoveredUnit.x},${hoveredUnit.y}).`);
 
@@ -217,6 +220,24 @@ export function createGameController({
     render();
   }
 
+  function zoomIn() {
+    const levels = ["map", "mech", "pilot"];
+    const current = String(state.camera.zoomMode ?? "map");
+    const index = Math.max(0, levels.indexOf(current));
+    state.camera.zoomMode = levels[Math.min(levels.length - 1, index + 1)];
+    state.camera.zoomScale = state.camera.zoomMode;
+    render();
+  }
+
+  function zoomOut() {
+    const levels = ["map", "mech", "pilot"];
+    const current = String(state.camera.zoomMode ?? "map");
+    const index = Math.max(0, levels.indexOf(current));
+    state.camera.zoomMode = levels[Math.max(0, index - 1)];
+    state.camera.zoomScale = state.camera.zoomMode;
+    render();
+  }
+
   return {
     render,
     hideSplash,
@@ -231,6 +252,8 @@ export function createGameController({
     moveMenuSelection,
     animateRotation,
     toggleView,
+    zoomIn,
+    zoomOut,
     toggleHelpDrawer,
     closeHelpDrawer
   };

@@ -29,6 +29,22 @@ export const MAP_CONFIG = {
   maxElevation: 40
 };
 
+export const CAMERA_ZOOM_CONFIG = {
+  levels: ["map", "mech", "pilot"],
+
+  topdown: {
+    map: { cols: null, rows: null },
+    mech: { cols: 18, rows: 18 },
+    pilot: { cols: 12, rows: 12 }
+  },
+
+  iso: {
+    map: { spanX: null, spanY: null },
+    mech: { spanX: 10, spanY: 10 },
+    pilot: { spanX: 6, spanY: 6 }
+  }
+};
+
 export const RENDER_CONFIG = {
   isoTileWidth: 96,
   isoTileHeight: 48,
