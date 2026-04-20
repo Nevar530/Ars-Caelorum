@@ -43,8 +43,8 @@ export const CAMERA_ZOOM_CONFIG = {
     // Fixed windows. Smaller span = closer zoom.
     // Map is now a real zoom level, not forced full-board.
     map: {
-      spanX: 8.0,
-      spanY: 8.0,
+      spanX: 12,
+      spanY: 12,
       padPxX: 40,
       padPxTop: 52,
       padPxBottom: 40,
@@ -53,8 +53,8 @@ export const CAMERA_ZOOM_CONFIG = {
     },
 
     mech: {
-      spanX: 2.25,
-      spanY: 2.25,
+      spanX: 6,
+      spanY: 6,
       padPxX: 28,
       padPxTop: 44,
       padPxBottom: 36,
@@ -63,8 +63,8 @@ export const CAMERA_ZOOM_CONFIG = {
     },
 
     pilot: {
-      spanX: 0.9,
-      spanY: 0.9,
+      spanX: 2,
+      spanY: 2,
       padPxX: 18,
       padPxTop: 28,
       padPxBottom: 22,
