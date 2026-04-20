@@ -33,15 +33,47 @@ export const CAMERA_ZOOM_CONFIG = {
   levels: ["map", "mech", "pilot"],
 
   topdown: {
+    // null = fit whole board
     map: { cols: null, rows: null },
+
+    // fixed tactical windows
     mech: { cols: 9, rows: 9 },
     pilot: { cols: 6, rows: 6 }
   },
 
   iso: {
-    map: { spanX: null, spanY: null },
-    mech: { spanX: 5, spanY: 5 },
-    pilot: { spanX: .5, spanY: .5 }
+    // null = fit whole board
+    map: {
+      spanX: null,
+      spanY: null,
+      padPxX: 64,
+      padPxTop: 72,
+      padPxBottom: 72,
+      liftTiles: 0
+    },
+
+    // IMPORTANT:
+    // spanX/spanY are now the truth for iso zoom.
+    // Smaller number = closer zoom.
+    mech: {
+      spanX: 2.25,
+      spanY: 2.25,
+      padPxX: 28,
+      padPxTop: 44,
+      padPxBottom: 36,
+      liftTiles: 1.0
+    },
+
+    // Pilot is intentionally tighter.
+    // This now actually works because projection.js no longer clamps it back out.
+    pilot: {
+      spanX: 0.9,
+      spanY: 0.9,
+      padPxX: 18,
+      padPxTop: 28,
+      padPxBottom: 22,
+      liftTiles: 0.65
+    }
   }
 };
 
