@@ -33,43 +33,43 @@ export const CAMERA_ZOOM_CONFIG = {
   levels: ["map", "mech", "pilot"],
 
   topdown: {
-    // null = fit whole board
-    map: { cols: null, rows: null },
-
-    // Fixed tactical windows
-    mech: { cols: 9, rows: 9 },
-    pilot: { cols: 6, rows: 6 }
+    // Fixed board windows. Bigger number = farther out.
+    map: { cols: 24, rows: 24, followDeadzoneTiles: 4 },
+    mech: { cols: 9, rows: 9, followDeadzoneTiles: 2 },
+    pilot: { cols: 6, rows: 6, followDeadzoneTiles: 1 }
   },
 
   iso: {
-    // null = fit whole board
+    // Fixed windows. Smaller span = closer zoom.
+    // Map is now a real zoom level, not forced full-board.
     map: {
-      spanX: 12,
-      spanY: 12,
-      padPxX: 64,
-      padPxTop: 72,
-      padPxBottom: 72,
-      liftTiles: 0
+      spanX: 8.0,
+      spanY: 8.0,
+      padPxX: 40,
+      padPxTop: 52,
+      padPxBottom: 40,
+      liftTiles: 0.8,
+      followDeadzoneTiles: 4
     },
 
-    // Smaller number = closer zoom
     mech: {
-      spanX: 4,
-      spanY: 4,
-      padPxX: 56,
-      padPxTop: 88,
-      padPxBottom: 72,
-      liftTiles: 1.0
-    },
-
-    // Pilot is intentionally tighter so the mech reads large beside it
-    pilot: {
-      spanX: 2,
-      spanY: 2,
+      spanX: 2.25,
+      spanY: 2.25,
       padPxX: 28,
       padPxTop: 44,
       padPxBottom: 36,
-      liftTiles: 1
+      liftTiles: 1.0,
+      followDeadzoneTiles: 2
+    },
+
+    pilot: {
+      spanX: 0.9,
+      spanY: 0.9,
+      padPxX: 18,
+      padPxTop: 28,
+      padPxBottom: 22,
+      liftTiles: 0.65,
+      followDeadzoneTiles: 1
     }
   }
 };
