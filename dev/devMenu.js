@@ -29,59 +29,27 @@ import {
 import { renderMapEditorPanel } from "./mapEditor/mapEditorPanel.js";
 import { buildMapDefinitionFromRuntimeMap, downloadMapDefinition, parseMapDefinition } from "./mapEditor/mapSerialization.js";
 import { loadMapDefinition } from "./mapEditor/mapCatalog.js";
-
-const DEFAULT_DEV_STATE = {
-  isOpen: false,
-  activeTab: "units",
-  selectedFrameId: "",
-  selectedPilotId: "",
-  selectedSpawnId: "",
-  selectedControlType: "PC",
-  selectedTeam: "player"
-};
-
-let generatedDevUnitCounter = 0;
-
-function nextDevUnitId() {
-  generatedDevUnitCounter += 1;
-  return `dev_unit_${String(generatedDevUnitCounter).padStart(4, "0")}`;
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function normalizeControlType(value) {
-  return value === "CPU" ? "CPU" : "PC";
-}
-
-function normalizeTeam(value) {
-  return value === "enemy" ? "enemy" : "player";
-}
-
-function safeUpper(value) {
-  return String(value ?? "").toUpperCase();
-}
-
-function getUnitScale(unit) {
-  return unit?.scale ?? unit?.unitType ?? "mech";
-}
-
-function getUnitFootprintLabel(unit) {
-  const scale = getUnitScale(unit);
-  return scale === "pilot" ? "1x1" : "3x3";
-}
-
-function getUnitDisplayName(unit) {
-  const frame = unit?.name ?? "Unnamed Frame";
-  const pilot = unit?.pilotName ?? "No Pilot";
-  return { frame, pilot };
-}
-
-function formatSummaryValue(value) {
-  if (typeof value !== "number" || Number.isNaN(value)) return "-";
-  return Number.isInteger(value) ? String(value) : value.toFixed(2);
-}
+import { DEFAULT_DEV_STATE } from "./devMenuModules/devMenuConstants.js";
+import { createDevMenuDom } from "./devMenuModules/devMenuDom.js";
+import {
+  renderLogHtml,
+  renderMapStateHtml,
+  renderPhaseOrderHtml,
+  renderRoundPhaseHtml,
+  renderRuntimeStateHtml,
+  renderUnitsHtml
+} from "./devMenuModules/devMenuRender.js";
+import {
+  clone,
+  formatSummaryValue,
+  getUnitDisplayName,
+  getUnitFootprintLabel,
+  getUnitScale,
+  nextDevUnitId,
+  normalizeControlType,
+  normalizeTeam,
+  safeUpper
+} from "./devMenuModules/devMenuUtils.js";
 
 class DevMenu {
   constructor() {
@@ -297,157 +265,34 @@ class DevMenu {
   }
 
   buildDom() {
-    const root = document.createElement("div");
-    root.id = "ac-dev-root";
-    root.style.position = "fixed";
-    root.style.top = "0";
-    root.style.right = "0";
-    root.style.height = "100vh";
-    root.style.zIndex = "9999";
-    root.style.pointerEvents = "none";
-
-    const panel = document.createElement("div");
-    panel.id = "ac-dev-panel";
-    panel.style.width = "760px";
-    panel.style.height = "100%";
-    panel.style.background = "rgba(10, 12, 18, 0.96)";
-    panel.style.color = "#d8e1ea";
-    panel.style.borderLeft = "1px solid rgba(255,255,255,0.12)";
-    panel.style.boxShadow = "-8px 0 24px rgba(0,0,0,0.35)";
-    panel.style.fontFamily = "monospace";
-    panel.style.fontSize = "12px";
-    panel.style.display = "none";
-    panel.style.pointerEvents = "auto";
-    panel.style.overflowY = "auto";
-    panel.style.padding = "12px";
-    panel.style.boxSizing = "border-box";
-
-    panel.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <div style="font-size:14px; font-weight:bold;">DEV MENU</div>
-        <button id="ac-dev-close-btn" type="button">Close</button>
-      </div>
-
-      <div style="display:flex; gap:8px; margin-bottom:12px;">
-        <button id="ac-dev-tab-units" type="button">Units</button>
-        <button id="ac-dev-tab-map" type="button">Map</button>
-      </div>
-
-      <div id="ac-dev-tab-panel-units">
-        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-          <div style="font-weight:bold; margin-bottom:8px;">Spawn / Replace Unit</div>
-
-          <label style="display:block; margin-bottom:6px;">
-            <div>Frame</div>
-            <select id="ac-dev-frame-select" style="width:100%;"></select>
-          </label>
-
-          <label style="display:block; margin-bottom:6px;">
-            <div>Pilot</div>
-            <select id="ac-dev-pilot-select" style="width:100%;"></select>
-          </label>
-
-          <label style="display:block; margin-bottom:6px;">
-            <div>Spawn Point</div>
-            <select id="ac-dev-spawn-select" style="width:100%;"></select>
-          </label>
-
-          <label style="display:block; margin-bottom:6px;">
-            <div>Control</div>
-            <select id="ac-dev-control-select" style="width:100%;">
-              <option value="PC">PC</option>
-              <option value="CPU">CPU</option>
-            </select>
-          </label>
-
-          <label style="display:block; margin-bottom:10px;">
-            <div>Team</div>
-            <select id="ac-dev-team-select" style="width:100%;">
-              <option value="player">player</option>
-              <option value="enemy">enemy</option>
-            </select>
-          </label>
-
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button id="ac-dev-spawn-btn" type="button">Spawn / Replace Unit</button>
-            <button id="ac-dev-reset-btn" type="button">Reset Units</button>
-            <button id="ac-dev-reroll-btn" type="button">Reroll Initiative</button>
-            <button id="ac-dev-clearlog-btn" type="button">Clear Log</button>
-          </div>
-        </div>
-
-        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-          <div style="font-weight:bold; margin-bottom:8px;">Runtime State</div>
-          <div id="ac-dev-runtime-state"></div>
-        </div>
-
-        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-          <div style="font-weight:bold; margin-bottom:8px;">Round / Phase</div>
-          <div id="ac-dev-round-phase"></div>
-          <div id="ac-dev-phase-order" style="margin-top:8px;"></div>
-        </div>
-
-        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-          <div style="font-weight:bold; margin-bottom:8px;">Units On Map</div>
-          <div id="ac-dev-unit-list"></div>
-        </div>
-
-        <div>
-          <div style="font-weight:bold; margin-bottom:8px;">Debug Log</div>
-          <div id="ac-dev-log-list"></div>
-        </div>
-      </div>
-
-      <div id="ac-dev-tab-panel-map" style="display:none;">
-        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-          <div style="font-weight:bold; margin-bottom:8px;">Map State</div>
-          <div id="ac-dev-map-state"></div>
-        </div>
-
-        <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-          <div style="font-weight:bold; margin-bottom:8px;">Map Controls</div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button id="ac-dev-map-rotate-left" type="button">⟲ Rotate Left</button>
-            <button id="ac-dev-map-rotate-right" type="button">⟳ Rotate Right</button>
-            <button id="ac-dev-map-toggle-view" type="button">Toggle Tactical (R)</button>
-            <button id="ac-dev-map-reset" type="button">Reset Map</button>
-          </div>
-        </div>
-
-        <div id="ac-dev-map-editor-host"></div>
-      </div>
-    `;
-
-    root.appendChild(panel);
-    document.body.appendChild(root);
+    const { root, panel, refs } = createDevMenuDom();
 
     this.rootEl = root;
     this.panelEl = panel;
 
-    this.unitsTabButtonEl = panel.querySelector("#ac-dev-tab-units");
-    this.mapTabButtonEl = panel.querySelector("#ac-dev-tab-map");
-    this.unitsTabEl = panel.querySelector("#ac-dev-tab-panel-units");
-    this.mapTabEl = panel.querySelector("#ac-dev-tab-panel-map");
+    this.unitsTabButtonEl = refs.unitsTabButtonEl;
+    this.mapTabButtonEl = refs.mapTabButtonEl;
+    this.unitsTabEl = refs.unitsTabEl;
+    this.mapTabEl = refs.mapTabEl;
 
-    this.logListEl = panel.querySelector("#ac-dev-log-list");
-    this.unitListEl = panel.querySelector("#ac-dev-unit-list");
-    this.phaseOrderEl = panel.querySelector("#ac-dev-phase-order");
-    this.roundPhaseEl = panel.querySelector("#ac-dev-round-phase");
-    this.runtimeStateEl = panel.querySelector("#ac-dev-runtime-state");
-    this.mapStateEl = panel.querySelector("#ac-dev-map-state");
+    this.logListEl = refs.logListEl;
+    this.unitListEl = refs.unitListEl;
+    this.phaseOrderEl = refs.phaseOrderEl;
+    this.roundPhaseEl = refs.roundPhaseEl;
+    this.runtimeStateEl = refs.runtimeStateEl;
+    this.mapStateEl = refs.mapStateEl;
 
-    this.frameSelectEl = panel.querySelector("#ac-dev-frame-select");
-    this.pilotSelectEl = panel.querySelector("#ac-dev-pilot-select");
-    this.spawnSelectEl = panel.querySelector("#ac-dev-spawn-select");
-    this.controlSelectEl = panel.querySelector("#ac-dev-control-select");
-    this.teamSelectEl = panel.querySelector("#ac-dev-team-select");
+    this.frameSelectEl = refs.frameSelectEl;
+    this.pilotSelectEl = refs.pilotSelectEl;
+    this.spawnSelectEl = refs.spawnSelectEl;
+    this.controlSelectEl = refs.controlSelectEl;
+    this.teamSelectEl = refs.teamSelectEl;
 
-    this.mapRotateLeftEl = panel.querySelector("#ac-dev-map-rotate-left");
-    this.mapRotateRightEl = panel.querySelector("#ac-dev-map-rotate-right");
-    this.mapToggleViewEl = panel.querySelector("#ac-dev-map-toggle-view");
-    this.mapResetEl = panel.querySelector("#ac-dev-map-reset");
-
-    this.mapEditorHostEl = panel.querySelector("#ac-dev-map-editor-host");
+    this.mapRotateLeftEl = refs.mapRotateLeftEl;
+    this.mapRotateRightEl = refs.mapRotateRightEl;
+    this.mapToggleViewEl = refs.mapToggleViewEl;
+    this.mapResetEl = refs.mapResetEl;
+    this.mapEditorHostEl = refs.mapEditorHostEl;
   }
 
   bindEvents() {
@@ -1184,166 +1029,37 @@ class DevMenu {
     const activeUnit = units.find((unit) => unit.instanceId === activeUnitId) ?? null;
     const selectedUnit = units.find((unit) => unit.instanceId === selectedUnitId) ?? null;
 
-    const activeText = activeUnit
-      ? `${activeUnit.name} / ${activeUnit.pilotName ?? "No Pilot"}`
-      : "None";
-
-    const selectedText = selectedUnit
-      ? `${selectedUnit.name} / ${selectedUnit.pilotName ?? "No Pilot"}`
-      : "None";
-
-    const focus = this.appState?.focus ?? {};
-    const commandMenu = this.appState?.ui?.commandMenu ?? {};
-    const actionProfile = this.appState?.ui?.action?.selectedAction ?? null;
-
-    this.runtimeStateEl.innerHTML = `
-      <div>Units: <strong>${units.length}</strong></div>
-      <div>Mode: <strong>${safeUpper(this.appState?.ui?.mode ?? "idle")}</strong></div>
-      <div>Active Unit: <strong>${activeText}</strong></div>
-      <div>Selected Unit: <strong>${selectedText}</strong></div>
-      <div>Focus: <strong>(${focus.x ?? 0},${focus.y ?? 0})</strong> [${focus.scale ?? "-"}]</div>
-      <div>Selection Action: <strong>${this.appState?.selection?.action ?? "-"}</strong></div>
-      <div>Action Profile: <strong>${actionProfile?.name ?? actionProfile?.id ?? "-"}</strong></div>
-      <div>Command Menu: <strong>${commandMenu.open ? "OPEN" : "CLOSED"}</strong></div>
-      <div>View: <strong>${this.getViewLabel()}</strong></div>
-      <div>Rotation: <strong>${this.getRotationValue()}</strong></div>
-    `;
+    this.runtimeStateEl.innerHTML = renderRuntimeStateHtml({
+      units,
+      appState: this.appState,
+      activeUnit,
+      selectedUnit,
+      viewLabel: this.getViewLabel(),
+      rotationValue: this.getRotationValue()
+    });
   }
 
   renderRoundPhase() {
-    this.roundPhaseEl.innerHTML = `
-      <div>Round: <strong>${this.appState.turn.round}</strong></div>
-      <div>Phase: <strong>${safeUpper(this.appState.turn.phase)}</strong></div>
-      <div>Combat Started: <strong>${this.appState.turn.combatStarted ? "YES" : "NO"}</strong></div>
-      <div>Move Index: <strong>${this.appState.turn.moveIndex}</strong></div>
-      <div>Action Index: <strong>${this.appState.turn.actionIndex}</strong></div>
-    `;
+    this.roundPhaseEl.innerHTML = renderRoundPhaseHtml(this.appState.turn);
   }
 
   renderPhaseOrder() {
-    const units = this.getRuntimeUnits();
-
-    if (!units.length) {
-      this.phaseOrderEl.innerHTML = `<div style="opacity:0.7;">No units on map.</div>`;
-      return;
-    }
-
-    const moveOrder = Array.isArray(this.appState.turn.moveOrder)
-      ? this.appState.turn.moveOrder
-      : [];
-    const actionOrder = Array.isArray(this.appState.turn.actionOrder)
-      ? this.appState.turn.actionOrder
-      : [];
-
-    const resolveRow = (label, order, currentIndex, isCurrentPhase) => {
-      const orderedUnits = order
-        .map((instanceId) => units.find((unit) => unit.instanceId === instanceId))
-        .filter(Boolean);
-
-      if (!orderedUnits.length) {
-        return `
-          <div style="margin-bottom:8px;">
-            <div style="font-weight:700; margin-bottom:4px;">${label}</div>
-            <div style="opacity:0.7;">No order built.</div>
-          </div>
-        `;
-      }
-
-      return `
-        <div style="margin-bottom:8px;">
-          <div style="font-weight:700; margin-bottom:4px;">
-            ${label} ${isCurrentPhase ? "(current)" : ""}
-          </div>
-          ${orderedUnits.map((unit, index) => {
-            const isActive = isCurrentPhase && index === currentIndex;
-            const isComplete = isCurrentPhase && index < currentIndex;
-
-            return `
-              <div style="
-                padding:4px 0;
-                border-bottom:1px solid rgba(255,255,255,0.06);
-                opacity:${isComplete ? "0.45" : isCurrentPhase ? "1" : "0.7"};
-                color:${isActive ? "#f0b000" : "inherit"};
-              ">
-                ${index + 1}. ${unit.name} / ${unit.pilotName ?? "No Pilot"}
-                <span style="opacity:0.7;">(Init ${unit.initiative ?? "-"})</span>
-              </div>
-            `;
-          }).join("")}
-        </div>
-      `;
-    };
-
-    this.phaseOrderEl.innerHTML = `
-      ${resolveRow(
-        "Move",
-        moveOrder,
-        this.appState.turn.moveIndex,
-        this.appState.turn.phase === "move"
-      )}
-      ${resolveRow(
-        "Action",
-        actionOrder,
-        this.appState.turn.actionIndex,
-        this.appState.turn.phase === "action"
-      )}
-    `;
+    this.phaseOrderEl.innerHTML = renderPhaseOrderHtml({
+      units: this.getRuntimeUnits(),
+      turn: this.appState.turn
+    });
   }
 
   renderUnits() {
     const units = this.getRuntimeUnits();
-
-    if (!units.length) {
-      this.unitListEl.innerHTML = `<div style="opacity:0.7;">No units on map.</div>`;
-      return;
-    }
-
     const activeUnitId = this.appState?.turn?.activeUnitId ?? null;
     const selectedUnitId = this.appState?.selection?.unitId ?? null;
 
-    this.unitListEl.innerHTML = units
-      .map((unit) => {
-        const { frame, pilot } = getUnitDisplayName(unit);
-        const scale = getUnitScale(unit);
-        const footprint = getUnitFootprintLabel(unit);
-        const isActive = unit.instanceId === activeUnitId;
-        const isSelected = unit.instanceId === selectedUnitId;
-
-        return `
-          <div
-            data-instance-id="${unit.instanceId}"
-            style="
-              padding:8px;
-              margin-bottom:8px;
-              border:1px solid ${isActive ? "rgba(240,176,0,0.7)" : "rgba(255,255,255,0.08)"};
-              background:${isSelected ? "rgba(255,255,255,0.04)" : "transparent"};
-            "
-          >
-            <div style="display:flex; justify-content:space-between; gap:8px; margin-bottom:4px;">
-              <div>
-                <div><strong>${frame}</strong></div>
-                <div style="opacity:0.78;">Pilot: ${pilot}</div>
-              </div>
-              <div style="text-align:right;">
-                <div style="color:${isActive ? "#f0b000" : "#9fb3c8"};">${isActive ? "ACTIVE" : isSelected ? "SELECTED" : scale.toUpperCase()}</div>
-                <div style="opacity:0.65;">${footprint}</div>
-              </div>
-            </div>
-
-            <div style="opacity:0.8;">Team ${unit.team ?? "-"} | Control ${unit.controlType ?? "-"} | Spawn ${unit.spawnId ?? "-"}</div>
-            <div style="opacity:0.8;">Pos (${unit.x},${unit.y}) | Facing ${unit.facing ?? 0} | Scale ${scale}</div>
-            <div style="opacity:0.8;">Shield ${unit.shield ?? unit.armor ?? "-"} | Core ${unit.core ?? unit.structure ?? "-"} | Move ${unit.move ?? "-"}</div>
-            <div style="opacity:0.8;">Reaction ${unit.reaction ?? "-"} | Targeting ${unit.targeting ?? "-"}</div>
-            <div style="opacity:0.8;">Init ${unit.initiative ?? "-"} | Status ${unit.status ?? "operational"}</div>
-            <div style="opacity:0.8;">Moved ${unit.hasMoved ? "Y" : "N"} | Acted ${unit.hasActed ? "Y" : "N"} | Braced ${unit.isBraced ? "Y" : "N"}</div>
-
-            <div style="margin-top:6px;">
-              <button type="button" class="ac-dev-remove-unit-btn">Remove</button>
-            </div>
-          </div>
-        `;
-      })
-      .join("");
+    this.unitListEl.innerHTML = renderUnitsHtml({
+      units,
+      activeUnitId,
+      selectedUnitId
+    });
 
     const buttons = this.unitListEl.querySelectorAll(".ac-dev-remove-unit-btn");
     buttons.forEach((button) => {
@@ -1367,48 +1083,27 @@ class DevMenu {
     const mapWidth = getMapWidth(this.appState.map);
     const mapHeight = getMapHeight(this.appState.map);
 
-    this.mapStateEl.innerHTML = `
-      <div>View: <strong>${this.getViewLabel()}</strong></div>
-      <div>Rotation: <strong>${this.getRotationValue()}</strong></div>
-      <div>Map Size: <strong>${mapWidth}x${mapHeight}</strong></div>
-      <div>Focus Tile: <strong>(${focus.x ?? 0},${focus.y ?? 0})</strong></div>
-      <div>Selected Unit: <strong>${selectedUnit ? `${selectedUnit.name} / ${selectedUnit.pilotName ?? "No Pilot"}` : "None"}</strong></div>
-      <div style="margin-top:8px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;">
-        <div>Selected Tile: <strong>(${selected.x},${selected.y})</strong></div>
-        <div>Base Height: <strong>${tile?.elevation ?? "-"}</strong></div>
-        <div>Preset: <strong>${tile?.terrainTypeId ?? '-'}</strong></div>
-        <div>Behavior: <strong>${tile?.movementClass ?? 'clear'}</strong></div>
-        <div>Spawn: <strong>${tile?.spawnId ?? '-'}</strong></div>
-        <div>Min Height: <strong>${formatSummaryValue(summary?.minElevation)}</strong></div>
-        <div>Max Height: <strong>${formatSummaryValue(summary?.maxElevation)}</strong></div>
-        <div>Foot Height: <strong>${formatSummaryValue(summary?.mechFootElevation)}</strong></div>
-        <div>Detail Shape: <strong>${summary?.hasDetailShape ? "YES" : "NO"}</strong></div>
-        <div>Mech Enterable: <strong>${summary?.mechEnterable ? "YES" : "NO"}</strong></div>
-      </div>
-    `;
+    this.mapStateEl.innerHTML = renderMapStateHtml({
+      viewLabel: this.getViewLabel(),
+      rotationValue: this.getRotationValue(),
+      mapWidth,
+      mapHeight,
+      focus,
+      selectedUnit,
+      selected,
+      tile,
+      summary
+    });
 
     this.renderMapEditorPanelIntoHost();
   }
 
   renderLog() {
     const entries = getDevLogFormatted();
-
-    if (!entries.length) {
-      this.logListEl.innerHTML = `<div style="opacity:0.7;">No log entries.</div>`;
-      return;
-    }
-
-    this.logListEl.innerHTML = entries
-      .map(
-        (entry) => `
-          <div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.06); word-break:break-word;">
-            ${entry}
-          </div>
-        `
-      )
-      .join("");
+    this.logListEl.innerHTML = renderLogHtml(entries);
   }
 }
+
 
 const devMenu = new DevMenu();
 
