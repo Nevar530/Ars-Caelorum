@@ -34,14 +34,14 @@ export const CAMERA_ZOOM_CONFIG = {
 
   topdown: {
     map: { cols: null, rows: null },
-    mech: { cols: 18, rows: 18 },
-    pilot: { cols: 12, rows: 12 }
+    mech: { cols: 9, rows: 9 },
+    pilot: { cols: 6, rows: 6 }
   },
 
   iso: {
     map: { spanX: null, spanY: null },
-    mech: { spanX: 10, spanY: 10 },
-    pilot: { spanX: 6, spanY: 6 }
+    mech: { spanX: 5, spanY: 5 },
+    pilot: { spanX: 2, spanY: 2 }
   }
 };
 
