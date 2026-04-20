@@ -111,7 +111,7 @@ function applySpawnBrush(state, tile, editor) {
   const team = editor.selectedSpawnTeam === 'enemy' ? 'enemy' : 'player';
   const index = Math.max(0, Math.min(3, Number(editor.selectedSpawnIndex) || 0));
   const spawnId = buildSpawnId(team, index);
-  clearSpawnIdFromTiles(state.map, spawnId);
+  clearSpawnIdFromTiles(state.map, spawnId, getMapWidth, getMapHeight, getTile);
   state.map.spawns[team][index] = { x: tile.x, y: tile.y };
   tile.spawnId = spawnId;
   syncLegacySpawnPoints(state);
