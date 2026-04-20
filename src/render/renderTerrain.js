@@ -207,7 +207,10 @@ function drawIsoTerrainCell(item, parent) {
       { x: top.left.x, y: top.left.y + leftHeightPx }
     ];
 
-    group.appendChild(makePolygon(leftFace, "tile-left", colors.left));
+    const leftPoly = makePolygon(leftFace, "tile-left", colors.left);
+    leftPoly.setAttribute("stroke", shiftHexBrightness(colors.left, -16));
+    leftPoly.setAttribute("stroke-width", "1");
+    group.appendChild(leftPoly);
   }
 
   if (rightHeightPx > 0) {
@@ -218,15 +221,17 @@ function drawIsoTerrainCell(item, parent) {
       { x: top.right.x, y: top.right.y + rightHeightPx }
     ];
 
-    group.appendChild(makePolygon(rightFace, "tile-right", colors.right));
+    const rightPoly = makePolygon(rightFace, "tile-right", colors.right);
+    rightPoly.setAttribute("stroke", shiftHexBrightness(colors.right, -14));
+    rightPoly.setAttribute("stroke-width", "1");
+    group.appendChild(rightPoly);
   }
 
   const topFace = [top.top, top.right, top.bottom, top.left];
-  const baseTop = makePolygon(topFace, "tile-top", colors.top);
-  baseTop.setAttribute("stroke", deriveTopGridStroke(colors.top));
-  baseTop.setAttribute("stroke-width", "1.35");
-  baseTop.setAttribute("stroke-linejoin", "round");
-  group.appendChild(baseTop);
+  const topPoly = makePolygon(topFace, "tile-top", colors.top);
+  topPoly.setAttribute("stroke", shiftHexBrightness(colors.top, -18));
+  topPoly.setAttribute("stroke-width", "1");
+  group.appendChild(topPoly);
 
   if (tileOverlayStyle?.fill) {
     const overlayFill = makePolygon(topFace, "tile-top-overlay-fill", tileOverlayStyle.fill);
@@ -271,8 +276,8 @@ function drawTopTerrainCell(state, item, parent) {
   rect.setAttribute("width", sizePx);
   rect.setAttribute("height", sizePx);
   rect.setAttribute("fill", colors.top);
-  rect.setAttribute("stroke", tileOverlayStyle?.stroke ?? deriveTopGridStroke(colors.top));
-  rect.setAttribute("stroke-width", String(tileOverlayStyle?.strokeWidth ?? (size < 1 ? 0.6 : 1)));
+  rect.setAttribute("stroke", tileOverlayStyle?.stroke ?? "rgba(255,255,255,0.08)");
+  rect.setAttribute("stroke-width", String(tileOverlayStyle?.strokeWidth ?? (size < 1 ? 0.5 : 1)));
   rect.dataset.x = String(x);
   rect.dataset.y = String(y);
 
@@ -395,10 +400,6 @@ function terrainBaseColor(terrainTypeId) {
     default:
       return "#5f8f4f";
   }
-}
-
-function deriveTopGridStroke(topHex) {
-  return shiftHexBrightness(topHex, -24);
 }
 
 function shiftHexBrightness(hex, amount) {
