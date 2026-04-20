@@ -13,7 +13,7 @@ import { getUnitRenderSceneItems } from "./renderUnits.js";
 import { projectScene } from "./projection.js";
 import { getTerrainDepth, getUnitRenderContext, UNIT_SORT_EPSILON } from "./renderSceneMath.js";
 
-export function buildTerrainSceneItems(state, reachableMap = new Map()) {
+export function buildTerrainSceneItems(state, reachableMap = new Map(), tileOverlayStyleMap = new Map()) {
   const terrainSceneItems = [];
   const overlayTileItems = [];
   const { map } = state;
@@ -44,6 +44,7 @@ export function buildTerrainSceneItems(state, reachableMap = new Map()) {
         screenY: projected.y,
         reachableCost: reachableData?.cost ?? null,
         reachableData,
+        tileOverlayStyle: tileOverlayStyleMap.get(`${x},${y}`) ?? null,
         skipTerrain: hasDetailGeometry,
         size: 1,
         leftFaceHeight: renderElevation,
@@ -99,6 +100,7 @@ export function buildTerrainSceneItems(state, reachableMap = new Map()) {
               rightFaceHeight: cell.rightFaceHeight
             }),
             sortKey: cellProjected.y * 1000 + cellProjected.x,
+            tileOverlayStyle: tileOverlayStyleMap.get(`${x},${y}`) ?? null,
             render(parent) {
               renderTerrainTile(state, this, parent);
             }

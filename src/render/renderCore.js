@@ -22,6 +22,7 @@ import {
 } from "./projection.js";
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
 import { buildTerrainSceneItems, buildUnitSceneItems } from "./renderSceneBuilders.js";
+import { buildTileOverlayStyleMap } from "./renderTileStyles.js";
 import { compareSceneItems } from "./renderSceneMath.js";
 
 export function renderAll(state, refs) {
@@ -47,7 +48,8 @@ export function renderIso(state, refs) {
     }
   }
 
-  const { terrainSceneItems, overlayTileItems } = buildTerrainSceneItems(state, reachableMap);
+  const tileOverlayStyleMap = buildTileOverlayStyleMap(state, reachableMap);
+  const { terrainSceneItems, overlayTileItems } = buildTerrainSceneItems(state, reachableMap, tileOverlayStyleMap);
   const { unitSceneItems, unitStatusTagItems } = buildUnitSceneItems(state);
 
   const mainSceneItems = [...terrainSceneItems, ...unitSceneItems];

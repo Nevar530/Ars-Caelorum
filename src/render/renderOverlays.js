@@ -88,6 +88,10 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
     return;
   }
 
+  if (shouldUseTerrainTileOverlay(state, item)) {
+    return;
+  }
+
   if (state.ui.viewMode === "top") {
     drawTopOverlayBox(state, item.screenX, item.screenY, fill, stroke, parent);
     return;
@@ -130,6 +134,10 @@ export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFA
     return;
   }
 
+  if (shouldUseTerrainTileOverlay(state, item)) {
+    return;
+  }
+
   if (state.ui.viewMode === "top") {
     drawTopOverlayBox(
       state,
@@ -168,7 +176,7 @@ export function drawScenePathOverlayForTile(state, item, parent, options = DEFAU
 
   const previewUnit = { ...activeUnit, x: item.x, y: item.y };
 
-  if (drawShapes) {
+  if (drawShapes && !shouldUseTerrainTileOverlay(state, item)) {
     drawOverlayForUnitFootprint(
       state,
       previewUnit,
@@ -201,7 +209,7 @@ export function drawSceneMoveOverlay(state, item, parent, text, options = DEFAUL
 
   const previewUnit = { ...activeUnit, x: item.reachableData.x, y: item.reachableData.y };
 
-  if (drawShapes) {
+  if (drawShapes && !shouldUseTerrainTileOverlay(state, item)) {
     drawOverlayForUnitFootprint(
       state,
       previewUnit,
@@ -324,6 +332,10 @@ function drawOverlayCellTop(state, cell, className, fill, stroke, parent) {
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
+}
+
+function shouldUseTerrainTileOverlay(state, item) {
+  return !!item?.tileOverlayStyle;
 }
 
 function normalizeOptions(options) {

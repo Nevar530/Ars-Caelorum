@@ -174,7 +174,8 @@ function drawIsoTerrainCell(item, parent) {
     screenY,
     leftFaceHeight = elevation,
     rightFaceHeight = elevation,
-    fineElevation = null
+    fineElevation = null,
+    tileOverlayStyle = null
   } = item;
 
   const type = fineElevation === null
@@ -222,7 +223,21 @@ function drawIsoTerrainCell(item, parent) {
 
   const topFace = [top.top, top.right, top.bottom, top.left];
   group.appendChild(makePolygon(topFace, "tile-top", colors.top));
-  group.appendChild(makePolygon(topFace, "tile-outline", "none"));
+
+  if (tileOverlayStyle?.fill) {
+    const overlayFill = makePolygon(topFace, "tile-top-overlay-fill", tileOverlayStyle.fill);
+    overlayFill.setAttribute("pointer-events", "none");
+    group.appendChild(overlayFill);
+  }
+
+  const outline = makePolygon(topFace, "tile-outline", "none");
+  if (tileOverlayStyle?.stroke) {
+    outline.setAttribute("stroke", tileOverlayStyle.stroke);
+    outline.setAttribute("stroke-width", String(tileOverlayStyle.strokeWidth ?? 2.5));
+    outline.setAttribute("paint-order", "stroke fill");
+    outline.setAttribute("stroke-linejoin", "round");
+  }
+  group.appendChild(outline);
 
   parent.appendChild(group);
 }
@@ -235,7 +250,8 @@ function drawTopTerrainCell(state, item, parent) {
     screenX,
     screenY,
     size = 1,
-    fineElevation = null
+    fineElevation = null,
+    tileOverlayStyle = null
   } = item;
 
   const type = fineElevation === null
@@ -251,12 +267,25 @@ function drawTopTerrainCell(state, item, parent) {
   rect.setAttribute("width", sizePx);
   rect.setAttribute("height", sizePx);
   rect.setAttribute("fill", colors.top);
-  rect.setAttribute("stroke", "rgba(255,255,255,0.08)");
-  rect.setAttribute("stroke-width", size < 1 ? "0.5" : "1");
+  rect.setAttribute("stroke", tileOverlayStyle?.stroke ?? "rgba(255,255,255,0.08)");
+  rect.setAttribute("stroke-width", String(tileOverlayStyle?.strokeWidth ?? (size < 1 ? 0.5 : 1)));
   rect.dataset.x = String(x);
   rect.dataset.y = String(y);
 
   parent.appendChild(rect);
+
+  if (tileOverlayStyle?.fill) {
+    const inset = Math.max(1, sizePx * 0.08);
+    const overlay = svgEl("rect");
+    overlay.setAttribute("x", screenX + inset);
+    overlay.setAttribute("y", screenY + inset);
+    overlay.setAttribute("width", Math.max(0, sizePx - (inset * 2)));
+    overlay.setAttribute("height", Math.max(0, sizePx - (inset * 2)));
+    overlay.setAttribute("fill", tileOverlayStyle.fill);
+    overlay.setAttribute("stroke", "none");
+    overlay.setAttribute("pointer-events", "none");
+    parent.appendChild(overlay);
+  }
 
   if (size >= 1 && elevation > 0) {
     const label = makeText(
@@ -271,7 +300,6 @@ function drawTopTerrainCell(state, item, parent) {
     parent.appendChild(label);
   }
 }
-
 
 function resolveTerrainColors(tileLike, fallbackType, fineElevation = null) {
   if (fineElevation !== null) {
@@ -310,39 +338,39 @@ export function tileColors(type) {
 }
 
 export function editorCellColor(tileOrElevation) {
-  const tile = typeof tileOrElevation === 'object' && tileOrElevation !== null
+  const tile = typeof tileOrElevation === "object" && tileOrElevation !== null
     ? tileOrElevation
-    : { elevation: Number(tileOrElevation) || 0, terrainTypeId: 'grass', movementClass: 'clear', spawnId: null };
+    : { elevation: Number(tileOrElevation) || 0, terrainTypeId: "grass", movementClass: "clear", spawnId: null };
 
   const baseColor = terrainBaseColor(tile.terrainTypeId);
   const elevation = Number(tile.elevation ?? 0);
   let color = shiftHexBrightness(baseColor, Math.max(-35, Math.min(35, elevation * 8)));
 
   switch (tile.movementClass) {
-    case 'hazard':
-      color = mixHex(color, '#b94d2f', 0.45);
+    case "hazard":
+      color = mixHex(color, "#b94d2f", 0.45);
       break;
-    case 'impassable':
-      color = mixHex(color, '#2b2b2b', 0.42);
+    case "impassable":
+      color = mixHex(color, "#2b2b2b", 0.42);
       break;
-    case 'difficult':
-      color = mixHex(color, '#8f7d2f', 0.28);
+    case "difficult":
+      color = mixHex(color, "#8f7d2f", 0.28);
       break;
     default:
       break;
   }
 
-  if (tile.spawnId) color = mixHex(color, tile.spawnId.startsWith('enemy_') ? '#8c2b2b' : '#2b5f9b', 0.25);
+  if (tile.spawnId) color = mixHex(color, tile.spawnId.startsWith("enemy_") ? "#8c2b2b" : "#2b5f9b", 0.25);
 
   return color;
 }
 
 function movementClassLabel(movementClass) {
   switch (movementClass) {
-    case 'difficult': return 'D';
-    case 'hazard': return 'H';
-    case 'impassable': return 'X';
-    default: return '';
+    case "difficult": return "D";
+    case "hazard": return "H";
+    case "impassable": return "X";
+    default: return "";
   }
 }
 
@@ -354,14 +382,14 @@ export function editorDetailCellColor(fineElevation) {
 
 function terrainBaseColor(terrainTypeId) {
   switch (terrainTypeId) {
-    case 'rock': return '#7a7a72';
-    case 'sand': return '#c8b27a';
-    case 'water': return '#4c7ea8';
-    case 'asphalt': return '#4c4f55';
-    case 'concrete': return '#9a9a94';
-    case 'grass':
+    case "rock": return "#7a7a72";
+    case "sand": return "#c8b27a";
+    case "water": return "#4c7ea8";
+    case "asphalt": return "#4c4f55";
+    case "concrete": return "#9a9a94";
+    case "grass":
     default:
-      return '#5f8f4f';
+      return "#5f8f4f";
   }
 }
 
@@ -382,10 +410,10 @@ function mixHex(a, b, ratio = 0.5) {
 }
 
 function hexToRgb(hex) {
-  const normalized = String(hex).replace('#', '').trim();
+  const normalized = String(hex).replace("#", "").trim();
   const value = normalized.length === 3
-    ? normalized.split('').map((ch) => ch + ch).join('')
-    : normalized.padStart(6, '0').slice(0, 6);
+    ? normalized.split("").map((ch) => ch + ch).join("")
+    : normalized.padStart(6, "0").slice(0, 6);
   return {
     r: Number.parseInt(value.slice(0, 2), 16),
     g: Number.parseInt(value.slice(2, 4), 16),
@@ -394,7 +422,7 @@ function hexToRgb(hex) {
 }
 
 function rgbToHex(r, g, b) {
-  return `#${[r, g, b].map((value) => clamp255(value).toString(16).padStart(2, '0')).join('')}`;
+  return `#${[r, g, b].map((value) => clamp255(value).toString(16).padStart(2, "0")).join("")}`;
 }
 
 function clamp255(value) {
