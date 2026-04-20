@@ -8,6 +8,33 @@ function makeStyle(fill, stroke, strokeWidth = 2.5, priority = 0) {
   return { fill, stroke, strokeWidth, priority };
 }
 
+const OVERLAY_COLORS = {
+  move: {
+    fill: "rgba(32, 214, 255, 0.20)",
+    stroke: "rgba(32, 214, 255, 1)"
+  },
+  path: {
+    fill: "rgba(255, 255, 255, 0.18)",
+    stroke: "rgba(255, 255, 255, 1)"
+  },
+  focus: {
+    fill: "rgba(255, 225, 32, 0.22)",
+    stroke: "rgba(255, 225, 32, 1)"
+  },
+  active: {
+    fill: "rgba(32, 214, 255, 0.14)",
+    stroke: "rgba(32, 214, 255, 1)"
+  },
+  hostile: {
+    fill: "rgba(255, 48, 48, 0.18)",
+    stroke: "rgba(255, 48, 48, 1)"
+  },
+  special: {
+    fill: "rgba(194, 86, 255, 0.18)",
+    stroke: "rgba(194, 86, 255, 1)"
+  }
+};
+
 function setStyle(styleMap, x, y, style) {
   const key = `${x},${y}`;
   const current = styleMap.get(key);
@@ -29,26 +56,26 @@ function styleForEvaluatedTarget(tile) {
 
   if (visible && cover === "none") {
     return makeStyle(
-      "rgba(58, 160, 255, 0.12)",
-      "rgba(58, 160, 255, 1)",
-      4,
+      OVERLAY_COLORS.hostile.fill,
+      OVERLAY_COLORS.hostile.stroke,
+      6,
       60
     );
   }
 
   if (visible && cover === "half") {
     return makeStyle(
-      "rgba(198, 107, 255, 0.12)",
-      "rgba(198, 107, 255, 1)",
-      4,
+      OVERLAY_COLORS.special.fill,
+      OVERLAY_COLORS.special.stroke,
+      6,
       60
     );
   }
 
   return makeStyle(
-    "rgba(255, 59, 48, 0.12)",
-    "rgba(255, 59, 48, 1)",
-    4,
+    OVERLAY_COLORS.hostile.fill,
+    OVERLAY_COLORS.hostile.stroke,
+    6,
     60
   );
 }
@@ -75,9 +102,9 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
 
   if (state.ui?.mode === "move") {
     const moveRangeStyle = makeStyle(
-      "rgba(58, 160, 255, 0.08)",
-      "rgba(58, 160, 255, 1)",
-      4,
+      OVERLAY_COLORS.move.fill,
+      OVERLAY_COLORS.move.stroke,
+      6,
       10
     );
 
@@ -90,9 +117,9 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
     }
 
     const pathStyle = makeStyle(
-      "rgba(255, 255, 255, 0.08)",
-      "rgba(255, 255, 255, 1)",
-      4.5,
+      OVERLAY_COLORS.path.fill,
+      OVERLAY_COLORS.path.stroke,
+      6.5,
       30
     );
 
@@ -105,11 +132,22 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
     }
   }
 
+  if (activeUnit && state.ui?.mode !== "move" && state.ui?.mode !== "face") {
+    const activeStyle = makeStyle(
+      OVERLAY_COLORS.active.fill,
+      OVERLAY_COLORS.active.stroke,
+      6,
+      15
+    );
+
+    setStyleForCells(styleMap, getUnitOccupiedCells(activeUnit), activeStyle);
+  }
+
   if (state.focus) {
     const focusStyle = makeStyle(
-      "rgba(255, 255, 255, 0.06)",
-      "rgba(255, 255, 255, 1)",
-      4.5,
+      OVERLAY_COLORS.focus.fill,
+      OVERLAY_COLORS.focus.stroke,
+      7,
       40
     );
 
@@ -122,9 +160,9 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
 
   if (state.ui?.mode === "action-target") {
     const fireArcStyle = makeStyle(
-      "rgba(198, 107, 255, 0.08)",
-      "rgba(198, 107, 255, 1)",
-      4,
+      OVERLAY_COLORS.special.fill,
+      OVERLAY_COLORS.special.stroke,
+      6,
       20
     );
 
@@ -141,9 +179,9 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
     }
 
     const effectStyle = makeStyle(
-      "rgba(255, 59, 48, 0.12)",
-      "rgba(255, 59, 48, 1)",
-      5,
+      OVERLAY_COLORS.hostile.fill,
+      OVERLAY_COLORS.hostile.stroke,
+      7,
       80
     );
 
