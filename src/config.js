@@ -44,8 +44,8 @@ export const CAMERA_ZOOM_CONFIG = {
   iso: {
     // null = fit whole board
     map: {
-      spanX: null,
-      spanY: null,
+      spanX: 12,
+      spanY: 12,
       padPxX: 64,
       padPxTop: 72,
       padPxBottom: 72,
@@ -54,22 +54,22 @@ export const CAMERA_ZOOM_CONFIG = {
 
     // Smaller number = closer zoom
     mech: {
-      spanX: 2.25,
-      spanY: 2.25,
-      padPxX: 28,
-      padPxTop: 44,
-      padPxBottom: 36,
+      spanX: 4,
+      spanY: 4,
+      padPxX: 56,
+      padPxTop: 88,
+      padPxBottom: 72,
       liftTiles: 1.0
     },
 
     // Pilot is intentionally tighter so the mech reads large beside it
     pilot: {
-      spanX: 0.9,
-      spanY: 0.9,
-      padPxX: 18,
-      padPxTop: 28,
-      padPxBottom: 22,
-      liftTiles: 0.65
+      spanX: 2,
+      spanY: 2,
+      padPxX: 28,
+      padPxTop: 44,
+      padPxBottom: 36,
+      liftTiles: 1
     }
   }
 };
