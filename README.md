@@ -2,216 +2,201 @@
 
 **Launch Game:** [Open Ars Caelorum](https://nevar530.github.io/Ars-Caelorum/)
 
-Ars Caelorum is a sprite-based isometric tactical mech engine built in HTML, CSS, and JavaScript. The project is focused on a clean gameplay foundation first: occupancy-based movement, height-aware line of sight, tactical facing, mech and pilot scale sharing the same battlefield, and a full data-driven map authoring path that will later support terrain sprites, structures, and scenario design.
+Ars Caelorum is a browser-based tactical mech engine built in HTML, CSS, and JavaScript. It is no longer a loose prototype. The current build has a playable combat loop, shared mech/pilot board rules, sprite-based unit rendering, a live dev menu, and a working ground-phase map editor. The project is being built system-first so rules, occupancy, LOS, terrain, and authored map data stay stable while art and content grow on top of that foundation.
 
-The current build already supports playable tactical skirmish flow, a live dev environment, and a real map editor. Mechs use a 3x3 footprint, pilots use 1x1, both exist on the same board, and terrain now has authored presets and movement behavior. The game is still in active development, but it is no longer just a rendering sandbox or proof of concept. It now has a working engine core, a working authoring workflow, and a clear path forward.
-
----
-
-## Current Engine State
-
-### Tactical Gameplay
-- 2:1 isometric tactical board
-- Shared battlefield for mech scale and pilot scale
-- Mechs use **3x3** occupancy
-- Pilots use **1x1** occupancy
-- Turn flow, selection, movement, targeting, and combat are active
-- Height-aware movement is active
-- Height-aware LOS is active
-- Range and targeting systems are active
-- Damage resolution is active
-- Sprite-based unit rendering is active
-- Top-down tactical/editor view is active
-
-### Terrain System
-- Terrain presets are **data-driven from JSON**
-- Current terrain presets:
-  - Grass
-  - Rock
-  - Sand
-  - Water
-  - Asphalt
-  - Concrete
-- Terrain behavior classes are active:
-  - Clear
-  - Difficult
-  - Impassable
-  - Hazard
-- Movement behavior is already hooked in:
-  - **Clear** = normal
-  - **Difficult** = +1 move cost
-  - **Hazard** = +1 move cost
-  - **Impassable** = blocked
-- For **3x3 mechs**, all 9 occupied tiles are checked
-- Live board terrain colors now reflect authored terrain presets
-- Terrain sprite groundwork is in place through sprite-set ids for later `_top` / `_face` rendering
-
-### Dev + Authoring Tools
-- Dev menu has been reworked into a usable tool surface
-- Help/usage support is present in the UI
-- Full ground-phase map editor is active
-- Map editor supports:
-  - Paint height directly
-  - Brush sizes
-  - Terrain preset painting
-  - Terrain behavior painting
-  - Spawn placement
-  - Map resize
-  - Import map JSON
-  - Export map JSON
-  - Built-in map dropdown via `mapList.json`
-  - Validation checks
-  - Larger editor workspace
-  - Brush preview
-  - Stronger spawn markers
-  - Better map readability and status feedback
+The current repo also reflects a major cleanup and render pass. Rendering is split across focused modules, the editor and map runtime are wired into the live game, and overlay readability has been rebuilt around terrain tile tinting and edge-color highlighting instead of a separate overlay layer fighting terrain depth. What remains is a smaller cleanup tail: removing old compatibility paths, trimming stale bridge leftovers, and locking file ownership cleanly before the next major gameplay system.
 
 ---
 
-## Controls
+## Current State
 
-### Main Gameplay
-- The main game is currently **keyboard-driven**
-- Movement, facing, turn flow, and combat testing are handled through the current gameplay input setup
-- The main game does **not** currently use mouse controls as its primary play input
-- Mouse interaction is mainly used inside the dev tools and editor workflow
+### Core Tactical Engine
+- 2:1 isometric battlefield
+- shared mech and pilot rules space on one board
+- mech footprint: **3x3**
+- pilot footprint: **1x1**
+- turn flow with move and action phases
+- targeting, hit resolution, and damage flow
+- height-aware movement
+- height-aware LOS
+- sprite-based unit rendering
+- iso view and tactical top-down view
 
-### Dev Menu
-- Open the dev menu from the in-game UI control
-- The dev menu includes development utilities and the map editor
-- The map editor updates the **live runtime map**
+### Rendering + Readability
+- terrain rendering is modularized under `src/render/`
+- unit rendering is modularized and sprite-based
+- overlays now resolve through **tile tinting and edge colors**
+- active/focus/move/action previews are integrated into terrain tile styling
+- terrain grid lines use darker terrain-derived strokes instead of flat black
+- status plates and LOS previews remain separate UI layers where appropriate
 
-### Map Editor Controls
-- Select a **Paint Mode**
-- Set the value for that mode
-- **Left Click** on the lower editor map to paint live changes
-- **Right Click** on the lower editor map to sample a tile where supported
-- Brush preview shows the current paint footprint
-- Validation panel reports map issues such as missing or overlapping spawns and invalid resize outcomes
-
----
-
-## What You Can Do Right Now
-
-When the game starts, the current build lets you:
-
-- Load into a playable tactical test state
-- Move mechs and pilots on the same board
-- Use height-aware movement and LOS
-- Target and resolve attacks
-- Open the dev menu without breaking out of the game flow
-- Open the map editor and author terrain live
-- Paint height, terrain presets, terrain behavior, and spawn points
-- Resize maps safely
-- Import and export map files
-- Validate map setup before use
-
-This means the current build already supports:
-- engine testing
-- combat flow testing
-- terrain rules testing
-- spawn setup
-- level blockout
-- early mission-space authoring for ground terrain
+### Dev Tools + Authoring
+- live dev menu
+- live round / unit / map state inspection
+- ground-phase map editor wired into runtime
+- brush painting for:
+  - height
+  - terrain preset
+  - movement class
+  - spawn placement
+  - erase
+- brush sizes
+- map resize
+- map import/export
+- built-in map load dropdown
+- live validation and status feedback
 
 ---
 
-## Current Data-Driven Content Structure
+## What Works Now
 
-### Maps
-Maps are loaded from JSON and listed through:
+### Gameplay
+- start combat from setup
+- cycle through move and action phases
+- move mechs and pilots on the same battlefield
+- preview reachable movement
+- preview targeting and LOS
+- resolve attacks
+- apply shield/core damage
+- show combat text markers over impacted units
+
+### Map / Terrain Workflow
+- maps load from JSON
+- maps can be edited live in the dev menu
+- terrain presets are data-driven
+- movement classes are data-driven
+- map definitions can be loaded, imported, exported, and resized
+- runtime map state can be replaced cleanly from authored definitions
+
+### Views
+- isometric play view
+- tactical top-down view
+- enlarged editor map view inside the dev menu
+
+---
+
+## Data-Driven Content
+
+### Runtime Data
+- `data/mechs.json`
+- `data/pilots.json`
+- `data/weapons.json`
+- `data/attacks.json`
+- `data/sigils.json`
 - `data/maps/mapList.json`
-
-Map files currently support:
-- width
-- height
-- tile data
-- terrain preset id
-- terrain sprite id
-- movement class
-- spawn groups
-
-### Terrain
-Terrain options are loaded from JSON:
-- `data/terrain/terrainList.json`
+- `data/maps/*.json`
 - `data/terrain/terrain.json`
+- `data/terrain/terrainList.json`
 
-This allows new terrain presets to be added without rewriting editor code.
+### Current Terrain Presets
+- Grass
+- Rock
+- Sand
+- Water
+- Asphalt
+- Concrete
+
+### Current Movement Classes
+- Clear
+- Difficult
+- Impassable
+- Hazard
+
+---
+
+## Repo Structure
+
+### Gameplay Runtime
+- `src/controllers/` — game, movement, combat, turn flow
+- `src/combat/` — hit, damage, combat text
+- `src/targeting/` — range, fire arc, targeting logic
+- `src/scale/` — occupancy and mech/pilot footprint math
+- `src/maps/` — map schema, runtime, mutations, spawns
+- `src/render/` — terrain, units, overlays, LOS, projection, scene building
+
+### Dev / Editor
+- `dev/devMenu.js`
+- `dev/devMenuModules/`
+- `dev/mapEditor/`
+
+This is now a genuinely split codebase, not a single-file sandbox.
 
 ---
 
 ## Recently Completed
 
-### Dev + Tooling
-- Help/menu support improved
-- Dev menu reworked
-- Map editor rebuilt into a real authoring tool
-- Larger editor layout and better usability pass completed
+### Major Cleanup / Refactor Pass
+- render responsibilities split into focused modules
+- controller layer split out by responsibility
+- map runtime/editor support split into dedicated modules
+- shared mech/pilot battlefield preserved through the cleanup
+- old rendering pressure reduced by moving logic out of monolithic paths
 
-### Terrain Authoring
-- Terrain preset system moved to JSON-driven definitions
-- Terrain behavior classes added
-- Terrain behavior now impacts movement
-- Live board colors now match authored terrain presets
+### Overlay Visibility Pass
+- separate overlay-layer dependence reduced
+- terrain tiles now carry gameplay highlight tint directly
+- overlay edges are color-coded on the tile itself
+- grid strokes were adjusted away from harsh black toward terrain-derived darker values
+- iso readability improved without breaking top-down/editor view support
 
-### Top-Down / Editor Readability
-- Top-down/editor presentation cleaned up
-- Lower editor map enlarged
-- Brush preview added
-- Spawn markers improved
-- Validation feedback added
+### Map Editor Pass
+- editor is live in the dev menu
+- map load/import/export/resize flow is wired
+- terrain and movement-class painting are working
+- spawn painting is working
+- validation/status feedback is present
 
 ---
 
-## In Progress / Still Planned
+## Still Not Done
 
-These are still planned but are **not** considered part of the completed ground-phase editor work:
-
-### Engine Cleanup
-- Full bridge cleanup to remove remaining old mech/unit compatibility paths
-- Render responsibility cleanup and de-bloat pass
-- Further contract cleanup between systems where needed
+### Cleanup Tail
+These are smaller than before, but still real:
+- remaining old compatibility inputs and wrappers
+- deprecated map/config compatibility keys
+- stale bridge comments and outdated docs
+- deciding whether a few helper/scaffold files become true authority or get removed
 
 ### Gameplay Expansion
-- Ability system v1
-- Structure authority / structures pass
-- Hazard damage/effects beyond current movement cost
-- Scenario logic and objectives
+- ability system v1
+- structure authority
+- mission/objective layer
 - AI behaviors
+- scenario/save layer
 
 ### Art Expansion
-- Terrain sprite rendering using `_top` / `_face`
-- Expanded unit sprite coverage
-- Later art polish and content passes
+- terrain sprite rendering from sprite sets
+- expanded unit sprite coverage / facings
+- animation / VFX / polish
 
 ---
 
-## Project Direction
+## Current Direction
 
-Ars Caelorum is being built foundation-first.
+Ars Caelorum is now past the “is there a game here?” phase.
 
-The goal is not to fake progress through flashy placeholders. The goal is to build a stable tactical engine where:
-- movement truth is clear
-- occupancy is authoritative
-- terrain matters
-- scale matters
-- authored maps are real data
-- later art can slot into working systems instead of forcing rebuilds
+The engine has:
+- stable board truth
+- occupancy-first rules
+- real combat flow
+- real authoring workflow
+- cleaner rendering contracts
+- improved overlay readability
 
-The current state reflects that direction. The engine now has a usable tactical core and a usable ground-terrain authoring workflow. The next phases build outward from that foundation instead of replacing it.
-
----
-
-## Short Status Summary
-
-**Core tactical engine:** working  
-**Unit rendering:** active  
-**Ground terrain authoring:** working  
-**Terrain movement behavior:** working  
-**Top-down/editor workflow:** working  
-**Map import/export/load/resize/validate:** working  
-**Structures:** not started as gameplay authority  
-**Abilities:** not started as full gameplay system  
-**Terrain sprite art hookup:** groundwork in place, not yet rendered
+The next correct move is to finish the cleanup tail without reopening old snowball problems, then move into **Ability System V1**.
 
 ---
+
+## Short Status
+
+**Playable combat loop:** yes  
+**Shared mech/pilot battlefield:** yes  
+**3x3 mech authority:** yes  
+**Sprite unit rendering:** yes  
+**Map editor wired live:** yes  
+**Overlay tint + edge-color pass:** yes  
+**Major cleanup/refactor pass:** mostly yes  
+**Cleanup tail:** still remaining  
+**Abilities:** not started  
+**Structures:** not started as runtime authority  
+**AI:** not started
