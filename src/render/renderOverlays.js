@@ -19,8 +19,8 @@ import {
 import { getUnitSupportElevation } from "./renderSceneMath.js";
 
 const DETAIL_OVERLAY_LIFT = 0.02;
-const DETAIL_STROKE_WIDTH = 4.5;
-const DIAMOND_STROKE_WIDTH = 4.5;
+const DETAIL_STROKE_WIDTH = 3;
+const DIAMOND_STROKE_WIDTH = 3;
 
 const DEFAULT_DRAW_OPTIONS = {
   drawShapes: true,
@@ -68,8 +68,8 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
   }
 
   if (effectTiles.has(key)) {
-    fill = "rgba(255, 59, 48, 0.28)";
-    stroke = "rgba(255, 59, 48, 1)";
+    fill = "rgba(255, 166, 0, 0.22)";
+    stroke = "rgba(255, 166, 0, 1)";
   }
 
   if (!fill || !stroke) return;
@@ -233,7 +233,7 @@ function drawOverlayForUnitFootprint(state, unit, className, fill, stroke, paren
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", String(Math.max(DIAMOND_STROKE_WIDTH, 5.5)));
+  poly.setAttribute("stroke-width", String(DIAMOND_STROKE_WIDTH));
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
@@ -279,7 +279,7 @@ function drawOverlayCellTop(state, cell, className, fill, stroke, parent) {
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", String(Math.max(DETAIL_STROKE_WIDTH, 5)));
+  poly.setAttribute("stroke-width", String(DETAIL_STROKE_WIDTH));
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
@@ -317,7 +317,7 @@ export function drawOverlayDiamond(screenX, screenY, className, fill, stroke, pa
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", String(Math.max(DIAMOND_STROKE_WIDTH, 5.5)));
+  poly.setAttribute("stroke-width", String(DIAMOND_STROKE_WIDTH));
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
@@ -334,7 +334,7 @@ export function drawTopOverlayBox(state, screenX, screenY, fill, stroke, parent)
   rect.setAttribute("rx", "6");
   rect.setAttribute("fill", fill);
   rect.setAttribute("stroke", stroke);
-  rect.setAttribute("stroke-width", "4");
+  rect.setAttribute("stroke-width", "3");
   rect.setAttribute("paint-order", "stroke fill");
   parent.appendChild(rect);
 }
@@ -354,7 +354,7 @@ function drawTopOverlayBounds(state, bounds, fill, stroke, parent) {
   rect.setAttribute("rx", "8");
   rect.setAttribute("fill", fill);
   rect.setAttribute("stroke", stroke);
-  rect.setAttribute("stroke-width", "4");
+  rect.setAttribute("stroke-width", "3");
   rect.setAttribute("paint-order", "stroke fill");
   parent.appendChild(rect);
 }
