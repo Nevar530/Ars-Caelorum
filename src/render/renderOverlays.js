@@ -33,6 +33,7 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
 
   if (state.ui.mode !== "action-target") return;
   if (!drawShapes) return;
+  if (shouldUseTerrainTileOverlay(state, item)) return;
 
   const key = `${item.x},${item.y}`;
   const fireArc = tileSetFromList(state.ui.action.fireArcTiles || []);
@@ -74,24 +75,6 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
 
   if (!fill || !stroke) return;
 
-  const occupantUnit = getUnitAtTile(state, item.x, item.y);
-
-  if (occupantUnit) {
-    drawOverlayForUnitFootprint(
-      state,
-      occupantUnit,
-      "action-preview-unit",
-      fill,
-      stroke,
-      parent
-    );
-    return;
-  }
-
-  if (shouldUseTerrainTileOverlay(state, item)) {
-    return;
-  }
-
   if (state.ui.viewMode === "top") {
     drawTopOverlayBox(state, item.screenX, item.screenY, fill, stroke, parent);
     return;
@@ -105,21 +88,7 @@ export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFA
 
   if (item.x !== state.focus.x || item.y !== state.focus.y) return;
   if (!drawShapes) return;
-
-  const activeUnit = getActiveUnit(state);
-
-  if (state.ui.mode === "move" && activeUnit) {
-    const previewUnit = { ...activeUnit, x: state.focus.x, y: state.focus.y };
-    drawOverlayForUnitFootprint(
-      state,
-      previewUnit,
-      "focus-tile",
-      "rgba(240, 176, 0, 0.16)",
-      "rgba(240, 176, 0, 1)",
-      parent
-    );
-    return;
-  }
+  if (shouldUseTerrainTileOverlay(state, item)) return;
 
   const occupantUnit = getUnitAtTile(state, item.x, item.y);
   if (occupantUnit) {
@@ -131,10 +100,6 @@ export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFA
       "rgba(240, 176, 0, 1)",
       parent
     );
-    return;
-  }
-
-  if (shouldUseTerrainTileOverlay(state, item)) {
     return;
   }
 

@@ -6,7 +6,7 @@ import {
 } from "../action.js";
 import { resolveHit } from "../combat/hitResolver.js";
 import { resolveDamage } from "../combat/damageResolver.js";
-import { addCombatTextMarker } from "../combat/combatTextOverlay.js";
+import { addCombatTextMarker, clearCombatTextMarkers } from "../combat/combatTextOverlay.js";
 import { getPrimaryOccupantAt } from "../scale/occupancy.js";
 
 export function createCombatController({
@@ -18,6 +18,7 @@ export function createCombatController({
   advanceActionTurn,
   movementController
 }) {
+  let actionAdvanceTimer = null;
   function startAttack() {
     if (!state.turn.combatStarted || state.turn.phase !== "action") return;
 
@@ -132,8 +133,20 @@ export function createCombatController({
       }
     }
 
-    clearTransientUi();
-    advanceActionTurn();
+    render();
+
+    if (actionAdvanceTimer) {
+      clearTimeout(actionAdvanceTimer);
+    }
+
+    actionAdvanceTimer = window.setTimeout(() => {
+      actionAdvanceTimer = null;
+      clearCombatTextMarkers(state);
+      clearTransientUi();
+      advanceActionTurn();
+      render();
+    }, 700);
+
     return true;
   }
 

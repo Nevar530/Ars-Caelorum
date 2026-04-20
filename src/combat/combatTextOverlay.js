@@ -73,37 +73,33 @@ export function renderCombatTextOverlay(state, refs) {
     el.style.position = "absolute";
     el.style.left = `${pixelX}px`;
     el.style.top = `${pixelY}px`;
-    el.style.transform = "translate(-50%, -50%)";
-    el.style.padding = "4px 10px";
-    el.style.borderRadius = "999px";
+    el.style.transform = "translate(-50%, -100%)";
+    el.style.padding = "0";
+    el.style.borderRadius = "0";
     el.style.fontSize = "16px";
-    el.style.fontWeight = "800";
-    el.style.letterSpacing = "0.06em";
+    el.style.fontWeight = "900";
+    el.style.letterSpacing = "0.08em";
     el.style.textTransform = "uppercase";
     el.style.pointerEvents = "none";
     el.style.whiteSpace = "nowrap";
-    el.style.border = "1px solid rgba(255,255,255,0.18)";
-    el.style.boxShadow = "0 8px 20px rgba(0,0,0,0.35)";
-    el.style.textShadow = "0 1px 2px rgba(0,0,0,0.55)";
+    el.style.border = "none";
+    el.style.boxShadow = "none";
+    el.style.background = "transparent";
+    el.style.fontFamily = "inherit";
+    el.style.textShadow = "0 0 2px rgba(0,0,0,0.85), 0 2px 6px rgba(0,0,0,0.7)";
 
     if (marker.tone === "hit") {
-      el.style.background = "rgba(82, 208, 146, 0.92)";
-      el.style.color = "#08120d";
+      el.style.color = "#7ef0b0";
     } else if (marker.tone === "miss") {
-      el.style.background = "rgba(200, 77, 77, 0.92)";
-      el.style.color = "#ffffff";
+      el.style.color = "#ff8c8c";
     } else if (marker.tone === "shield") {
-      el.style.background = "rgba(74, 154, 255, 0.92)";
-      el.style.color = "#08131f";
+      el.style.color = "#6cc6ff";
     } else if (marker.tone === "core") {
-      el.style.background = "rgba(255, 170, 64, 0.92)";
-      el.style.color = "#1c1207";
+      el.style.color = "#ffb05a";
     } else if (marker.tone === "disabled") {
-      el.style.background = "rgba(120, 86, 196, 0.94)";
-      el.style.color = "#ffffff";
+      el.style.color = "#d0a4ff";
     } else {
-      el.style.background = "rgba(240, 176, 0, 0.92)";
-      el.style.color = "#17130a";
+      el.style.color = "#ffd65a";
     }
 
     overlay.appendChild(el);
@@ -111,7 +107,7 @@ export function renderCombatTextOverlay(state, refs) {
 }
 
 function projectMarkerAnchor(state, unit, stackIndex = 0) {
-  const stackOffset = stackIndex * 26;
+  const stackOffset = stackIndex * 18;
   const centerTile = getUnitCenterPoint(unit);
   const supportElevation = getUnitSupportElevation(state, unit) ?? 0;
   const projected = projectTileCenter(
@@ -130,6 +126,6 @@ function projectMarkerAnchor(state, unit, stackIndex = 0) {
 
   return {
     x: projected.x,
-    y: projected.y - 34 - stackOffset
+    y: projected.y - 18 - stackOffset
   };
 }
