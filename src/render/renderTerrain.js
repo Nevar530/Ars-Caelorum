@@ -207,10 +207,9 @@ function drawIsoTerrainCell(item, parent) {
       { x: top.left.x, y: top.left.y + leftHeightPx }
     ];
 
-    const leftPoly = makePolygon(leftFace, "tile-left", colors.left);
-    leftPoly.setAttribute("stroke", shiftHexBrightness(colors.left, -16));
-    leftPoly.setAttribute("stroke-width", "1");
-    group.appendChild(leftPoly);
+    const leftPolygon = makePolygon(leftFace, "tile-left", colors.left);
+    applyTerrainFaceStroke(leftPolygon, darkerTerrainGridStroke(colors.left));
+    group.appendChild(leftPolygon);
   }
 
   if (rightHeightPx > 0) {
@@ -221,17 +220,15 @@ function drawIsoTerrainCell(item, parent) {
       { x: top.right.x, y: top.right.y + rightHeightPx }
     ];
 
-    const rightPoly = makePolygon(rightFace, "tile-right", colors.right);
-    rightPoly.setAttribute("stroke", shiftHexBrightness(colors.right, -14));
-    rightPoly.setAttribute("stroke-width", "1");
-    group.appendChild(rightPoly);
+    const rightPolygon = makePolygon(rightFace, "tile-right", colors.right);
+    applyTerrainFaceStroke(rightPolygon, darkerTerrainGridStroke(colors.right));
+    group.appendChild(rightPolygon);
   }
 
   const topFace = [top.top, top.right, top.bottom, top.left];
-  const topPoly = makePolygon(topFace, "tile-top", colors.top);
-  topPoly.setAttribute("stroke", shiftHexBrightness(colors.top, -18));
-  topPoly.setAttribute("stroke-width", "1");
-  group.appendChild(topPoly);
+  const topPolygon = makePolygon(topFace, "tile-top", colors.top);
+  applyTerrainFaceStroke(topPolygon, darkerTerrainGridStroke(colors.top));
+  group.appendChild(topPolygon);
 
   if (tileOverlayStyle?.fill) {
     const overlayFill = makePolygon(topFace, "tile-top-overlay-fill", tileOverlayStyle.fill);
@@ -308,6 +305,16 @@ function drawTopTerrainCell(state, item, parent) {
     label.setAttribute("font-size", "12");
     parent.appendChild(label);
   }
+}
+
+
+function applyTerrainFaceStroke(polygon, strokeColor) {
+  polygon.setAttribute("stroke", strokeColor);
+  polygon.setAttribute("stroke-width", "1");
+}
+
+function darkerTerrainGridStroke(fillColor) {
+  return shiftHexBrightness(fillColor, -24);
 }
 
 function resolveTerrainColors(tileLike, fallbackType, fineElevation = null) {
