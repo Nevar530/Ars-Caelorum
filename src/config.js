@@ -41,7 +41,7 @@ export const CAMERA_ZOOM_CONFIG = {
   iso: {
     map: { spanX: null, spanY: null },
     mech: { spanX: 5, spanY: 5 },
-    pilot: { spanX: 2, spanY: 2 }
+    pilot: { spanX: .5, spanY: .5 }
   }
 };
 
