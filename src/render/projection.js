@@ -63,23 +63,15 @@ export function ensureCameraState(state) {
     state.camera.topdownOriginY = 0;
   }
 
-  const zoomLevelField = isValidZoomLevel(state.camera.zoomLevel)
-    ? state.camera.zoomLevel
-    : null;
+  const zoomMode = isValidZoomLevel(state.camera.zoomMode) ? state.camera.zoomMode : null;
+  const zoomLevel = isValidZoomLevel(state.camera.zoomLevel) ? state.camera.zoomLevel : null;
+  const zoomScale = isValidZoomLevel(state.camera.zoomScale) ? state.camera.zoomScale : null;
+  const resolved = zoomMode ?? zoomLevel ?? zoomScale ?? resolveDefaultZoomLevel(state);
 
-  const zoomScaleAlias = isValidZoomLevel(state.camera.zoomScale)
-    ? state.camera.zoomScale
-    : null;
-
-  // Compatibility rule:
-  // if older code is still writing zoomScale as "map"/"mech"/"pilot",
-  // accept it and keep both fields synced.
-  state.camera.zoomLevel =
-    zoomScaleAlias ??
-    zoomLevelField ??
-    resolveDefaultZoomLevel(state);
-
-  state.camera.zoomScale = state.camera.zoomLevel;
+  // Keep all three fields aligned because older code still writes zoomMode/zoomScale.
+  state.camera.zoomMode = resolved;
+  state.camera.zoomLevel = resolved;
+  state.camera.zoomScale = resolved;
 }
 
 export function updateCameraFraming(state, refs) {
@@ -95,12 +87,6 @@ export function updateCameraFraming(state, refs) {
   if (state.ui?.viewMode === "top") {
     updateTopdownFraming(state, viewport, zoomLevel);
     applySvgViewBox(svg, 0, 0, viewport.width, viewport.height);
-    return;
-  }
-
-  if (zoomLevel === "map") {
-    const bounds = getIsoMapFrameBounds(state);
-    applySvgViewBox(svg, bounds.minX, bounds.minY, bounds.width, bounds.height);
     return;
   }
 
@@ -143,7 +129,7 @@ function updateTopdownFraming(state, viewport, zoomLevel) {
     TOPDOWN_CONFIG.maxCellSize
   );
 
-  const focus = getCameraFocusTarget(state);
+  const focus = getCameraFocusTarget(state, zoomLevel);
 
   state.camera.topdownCellSize = cellSize;
   state.camera.topdownOriginX = Math.floor((viewport.width / 2) - ((focus.x + 0.5) * cellSize));
@@ -161,29 +147,9 @@ function applySvgViewBox(svg, x, y, width, height) {
   svg.setAttribute("viewBox", `${safeX} ${safeY} ${safeWidth} ${safeHeight}`);
 }
 
-function getIsoMapFrameBounds(state) {
-  const rawBounds = getMapScreenBoundsRaw(state);
-  const preset = CAMERA_ZOOM_CONFIG.iso?.map ?? {};
-  const padX = Math.max(0, Number(preset.padPxX ?? 64));
-  const padTop = Math.max(0, Number(preset.padPxTop ?? 72));
-  const padBottom = Math.max(0, Number(preset.padPxBottom ?? 72));
-
-  const minX = rawBounds.minX - padX;
-  const maxX = rawBounds.maxX + padX;
-  const minY = rawBounds.minY - padTop;
-  const maxY = rawBounds.maxY + padBottom;
-
-  return {
-    minX,
-    minY,
-    width: Math.max(1, maxX - minX),
-    height: Math.max(1, maxY - minY)
-  };
-}
-
 function getIsoTargetFrameBounds(state, zoomLevel) {
   const preset = CAMERA_ZOOM_CONFIG.iso?.[zoomLevel] ?? CAMERA_ZOOM_CONFIG.iso?.mech ?? {};
-  const focus = getCameraFocusTarget(state);
+  const focus = getCameraFocusTarget(state, zoomLevel);
 
   const spanX = Math.max(0.1, Number(preset.spanX ?? 2));
   const spanY = Math.max(0.1, Number(preset.spanY ?? 2));
@@ -237,19 +203,39 @@ function getIsoTargetFrameBounds(state, zoomLevel) {
   };
 }
 
-function getCameraFocusTarget(state) {
+function getCameraFocusTarget(state, zoomLevel) {
   const activeUnit = getActiveUnit(state);
-  if (activeUnit) {
-    return {
-      x: Number(activeUnit.x ?? state.focus?.x ?? 0),
-      y: Number(activeUnit.y ?? state.focus?.y ?? 0)
-    };
+  const focus = {
+    x: Number(state?.focus?.x ?? activeUnit?.x ?? 0),
+    y: Number(state?.focus?.y ?? activeUnit?.y ?? 0)
+  };
+
+  if (!activeUnit) {
+    return focus;
   }
 
-  return {
-    x: Number(state.focus?.x ?? 0),
-    y: Number(state.focus?.y ?? 0)
+  const active = {
+    x: Number(activeUnit.x ?? 0),
+    y: Number(activeUnit.y ?? 0)
   };
+
+  const preset =
+    state.ui?.viewMode === "top"
+      ? (CAMERA_ZOOM_CONFIG.topdown?.[zoomLevel] ?? {})
+      : (CAMERA_ZOOM_CONFIG.iso?.[zoomLevel] ?? {});
+
+  const deadzone = Math.max(0, Number(preset.followDeadzoneTiles ?? 0));
+
+  // If focus moves a few tiles away from the active unit, let the camera follow it.
+  // Otherwise keep the camera anchored to the active unit.
+  if (
+    Math.abs(focus.x - active.x) > deadzone ||
+    Math.abs(focus.y - active.y) > deadzone
+  ) {
+    return focus;
+  }
+
+  return active;
 }
 
 function getActiveUnit(state) {
@@ -262,6 +248,7 @@ function getActiveUnit(state) {
 
 function resolveDefaultZoomLevel(state) {
   const scale = getCurrentInteractionScale(state);
+  if (!state?.turn?.combatStarted) return "map";
   if (scale === "pilot") return "pilot";
   return "mech";
 }
@@ -275,6 +262,10 @@ function normalizeZoomLevel(zoomLevel, state) {
     return zoomLevel;
   }
 
+  if (isValidZoomLevel(state?.camera?.zoomMode)) {
+    return state.camera.zoomMode;
+  }
+
   if (isValidZoomLevel(state?.camera?.zoomScale)) {
     return state.camera.zoomScale;
   }
@@ -286,6 +277,7 @@ export function getCurrentZoomLevel(state) {
   const zoomLevel = normalizeZoomLevel(state?.camera?.zoomLevel, state);
 
   if (state?.camera) {
+    state.camera.zoomMode = zoomLevel;
     state.camera.zoomLevel = zoomLevel;
     state.camera.zoomScale = zoomLevel;
   }
