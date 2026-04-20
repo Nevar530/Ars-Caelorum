@@ -46,9 +46,9 @@ export const CAMERA_ZOOM_CONFIG = {
 };
 
 export const RENDER_CONFIG = {
-  isoTileWidth: 96,
-  isoTileHeight: 48,
-  elevationStepPx: 24,
+  isoTileWidth: 192,
+  isoTileHeight: 96,
+  elevationStepPx: 48,
   originX: 700,
   originY: 140,
   sceneWidth: 1400,
