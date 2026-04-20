@@ -11,7 +11,6 @@ import { svgEl, makePolygon, makeText } from "../utils.js";
 import { getTopdownCellSize, projectScene, projectTileCenter, projectTopDown } from "./projection.js";
 import {
   getUnitFootprintBounds,
-  getUnitCenterPoint,
   getUnitCenterTile
 } from "../scale/scaleMath.js";
 import {
@@ -21,15 +20,7 @@ import { getUnitSupportElevation } from "./renderSceneMath.js";
 
 const DETAIL_OVERLAY_LIFT = 0.02;
 const DETAIL_STROKE_WIDTH = 4.5;
-const DIAMOND_STROKE_WIDTH = 5.5;
-
-const OVERLAY_COLORS = {
-  move: { fill: "rgba(32, 214, 255, 0.20)", stroke: "rgba(32, 214, 255, 1)" },
-  path: { fill: "rgba(255, 255, 255, 0.18)", stroke: "rgba(255, 255, 255, 1)" },
-  focus: { fill: "rgba(255, 225, 32, 0.22)", stroke: "rgba(255, 225, 32, 1)" },
-  hostile: { fill: "rgba(255, 48, 48, 0.18)", stroke: "rgba(255, 48, 48, 1)" },
-  special: { fill: "rgba(194, 86, 255, 0.18)", stroke: "rgba(194, 86, 255, 1)" }
-};
+const DIAMOND_STROKE_WIDTH = 4.5;
 
 const DEFAULT_DRAW_OPTIONS = {
   drawShapes: true,
@@ -55,8 +46,8 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
   let stroke = null;
 
   if (fireArc.has(key)) {
-    fill = OVERLAY_COLORS.special.fill;
-    stroke = OVERLAY_COLORS.special.stroke;
+    fill = "rgba(198, 107, 255, 0.16)";
+    stroke = "rgba(198, 107, 255, 1)";
   }
 
   const evaluatedTarget = targetMap.get(key);
@@ -65,20 +56,20 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
     const visible = evaluatedTarget.visible ?? evaluatedTarget.los?.visible ?? false;
 
     if (visible && cover === "none") {
-      fill = OVERLAY_COLORS.hostile.fill;
-      stroke = OVERLAY_COLORS.hostile.stroke;
+      fill = "rgba(255, 59, 48, 0.18)";
+      stroke = "rgba(255, 59, 48, 1)";
     } else if (visible && cover === "half") {
-      fill = OVERLAY_COLORS.special.fill;
-      stroke = OVERLAY_COLORS.special.stroke;
+      fill = "rgba(198, 107, 255, 0.18)";
+      stroke = "rgba(198, 107, 255, 1)";
     } else {
-      fill = OVERLAY_COLORS.hostile.fill;
-      stroke = OVERLAY_COLORS.hostile.stroke;
+      fill = "rgba(255, 59, 48, 0.20)";
+      stroke = "rgba(255, 59, 48, 1)";
     }
   }
 
   if (effectTiles.has(key)) {
-    fill = OVERLAY_COLORS.hostile.fill;
-    stroke = OVERLAY_COLORS.hostile.stroke;
+    fill = "rgba(255, 59, 48, 0.28)";
+    stroke = "rgba(255, 59, 48, 1)";
   }
 
   if (!fill || !stroke) return;
@@ -104,8 +95,8 @@ export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFA
       state,
       occupantUnit,
       "focus-unit",
-      OVERLAY_COLORS.focus.fill,
-      OVERLAY_COLORS.focus.stroke,
+      "rgba(255, 230, 64, 0.22)",
+      "rgba(255, 230, 64, 1)",
       parent
     );
     return;
@@ -116,8 +107,8 @@ export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFA
       state,
       item.screenX,
       item.screenY,
-      OVERLAY_COLORS.focus.fill,
-      OVERLAY_COLORS.focus.stroke,
+      "rgba(255, 230, 64, 0.22)",
+      "rgba(255, 230, 64, 1)",
       parent
     );
     return;
@@ -127,8 +118,8 @@ export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFA
     state,
     item,
     "focus-tile",
-    OVERLAY_COLORS.focus.fill,
-    OVERLAY_COLORS.focus.stroke,
+    "rgba(255, 230, 64, 0.22)",
+    "rgba(255, 230, 64, 1)",
     parent
   );
 }
@@ -154,8 +145,8 @@ export function drawScenePathOverlayForTile(state, item, parent, options = DEFAU
       state,
       previewUnit,
       "move-path-tile",
-      OVERLAY_COLORS.path.fill,
-      OVERLAY_COLORS.path.stroke,
+      "rgba(255, 255, 255, 0.24)",
+      "rgba(255, 255, 255, 1)",
       parent
     );
   }
@@ -187,8 +178,8 @@ export function drawSceneMoveOverlay(state, item, parent, text, options = DEFAUL
       state,
       previewUnit,
       "move-range-tile",
-      OVERLAY_COLORS.move.fill,
-      OVERLAY_COLORS.move.stroke,
+      "rgba(0, 224, 255, 0.18)",
+      "rgba(0, 224, 255, 1)",
       parent
     );
   }
@@ -207,8 +198,6 @@ export function drawSceneMoveOverlay(state, item, parent, text, options = DEFAUL
 }
 
 export function drawSceneActiveUnitOverlay(state, parent) {
-  // Active unit highlight now lives in the terrain tile-top overlay style system.
-  // Keep this disabled in iso so it no longer cuts across mech sprites.
   return;
 }
 
@@ -244,7 +233,7 @@ function drawOverlayForUnitFootprint(state, unit, className, fill, stroke, paren
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", String(Math.max(DIAMOND_STROKE_WIDTH, 6)));
+  poly.setAttribute("stroke-width", String(Math.max(DIAMOND_STROKE_WIDTH, 5.5)));
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
@@ -290,7 +279,7 @@ function drawOverlayCellTop(state, cell, className, fill, stroke, parent) {
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", String(Math.max(DETAIL_STROKE_WIDTH, 5.5)));
+  poly.setAttribute("stroke-width", String(Math.max(DETAIL_STROKE_WIDTH, 5)));
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
@@ -328,7 +317,7 @@ export function drawOverlayDiamond(screenX, screenY, className, fill, stroke, pa
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", String(Math.max(DIAMOND_STROKE_WIDTH, 6)));
+  poly.setAttribute("stroke-width", String(Math.max(DIAMOND_STROKE_WIDTH, 5.5)));
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
@@ -345,7 +334,7 @@ export function drawTopOverlayBox(state, screenX, screenY, fill, stroke, parent)
   rect.setAttribute("rx", "6");
   rect.setAttribute("fill", fill);
   rect.setAttribute("stroke", stroke);
-  rect.setAttribute("stroke-width", "2.5");
+  rect.setAttribute("stroke-width", "4");
   rect.setAttribute("paint-order", "stroke fill");
   parent.appendChild(rect);
 }
@@ -365,7 +354,7 @@ function drawTopOverlayBounds(state, bounds, fill, stroke, parent) {
   rect.setAttribute("rx", "8");
   rect.setAttribute("fill", fill);
   rect.setAttribute("stroke", stroke);
-  rect.setAttribute("stroke-width", "2.5");
+  rect.setAttribute("stroke-width", "4");
   rect.setAttribute("paint-order", "stroke fill");
   parent.appendChild(rect);
 }
