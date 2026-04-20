@@ -21,7 +21,7 @@ export const MAP_CONFIG = {
   width: 40,
   height: 40,
 
-  // Bridge keys for older files still using old names.
+  // Deprecated compatibility keys. New code should use width/height only.
   mechWidth: 40,
   mechHeight: 40,
 

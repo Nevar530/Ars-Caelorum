@@ -52,7 +52,10 @@ export function buildLegacySpawnPoints(map) {
   return points;
 }
 
-export function syncLegacySpawnPoints(state) {
+export function syncContentSpawnPointsFromMap(state) {
   state.content.spawnPoints = buildLegacySpawnPoints(state.map);
   return state.content.spawnPoints;
 }
+
+// Temporary compatibility export while callers finish moving off the old name.
+export const syncLegacySpawnPoints = syncContentSpawnPointsFromMap;

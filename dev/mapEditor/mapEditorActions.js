@@ -5,7 +5,13 @@ import { createMapEditorState, MAP_EDITOR_MODES } from './mapEditorState.js';
 import { getBrushedTileCoords } from './mapBrush.js';
 import { buildMapDefinitionFromRuntimeMap } from './mapSerialization.js';
 import { createBlankMapDefinition } from '../../src/maps/mapSchema.js';
-import { buildSpawnId, ensureMapSpawns, parseSpawnId, syncLegacySpawnPoints, clearSpawnIdFromTiles } from '../../src/maps/mapSpawns.js';
+import {
+  buildSpawnId,
+  ensureMapSpawns,
+  parseSpawnId,
+  syncContentSpawnPointsFromMap,
+  clearSpawnIdFromTiles
+} from '../../src/maps/mapSpawns.js';
 
 export function ensureMapEditorState(state) {
   if (!state.ui.mapEditor) {
@@ -114,7 +120,7 @@ function applySpawnBrush(state, tile, editor) {
   clearSpawnIdFromTiles(state.map, spawnId, getMapWidth, getMapHeight, getTile);
   state.map.spawns[team][index] = { x: tile.x, y: tile.y };
   tile.spawnId = spawnId;
-  syncLegacySpawnPoints(state);
+  syncContentSpawnPointsFromMap(state);
 }
 
 function applyEraseBrush(state, tile) {
@@ -129,7 +135,7 @@ function applyEraseBrush(state, tile) {
     }
   }
   tile.spawnId = null;
-  syncLegacySpawnPoints(state);
+  syncContentSpawnPointsFromMap(state);
 }
 
 export function applyMapEditorAtTile(state, originX, originY) {
@@ -164,7 +170,7 @@ export function applyMapEditorAtTile(state, originX, originY) {
   }
 
   state.content.defaultMap = buildMapDefinitionFromRuntimeMap(state.map);
-  syncLegacySpawnPoints(state);
+  syncContentSpawnPointsFromMap(state);
   setMapEditorStatus(state, '');
 }
 
@@ -192,7 +198,7 @@ export function replaceRuntimeMapFromDefinition(state, mapDefinition) {
   const normalized = normalizeMapDefinition(structuredClone(mapDefinition));
   state.map = normalized;
   state.content.defaultMap = buildMapDefinitionFromRuntimeMap(normalized);
-  syncLegacySpawnPoints(state);
+  syncContentSpawnPointsFromMap(state);
   const editor = ensureMapEditorState(state);
   editor.activeMapId = normalized.id ?? editor.activeMapId;
   editor.pendingResize.width = getMapWidth(normalized);

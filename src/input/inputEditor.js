@@ -3,12 +3,13 @@ import {
   ensureMapEditorState,
   sampleMapEditorFromTile
 } from "../../dev/mapEditor/mapEditorActions.js";
+import { getMapHeight, getMapWidth } from "../map.js";
 import { getBrushedTileCoords } from "../../dev/mapEditor/mapBrush.js";
 
 function updateEditorHover(state, x, y) {
   const editorState = ensureMapEditorState(state);
-  const mapWidth = state.map?.width ?? state.map?.mechWidth ?? 0;
-  const mapHeight = state.map?.height ?? state.map?.mechHeight ?? 0;
+  const mapWidth = getMapWidth(state.map);
+  const mapHeight = getMapHeight(state.map);
   editorState.hoverTiles = getBrushedTileCoords(x, y, editorState.brushSize, mapWidth, mapHeight);
 }
 

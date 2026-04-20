@@ -56,15 +56,15 @@ export function createCombatController({
     const targetEntry = getPrimaryOccupantAt(state, targetX, targetY, "mech", {
       excludeUnitId: activeUnit.instanceId
     });
-    const targetMech = targetEntry?.unit ?? null;
+    const targetUnit = targetEntry?.unit ?? null;
 
     if (!confirmActionTarget(state)) {
       return false;
     }
 
-    if (targetMech) {
+    if (targetUnit) {
       logDev(
-        `${activeUnit.name} targeted ${targetMech.name} with ${selectedAttack.name}.`
+        `${activeUnit.name} targeted ${targetUnit.name} with ${selectedAttack.name}.`
       );
     } else {
       logDev(

@@ -34,8 +34,8 @@ export function makeScaleCellKey(_scale = "base", x = 0, y = 0) {
 
 export function getResolutionBoardSize(_scale = "base", mapConfig = MAP_CONFIG) {
   return {
-    width: Number(mapConfig?.width ?? mapConfig?.mechWidth ?? 40),
-    height: Number(mapConfig?.height ?? mapConfig?.mechHeight ?? 40)
+    width: Number(mapConfig?.width ?? 40),
+    height: Number(mapConfig?.height ?? 40)
   };
 }
 
@@ -186,7 +186,7 @@ export function getParentMechTileForPosition(x, y, _scale = "base") {
   };
 }
 
-// Legacy dead bridge wrappers.
+// Deprecated compatibility wrappers. Runtime truth is now center-tile unit space.
 export function mechTileToPilotCells(x, y) {
   return [{ x: Number(x), y: Number(y) }];
 }
