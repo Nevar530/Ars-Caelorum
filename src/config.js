@@ -63,8 +63,8 @@ export const CAMERA_ZOOM_CONFIG = {
     },
 
     pilot: {
-      spanX: 2,
-      spanY: 2,
+      spanX: 3,
+      spanY: 3,
       padPxX: 18,
       padPxTop: 28,
       padPxBottom: 22,
