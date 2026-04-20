@@ -5,7 +5,7 @@
 
 import { createMechInstance } from "../src/mechs.js";
 import { rebuildRoundOrder } from "../src/initiative.js";
-import { getMapHeight, getMapWidth, getTile, getTileSummary } from "../src/map.js";
+import { getMapHeight, getMapSpawns, getMapWidth, getTile, getTileSummary } from "../src/map.js";
 import {
   logDev,
   clearDevLog,
@@ -234,6 +234,25 @@ class DevMenu {
   }
 
   getSpawnPoints() {
+    const mapSpawns = getMapSpawns(this.appState?.map);
+    const runtimePoints = [];
+
+    for (const team of ["player", "enemy"]) {
+      const entries = Array.isArray(mapSpawns?.[team]) ? mapSpawns[team] : [];
+      entries.forEach((spawn, index) => {
+        if (!spawn || !Number.isFinite(spawn.x) || !Number.isFinite(spawn.y)) return;
+        runtimePoints.push({
+          id: `${team}_${index + 1}`,
+          label: `${team.charAt(0).toUpperCase()}${team.slice(1)} ${index + 1}`,
+          x: spawn.x,
+          y: spawn.y,
+          team,
+          unitType: "mech"
+        });
+      });
+    }
+
+    if (runtimePoints.length > 0) return runtimePoints;
     return Array.isArray(this.getContent().spawnPoints) ? this.getContent().spawnPoints : [];
   }
 
@@ -516,6 +535,8 @@ class DevMenu {
 
 
   handleMapEditorRuntimeUpdate() {
+    this.populateSelectors();
+
     if (!this.state.isOpen || this.state.activeTab !== 'map') return;
     this.renderMapState();
   }
@@ -532,6 +553,12 @@ class DevMenu {
     const frames = this.getFrameDefinitions();
     const pilots = this.getPilotDefinitions();
     const spawnPoints = this.getSpawnPoints();
+
+    const previousFrameId = this.state.selectedFrameId;
+    const previousPilotId = this.state.selectedPilotId;
+    const previousSpawnId = this.state.selectedSpawnId;
+    const previousControlType = this.state.selectedControlType;
+    const previousTeam = this.state.selectedTeam;
 
     this.frameSelectEl.innerHTML = frames
       .map(
@@ -554,15 +581,25 @@ class DevMenu {
       )
       .join("");
 
-    this.state.selectedFrameId = frames[0]?.id ?? "";
-    this.state.selectedPilotId = pilots[0]?.id ?? "";
-    this.state.selectedSpawnId = spawnPoints[0]?.id ?? "";
-    this.state.selectedControlType = "PC";
-    this.state.selectedTeam = "player";
+    this.state.selectedFrameId = frames.some((frame) => frame.id === previousFrameId)
+      ? previousFrameId
+      : (frames[0]?.id ?? "");
+    this.state.selectedPilotId = pilots.some((pilot) => pilot.id === previousPilotId)
+      ? previousPilotId
+      : (pilots[0]?.id ?? "");
+    this.state.selectedSpawnId = spawnPoints.some((spawn) => spawn.id === previousSpawnId)
+      ? previousSpawnId
+      : (spawnPoints[0]?.id ?? "");
+    this.state.selectedControlType = normalizeControlType(previousControlType);
+    this.state.selectedTeam = normalizeTeam(previousTeam);
 
     if (this.state.selectedFrameId) this.frameSelectEl.value = this.state.selectedFrameId;
     if (this.state.selectedPilotId) this.pilotSelectEl.value = this.state.selectedPilotId;
-    if (this.state.selectedSpawnId) this.spawnSelectEl.value = this.state.selectedSpawnId;
+    if (this.state.selectedSpawnId) {
+      this.spawnSelectEl.value = this.state.selectedSpawnId;
+    } else if (this.spawnSelectEl) {
+      this.spawnSelectEl.value = "";
+    }
     this.controlSelectEl.value = this.state.selectedControlType;
     this.teamSelectEl.value = this.state.selectedTeam;
   }
