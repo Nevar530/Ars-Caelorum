@@ -1,11 +1,11 @@
-// src/render/projection.js
-
 import { MAP_CONFIG, RENDER_CONFIG } from "../config.js";
-import { normalizeScale, getResolutionBoardSize } from "../scale/scaleMath.js";
+import { getTile, getMapWidth, getMapHeight } from "../map.js";
+import { getUnitById } from "../mechs.js";
+import { getUnitFootprint, normalizeScale } from "../scale/scaleMath.js";
 
 export const TOPDOWN_CONFIG = {
-  minCellSize: 10,
-  maxCellSize: 28,
+  minCellSize: 12,
+  maxCellSize: 64,
   padding: 24,
   cellSize: Math.round(RENDER_CONFIG.isoTileWidth / 2)
 };
@@ -70,83 +70,143 @@ export function updateCameraFraming(state, refs) {
   const viewport = getSceneViewport(refs);
 
   if (state.ui?.viewMode === "top") {
+    applyBoardViewBox(refs, 0, 0, viewport.width, viewport.height);
     updateTopdownFit(state, viewport);
     state.camera.offsetX = 0;
     state.camera.offsetY = 0;
     return;
   }
 
-  const rawBounds = getMapScreenBoundsRaw(state);
-  const offsetLimits = getCameraOffsetLimits(rawBounds, viewport);
-
-  const focusX = Number(state.focus?.x ?? 0);
-  const focusY = Number(state.focus?.y ?? 0);
-  const focusScreen = projectIso(state, focusX, focusY, 0, 1);
-
-  const deadZone = {
-    left: viewport.width * 0.28,
-    right: viewport.width * 0.72,
-    top: viewport.height * 0.18,
-    bottom: viewport.height * 0.72
-  };
-
-  let dx = 0;
-  let dy = 0;
-
-  if (focusScreen.x < deadZone.left) {
-    dx = deadZone.left - focusScreen.x;
-  } else if (focusScreen.x > deadZone.right) {
-    dx = deadZone.right - focusScreen.x;
-  }
-
-  if (focusScreen.y < deadZone.top) {
-    dy = deadZone.top - focusScreen.y;
-  } else if (focusScreen.y > deadZone.bottom) {
-    dy = deadZone.bottom - focusScreen.y;
-  }
-
-  state.camera.offsetX += dx;
-  state.camera.offsetY += dy;
-
-  state.camera.offsetX = clamp(state.camera.offsetX, offsetLimits.minX, offsetLimits.maxX);
-  state.camera.offsetY = clamp(state.camera.offsetY, offsetLimits.minY, offsetLimits.maxY);
+  state.camera.offsetX = 0;
+  state.camera.offsetY = 0;
+  updateIsoViewBox(state, refs, viewport);
 }
 
 function updateTopdownFit(state, viewport) {
-  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const mapWidth = Math.max(1, getMapWidth(state.map));
+  const mapHeight = Math.max(1, getMapHeight(state.map));
+  const target = getCameraTarget(state);
+
   const usableWidth = Math.max(200, viewport.width - (TOPDOWN_CONFIG.padding * 2));
   const usableHeight = Math.max(200, viewport.height - (TOPDOWN_CONFIG.padding * 2));
 
-  const cellSizeByWidth = usableWidth / board.width;
-  const cellSizeByHeight = usableHeight / board.height;
+  let desiredCols = mapWidth;
+  let desiredRows = mapHeight;
+
+  if (target.unit) {
+    const radius = getCameraRadius(target.unit);
+    const footprint = getUnitFootprint(target.unit);
+    desiredCols = Math.max(8, (radius * 2) + footprint.width + 4);
+    desiredRows = Math.max(8, (radius * 2) + footprint.height + 4);
+  }
 
   const cellSize = clamp(
-    Math.floor(Math.min(cellSizeByWidth, cellSizeByHeight)),
+    Math.floor(Math.min(usableWidth / desiredCols, usableHeight / desiredRows)),
     TOPDOWN_CONFIG.minCellSize,
     TOPDOWN_CONFIG.maxCellSize
   );
 
   state.camera.topdownCellSize = cellSize;
 
-  const mapPixelWidth = board.width * cellSize;
-  const mapPixelHeight = board.height * cellSize;
+  const mapPixelWidth = mapWidth * cellSize;
+  const mapPixelHeight = mapHeight * cellSize;
 
-  state.camera.topdownOriginX = Math.floor((viewport.width - mapPixelWidth) / 2);
-  state.camera.topdownOriginY = Math.floor((viewport.height - mapPixelHeight) / 2);
-}
-
-export function getSceneViewport(refs) {
-  const svg = refs?.worldScene?.ownerSVGElement;
-
-  const vb = svg?.viewBox?.baseVal;
-  if (vb && vb.width > 0 && vb.height > 0) {
-    return { width: vb.width, height: vb.height };
+  if (!target.unit) {
+    state.camera.topdownOriginX = Math.floor((viewport.width - mapPixelWidth) / 2);
+    state.camera.topdownOriginY = Math.floor((viewport.height - mapPixelHeight) / 2);
+    return;
   }
 
-  const width = svg?.clientWidth || 1400;
-  const height = svg?.clientHeight || 760;
+  let originX = Math.round((viewport.width / 2) - ((target.x + 0.5) * cellSize));
+  let originY = Math.round((viewport.height / 2) - ((target.y + 0.5) * cellSize));
 
-  return { width, height };
+  if (mapPixelWidth <= viewport.width) {
+    originX = Math.floor((viewport.width - mapPixelWidth) / 2);
+  } else {
+    originX = clamp(originX, viewport.width - mapPixelWidth, 0);
+  }
+
+  if (mapPixelHeight <= viewport.height) {
+    originY = Math.floor((viewport.height - mapPixelHeight) / 2);
+  } else {
+    originY = clamp(originY, viewport.height - mapPixelHeight, 0);
+  }
+
+  state.camera.topdownOriginX = originX;
+  state.camera.topdownOriginY = originY;
+}
+
+function updateIsoViewBox(state, refs, viewport) {
+  const mapWidth = Math.max(1, getMapWidth(state.map));
+  const mapHeight = Math.max(1, getMapHeight(state.map));
+  const target = getCameraTarget(state);
+  const interactionRadius = target.unit ? getCameraRadius(target.unit) : 8;
+  const footprint = target.unit ? getUnitFootprint(target.unit) : { width: 1, height: 1 };
+  const supportElevation = Number(getTile(state.map, target.x, target.y)?.elevation ?? 0);
+
+  const spanX = interactionRadius + Math.ceil(footprint.width / 2) + 2;
+  const spanY = interactionRadius + Math.ceil(footprint.height / 2) + 2;
+
+  const rawBounds = getIsoTargetFrameBounds(
+    state,
+    target.x,
+    target.y,
+    supportElevation,
+    spanX,
+    spanY,
+    mapWidth,
+    mapHeight
+  );
+
+  let frameWidth = rawBounds.maxX - rawBounds.minX;
+  let frameHeight = rawBounds.maxY - rawBounds.minY;
+  const aspect = viewport.width / viewport.height;
+
+  if ((frameWidth / frameHeight) > aspect) {
+    frameHeight = frameWidth / aspect;
+  } else {
+    frameWidth = frameHeight * aspect;
+  }
+
+  let viewBoxX = ((rawBounds.minX + rawBounds.maxX) / 2) - (frameWidth / 2);
+  let viewBoxY = ((rawBounds.minY + rawBounds.maxY) / 2) - (frameHeight / 2);
+
+  const mapBounds = getMapScreenBoundsRaw(state);
+  const xLimits = getViewBoxLimits(mapBounds.minX - 80, mapBounds.maxX + 80, frameWidth);
+  const yLimits = getViewBoxLimits(mapBounds.minY - 140, mapBounds.maxY + 80, frameHeight);
+
+  viewBoxX = clamp(viewBoxX, xLimits.min, xLimits.max);
+  viewBoxY = clamp(viewBoxY, yLimits.min, yLimits.max);
+
+  applyBoardViewBox(refs, viewBoxX, viewBoxY, frameWidth, frameHeight);
+}
+
+function getIsoTargetFrameBounds(state, focusX, focusY, supportElevation, spanX, spanY, mapWidth, mapHeight) {
+  const corners = [
+    projectIsoRaw(focusX - spanX, focusY - spanY, 0, state.rotation, 1, mapWidth, mapHeight),
+    projectIsoRaw(focusX + spanX + 1, focusY - spanY, 0, state.rotation, 1, mapWidth, mapHeight),
+    projectIsoRaw(focusX + spanX + 1, focusY + spanY + 1, 0, state.rotation, 1, mapWidth, mapHeight),
+    projectIsoRaw(focusX - spanX, focusY + spanY + 1, 0, state.rotation, 1, mapWidth, mapHeight)
+  ];
+
+  const minX = Math.min(...corners.map((point) => point.x)) - 96;
+  const maxX = Math.max(...corners.map((point) => point.x)) + 96;
+  const topY = Math.min(...corners.map((point) => point.y)) - (((supportElevation + 8) * RENDER_CONFIG.elevationStepPx) + 120);
+  const bottomY = Math.max(...corners.map((point) => point.y)) + RENDER_CONFIG.isoTileHeight + 96;
+
+  return {
+    minX,
+    maxX,
+    minY: topY,
+    maxY: bottomY
+  };
+}
+
+export function getSceneViewport(_refs) {
+  return {
+    width: Number(RENDER_CONFIG.sceneWidth ?? 1400),
+    height: Number(RENDER_CONFIG.sceneHeight ?? 900)
+  };
 }
 
 export function getCameraOffsetLimits(rawBounds, viewport) {
@@ -176,14 +236,15 @@ export function getCameraOffsetLimits(rawBounds, viewport) {
 }
 
 export function getMapScreenBoundsRaw(state) {
-  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const mapWidth = Math.max(1, getMapWidth(state.map) || MAP_CONFIG.width);
+  const mapHeight = Math.max(1, getMapHeight(state.map) || MAP_CONFIG.height);
 
   if (state.ui?.viewMode === "top") {
     const corners = [
       projectTopDown(state, 0, 0),
-      projectTopDown(state, board.width, 0),
-      projectTopDown(state, board.width, board.height),
-      projectTopDown(state, 0, board.height)
+      projectTopDown(state, mapWidth, 0),
+      projectTopDown(state, mapWidth, mapHeight),
+      projectTopDown(state, 0, mapHeight)
     ];
 
     return {
@@ -196,23 +257,23 @@ export function getMapScreenBoundsRaw(state) {
 
   const corners = [
     { x: 0, y: 0 },
-    { x: board.width, y: 0 },
-    { x: 0, y: board.height },
-    { x: board.width, y: board.height }
+    { x: mapWidth, y: 0 },
+    { x: 0, y: mapHeight },
+    { x: mapWidth, y: mapHeight }
   ];
 
   const points = [];
 
   for (const corner of corners) {
-    points.push(projectIsoRaw(corner.x, corner.y, 0, state.rotation, 1));
-    points.push(projectIsoRaw(corner.x, corner.y, MAP_CONFIG.maxElevation + 8, state.rotation, 1));
+    points.push(projectIsoRaw(corner.x, corner.y, 0, state.rotation, 1, mapWidth, mapHeight));
+    points.push(projectIsoRaw(corner.x, corner.y, MAP_CONFIG.maxElevation + 8, state.rotation, 1, mapWidth, mapHeight));
   }
 
   return {
     minX: Math.min(...points.map((p) => p.x)),
     maxX: Math.max(...points.map((p) => p.x)),
     minY: Math.min(...points.map((p) => p.y)),
-    maxY: Math.max(...points.map((p) => p.y))
+    maxY: Math.max(...points.map((p) => p.y)) + RENDER_CONFIG.isoTileHeight
   };
 }
 
@@ -225,7 +286,9 @@ export function projectScene(state, x, y, elevation = 0, size = 1) {
 }
 
 export function projectIso(state, x, y, elevation = 0, size = 1) {
-  const raw = projectIsoRaw(x, y, elevation, state.rotation, size);
+  const mapWidth = Math.max(1, getMapWidth(state.map) || MAP_CONFIG.width);
+  const mapHeight = Math.max(1, getMapHeight(state.map) || MAP_CONFIG.height);
+  const raw = projectIsoRaw(x, y, elevation, state.rotation, size, mapWidth, mapHeight);
 
   return {
     x: raw.x + (state.camera?.offsetX ?? 0),
@@ -233,9 +296,8 @@ export function projectIso(state, x, y, elevation = 0, size = 1) {
   };
 }
 
-export function projectIsoRaw(x, y, elevation = 0, rotation = 0, _size = 1) {
-  const board = getResolutionBoardSize("base", MAP_CONFIG);
-  const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, rotation);
+export function projectIsoRaw(x, y, elevation = 0, rotation = 0, _size = 1, boardWidth = MAP_CONFIG.width, boardHeight = MAP_CONFIG.height) {
+  const rotated = rotateSceneCoordContinuous(x, y, boardWidth, boardHeight, rotation);
 
   const isoX =
     ((rotated.x - rotated.y) * (RENDER_CONFIG.isoTileWidth / 2)) + CAMERA_CENTER.isoX;
@@ -275,8 +337,9 @@ export function projectTopDownRect(state, x, y, width = 1, height = 1) {
 }
 
 export function getSceneSortKey(state, x, y, elevation = 0) {
-  const board = getResolutionBoardSize("base", MAP_CONFIG);
-  const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
+  const mapWidth = Math.max(1, getMapWidth(state.map) || MAP_CONFIG.width);
+  const mapHeight = Math.max(1, getMapHeight(state.map) || MAP_CONFIG.height);
+  const rotated = rotateSceneCoordContinuous(x, y, mapWidth, mapHeight, state.rotation);
 
   if (state.ui?.viewMode === "top") {
     return (y * 1000) + x;
@@ -348,6 +411,65 @@ export function getCurrentInteractionScale(state) {
     state.camera?.zoomScale ??
     state.focus?.scale ??
     "pilot"
+  );
+}
+
+function getCameraTarget(state) {
+  const units = Array.isArray(state?.units) ? state.units : [];
+  const activeUnit = getUnitById(units, state?.turn?.activeUnitId ?? null);
+  const selectedUnit = getUnitById(units, state?.selection?.unitId ?? null);
+  const unit = activeUnit ?? selectedUnit ?? null;
+
+  if (unit) {
+    return {
+      unit,
+      x: Number(unit.x ?? 0),
+      y: Number(unit.y ?? 0)
+    };
+  }
+
+  return {
+    unit: null,
+    x: Number(state?.focus?.x ?? 0),
+    y: Number(state?.focus?.y ?? 0)
+  };
+}
+
+function getCameraRadius(unit) {
+  const move = Math.max(1, Number(unit?.move ?? 0));
+  const scale = normalizeScale(unit?.scale ?? unit?.unitType ?? "mech");
+
+  if (scale === "pilot") {
+    return move + Math.floor(move / 2);
+  }
+
+  if (scale === "structure") {
+    return Math.max(4, move);
+  }
+
+  return Math.max(6, move * 2);
+}
+
+function getViewBoxLimits(minEdge, maxEdge, span) {
+  let min = minEdge;
+  let max = maxEdge - span;
+
+  if (min > max) {
+    const center = (min + max) / 2;
+    min = center;
+    max = center;
+  }
+
+  return { min, max };
+}
+
+function applyBoardViewBox(refs, x, y, width, height) {
+  const board = refs?.board;
+  if (!board) return;
+
+  board.setAttribute(
+    "viewBox",
+    `${Math.round(x)} ${Math.round(y)} ${Math.max(1, Math.round(width))} ${Math.max(1, Math.round(height))}`
   );
 }
 

@@ -92,7 +92,7 @@ export function createGameController({
 
   function resetMapAndUnits() {
     state.map = resetMap(state.content?.defaultMap ?? null);
-    state.units = instantiateTestUnits(state.content);
+    state.units = instantiateTestUnits(state.content, state.map);
 
     state.rotation = 0;
     state.camera.angle = 0;

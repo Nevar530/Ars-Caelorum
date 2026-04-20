@@ -11,7 +11,7 @@ export const GAME_CONFIG = {
 
   anchorType: "center",
 
-  // Legacy bridge values kept alive until render / editor / LOS are rewritten.
+  // Legacy bridge values kept alive until sprite / structure phases consume them directly.
   detailSubdivisionsPerMechTile: 1,
   detailElevationPerMechLevel: 1,
   humanTilesPerMechTile: 2
@@ -35,6 +35,8 @@ export const RENDER_CONFIG = {
   elevationStepPx: 24,
   originX: 700,
   originY: 140,
+  sceneWidth: 1400,
+  sceneHeight: 900,
   editorSize: 760,
   editorPadding: 18,
   showCoords: false

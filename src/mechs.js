@@ -1,5 +1,7 @@
 // src/mechs.js
 
+import { getMapSpawns } from "./map.js";
+
 const DEFAULT_ATTACK_PROFILE_MAP = {
   melee_01: "melee_cardinal_01",
   missile_01: "missile_aoe_01",
@@ -123,7 +125,35 @@ export function instantiateTestMechs(content) {
   return instantiateTestUnits(content);
 }
 
-export function instantiateTestUnits(content) {
+function buildRuntimeSpawnIndex(content, map = null) {
+  const index = new Map();
+  const mapSpawns = getMapSpawns(map);
+
+  for (const team of ["player", "enemy"]) {
+    const entries = Array.isArray(mapSpawns?.[team]) ? mapSpawns[team] : [];
+    entries.forEach((spawn, spawnIndex) => {
+      if (!spawn || !Number.isFinite(spawn.x) || !Number.isFinite(spawn.y)) return;
+      index.set(`${team}_${spawnIndex + 1}`, {
+        id: `${team}_${spawnIndex + 1}`,
+        x: Number(spawn.x),
+        y: Number(spawn.y)
+      });
+    });
+  }
+
+  if (index.size > 0) {
+    return index;
+  }
+
+  for (const spawn of Array.isArray(content?.spawnPoints) ? content.spawnPoints : []) {
+    if (!spawn?.id) continue;
+    index.set(spawn.id, spawn);
+  }
+
+  return index;
+}
+
+export function instantiateTestUnits(content, map = null) {
   const mechDefinitions = Array.isArray(content?.mechs) ? content.mechs : [];
   const pilotDefinitions = Array.isArray(content?.pilots) ? content.pilots : [];
 
@@ -131,9 +161,7 @@ export function instantiateTestUnits(content) {
     return [];
   }
 
-  const spawnIndex = new Map(
-    (Array.isArray(content?.spawnPoints) ? content.spawnPoints : []).map((spawn) => [spawn.id, spawn])
-  );
+  const spawnIndex = buildRuntimeSpawnIndex(content, map ?? content?.defaultMap ?? null);
 
   const atSpawn = (spawnId, fallbackX, fallbackY) => {
     const spawn = spawnIndex.get(spawnId);

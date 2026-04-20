@@ -234,13 +234,8 @@ class DevMenu {
   }
 
   getViewLabel() {
-    const tactical =
-      this.appState?.camera?.tacticalView ??
-      this.appState?.ui?.tacticalView ??
-      this.appState?.tacticalView ??
-      false;
-
-    return tactical ? "TACTICAL" : "ISO";
+    const currentView = this.appState?.ui?.viewMode ?? "iso";
+    return currentView === "top" ? "TACTICAL" : "ISO";
   }
 
   getSelectedMapTile() {
@@ -837,8 +832,8 @@ class DevMenu {
 
       const subs = Array.from(this.editorShellEl.querySelectorAll('.panel-sub'));
       if (subs[0]) subs[0].textContent = 'Left click paints · Right click samples · Hover shows brush';
-      if (subs[1]) subs[1].textContent = 'Top-down authoring view of the live map';
-      if (subs[2]) subs[2].textContent = 'Bigger grid for spawn icons and brush preview';
+      if (subs[1]) subs[1].textContent = 'Rotation-aligned tactical authoring view of the live map';
+      if (subs[2]) subs[2].textContent = 'Live unit footprints, focus tile, and spawn markers';
 
       const editor = this.editorShellEl.querySelector('#editor');
       if (editor) {

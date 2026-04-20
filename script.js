@@ -43,9 +43,11 @@ const refs = {
 async function init() {
   const content = await loadGameData();
 
+  const initialMap = content.defaultMap ? normalizeMapDefinition(content.defaultMap) : createInitialMap();
+
   const state = createState({
-    map: content.defaultMap ? normalizeMapDefinition(content.defaultMap) : createInitialMap(),
-    mechs: instantiateTestUnits(content),
+    map: initialMap,
+    units: instantiateTestUnits(content, initialMap),
     rotation: 0,
     content
   });
