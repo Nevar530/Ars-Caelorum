@@ -222,7 +222,11 @@ function drawIsoTerrainCell(item, parent) {
   }
 
   const topFace = [top.top, top.right, top.bottom, top.left];
-  group.appendChild(makePolygon(topFace, "tile-top", colors.top));
+  const baseTop = makePolygon(topFace, "tile-top", colors.top);
+  baseTop.setAttribute("stroke", deriveTopGridStroke(colors.top));
+  baseTop.setAttribute("stroke-width", "1.35");
+  baseTop.setAttribute("stroke-linejoin", "round");
+  group.appendChild(baseTop);
 
   if (tileOverlayStyle?.fill) {
     const overlayFill = makePolygon(topFace, "tile-top-overlay-fill", tileOverlayStyle.fill);
@@ -267,8 +271,8 @@ function drawTopTerrainCell(state, item, parent) {
   rect.setAttribute("width", sizePx);
   rect.setAttribute("height", sizePx);
   rect.setAttribute("fill", colors.top);
-  rect.setAttribute("stroke", tileOverlayStyle?.stroke ?? "rgba(255,255,255,0.08)");
-  rect.setAttribute("stroke-width", String(tileOverlayStyle?.strokeWidth ?? (size < 1 ? 0.5 : 1)));
+  rect.setAttribute("stroke", tileOverlayStyle?.stroke ?? deriveTopGridStroke(colors.top));
+  rect.setAttribute("stroke-width", String(tileOverlayStyle?.strokeWidth ?? (size < 1 ? 0.6 : 1)));
   rect.dataset.x = String(x);
   rect.dataset.y = String(y);
 
@@ -391,6 +395,10 @@ function terrainBaseColor(terrainTypeId) {
     default:
       return "#5f8f4f";
   }
+}
+
+function deriveTopGridStroke(topHex) {
+  return shiftHexBrightness(topHex, -24);
 }
 
 function shiftHexBrightness(hex, amount) {
