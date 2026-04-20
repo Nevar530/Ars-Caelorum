@@ -262,21 +262,15 @@ button:disabled {
    TERRAIN RENDERING
 ========================================= */
 
-.tile-top {
-  stroke: #223241;
-  stroke-width: 1;
-}
-
+.tile-top,
 .tile-left,
-.tile-right {
-  stroke: #1a2631;
-  stroke-width: 1;
+.tile-right,
+.tile-outline {
+  vector-effect: non-scaling-stroke;
 }
 
 .tile-outline {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.06);
-  stroke-width: 1;
 }
 
 /* =========================================
