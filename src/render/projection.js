@@ -1,17 +1,21 @@
-import { CAMERA_ZOOM_CONFIG, MAP_CONFIG, RENDER_CONFIG } from "../config.js";
-import { getTile, getMapWidth, getMapHeight } from "../map.js";
-import { getUnitById } from "../mechs.js";
-import { getUnitFootprint, normalizeScale } from "../scale/scaleMath.js";
+// src/render/projection.js
+
+import {
+  CAMERA_ZOOM_CONFIG,
+  MAP_CONFIG,
+  RENDER_CONFIG
+} from "../config.js";
+import { getTile, getTileFootElevation } from "../map.js";
+import { normalizeScale, getResolutionBoardSize } from "../scale/scaleMath.js";
 
 export const TOPDOWN_CONFIG = {
-  minCellSize: 12,
+  minCellSize: 10,
   maxCellSize: 64,
   padding: 24,
   cellSize: Math.round(RENDER_CONFIG.isoTileWidth / 2)
 };
 
 export const SCALE_ZOOM = {
-  map: 1,
   mech: 1,
   pilot: 1
 };
@@ -47,14 +51,6 @@ export function ensureCameraState(state) {
     state.camera.offsetY = 0;
   }
 
-  if (!state.camera.zoomMode) {
-    state.camera.zoomMode = getDefaultZoomModeForState(state);
-  }
-
-  if (!state.camera.zoomScale) {
-    state.camera.zoomScale = state.camera.zoomMode;
-  }
-
   if (typeof state.camera.topdownCellSize !== "number") {
     state.camera.topdownCellSize = TOPDOWN_CONFIG.cellSize;
   }
@@ -66,192 +62,243 @@ export function ensureCameraState(state) {
   if (typeof state.camera.topdownOriginY !== "number") {
     state.camera.topdownOriginY = 0;
   }
+
+  if (!state.camera.zoomLevel) {
+    state.camera.zoomLevel = resolveDefaultZoomLevel(state);
+  }
+
+  if (!state.camera.zoomScale) {
+    state.camera.zoomScale = getCurrentInteractionScale(state);
+  }
 }
 
 export function updateCameraFraming(state, refs) {
-  const currentZoomMode = getCameraZoomMode(state);
-  state.camera.zoomMode = currentZoomMode;
-  state.camera.zoomScale = currentZoomMode;
+  ensureCameraState(state);
 
+  const zoomLevel = getCurrentZoomLevel(state);
   const viewport = getSceneViewport(refs);
+  const svg = refs?.worldScene?.ownerSVGElement ?? refs?.board ?? null;
+
+  // Keep old compatibility field alive for places that still expect "pilot"/"mech" scale.
+  state.camera.zoomScale = getCurrentInteractionScale(state);
+  state.camera.offsetX = 0;
+  state.camera.offsetY = 0;
 
   if (state.ui?.viewMode === "top") {
-    applyBoardViewBox(refs, 0, 0, viewport.width, viewport.height);
-    updateTopdownFit(state, viewport);
-    state.camera.offsetX = 0;
-    state.camera.offsetY = 0;
+    updateTopdownFraming(state, viewport, zoomLevel);
+    applySvgViewBox(svg, 0, 0, viewport.width, viewport.height);
     return;
   }
 
-  state.camera.offsetX = 0;
-  state.camera.offsetY = 0;
-  updateIsoViewBox(state, refs, viewport);
-}
-
-function updateTopdownFit(state, viewport) {
-  const mapWidth = Math.max(1, getMapWidth(state.map));
-  const mapHeight = Math.max(1, getMapHeight(state.map));
-  const target = getCameraTarget(state);
-
-  const usableWidth = Math.max(200, viewport.width - (TOPDOWN_CONFIG.padding * 2));
-  const usableHeight = Math.max(200, viewport.height - (TOPDOWN_CONFIG.padding * 2));
-
-  const zoomMode = getCameraZoomMode(state);
-  const preset = CAMERA_ZOOM_CONFIG.topdown?.[zoomMode] ?? null;
-
-  let desiredCols = mapWidth;
-  let desiredRows = mapHeight;
-
-  if (zoomMode !== "map" && target.unit && preset) {
-    desiredCols = Math.max(8, Number(preset.cols ?? mapWidth));
-    desiredRows = Math.max(8, Number(preset.rows ?? mapHeight));
+  if (zoomLevel === "map") {
+    const bounds = getIsoMapFrameBounds(state);
+    applySvgViewBox(svg, bounds.minX, bounds.minY, bounds.width, bounds.height);
+    return;
   }
 
-  const cellSize = clamp(
-    Math.floor(Math.min(usableWidth / desiredCols, usableHeight / desiredRows)),
-    TOPDOWN_CONFIG.minCellSize,
-    TOPDOWN_CONFIG.maxCellSize
-  );
+  const bounds = getIsoTargetFrameBounds(state, zoomLevel);
+  applySvgViewBox(svg, bounds.minX, bounds.minY, bounds.width, bounds.height);
+}
 
-  state.camera.topdownCellSize = cellSize;
+function updateTopdownFraming(state, viewport, zoomLevel) {
+  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const preset = CAMERA_ZOOM_CONFIG.topdown?.[zoomLevel] ?? CAMERA_ZOOM_CONFIG.topdown.map;
 
-  const mapPixelWidth = mapWidth * cellSize;
-  const mapPixelHeight = mapHeight * cellSize;
+  if (!preset || preset.cols == null || preset.rows == null) {
+    const usableWidth = Math.max(200, viewport.width - (TOPDOWN_CONFIG.padding * 2));
+    const usableHeight = Math.max(200, viewport.height - (TOPDOWN_CONFIG.padding * 2));
 
-  if (zoomMode === "map" || !target.unit) {
+    const cellSizeByWidth = usableWidth / board.width;
+    const cellSizeByHeight = usableHeight / board.height;
+
+    const cellSize = clamp(
+      Math.floor(Math.min(cellSizeByWidth, cellSizeByHeight)),
+      TOPDOWN_CONFIG.minCellSize,
+      TOPDOWN_CONFIG.maxCellSize
+    );
+
+    state.camera.topdownCellSize = cellSize;
+
+    const mapPixelWidth = board.width * cellSize;
+    const mapPixelHeight = board.height * cellSize;
+
     state.camera.topdownOriginX = Math.floor((viewport.width - mapPixelWidth) / 2);
     state.camera.topdownOriginY = Math.floor((viewport.height - mapPixelHeight) / 2);
     return;
   }
 
-  let originX = Math.round((viewport.width / 2) - ((target.x + 0.5) * cellSize));
-  let originY = Math.round((viewport.height / 2) - ((target.y + 0.5) * cellSize));
+  const cols = Math.max(1, Number(preset.cols));
+  const rows = Math.max(1, Number(preset.rows));
+  const cellSize = clamp(
+    Math.floor(Math.min(viewport.width / cols, viewport.height / rows)),
+    TOPDOWN_CONFIG.minCellSize,
+    TOPDOWN_CONFIG.maxCellSize
+  );
 
-  if (mapPixelWidth <= viewport.width) {
-    originX = Math.floor((viewport.width - mapPixelWidth) / 2);
-  } else {
-    originX = clamp(originX, viewport.width - mapPixelWidth, 0);
-  }
+  const focus = getCameraFocusTarget(state);
 
-  if (mapPixelHeight <= viewport.height) {
-    originY = Math.floor((viewport.height - mapPixelHeight) / 2);
-  } else {
-    originY = clamp(originY, viewport.height - mapPixelHeight, 0);
-  }
-
-  state.camera.topdownOriginX = originX;
-  state.camera.topdownOriginY = originY;
+  state.camera.topdownCellSize = cellSize;
+  state.camera.topdownOriginX = Math.floor((viewport.width / 2) - ((focus.x + 0.5) * cellSize));
+  state.camera.topdownOriginY = Math.floor((viewport.height / 2) - ((focus.y + 0.5) * cellSize));
 }
 
-function updateIsoViewBox(state, refs, viewport) {
-  const mapWidth = Math.max(1, getMapWidth(state.map));
-  const mapHeight = Math.max(1, getMapHeight(state.map));
-  const target = getCameraTarget(state);
-  const zoomMode = getCameraZoomMode(state);
-  const supportElevation = Number(getTile(state.map, target.x, target.y)?.elevation ?? 0);
+function applySvgViewBox(svg, x, y, width, height) {
+  if (!svg) return;
 
-  const rawBounds = zoomMode === "map"
-    ? getIsoMapFrameBounds(state, mapWidth, mapHeight)
-    : getIsoTargetFrameBounds(
-      state,
-      target.x,
-      target.y,
-      supportElevation,
-      zoomMode,
-      mapWidth,
-      mapHeight
-    );
+  const safeWidth = Math.max(1, Number(width));
+  const safeHeight = Math.max(1, Number(height));
+  const safeX = Number.isFinite(x) ? x : 0;
+  const safeY = Number.isFinite(y) ? y : 0;
 
-  let frameWidth = rawBounds.maxX - rawBounds.minX;
-  let frameHeight = rawBounds.maxY - rawBounds.minY;
-  const aspect = viewport.width / viewport.height;
-
-  if ((frameWidth / frameHeight) > aspect) {
-    frameHeight = frameWidth / aspect;
-  } else {
-    frameWidth = frameHeight * aspect;
-  }
-
-  let viewBoxX = ((rawBounds.minX + rawBounds.maxX) / 2) - (frameWidth / 2);
-  let viewBoxY = ((rawBounds.minY + rawBounds.maxY) / 2) - (frameHeight / 2);
-
-  const mapBounds = getMapScreenBoundsRaw(state);
-  const xLimits = getViewBoxLimits(mapBounds.minX - 80, mapBounds.maxX + 80, frameWidth);
-  const yLimits = getViewBoxLimits(mapBounds.minY - 140, mapBounds.maxY + 80, frameHeight);
-
-  viewBoxX = clamp(viewBoxX, xLimits.min, xLimits.max);
-  viewBoxY = clamp(viewBoxY, yLimits.min, yLimits.max);
-
-  applyBoardViewBox(refs, viewBoxX, viewBoxY, frameWidth, frameHeight);
+  svg.setAttribute("viewBox", `${safeX} ${safeY} ${safeWidth} ${safeHeight}`);
 }
 
-function getIsoTargetFrameBounds(state, focusX, focusY, supportElevation, zoomMode, mapWidth, mapHeight) {
-  const preset = CAMERA_ZOOM_CONFIG.iso?.[zoomMode] ?? CAMERA_ZOOM_CONFIG.iso?.mech ?? { spanX: 10, spanY: 10 };
-  const spanX = Math.max(2, Number(preset.spanX ?? 10));
-  const spanY = Math.max(2, Number(preset.spanY ?? 10));
-  const corners = [
-    projectIsoRaw(focusX - spanX, focusY - spanY, 0, state.rotation, 1, mapWidth, mapHeight),
-    projectIsoRaw(focusX + spanX + 1, focusY - spanY, 0, state.rotation, 1, mapWidth, mapHeight),
-    projectIsoRaw(focusX + spanX + 1, focusY + spanY + 1, 0, state.rotation, 1, mapWidth, mapHeight),
-    projectIsoRaw(focusX - spanX, focusY + spanY + 1, 0, state.rotation, 1, mapWidth, mapHeight)
-  ];
+function getIsoMapFrameBounds(state) {
+  const rawBounds = getMapScreenBoundsRaw(state);
+  const preset = CAMERA_ZOOM_CONFIG.iso?.map ?? {};
+  const padX = Math.max(0, Number(preset.padPxX ?? 64));
+  const padTop = Math.max(0, Number(preset.padPxTop ?? 72));
+  const padBottom = Math.max(0, Number(preset.padPxBottom ?? 72));
 
-  const minX = Math.min(...corners.map((point) => point.x)) - 96;
-  const maxX = Math.max(...corners.map((point) => point.x)) + 96;
-  const topY = Math.min(...corners.map((point) => point.y)) - (((supportElevation + 8) * RENDER_CONFIG.elevationStepPx) + 120);
-  const bottomY = Math.max(...corners.map((point) => point.y)) + RENDER_CONFIG.isoTileHeight + 96;
+  const minX = rawBounds.minX - padX;
+  const maxX = rawBounds.maxX + padX;
+  const minY = rawBounds.minY - padTop;
+  const maxY = rawBounds.maxY + padBottom;
 
   return {
     minX,
-    maxX,
-    minY: topY,
-    maxY: bottomY
+    minY,
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY)
   };
 }
 
-export function getSceneViewport(_refs) {
+function getIsoTargetFrameBounds(state, zoomLevel) {
+  const preset = CAMERA_ZOOM_CONFIG.iso?.[zoomLevel] ?? CAMERA_ZOOM_CONFIG.iso?.mech ?? {};
+  const focus = getCameraFocusTarget(state);
+
+  const spanX = Math.max(0.1, Number(preset.spanX ?? 2));
+  const spanY = Math.max(0.1, Number(preset.spanY ?? 2));
+  const padPxX = Math.max(0, Number(preset.padPxX ?? 24));
+  const padPxTop = Math.max(0, Number(preset.padPxTop ?? 36));
+  const padPxBottom = Math.max(0, Number(preset.padPxBottom ?? 30));
+  const liftTiles = Number(preset.liftTiles ?? 0);
+
+  // Use the tile support elevation only for the focus anchor.
+  // We do NOT widen the box to "fit the mech" or "fit the pilot".
+  // That keeps camera truth in config and makes the mech feel big next to the pilot.
+  const tile = getTile(state.map, focus.x, focus.y);
+  const supportElevation = tile ? getTileFootElevation(tile) : 0;
+
+  const center = projectIsoRaw(
+    focus.x + 0.5,
+    focus.y + 0.5,
+    supportElevation + liftTiles,
+    state.rotation,
+    1
+  );
+
+  const xNeg = projectIsoRaw(focus.x + 0.5 - spanX, focus.y + 0.5, supportElevation, state.rotation, 1);
+  const xPos = projectIsoRaw(focus.x + 0.5 + spanX, focus.y + 0.5, supportElevation, state.rotation, 1);
+  const yNeg = projectIsoRaw(focus.x + 0.5, focus.y + 0.5 - spanY, supportElevation, state.rotation, 1);
+  const yPos = projectIsoRaw(focus.x + 0.5, focus.y + 0.5 + spanY, supportElevation, state.rotation, 1);
+
+  const halfWidth =
+    Math.max(
+      Math.abs(xNeg.x - center.x),
+      Math.abs(xPos.x - center.x),
+      Math.abs(yNeg.x - center.x),
+      Math.abs(yPos.x - center.x)
+    ) + padPxX;
+
+  const halfHeightCore =
+    Math.max(
+      Math.abs(xNeg.y - center.y),
+      Math.abs(xPos.y - center.y),
+      Math.abs(yNeg.y - center.y),
+      Math.abs(yPos.y - center.y)
+    );
+
+  const minX = center.x - halfWidth;
+  const maxX = center.x + halfWidth;
+  const minY = center.y - halfHeightCore - padPxTop;
+  const maxY = center.y + halfHeightCore + padPxBottom;
+
   return {
-    width: Number(RENDER_CONFIG.sceneWidth ?? 1400),
-    height: Number(RENDER_CONFIG.sceneHeight ?? 900)
+    minX,
+    minY,
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY)
   };
 }
 
-export function getCameraOffsetLimits(rawBounds, viewport) {
-  const marginX = 48;
-  const marginTop = 42;
-  const marginBottom = 54;
-
-  let minX = viewport.width - marginX - rawBounds.maxX;
-  let maxX = marginX - rawBounds.minX;
-
-  let minY = viewport.height - marginBottom - rawBounds.maxY;
-  let maxY = marginTop - rawBounds.minY;
-
-  if (minX > maxX) {
-    const centerX = (minX + maxX) / 2;
-    minX = centerX;
-    maxX = centerX;
+function getCameraFocusTarget(state) {
+  const activeUnit = getActiveUnit(state);
+  if (activeUnit) {
+    return {
+      x: Number(activeUnit.x ?? state.focus?.x ?? 0),
+      y: Number(activeUnit.y ?? state.focus?.y ?? 0)
+    };
   }
 
-  if (minY > maxY) {
-    const centerY = (minY + maxY) / 2;
-    minY = centerY;
-    maxY = centerY;
+  return {
+    x: Number(state.focus?.x ?? 0),
+    y: Number(state.focus?.y ?? 0)
+  };
+}
+
+function getActiveUnit(state) {
+  const activeId = state.turn?.activeUnitId ?? state.selection?.unitId ?? null;
+  if (!activeId) return null;
+
+  const units = Array.isArray(state.units) ? state.units : [];
+  return units.find((unit) => unit.instanceId === activeId) ?? null;
+}
+
+function resolveDefaultZoomLevel(state) {
+  const scale = getCurrentInteractionScale(state);
+  if (scale === "pilot") return "pilot";
+  return "mech";
+}
+
+function normalizeZoomLevel(zoomLevel, state) {
+  if (zoomLevel === "map" || zoomLevel === "mech" || zoomLevel === "pilot") {
+    return zoomLevel;
+  }
+  return resolveDefaultZoomLevel(state);
+}
+
+export function getCurrentZoomLevel(state) {
+  const zoomLevel = normalizeZoomLevel(state?.camera?.zoomLevel, state);
+
+  if (state?.camera) {
+    state.camera.zoomLevel = zoomLevel;
   }
 
-  return { minX, maxX, minY, maxY };
+  return zoomLevel;
+}
+
+export function getSceneViewport(refs) {
+  const svg = refs?.worldScene?.ownerSVGElement ?? refs?.board ?? null;
+  const width = svg?.clientWidth || RENDER_CONFIG.sceneWidth;
+  const height = svg?.clientHeight || RENDER_CONFIG.sceneHeight;
+
+  return { width, height };
+}
+
+export function getCameraOffsetLimits(_rawBounds, _viewport) {
+  return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 }
 
 export function getMapScreenBoundsRaw(state) {
-  const mapWidth = Math.max(1, getMapWidth(state.map) || MAP_CONFIG.width);
-  const mapHeight = Math.max(1, getMapHeight(state.map) || MAP_CONFIG.height);
+  const board = getResolutionBoardSize("base", MAP_CONFIG);
 
   if (state.ui?.viewMode === "top") {
     const corners = [
       projectTopDown(state, 0, 0),
-      projectTopDown(state, mapWidth, 0),
-      projectTopDown(state, mapWidth, mapHeight),
-      projectTopDown(state, 0, mapHeight)
+      projectTopDown(state, board.width, 0),
+      projectTopDown(state, board.width, board.height),
+      projectTopDown(state, 0, board.height)
     ];
 
     return {
@@ -264,35 +311,23 @@ export function getMapScreenBoundsRaw(state) {
 
   const corners = [
     { x: 0, y: 0 },
-    { x: mapWidth, y: 0 },
-    { x: 0, y: mapHeight },
-    { x: mapWidth, y: mapHeight }
+    { x: board.width, y: 0 },
+    { x: 0, y: board.height },
+    { x: board.width, y: board.height }
   ];
 
   const points = [];
 
   for (const corner of corners) {
-    points.push(projectIsoRaw(corner.x, corner.y, 0, state.rotation, 1, mapWidth, mapHeight));
-    points.push(projectIsoRaw(corner.x, corner.y, MAP_CONFIG.maxElevation + 8, state.rotation, 1, mapWidth, mapHeight));
+    points.push(projectIsoRaw(corner.x, corner.y, 0, state.rotation, 1));
+    points.push(projectIsoRaw(corner.x, corner.y, MAP_CONFIG.maxElevation + 4, state.rotation, 1));
   }
 
   return {
     minX: Math.min(...points.map((p) => p.x)),
     maxX: Math.max(...points.map((p) => p.x)),
     minY: Math.min(...points.map((p) => p.y)),
-    maxY: Math.max(...points.map((p) => p.y)) + RENDER_CONFIG.isoTileHeight
-  };
-}
-
-
-function getIsoMapFrameBounds(state, mapWidth, mapHeight) {
-  const raw = getMapScreenBoundsRaw(state);
-
-  return {
-    minX: raw.minX - 80,
-    maxX: raw.maxX + 80,
-    minY: raw.minY - 120,
-    maxY: raw.maxY + 80
+    maxY: Math.max(...points.map((p) => p.y))
   };
 }
 
@@ -305,9 +340,7 @@ export function projectScene(state, x, y, elevation = 0, size = 1) {
 }
 
 export function projectIso(state, x, y, elevation = 0, size = 1) {
-  const mapWidth = Math.max(1, getMapWidth(state.map) || MAP_CONFIG.width);
-  const mapHeight = Math.max(1, getMapHeight(state.map) || MAP_CONFIG.height);
-  const raw = projectIsoRaw(x, y, elevation, state.rotation, size, mapWidth, mapHeight);
+  const raw = projectIsoRaw(x, y, elevation, state.rotation, size);
 
   return {
     x: raw.x + (state.camera?.offsetX ?? 0),
@@ -315,8 +348,9 @@ export function projectIso(state, x, y, elevation = 0, size = 1) {
   };
 }
 
-export function projectIsoRaw(x, y, elevation = 0, rotation = 0, _size = 1, boardWidth = MAP_CONFIG.width, boardHeight = MAP_CONFIG.height) {
-  const rotated = rotateSceneCoordContinuous(x, y, boardWidth, boardHeight, rotation);
+export function projectIsoRaw(x, y, elevation = 0, rotation = 0, _size = 1) {
+  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, rotation);
 
   const isoX =
     ((rotated.x - rotated.y) * (RENDER_CONFIG.isoTileWidth / 2)) + CAMERA_CENTER.isoX;
@@ -343,22 +377,9 @@ export function projectTopDown(state, x, y) {
   };
 }
 
-export function projectTopDownRect(state, x, y, width = 1, height = 1) {
-  const origin = projectTopDown(state, x, y);
-  const cellSize = getTopdownCellSize(state);
-
-  return {
-    x: origin.x,
-    y: origin.y,
-    width: width * cellSize,
-    height: height * cellSize
-  };
-}
-
 export function getSceneSortKey(state, x, y, elevation = 0) {
-  const mapWidth = Math.max(1, getMapWidth(state.map) || MAP_CONFIG.width);
-  const mapHeight = Math.max(1, getMapHeight(state.map) || MAP_CONFIG.height);
-  const rotated = rotateSceneCoordContinuous(x, y, mapWidth, mapHeight, state.rotation);
+  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
 
   if (state.ui?.viewMode === "top") {
     return (y * 1000) + x;
@@ -426,70 +447,10 @@ export function getZoomFactor(scale = "mech") {
 }
 
 export function getCurrentInteractionScale(state) {
-  return getCameraZoomMode(state);
-}
-
-function getDefaultZoomModeForState(state) {
-  const units = Array.isArray(state?.units) ? state.units : [];
-  const activeUnit = getUnitById(units, state?.turn?.activeUnitId ?? null);
-
-  if (!state?.turn?.combatStarted || !activeUnit) {
-    return "map";
-  }
-
-  return normalizeScale(activeUnit?.scale ?? activeUnit?.unitType ?? "mech");
-}
-
-export function getCameraZoomMode(state) {
-  const requested = String(state?.camera?.zoomMode ?? "").toLowerCase();
-  if (requested === "map" || requested === "mech" || requested === "pilot") {
-    return requested;
-  }
-
-  return getDefaultZoomModeForState(state);
-}
-
-function getCameraTarget(state) {
-  const units = Array.isArray(state?.units) ? state.units : [];
-  const activeUnit = getUnitById(units, state?.turn?.activeUnitId ?? null);
-  const selectedUnit = getUnitById(units, state?.selection?.unitId ?? null);
-  const unit = activeUnit ?? selectedUnit ?? null;
-
-  if (unit) {
-    return {
-      unit,
-      x: Number(unit.x ?? 0),
-      y: Number(unit.y ?? 0)
-    };
-  }
-
-  return {
-    unit: null,
-    x: Number(state?.focus?.x ?? 0),
-    y: Number(state?.focus?.y ?? 0)
-  };
-}
-
-function getViewBoxLimits(minEdge, maxEdge, span) {
-  let min = minEdge;
-  let max = maxEdge - span;
-
-  if (min > max) {
-    const center = (min + max) / 2;
-    min = center;
-    max = center;
-  }
-
-  return { min, max };
-}
-
-function applyBoardViewBox(refs, x, y, width, height) {
-  const board = refs?.board;
-  if (!board) return;
-
-  board.setAttribute(
-    "viewBox",
-    `${Math.round(x)} ${Math.round(y)} ${Math.max(1, Math.round(width))} ${Math.max(1, Math.round(height))}`
+  return normalizeScale(
+    state?.focus?.scale ??
+    state?.camera?.zoomScale ??
+    "pilot"
   );
 }
 
