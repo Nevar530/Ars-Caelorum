@@ -30,7 +30,7 @@ export function evaluateMissileTargetWithSpotter(state, mech, profile, targetX, 
   const minRange = profile.targeting?.minRange ?? 1;
   const maxRange = profile.targeting?.maxRange ?? DEFAULT_MISSILE_MAX_RANGE;
 
-  const spotters = state.mechs
+  const spotters = (Array.isArray(state.units) ? state.units : [])
     .filter((unit) => {
       if (!unit) return false;
       if (unit.instanceId === mech.instanceId) return false;

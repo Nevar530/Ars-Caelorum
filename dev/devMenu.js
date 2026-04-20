@@ -239,7 +239,6 @@ class DevMenu {
 
   getRuntimeUnits() {
     if (Array.isArray(this.appState?.units)) return this.appState.units;
-    if (Array.isArray(this.appState?.mechs)) return this.appState.mechs;
     return [];
   }
 
@@ -617,7 +616,6 @@ class DevMenu {
       ...this.getRuntimeUnits().filter((unit) => unit.spawnId !== newUnit.spawnId),
       newUnit
     ];
-    this.appState.mechs = this.appState.units;
   }
 
   syncActiveUnitAfterMutation(preferredInstanceId = null) {
@@ -625,9 +623,7 @@ class DevMenu {
 
     if (units.length === 0) {
       this.appState.turn.activeUnitId = null;
-      this.appState.turn.activeMechId = null;
       this.appState.selection.unitId = null;
-      this.appState.selection.mechId = null;
       this.appState.focus.x = 0;
       this.appState.focus.y = 0;
       this.appState.focus.scale = "mech";
@@ -640,9 +636,7 @@ class DevMenu {
       units[0];
 
     this.appState.turn.activeUnitId = preferred.instanceId;
-    this.appState.turn.activeMechId = preferred.instanceId;
     this.appState.selection.unitId = preferred.instanceId;
-    this.appState.selection.mechId = preferred.instanceId;
     this.appState.focus.x = preferred.x;
     this.appState.focus.y = preferred.y;
     this.appState.focus.scale = getUnitScale(preferred);
@@ -727,7 +721,6 @@ class DevMenu {
     this.appState.units = this.getRuntimeUnits().filter(
       (entry) => entry.instanceId !== instanceId
     );
-    this.appState.mechs = this.appState.units;
 
     this.appState.turn.moveOrder = this.appState.turn.moveOrder.filter(
       (id) => id !== instanceId
@@ -738,14 +731,12 @@ class DevMenu {
 
     if (this.appState.turn.activeUnitId === instanceId) {
       this.appState.turn.activeUnitId = null;
-      this.appState.turn.activeMechId = null;
     }
 
     logDev(`${unit.name} / ${unit.pilotName ?? "No Pilot"} removed from map.`);
 
     if (this.getRuntimeUnits().length === 0) {
       this.appState.turn.activeUnitId = null;
-      this.appState.turn.activeMechId = null;
       this.appState.turn.round = 1;
       this.appState.turn.phase = "setup";
       this.appState.turn.combatStarted = false;
@@ -759,7 +750,6 @@ class DevMenu {
       this.appState.turn.splashKind = null;
 
       this.appState.selection.unitId = null;
-      this.appState.selection.mechId = null;
       this.appState.selection.action = null;
 
       this.appState.ui.mode = "idle";
@@ -783,10 +773,8 @@ class DevMenu {
 
   resetUnits() {
     this.appState.units = [];
-    this.appState.mechs = this.appState.units;
 
     this.appState.turn.activeUnitId = null;
-    this.appState.turn.activeMechId = null;
     this.appState.turn.round = 1;
     this.appState.turn.phase = "setup";
     this.appState.turn.combatStarted = false;
@@ -800,7 +788,6 @@ class DevMenu {
     this.appState.turn.splashKind = null;
 
     this.appState.selection.unitId = null;
-    this.appState.selection.mechId = null;
     this.appState.selection.action = null;
 
     this.appState.ui.mode = "idle";

@@ -24,8 +24,8 @@ const CARDINAL_DIRECTIONS = [
 ];
 
 function getActiveUnit(state) {
-  const activeId = state.turn?.activeUnitId ?? state.turn?.activeMechId ?? null;
-  const units = state.units ?? state.mechs ?? [];
+  const activeId = state.turn?.activeUnitId ?? null;
+  const units = state.units ?? [];
   return getUnitById(units, activeId);
 }
 

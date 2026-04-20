@@ -1,4 +1,4 @@
-import { getMechById } from "../mechs.js";
+import { getUnitById } from "../mechs.js";
 
 const SIDE_DAMAGE_BONUS = 2;
 const BRACE_DAMAGE_REDUCTION = 2;
@@ -113,7 +113,7 @@ export function resolveDamage(state, attacker, weapon, confirmed, hitResult) {
     };
   }
 
-  const target = getMechById(state.mechs, hitResult.targetId);
+  const target = getUnitById(state.units, hitResult.targetId);
   if (!target) {
     return {
       damageResolved: false,

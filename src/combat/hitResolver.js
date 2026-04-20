@@ -1,5 +1,5 @@
 import { getTile, getTileEffectiveElevation } from "../map.js";
-import { getMechById } from "../mechs.js";
+import { getUnitById } from "../mechs.js";
 import { getLineOfSightResult } from "../los.js";
 import { getPrimaryOccupantAt } from "../scale/occupancy.js";
 
@@ -97,7 +97,7 @@ function getTargetingSource(attacker, confirmed, state) {
   }
 
   if (confirmed.missileSource === "spotter" && confirmed.spotterId) {
-    const spotter = getMechById(state.mechs, confirmed.spotterId);
+    const spotter = getUnitById(state.units, confirmed.spotterId);
     if (spotter) {
       return spotter;
     }
@@ -107,8 +107,8 @@ function getTargetingSource(attacker, confirmed, state) {
 }
 
 function getDirectTarget(state, confirmed) {
-  if (confirmed.targetMechId) {
-    return getMechById(state.mechs, confirmed.targetMechId);
+  if (confirmed.targetUnitId) {
+    return getUnitById(state.units, confirmed.targetUnitId);
   }
 
   return (

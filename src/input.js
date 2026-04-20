@@ -8,8 +8,8 @@ import { applyMapEditorAtTile, ensureMapEditorState, sampleMapEditorFromTile } f
 import { getBrushedTileCoords } from "../dev/mapEditor/mapBrush.js";
 
 function getActiveUnit(state) {
-  const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
-  const units = state.units ?? state.mechs ?? [];
+  const activeId = state.turn.activeUnitId ?? null;
+  const units = state.units ?? [];
   return getUnitById(units, activeId);
 }
 

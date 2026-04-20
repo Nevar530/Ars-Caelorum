@@ -73,7 +73,7 @@ export function renderAll(state, refs) {
 
 export function renderIso(state, refs) {
   const { worldScene, worldUi } = refs;
-  const units = state.units ?? state.mechs ?? [];
+  const units = state.units ?? [];
   const { map } = state;
 
   worldScene.innerHTML = "";
@@ -222,7 +222,7 @@ export function renderIso(state, refs) {
     const footprintSortDepth = getUnitFootprintSortDepth(state, unit);
 
     const selectedUnitId = state.selection?.unitId ?? state.selection?.mechId ?? null;
-    const activeUnitId = state.turn?.activeUnitId ?? state.turn?.activeMechId ?? null;
+    const activeUnitId = state.turn?.activeUnitId ?? null;
     const shouldShowStatusTag =
       state.ui?.viewMode !== "top" &&
       (unit.instanceId === selectedUnitId || unit.instanceId === activeUnitId);

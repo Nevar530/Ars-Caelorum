@@ -15,9 +15,7 @@ function compareInstanceIds(a, b) {
 }
 
 function getStateUnits(state) {
-  if (Array.isArray(state?.units)) return state.units;
-  if (Array.isArray(state?.mechs)) return state.mechs;
-  return [];
+  return Array.isArray(state?.units) ? state.units : [];
 }
 
 export function rollInitiativeForUnit(unit) {

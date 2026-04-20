@@ -11,9 +11,7 @@ export const DEFAULT_DIRECT_MAX_RANGE = 20;
 export const DEFAULT_MISSILE_MAX_RANGE = 20;
 
 function getStateUnits(state) {
-  if (Array.isArray(state?.units)) return state.units;
-  if (Array.isArray(state?.mechs)) return state.mechs;
-  return [];
+  return Array.isArray(state?.units) ? state.units : [];
 }
 
 function getTargetFocusTile(unit) {
@@ -96,7 +94,7 @@ export function getWeaponCandidateTiles(state, mech, profile) {
           return {
             x: tile.x,
             y: tile.y,
-            targetMechId: targetUnit.instanceId,
+            targetUnitId: targetUnit.instanceId,
             targetScale: targetUnit.scale ?? targetUnit.unitType ?? "mech"
           };
         })
@@ -120,7 +118,7 @@ export function getWeaponCandidateTiles(state, mech, profile) {
         return getTargetableCellsForUnit(unit).map((cell) => ({
           x: cell.x,
           y: cell.y,
-          targetMechId: unit.instanceId,
+          targetUnitId: unit.instanceId,
           targetScale: unit.scale ?? unit.unitType ?? "mech",
           targetFocusX: focusTile.x,
           targetFocusY: focusTile.y

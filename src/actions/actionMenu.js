@@ -1,10 +1,10 @@
 // src/actions/actionMenu.js
 
-import { getMechById } from "../mechs.js";
+import { getUnitById } from "../mechs.js";
 import { normalizeWeaponToActionProfile, snapFocusToFirstValidTarget, updateActionTargetPreview } from "../targeting/targetingResolver.js";
 
-function getActiveMech(state) {
-  return getMechById(state.mechs, state.turn.activeMechId);
+function getActiveUnit(state) {
+  return getUnitById(state.units, state.turn.activeUnitId);
 }
 
 export function createActionUiState() {
@@ -41,10 +41,10 @@ export function getCommandMenuItemsForPhase(phase) {
 }
 
 export function getSelectedAttackMenuItems(state) {
-  const activeMech = getActiveMech(state);
-  if (!activeMech) return [];
+  const activeUnit = getActiveUnit(state);
+  if (!activeUnit) return [];
 
-  const weaponIds = Array.isArray(activeMech.weapons) ? activeMech.weapons : [];
+  const weaponIds = Array.isArray(activeUnit.weapons) ? activeUnit.weapons : [];
   const allWeapons = Array.isArray(state.content.weapons) ? state.content.weapons : [];
 
   return weaponIds
@@ -126,7 +126,7 @@ export function confirmActionTarget(state) {
     attackName: profile.name,
     weaponType: profile.weaponType,
     target: { x: chosenTarget.x, y: chosenTarget.y },
-    targetMechId: chosenTarget.targetMechId ?? null,
+    targetUnitId: chosenTarget.targetUnitId ?? null,
     targetCover: chosenTarget.cover ?? "none",
     targetLos: chosenTarget.los ?? null,
     targetDistance: chosenTarget.distance ?? null,

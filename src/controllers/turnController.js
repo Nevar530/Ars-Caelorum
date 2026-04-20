@@ -27,9 +27,7 @@ export function createTurnController({
     const activeUnitId = getActiveUnitFromPhaseOrder(state);
 
     state.turn.activeUnitId = activeUnitId ?? null;
-    state.turn.activeMechId = activeUnitId ?? null;
     state.selection.unitId = activeUnitId ?? null;
-    state.selection.mechId = activeUnitId ?? null;
 
     if (activeUnitId) {
       snapFocusToActiveUnit();

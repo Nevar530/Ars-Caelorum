@@ -14,8 +14,8 @@ import { evaluateMissileTargetWithSpotter } from "./missileTargeting.js";
 
 function getActiveUnit(state) {
   return getUnitById(
-    state.units ?? state.mechs,
-    state.turn.activeUnitId ?? state.turn.activeMechId
+    state.units ?? [],
+    state.turn.activeUnitId
   );
 }
 

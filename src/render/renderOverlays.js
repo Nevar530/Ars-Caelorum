@@ -445,10 +445,10 @@ function styleMoveCostLabel(label) {
 }
 
 function getActiveUnit(state) {
-  const activeId = state.turn?.activeUnitId ?? state.turn?.activeMechId ?? null;
+  const activeId = state.turn?.activeUnitId ?? null;
   if (!activeId) return null;
 
-  const units = state.units ?? state.mechs ?? [];
+  const units = state.units ?? [];
   return getUnitById(units, activeId);
 }
 

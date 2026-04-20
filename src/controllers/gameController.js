@@ -61,7 +61,6 @@ export function createGameController({
   function setPreviewSelectionFromFirstUnit() {
     if (state.units.length > 0) {
       state.selection.unitId = state.units[0].instanceId;
-      state.selection.mechId = state.units[0].instanceId;
       state.focus.x = state.units[0].x;
       state.focus.y = state.units[0].y;
       state.focus.scale = state.units[0].scale ?? state.units[0].unitType ?? "pilot";
@@ -69,7 +68,6 @@ export function createGameController({
     }
 
     state.selection.unitId = null;
-    state.selection.mechId = null;
     state.focus.x = 0;
     state.focus.y = 0;
   }
@@ -80,7 +78,6 @@ export function createGameController({
     clearCombatTextMarkers(state);
 
     state.turn.activeUnitId = null;
-    state.turn.activeMechId = null;
     state.turn.round = 1;
     state.turn.phase = "setup";
     state.turn.combatStarted = false;
@@ -96,7 +93,6 @@ export function createGameController({
   function resetMapAndUnits() {
     state.map = resetMap(state.content?.defaultMap ?? null);
     state.units = instantiateTestUnits(state.content);
-    state.mechs = state.units;
 
     state.rotation = 0;
     state.camera.angle = 0;
@@ -122,7 +118,6 @@ export function createGameController({
     }
 
     state.selection.unitId = hoveredUnit.instanceId;
-    state.selection.mechId = hoveredUnit.instanceId;
 
     state.focus.x = hoveredUnit.x;
     state.focus.y = hoveredUnit.y;

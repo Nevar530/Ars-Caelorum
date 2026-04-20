@@ -199,7 +199,7 @@ function buildIsoUnitSceneItems(state, unit, renderModel, isActive) {
 }
 
 export function getWorldFacing(state, unit) {
-  const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
+  const activeId = state.turn.activeUnitId ?? null;
   const isPreviewing =
     state.ui.mode === "face" &&
     unit.instanceId === activeId &&
@@ -242,7 +242,7 @@ export function getIsoTopClass(state, unit, isActive) {
     classes.push("mech-cube-top-active");
   }
 
-  const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
+  const activeId = state.turn.activeUnitId ?? null;
   if (
     state.ui.mode === "face" &&
     unit.instanceId === activeId &&
@@ -255,7 +255,7 @@ export function getIsoTopClass(state, unit, isActive) {
 }
 
 function getFacingLineClass(state, unit) {
-  const activeId = state.turn.activeUnitId ?? state.turn.activeMechId ?? null;
+  const activeId = state.turn.activeUnitId ?? null;
   const isPreviewing =
     state.ui.mode === "face" &&
     unit.instanceId === activeId &&
@@ -386,7 +386,7 @@ function shouldDrawHeightPole(state, unit) {
 
   if (!focusedTarget) return false;
 
-  return focusedTarget.targetMechId === unit.instanceId;
+  return focusedTarget.targetUnitId === unit.instanceId;
 }
 
 function drawHeightPole(parent, unit, anchorX, anchorY) {

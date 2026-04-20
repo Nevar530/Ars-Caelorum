@@ -11,9 +11,7 @@ import {
 } from "./scaleMath.js";
 
 function getStateUnits(state) {
-  if (Array.isArray(state?.units)) return state.units;
-  if (Array.isArray(state?.mechs)) return state.mechs;
-  return [];
+  return Array.isArray(state?.units) ? state.units : [];
 }
 
 function getUnitId(unit) {

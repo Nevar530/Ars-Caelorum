@@ -74,5 +74,5 @@ function isInArc(attacker, x, y) {
 }
 
 function getAlliedUnits(state, attacker) {
-  return state.mechs.filter(m => m.team === attacker.team);
+  return (Array.isArray(state.units) ? state.units : []).filter((unit) => unit.team === attacker.team);
 }

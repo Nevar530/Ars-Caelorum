@@ -4,25 +4,29 @@ import { createActionUiState, getCommandMenuItemsForPhase } from "./action.js";
 
 export function createState({
   map,
+  units = null,
   mechs = [],
   rotation = 0,
   content = { mechs: [], weapons: [], sigils: [], attacks: [], pilots: [], spawnPoints: [], mapCatalog: null, defaultMap: null }
 }) {
-  const units = Array.isArray(mechs) ? mechs : [];
-  const previewUnit = units.length > 0 ? units[0] : null;
+  const runtimeUnits = Array.isArray(units)
+    ? units
+    : Array.isArray(mechs)
+      ? mechs
+      : [];
+
+  const previewUnit = runtimeUnits.length > 0 ? runtimeUnits[0] : null;
   const previewUnitId = previewUnit?.instanceId ?? null;
 
   return {
     map,
-    units,
-    mechs: units, // bridge only
+    units: runtimeUnits,
 
     rotation,
     content,
 
     turn: {
       activeUnitId: null,
-      activeMechId: null, // bridge only
 
       round: 1,
       phase: "setup",
@@ -43,9 +47,6 @@ export function createState({
     selection: {
       unitId: previewUnitId,
       targetUnitId: null,
-
-      mechId: previewUnitId, // bridge only
-      targetMechId: null, // bridge only
 
       action: null,
       targetTile: null
@@ -83,8 +84,8 @@ export function createState({
       helpDrawer: {
         open: false
       }
-},
-    
+    },
+
     camera: {
       angle: rotation * 90,
       isTurning: false,

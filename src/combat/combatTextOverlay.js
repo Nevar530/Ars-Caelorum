@@ -1,6 +1,6 @@
 import { RENDER_CONFIG } from "../config.js";
 import { getMapHeight, getMapWidth, getTile, rotateCoord } from "../map.js";
-import { getMechById } from "../mechs.js";
+import { getUnitById } from "../mechs.js";
 
 const TOPDOWN_CONFIG = {
   cellSize: 56
@@ -65,10 +65,10 @@ export function renderCombatTextOverlay(state, refs) {
   const stackCounts = new Map();
 
   for (const marker of markers) {
-    const mech = getMechById(state.mechs, marker.targetId);
-    if (!mech) continue;
+    const unit = getUnitById(state.units, marker.targetId);
+    if (!unit) continue;
 
-    const tile = getTile(state.map, mech.x, mech.y);
+    const tile = getTile(state.map, unit.x, unit.y);
     if (!tile) continue;
 
     const currentStack = stackCounts.get(marker.targetId) ?? 0;
@@ -76,8 +76,8 @@ export function renderCombatTextOverlay(state, refs) {
 
     const projected = projectMarkerAnchor(
       state,
-      mech.x,
-      mech.y,
+      unit.x,
+      unit.y,
       tile.elevation,
       currentStack
     );
