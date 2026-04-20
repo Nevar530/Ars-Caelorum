@@ -4,12 +4,11 @@ import { RENDER_CONFIG } from "../config.js";
 import {
   getTile,
   getDetailRenderCells,
-  isDetailTileUniform,
-  getTileFootElevation
+  isDetailTileUniform
 } from "../map.js";
 import { getUnitById } from "../mechs.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
-import { getTopdownCellSize, projectScene, projectTileCenter } from "./projection.js";
+import { getTopdownCellSize, projectScene, projectTileCenter, projectTopDown } from "./projection.js";
 import {
   getUnitFootprintBounds,
   getUnitCenterPoint,
@@ -18,6 +17,7 @@ import {
 import {
   getPrimaryOccupantAt
 } from "../scale/occupancy.js";
+import { getUnitSupportElevation } from "./renderSceneMath.js";
 
 const DETAIL_OVERLAY_LIFT = 0.02;
 const DETAIL_STROKE_WIDTH = 2;
@@ -378,15 +378,14 @@ export function drawTopOverlayBox(state, screenX, screenY, fill, stroke, parent)
 
 function drawTopOverlayBounds(state, bounds, fill, stroke, parent) {
   const size = getTopdownCellSize(state);
+  const origin = projectTopDown(state, bounds.minX, bounds.minY);
 
   const width = bounds.width * size;
   const height = bounds.height * size;
-  const x = bounds.minX * size;
-  const y = bounds.minY * size;
 
   const rect = svgEl("rect");
-  rect.setAttribute("x", x + 2);
-  rect.setAttribute("y", y + 2);
+  rect.setAttribute("x", origin.x + 2);
+  rect.setAttribute("y", origin.y + 2);
   rect.setAttribute("width", Math.max(4, width - 4));
   rect.setAttribute("height", Math.max(4, height - 4));
   rect.setAttribute("rx", "8");
@@ -397,23 +396,17 @@ function drawTopOverlayBounds(state, bounds, fill, stroke, parent) {
   parent.appendChild(rect);
 }
 
-function getUnitSupportElevation(state, unit) {
-  const centerTile = getUnitCenterTile(unit);
-  const tile = getTile(state.map, centerTile.x, centerTile.y);
-  if (!tile) return null;
-
-  return getTileFootElevation(tile);
-}
 
 function getUnitLabelPoint(state, unit) {
   const bounds = getUnitFootprintBounds(unit);
 
   if (state.ui.viewMode === "top") {
     const size = getTopdownCellSize(state);
+    const origin = projectTopDown(state, bounds.minX, bounds.minY);
 
     return {
-      x: (bounds.minX * size) + ((bounds.width * size) / 2),
-      y: (bounds.minY * size) + ((bounds.height * size) / 2) + 4
+      x: origin.x + ((bounds.width * size) / 2),
+      y: origin.y + ((bounds.height * size) / 2) + 4
     };
   }
 

@@ -1,17 +1,7 @@
-import { RENDER_CONFIG } from "../config.js";
-import { getMapHeight, getMapWidth, getTile, rotateCoord } from "../map.js";
 import { getUnitById } from "../mechs.js";
-
-const TOPDOWN_CONFIG = {
-  cellSize: 56
-};
-
-const CAMERA_CENTER = {
-  isoX: 700,
-  isoY: 320,
-  topX: 700,
-  topY: 360
-};
+import { projectTileCenter } from "../render/projection.js";
+import { getUnitCenterPoint } from "../scale/scaleMath.js";
+import { getUnitSupportElevation } from "../render/renderSceneMath.js";
 
 function ensureMarkerState(state) {
   if (!Array.isArray(state.turn.combatTextMarkers)) {
@@ -68,19 +58,10 @@ export function renderCombatTextOverlay(state, refs) {
     const unit = getUnitById(state.units, marker.targetId);
     if (!unit) continue;
 
-    const tile = getTile(state.map, unit.x, unit.y);
-    if (!tile) continue;
-
     const currentStack = stackCounts.get(marker.targetId) ?? 0;
     stackCounts.set(marker.targetId, currentStack + 1);
 
-    const projected = projectMarkerAnchor(
-      state,
-      unit.x,
-      unit.y,
-      tile.elevation,
-      currentStack
-    );
+    const projected = projectMarkerAnchor(state, unit, currentStack);
 
     const pixelX =
       boardOffsetX + ((projected.x / viewBox.width) * boardRect.width);
@@ -129,85 +110,26 @@ export function renderCombatTextOverlay(state, refs) {
   }
 }
 
-function projectMarkerAnchor(state, x, y, elevation, stackIndex = 0) {
+function projectMarkerAnchor(state, unit, stackIndex = 0) {
   const stackOffset = stackIndex * 26;
+  const centerTile = getUnitCenterPoint(unit);
+  const supportElevation = getUnitSupportElevation(state, unit) ?? 0;
+  const projected = projectTileCenter(
+    state,
+    centerTile.x,
+    centerTile.y,
+    supportElevation
+  );
 
   if (state.ui.viewMode === "top") {
-    const turns = normalizedTurns(state);
-    const rotated = rotateCoord(
-      x,
-      y,
-      getMapWidth(state.map),
-      getMapHeight(state.map),
-      turns
-    );
-
     return {
-      x:
-        CAMERA_CENTER.topX +
-        state.camera.offsetX +
-        (rotated.x * TOPDOWN_CONFIG.cellSize) +
-        (TOPDOWN_CONFIG.cellSize / 2),
-      y:
-        CAMERA_CENTER.topY +
-        state.camera.offsetY +
-        (rotated.y * TOPDOWN_CONFIG.cellSize) +
-        10 -
-        stackOffset
+      x: projected.x,
+      y: projected.y - 10 - stackOffset
     };
   }
 
-  const base = projectSceneBase(state, x, y, elevation);
-
   return {
-    x: base.x + state.camera.offsetX,
-    y: base.y + state.camera.offsetY - 34 - stackOffset
+    x: projected.x,
+    y: projected.y - 34 - stackOffset
   };
-}
-
-function projectSceneBase(state, x, y, elevation) {
-  const startTurns = ((Math.floor(state.camera.angle / 90) % 4) + 4) % 4;
-  const nextTurns = (startTurns + 1) % 4;
-  const blend = (state.camera.angle % 90) / 90;
-
-  const startRot = rotateCoord(
-    x,
-    y,
-    getMapWidth(state.map),
-    getMapHeight(state.map),
-    startTurns
-  );
-
-  const nextRot = rotateCoord(
-    x,
-    y,
-    getMapWidth(state.map),
-    getMapHeight(state.map),
-    nextTurns
-  );
-
-  const p0 = isoProjectRaw(startRot.x, startRot.y, elevation);
-  const p1 = isoProjectRaw(nextRot.x, nextRot.y, elevation);
-
-  return {
-    x: lerp(p0.x, p1.x, blend) + CAMERA_CENTER.isoX,
-    y: lerp(p0.y, p1.y, blend) + CAMERA_CENTER.isoY
-  };
-}
-
-function isoProjectRaw(x, y, elevation) {
-  return {
-    x: (x - y) * (RENDER_CONFIG.isoTileWidth / 2),
-    y:
-      (x + y) * (RENDER_CONFIG.isoTileHeight / 2) -
-      (elevation * RENDER_CONFIG.elevationStepPx)
-  };
-}
-
-function lerp(a, b, t) {
-  return a + ((b - a) * t);
-}
-
-function normalizedTurns(state) {
-  return ((Math.round(state.camera.angle / 90) % 4) + 4) % 4;
 }

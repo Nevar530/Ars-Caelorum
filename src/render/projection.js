@@ -262,6 +262,18 @@ export function projectTopDown(state, x, y) {
   };
 }
 
+export function projectTopDownRect(state, x, y, width = 1, height = 1) {
+  const origin = projectTopDown(state, x, y);
+  const cellSize = getTopdownCellSize(state);
+
+  return {
+    x: origin.x,
+    y: origin.y,
+    width: width * cellSize,
+    height: height * cellSize
+  };
+}
+
 export function getSceneSortKey(state, x, y, elevation = 0) {
   const board = getResolutionBoardSize("base", MAP_CONFIG);
   const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
