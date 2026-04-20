@@ -5,6 +5,7 @@ import { createMapEditorState, MAP_EDITOR_MODES } from './mapEditorState.js';
 import { getBrushedTileCoords } from './mapBrush.js';
 import { buildMapDefinitionFromRuntimeMap } from './mapSerialization.js';
 import { createBlankMapDefinition } from '../../src/maps/mapSchema.js';
+import { buildSpawnId, ensureMapSpawns, parseSpawnId, syncLegacySpawnPoints, clearSpawnIdFromTiles } from '../../src/maps/mapSpawns.js';
 
 export function ensureMapEditorState(state) {
   if (!state.ui.mapEditor) {
@@ -86,49 +87,6 @@ function getTerrainDefaults(state, presetId) {
   };
 }
 
-function ensureMapSpawns(map) {
-  if (!map.spawns) {
-    map.spawns = { player: [null, null, null, null], enemy: [null, null, null, null] };
-  }
-  if (!Array.isArray(map.spawns.player)) map.spawns.player = [null, null, null, null];
-  if (!Array.isArray(map.spawns.enemy)) map.spawns.enemy = [null, null, null, null];
-  while (map.spawns.player.length < 4) map.spawns.player.push(null);
-  while (map.spawns.enemy.length < 4) map.spawns.enemy.push(null);
-}
-
-function buildSpawnId(team, index) {
-  return `${team}_${index + 1}`;
-}
-
-function syncLegacySpawnPoints(state) {
-  ensureMapSpawns(state.map);
-  const points = [];
-  for (const team of ['player', 'enemy']) {
-    state.map.spawns[team].forEach((spawn, index) => {
-      if (!spawn || !Number.isFinite(spawn.x) || !Number.isFinite(spawn.y)) return;
-      points.push({
-        id: buildSpawnId(team, index),
-        label: `${team.charAt(0).toUpperCase()}${team.slice(1)} ${index + 1}`,
-        x: spawn.x,
-        y: spawn.y,
-        unitType: 'mech'
-      });
-    });
-  }
-  state.content.spawnPoints = points;
-}
-
-function clearSpawnIdFromTiles(map, spawnId) {
-  const width = getMapWidth(map);
-  const height = getMapHeight(map);
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const tile = getTile(map, x, y);
-      if (tile?.spawnId === spawnId) tile.spawnId = null;
-    }
-  }
-}
-
 function applyHeightBrush(state, tile, editor) {
   const current = Number(tile.elevation ?? 0);
   const target = Number(editor.selectedHeight ?? 0);
@@ -165,9 +123,10 @@ function applyEraseBrush(state, tile) {
   tile.terrainSpriteId = defaults.terrainSpriteId;
   tile.movementClass = defaults.movementClass;
   if (tile.spawnId) {
-    const [team, rawIndex] = String(tile.spawnId).split('_');
-    const index = Number(rawIndex) - 1;
-    if (state.map?.spawns?.[team]?.[index]) state.map.spawns[team][index] = null;
+    const parsed = parseSpawnId(tile.spawnId);
+    if (parsed && state.map?.spawns?.[parsed.team]?.[parsed.index]) {
+      state.map.spawns[parsed.team][parsed.index] = null;
+    }
   }
   tile.spawnId = null;
   syncLegacySpawnPoints(state);
@@ -219,9 +178,11 @@ export function sampleMapEditorFromTile(state, x, y) {
   editor.selectedMovementClass = tile.movementClass ?? 'clear';
 
   if (tile.spawnId) {
-    const [team, rawIndex] = String(tile.spawnId).split('_');
-    editor.selectedSpawnTeam = team === 'enemy' ? 'enemy' : 'player';
-    editor.selectedSpawnIndex = Math.max(0, (Number(rawIndex) || 1) - 1);
+    const parsed = parseSpawnId(tile.spawnId);
+    if (parsed) {
+      editor.selectedSpawnTeam = parsed.team === 'enemy' ? 'enemy' : 'player';
+      editor.selectedSpawnIndex = Math.max(0, parsed.index);
+    }
   }
 
   return editor;
