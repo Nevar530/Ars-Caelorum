@@ -13,17 +13,17 @@ import {
 import {
   applyDetailPattern,
   buildTileSummary,
-  changeDetailElevation,
-  changeElevation,
+  changeDetailElevation as changeDetailElevationImpl,
+  changeElevation as changeElevationImpl,
   createDetailGridForElevation,
   createTile,
   flattenMapTiles,
   formatDetailElevation,
-  getDetailCell,
+  getDetailCell as getDetailCellImpl,
   getDetailCellSize,
   getDetailGrid,
-  getDetailRenderCells,
-  getFineElevationAtWorldDetailCell,
+  getDetailRenderCells as getDetailRenderCellsImpl,
+  getFineElevationAtWorldDetailCell as getFineElevationAtWorldDetailCellImpl,
   getMaxFineElevationForTile,
   getMinFineElevationForTile,
   getTileBaseFineElevation,
@@ -77,23 +77,23 @@ export {
 };
 
 export function getDetailCellAt(map, mechX, mechY, subX, subY) {
-  return getDetailCell(map, mechX, mechY, subX, subY, getTile);
+  return getDetailCellImpl(map, mechX, mechY, subX, subY, getTile);
 }
 
 export function changeTileElevation(map, x, y, delta) {
-  return changeElevation(map, x, y, delta, getTile);
+  return changeElevationImpl(map, x, y, delta, getTile);
 }
 
 export function changeTileDetailElevation(map, mechX, mechY, subX, subY, delta) {
-  return changeDetailElevation(map, mechX, mechY, subX, subY, delta, getTile);
+  return changeDetailElevationImpl(map, mechX, mechY, subX, subY, delta, getTile);
 }
 
 export function getFineElevationAtDetailCell(map, detailX, detailY) {
-  return getFineElevationAtWorldDetailCell(map, detailX, detailY, getTile);
+  return getFineElevationAtWorldDetailCellImpl(map, detailX, detailY, getTile);
 }
 
 export function getDetailCellsForRender(map, mechX, mechY) {
-  return getDetailRenderCells(map, mechX, mechY, getTile);
+  return getDetailRenderCellsImpl(map, mechX, mechY, getTile);
 }
 
 export function detailTypeFromFineElevation(fineElevation) {
