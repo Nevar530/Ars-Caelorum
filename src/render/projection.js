@@ -274,15 +274,32 @@ function normalizeZoomLevel(zoomLevel, state) {
 }
 
 export function getCurrentZoomLevel(state) {
-  const zoomLevel = normalizeZoomLevel(state?.camera?.zoomLevel, state);
+  const baseZoomLevel = normalizeZoomLevel(state?.camera?.zoomLevel, state);
+  const zoomLevel = getEffectiveZoomLevelForPhase(state, baseZoomLevel);
 
   if (state?.camera) {
-    state.camera.zoomMode = zoomLevel;
-    state.camera.zoomLevel = zoomLevel;
-    state.camera.zoomScale = zoomLevel;
+    // Keep the stored camera selection stable, but let the rendered zoom
+    // step out one level during action phase for readability.
+    state.camera.zoomMode = baseZoomLevel;
+    state.camera.zoomLevel = baseZoomLevel;
+    state.camera.zoomScale = baseZoomLevel;
   }
 
   return zoomLevel;
+}
+
+function getEffectiveZoomLevelForPhase(state, zoomLevel) {
+  if (!state?.turn?.combatStarted) return zoomLevel;
+  if (state?.turn?.phase !== "action") return zoomLevel;
+
+  switch (zoomLevel) {
+    case "pilot":
+      return "mech";
+    case "mech":
+      return "map";
+    default:
+      return zoomLevel;
+  }
 }
 
 export function getSceneViewport(refs) {
