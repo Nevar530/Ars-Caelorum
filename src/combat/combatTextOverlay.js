@@ -3,9 +3,28 @@ import { projectTileCenter } from "../render/projection.js";
 import { getUnitCenterPoint } from "../scale/scaleMath.js";
 import { getUnitSupportElevation } from "../render/renderSceneMath.js";
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
 function ensureMarkerState(state) {
   if (!Array.isArray(state.turn.combatTextMarkers)) {
     state.turn.combatTextMarkers = [];
+  }
+}
+
+function getToneStyle(tone) {
+  switch (tone) {
+    case "hit":
+      return { fill: "#ffffff", stroke: "#111111" };
+    case "miss":
+      return { fill: "#ff3b30", stroke: "#000000" };
+    case "shield":
+      return { fill: "#3aa0ff", stroke: "#000000" };
+    case "core":
+      return { fill: "#ffffff", stroke: "#000000" };
+    case "disabled":
+      return { fill: "#c66bff", stroke: "#000000" };
+    default:
+      return { fill: "#ffffff", stroke: "#000000" };
   }
 }
 
@@ -29,28 +48,27 @@ export function renderCombatTextOverlay(state, refs) {
   ensureMarkerState(state);
 
   const overlay = refs?.combatOverlay;
-  const board = refs?.board;
-
-  if (!overlay || !board) return;
-
+  const worldUi = refs?.worldUi;
   const markers = state.turn.combatTextMarkers ?? [];
 
-  overlay.innerHTML = "";
-
-  if (!markers.length) {
+  if (overlay) {
+    overlay.innerHTML = "";
     overlay.classList.remove("is-visible");
     overlay.classList.add("is-clickthrough");
+  }
+
+  if (!worldUi) return;
+
+  const existing = worldUi.querySelector('[data-role="combat-marker-layer"]');
+  if (existing) existing.remove();
+
+  if (!markers.length) {
     return;
   }
 
-  overlay.classList.add("is-visible", "is-clickthrough");
-
-  const boardRect = board.getBoundingClientRect();
-  const overlayRect = overlay.getBoundingClientRect();
-  const viewBox = board.viewBox?.baseVal ?? { width: 1400, height: 900 };
-
-  const boardOffsetX = boardRect.left - overlayRect.left;
-  const boardOffsetY = boardRect.top - overlayRect.top;
+  const layer = document.createElementNS(SVG_NS, "g");
+  layer.setAttribute("data-role", "combat-marker-layer");
+  layer.setAttribute("pointer-events", "none");
 
   const stackCounts = new Map();
 
@@ -62,52 +80,31 @@ export function renderCombatTextOverlay(state, refs) {
     stackCounts.set(marker.targetId, currentStack + 1);
 
     const projected = projectMarkerAnchor(state, unit, currentStack);
+    const style = getToneStyle(marker.tone);
 
-    const pixelX =
-      boardOffsetX + ((projected.x / viewBox.width) * boardRect.width);
-    const pixelY =
-      boardOffsetY + ((projected.y / viewBox.height) * boardRect.height);
+    const text = document.createElementNS(SVG_NS, "text");
+    text.setAttribute("x", String(projected.x));
+    text.setAttribute("y", String(projected.y));
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "central");
+    text.setAttribute("font-size", state.ui?.viewMode === "top" ? "18" : "20");
+    text.setAttribute("font-weight", "900");
+    text.setAttribute("letter-spacing", "0.08em");
+    text.setAttribute("paint-order", "stroke fill");
+    text.setAttribute("stroke-linejoin", "round");
+    text.setAttribute("stroke-width", "5");
+    text.setAttribute("stroke", style.stroke);
+    text.setAttribute("fill", style.fill);
+    text.textContent = marker.text;
 
-    const el = document.createElement("div");
-    el.textContent = marker.text;
-    el.style.position = "absolute";
-    el.style.left = `${pixelX}px`;
-    el.style.top = `${pixelY}px`;
-    el.style.transform = "translate(-50%, -100%)";
-    el.style.padding = "0";
-    el.style.borderRadius = "0";
-    el.style.fontSize = "16px";
-    el.style.fontWeight = "900";
-    el.style.letterSpacing = "0.08em";
-    el.style.textTransform = "uppercase";
-    el.style.pointerEvents = "none";
-    el.style.whiteSpace = "nowrap";
-    el.style.border = "none";
-    el.style.boxShadow = "none";
-    el.style.background = "transparent";
-    el.style.fontFamily = "inherit";
-    el.style.textShadow = "0 0 2px rgba(0,0,0,0.85), 0 2px 6px rgba(0,0,0,0.7)";
-
-    if (marker.tone === "hit") {
-      el.style.color = "#7ef0b0";
-    } else if (marker.tone === "miss") {
-      el.style.color = "#ff8c8c";
-    } else if (marker.tone === "shield") {
-      el.style.color = "#6cc6ff";
-    } else if (marker.tone === "core") {
-      el.style.color = "#ffb05a";
-    } else if (marker.tone === "disabled") {
-      el.style.color = "#d0a4ff";
-    } else {
-      el.style.color = "#ffd65a";
-    }
-
-    overlay.appendChild(el);
+    layer.appendChild(text);
   }
+
+  worldUi.appendChild(layer);
 }
 
 function projectMarkerAnchor(state, unit, stackIndex = 0) {
-  const stackOffset = stackIndex * 18;
+  const stackOffset = stackIndex * 22;
   const centerTile = getUnitCenterPoint(unit);
   const supportElevation = getUnitSupportElevation(state, unit) ?? 0;
   const projected = projectTileCenter(
@@ -120,12 +117,12 @@ function projectMarkerAnchor(state, unit, stackIndex = 0) {
   if (state.ui.viewMode === "top") {
     return {
       x: projected.x,
-      y: projected.y - 10 - stackOffset
+      y: projected.y - 18 - stackOffset
     };
   }
 
   return {
     x: projected.x,
-    y: projected.y - 18 - stackOffset
+    y: projected.y - 34 - stackOffset
   };
 }

@@ -47,8 +47,8 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
   let stroke = null;
 
   if (fireArc.has(key)) {
-    fill = "rgba(255, 176, 0, 0.22)";
-    stroke = "rgba(255, 176, 0, 0.96)";
+    fill = "rgba(198, 107, 255, 0.08)";
+    stroke = "rgba(198, 107, 255, 1)";
   }
 
   const evaluatedTarget = targetMap.get(key);
@@ -57,20 +57,20 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
     const visible = evaluatedTarget.visible ?? evaluatedTarget.los?.visible ?? false;
 
     if (visible && cover === "none") {
-      fill = "rgba(82, 208, 146, 0.24)";
-      stroke = "rgba(82, 208, 146, 0.98)";
+      fill = "rgba(58, 160, 255, 0.10)";
+      stroke = "rgba(58, 160, 255, 1)";
     } else if (visible && cover === "half") {
-      fill = "rgba(240, 176, 0, 0.24)";
-      stroke = "rgba(240, 176, 0, 0.98)";
+      fill = "rgba(198, 107, 255, 0.10)";
+      stroke = "rgba(198, 107, 255, 1)";
     } else {
-      fill = "rgba(255, 74, 74, 0.24)";
-      stroke = "rgba(255, 74, 74, 0.98)";
+      fill = "rgba(255, 59, 48, 0.10)";
+      stroke = "rgba(255, 59, 48, 1)";
     }
   }
 
   if (effectTiles.has(key)) {
-    fill = "rgba(255, 74, 74, 0.24)";
-    stroke = "rgba(255, 74, 74, 1)";
+    fill = "rgba(255, 59, 48, 0.10)";
+    stroke = "rgba(255, 59, 48, 1)";
   }
 
   if (!fill || !stroke) return;
@@ -96,8 +96,8 @@ export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFA
       state,
       occupantUnit,
       "focus-unit",
-      "rgba(240, 176, 0, 0.16)",
-      "rgba(240, 176, 0, 1)",
+      "rgba(255, 255, 255, 0.06)",
+      "rgba(255, 255, 255, 1)",
       parent
     );
     return;
@@ -108,8 +108,8 @@ export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFA
       state,
       item.screenX,
       item.screenY,
-      "rgba(240, 176, 0, 0.16)",
-      "rgba(240, 176, 0, 1)",
+      "rgba(255, 255, 255, 0.06)",
+      "rgba(255, 255, 255, 1)",
       parent
     );
     return;
@@ -146,8 +146,8 @@ export function drawScenePathOverlayForTile(state, item, parent, options = DEFAU
       state,
       previewUnit,
       "move-path-tile",
-      "rgba(240, 176, 0, 0.24)",
-      "rgba(240, 176, 0, 1)",
+      "rgba(255, 255, 255, 0.08)",
+      "rgba(255, 255, 255, 1)",
       parent
     );
   }
@@ -179,8 +179,8 @@ export function drawSceneMoveOverlay(state, item, parent, text, options = DEFAUL
       state,
       previewUnit,
       "move-range-tile",
-      "rgba(80, 180, 255, 0.24)",
-      "rgba(80, 180, 255, 0.92)",
+      "rgba(58, 160, 255, 0.08)",
+      "rgba(58, 160, 255, 1)",
       parent
     );
   }
@@ -209,8 +209,8 @@ export function drawSceneActiveUnitOverlay(state, parent) {
     state,
     activeUnit,
     "active-unit-footprint",
-    "rgba(255, 255, 255, 0.06)",
-    "rgba(255, 255, 255, 0.7)",
+    "rgba(255, 255, 255, 0.04)",
+    "rgba(255, 255, 255, 1)",
     parent
   );
 }
@@ -247,7 +247,7 @@ function drawOverlayForUnitFootprint(state, unit, className, fill, stroke, paren
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", String(DIAMOND_STROKE_WIDTH));
+  poly.setAttribute("stroke-width", String(Math.max(DIAMOND_STROKE_WIDTH, 4)));
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
@@ -293,7 +293,7 @@ function drawOverlayCellTop(state, cell, className, fill, stroke, parent) {
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", String(DETAIL_STROKE_WIDTH));
+  poly.setAttribute("stroke-width", String(Math.max(DETAIL_STROKE_WIDTH, 3.5)));
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);
@@ -331,7 +331,7 @@ export function drawOverlayDiamond(screenX, screenY, className, fill, stroke, pa
 
   const poly = makePolygon(points, className, fill);
   poly.setAttribute("stroke", stroke);
-  poly.setAttribute("stroke-width", String(DIAMOND_STROKE_WIDTH));
+  poly.setAttribute("stroke-width", String(Math.max(DIAMOND_STROKE_WIDTH, 4)));
   poly.setAttribute("paint-order", "stroke fill");
   poly.setAttribute("stroke-linejoin", "round");
   parent.appendChild(poly);

@@ -145,7 +145,7 @@ export function createCombatController({
       clearTransientUi();
       advanceActionTurn();
       render();
-    }, 700);
+    }, 950);
 
     return true;
   }

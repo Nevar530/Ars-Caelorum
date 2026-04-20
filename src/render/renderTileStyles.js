@@ -29,26 +29,26 @@ function styleForEvaluatedTarget(tile) {
 
   if (visible && cover === "none") {
     return makeStyle(
-      "rgba(82, 208, 146, 0.18)",
-      "rgba(82, 208, 146, 0.98)",
-      3,
+      "rgba(58, 160, 255, 0.12)",
+      "rgba(58, 160, 255, 1)",
+      4,
       60
     );
   }
 
   if (visible && cover === "half") {
     return makeStyle(
-      "rgba(240, 176, 0, 0.18)",
-      "rgba(240, 176, 0, 0.98)",
-      3,
+      "rgba(198, 107, 255, 0.12)",
+      "rgba(198, 107, 255, 1)",
+      4,
       60
     );
   }
 
   return makeStyle(
-    "rgba(255, 74, 74, 0.18)",
-    "rgba(255, 74, 74, 0.98)",
-    3,
+    "rgba(255, 59, 48, 0.12)",
+    "rgba(255, 59, 48, 1)",
+    4,
     60
   );
 }
@@ -75,9 +75,9 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
 
   if (state.ui?.mode === "move") {
     const moveRangeStyle = makeStyle(
-      "rgba(80, 180, 255, 0.14)",
-      "rgba(80, 180, 255, 0.92)",
-      2.5,
+      "rgba(58, 160, 255, 0.08)",
+      "rgba(58, 160, 255, 1)",
+      4,
       10
     );
 
@@ -90,9 +90,9 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
     }
 
     const pathStyle = makeStyle(
-      "rgba(240, 176, 0, 0.16)",
-      "rgba(240, 176, 0, 1)",
-      3,
+      "rgba(255, 255, 255, 0.08)",
+      "rgba(255, 255, 255, 1)",
+      4.5,
       30
     );
 
@@ -107,9 +107,9 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
 
   if (state.focus) {
     const focusStyle = makeStyle(
-      "rgba(240, 176, 0, 0.12)",
-      "rgba(240, 176, 0, 1)",
-      3,
+      "rgba(255, 255, 255, 0.06)",
+      "rgba(255, 255, 255, 1)",
+      4.5,
       40
     );
 
@@ -122,9 +122,9 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
 
   if (state.ui?.mode === "action-target") {
     const fireArcStyle = makeStyle(
-      "rgba(255, 176, 0, 0.14)",
-      "rgba(255, 176, 0, 0.96)",
-      2.5,
+      "rgba(198, 107, 255, 0.08)",
+      "rgba(198, 107, 255, 1)",
+      4,
       20
     );
 
@@ -141,9 +141,9 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
     }
 
     const effectStyle = makeStyle(
-      "rgba(255, 74, 74, 0.18)",
-      "rgba(255, 74, 74, 1)",
-      3.25,
+      "rgba(255, 59, 48, 0.12)",
+      "rgba(255, 59, 48, 1)",
+      5,
       80
     );
 
