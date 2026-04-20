@@ -63,20 +63,23 @@ export function ensureCameraState(state) {
     state.camera.topdownOriginY = 0;
   }
 
-  if (!isValidZoomLevel(state.camera.zoomLevel)) {
-    // Compatibility: if older code stored the level in zoomScale, accept it.
-    if (isValidZoomLevel(state.camera.zoomScale)) {
-      state.camera.zoomLevel = state.camera.zoomScale;
-    } else {
-      state.camera.zoomLevel = resolveDefaultZoomLevel(state);
-    }
-  }
+  const zoomLevelField = isValidZoomLevel(state.camera.zoomLevel)
+    ? state.camera.zoomLevel
+    : null;
 
-  // Keep a legacy value alive only if missing.
-  // Do NOT overwrite it every frame or +/- manual zoom gets stomped.
-  if (!state.camera.zoomScale) {
-    state.camera.zoomScale = getCurrentInteractionScale(state);
-  }
+  const zoomScaleAlias = isValidZoomLevel(state.camera.zoomScale)
+    ? state.camera.zoomScale
+    : null;
+
+  // Compatibility rule:
+  // if older code is still writing zoomScale as "map"/"mech"/"pilot",
+  // accept it and keep both fields synced.
+  state.camera.zoomLevel =
+    zoomScaleAlias ??
+    zoomLevelField ??
+    resolveDefaultZoomLevel(state);
+
+  state.camera.zoomScale = state.camera.zoomLevel;
 }
 
 export function updateCameraFraming(state, refs) {
@@ -182,7 +185,6 @@ function getIsoTargetFrameBounds(state, zoomLevel) {
   const preset = CAMERA_ZOOM_CONFIG.iso?.[zoomLevel] ?? CAMERA_ZOOM_CONFIG.iso?.mech ?? {};
   const focus = getCameraFocusTarget(state);
 
-  // Config is now the truth.
   const spanX = Math.max(0.1, Number(preset.spanX ?? 2));
   const spanY = Math.max(0.1, Number(preset.spanY ?? 2));
   const padPxX = Math.max(0, Number(preset.padPxX ?? 24));
@@ -273,7 +275,6 @@ function normalizeZoomLevel(zoomLevel, state) {
     return zoomLevel;
   }
 
-  // Compatibility path if older code still uses zoomScale for the current level.
   if (isValidZoomLevel(state?.camera?.zoomScale)) {
     return state.camera.zoomScale;
   }
@@ -286,6 +287,7 @@ export function getCurrentZoomLevel(state) {
 
   if (state?.camera) {
     state.camera.zoomLevel = zoomLevel;
+    state.camera.zoomScale = zoomLevel;
   }
 
   return zoomLevel;
