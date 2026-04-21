@@ -3,15 +3,17 @@ import {
   confirmActionTarget,
   confirmAttackSelection,
   confirmAbilitySelection,
+  confirmExitSelection,
   startAttackSelection,
-  startAbilitySelection
+  startAbilitySelection,
+  startExitSelection
 } from "../action.js";
 import { resolveHit } from "../combat/hitResolver.js";
 import { resolveDamage } from "../combat/damageResolver.js";
 import { addCombatTextMarker, clearCombatTextMarkers } from "../combat/combatTextOverlay.js";
 import { getPrimaryOccupantAt } from "../scale/occupancy.js";
 import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
-import { resolveEnterMech } from "../vehicles/mechEmbarkActions.js";
+import { resolveEnterMech, resolveExitMech } from "../vehicles/mechEmbarkActions.js";
 
 export function createCombatController({
   state,
@@ -187,10 +189,40 @@ export function createCombatController({
             advanceActionTurn();
             render();
           }
+        } else if (selectedAbility?.id === "exit_mech") {
+          if (!startExitSelection(state, selectedAbility)) {
+            render();
+          } else {
+            render();
+          }
+        } else {
+          render();
         }
       } else {
         render();
       }
+      return;
+    }
+
+    if (state.ui.mode === "action-exit-select") {
+      const activeActor = getActiveActor(state);
+      const selectedAbility = state.ui.action.selectedAbility;
+      const chosenTile = confirmExitSelection(state);
+
+      if (activeActor && selectedAbility?.mechId && chosenTile) {
+        const targetMech = getUnitById(state.units, selectedAbility.mechId);
+        const result = resolveExitMech(state, activeActor, targetMech, chosenTile);
+
+        if (result.ok) {
+          logDev(`${result.pilotName} exited ${result.mechName} at (${result.exitTile.x},${result.exitTile.y}).`);
+          clearTransientUi();
+          advanceActionTurn();
+          render();
+          return;
+        }
+      }
+
+      render();
       return;
     }
 

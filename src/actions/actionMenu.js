@@ -2,7 +2,7 @@
 
 import { getUnitById } from "../mechs.js";
 import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
-import { canPilotBoardMech } from "../vehicles/mechEmbarkRules.js";
+import { canEmbarkedPilotExitMech, canPilotBoardMech, getMechForEmbarkedPilot, getValidRearExitTiles } from "../vehicles/mechEmbarkRules.js";
 import { normalizeWeaponToActionProfile, snapFocusToFirstValidTarget, updateActionTargetPreview } from "../targeting/targetingResolver.js";
 
 function getActiveUnit(state) {
@@ -54,14 +54,31 @@ export function getSelectedAbilityMenuItems(state) {
 
   const items = [];
 
-  if (activeActor.unitType === "pilot" && !activeActor.embarked && activeBody.instanceId === activeActor.instanceId) {
-    const boardableMech = (state.units ?? []).find((unit) => canPilotBoardMech(state, activeActor, unit));
-    items.push({
-      id: "enter_mech",
-      label: "Enter Mech",
-      mechId: boardableMech?.instanceId ?? null,
-      enabled: Boolean(boardableMech)
-    });
+  if (activeActor.unitType === "pilot") {
+    if (!activeActor.embarked && activeBody.instanceId === activeActor.instanceId) {
+      const boardableMech = (state.units ?? []).find((unit) => canPilotBoardMech(state, activeActor, unit));
+      items.push({
+        id: "enter_mech",
+        label: "Enter Mech",
+        mechId: boardableMech?.instanceId ?? null,
+        enabled: Boolean(boardableMech)
+      });
+    }
+
+    if (activeActor.embarked) {
+      const embarkedMech = getMechForEmbarkedPilot(state, activeActor);
+      const validExitTiles = embarkedMech
+        ? getValidRearExitTiles(state, activeActor, embarkedMech)
+        : [];
+
+      items.push({
+        id: "exit_mech",
+        label: "Exit Mech",
+        mechId: embarkedMech?.instanceId ?? null,
+        exitTiles: validExitTiles,
+        enabled: Boolean(embarkedMech) && canEmbarkedPilotExitMech(state, activeActor, embarkedMech)
+      });
+    }
   }
 
   return items;
@@ -107,6 +124,26 @@ export function confirmAbilitySelection(state) {
   state.selection.action = null;
   state.ui.commandMenu.open = false;
   state.ui.commandMenu.index = 0;
+
+  return true;
+}
+
+
+export function startExitSelection(state, selectedAbility = null) {
+  const ability = selectedAbility ?? state.ui.action.selectedAbility ?? null;
+  if (!ability || ability.id !== "exit_mech") return false;
+
+  const validTiles = Array.isArray(ability.exitTiles) ? ability.exitTiles : [];
+  if (!validTiles.length) return false;
+
+  state.ui.mode = "action-exit-select";
+  state.selection.action = "ability";
+  state.ui.action.validTargetTiles = validTiles.map((tile) => ({ ...tile }));
+  state.ui.action.evaluatedTargetTiles = [];
+  state.ui.action.fireArcTiles = [];
+  state.ui.action.effectTiles = [];
+  state.focus.x = Number(validTiles[0].x);
+  state.focus.y = Number(validTiles[0].y);
 
   return true;
 }
@@ -181,6 +218,25 @@ export function confirmAttackSelection(state) {
   return true;
 }
 
+
+export function confirmExitSelection(state) {
+  if (state.ui.mode !== "action-exit-select") return null;
+
+  const validTiles = state.ui.action.validTargetTiles ?? [];
+  const chosenTile = validTiles.find(
+    (tile) => tile.x === state.focus.x && tile.y === state.focus.y
+  );
+
+  if (!chosenTile) return null;
+
+  state.ui.mode = "idle";
+  state.selection.action = null;
+  state.ui.commandMenu.open = false;
+  state.ui.commandMenu.index = 0;
+
+  return { x: chosenTile.x, y: chosenTile.y };
+}
+
 export function confirmActionTarget(state) {
   if (state.ui.mode !== "action-target") return false;
 
@@ -226,6 +282,16 @@ export function cancelActionState(state) {
     state.ui.action.validTargetTiles = [];
     state.ui.action.effectTiles = [];
     state.ui.action.selectedAbility = null;
+    return true;
+  }
+
+  if (state.ui.mode === "action-exit-select") {
+    state.ui.mode = "action-ability-select";
+    state.selection.action = "ability";
+    state.ui.action.validTargetTiles = [];
+    state.ui.action.evaluatedTargetTiles = [];
+    state.ui.action.fireArcTiles = [];
+    state.ui.action.effectTiles = [];
     return true;
   }
 

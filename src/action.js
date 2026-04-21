@@ -12,6 +12,8 @@ import {
   startAbilitySelection,
   confirmAttackSelection,
   confirmAbilitySelection,
+  startExitSelection,
+  confirmExitSelection,
   confirmActionTarget,
   cancelActionState
 } from "./actions/actionMenu.js";
@@ -32,6 +34,8 @@ export {
   startAbilitySelection,
   confirmAttackSelection,
   confirmAbilitySelection,
+  startExitSelection,
+  confirmExitSelection,
   updateActionTargetPreview,
   confirmActionTarget,
   cancelActionState
