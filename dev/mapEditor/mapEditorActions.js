@@ -110,7 +110,8 @@ function normalizeDeploymentEntry(entry = {}, index = 0) {
 }
 
 function syncEditorMapDefinition(state) {
-  syncEditorMapDefinition(state);
+  const editor = ensureMapEditorState(state);
+  editor.cachedMapDefinition = buildMapDefinitionFromRuntimeMap(state.map);
 }
 
 export function getMapEditorDeployments(state) {

@@ -963,8 +963,15 @@ class DevMenu {
   async handleMapEditorClick(event) {
     const button = event.target.closest('[data-map-editor-action]');
     if (!button) return;
+    if (button.dataset.busy === 'true') return;
 
     const action = button.getAttribute('data-map-editor-action');
+    const shouldLockButton = action === 'add-deployment-row' || action === 'remove-deployment-row';
+
+    if (shouldLockButton) {
+      button.dataset.busy = 'true';
+      button.disabled = true;
+    }
 
     try {
       switch (action) {
@@ -1004,6 +1011,11 @@ class DevMenu {
     } catch (error) {
       console.error(error);
       logDev(`Map editor action failed: ${error.message}`);
+    } finally {
+      if (shouldLockButton && button?.isConnected) {
+        button.dataset.busy = 'false';
+        button.disabled = false;
+      }
     }
   }
 
