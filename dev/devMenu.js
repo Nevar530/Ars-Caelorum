@@ -24,7 +24,11 @@ import {
   setMapEditorPendingResize,
   setMapEditorSpawnBrush,
   setMapEditorTerrainPreset,
-  setMapEditorStatus
+  setMapEditorStatus,
+  getMapEditorDeployments,
+  addMapEditorDeployment,
+  removeMapEditorDeployment,
+  updateMapEditorDeploymentField
 } from "./mapEditor/mapEditorActions.js";
 import { renderMapEditorPanel } from "./mapEditor/mapEditorPanel.js";
 import { buildMapDefinitionFromRuntimeMap, downloadMapDefinition, parseMapDefinition } from "./mapEditor/mapSerialization.js";
@@ -746,6 +750,10 @@ class DevMenu {
 
     const spawns = map.spawns ?? { player: [], enemy: [] };
     const seenCoords = new Map();
+    const pilotIds = new Set(this.getPilotDefinitions().map((entry) => entry?.id).filter(Boolean));
+    const mechIds = new Set(this.getFrameDefinitions().map((entry) => entry?.id).filter(Boolean));
+    const spawnIds = new Set(this.getSpawnPoints().map((entry) => entry?.id).filter(Boolean));
+    const deployments = getMapEditorDeployments(this.appState);
 
     for (const team of ['player', 'enemy']) {
       const entries = Array.isArray(spawns[team]) ? spawns[team] : [];
@@ -768,6 +776,34 @@ class DevMenu {
         }
       }
     }
+
+    deployments.forEach((deployment, index) => {
+      const label = `Deployment ${index + 1}`;
+
+      if (!deployment.pilotDefinitionId) {
+        warnings.push(`${label} is missing Pilot ID.`);
+      } else if (!pilotIds.has(deployment.pilotDefinitionId)) {
+        issues.push(`${label} pilot ${deployment.pilotDefinitionId} is not in pilots data.`);
+      }
+
+      if (!deployment.mechDefinitionId) {
+        warnings.push(`${label} is missing Mech ID.`);
+      } else if (!mechIds.has(deployment.mechDefinitionId)) {
+        issues.push(`${label} mech ${deployment.mechDefinitionId} is not in mechs data.`);
+      }
+
+      if (!deployment.pilotSpawnId) {
+        warnings.push(`${label} is missing Pilot Spawn ID.`);
+      } else if (!spawnIds.has(deployment.pilotSpawnId)) {
+        issues.push(`${label} pilot spawn ${deployment.pilotSpawnId} is not on this map.`);
+      }
+
+      if (!deployment.mechSpawnId) {
+        warnings.push(`${label} is missing Mech Spawn ID.`);
+      } else if (!spawnIds.has(deployment.mechSpawnId)) {
+        issues.push(`${label} mech spawn ${deployment.mechSpawnId} is not on this map.`);
+      }
+    });
 
     for (const unit of this.getRuntimeUnits()) {
       if (!Number.isFinite(unit?.x) || !Number.isFinite(unit?.y)) continue;
@@ -800,6 +836,21 @@ class DevMenu {
         { id: 'hazard', label: 'Hazard' }
       ],
       mapOptions: this.getMapCatalogEntries(),
+      deployments: getMapEditorDeployments(this.appState),
+      deploymentOptions: {
+        pilots: this.getPilotDefinitions().map((pilot) => ({
+          id: pilot.id,
+          label: `${pilot.name ?? pilot.id} (${pilot.id})`
+        })),
+        mechs: this.getFrameDefinitions().map((mech) => ({
+          id: mech.id,
+          label: `${mech.name ?? mech.id} (${mech.id})`
+        })),
+        spawns: this.getSpawnPoints().map((spawn) => ({
+          id: spawn.id,
+          label: `${spawn.label ?? spawn.id} (${spawn.x},${spawn.y})`
+        }))
+      },
       selectedTile: tile ? {
         x: selected.x,
         y: selected.y,
@@ -852,6 +903,19 @@ class DevMenu {
   handleMapEditorChange(event) {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
+
+    const deploymentIndex = Number(target.getAttribute('data-deployment-index'));
+    const deploymentField = target.getAttribute('data-deployment-field');
+
+    if (Number.isInteger(deploymentIndex) && deploymentIndex >= 0 && deploymentField) {
+      const nextValue = target instanceof HTMLInputElement && target.type === 'checkbox'
+        ? target.checked
+        : target.value;
+
+      updateMapEditorDeploymentField(this.appState, deploymentIndex, deploymentField, nextValue);
+      this.render();
+      return;
+    }
 
     switch (target.id) {
       case 'ac-map-editor-map-select':
@@ -920,6 +984,20 @@ class DevMenu {
           setMapEditorStatus(this.appState, 'Map validated. Check issues and warnings below.', 'success');
           this.render();
           break;
+        case 'add-deployment-row':
+          addMapEditorDeployment(this.appState);
+          setMapEditorStatus(this.appState, 'Deployment row added.', 'success');
+          this.render();
+          break;
+        case 'remove-deployment-row': {
+          const index = Number(button.getAttribute('data-deployment-index'));
+          if (Number.isInteger(index) && index >= 0) {
+            removeMapEditorDeployment(this.appState, index);
+            setMapEditorStatus(this.appState, `Deployment ${index + 1} removed.`, 'success');
+            this.render();
+          }
+          break;
+        }
         default:
           break;
       }

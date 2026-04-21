@@ -14,6 +14,8 @@ export function renderMapEditorPanel(root, viewModel = {}) {
     : DEFAULT_MOVEMENT_CLASSES;
 
   const mapOptions = Array.isArray(viewModel.mapOptions) ? viewModel.mapOptions : [];
+  const deploymentOptions = viewModel.deploymentOptions ?? {};
+  const deployments = Array.isArray(viewModel.deployments) ? viewModel.deployments : [];
   const editor = viewModel.editor ?? {};
   const selectedTile = viewModel.selectedTile ?? null;
   const selectedSummary = viewModel.selectedSummary ?? null;
@@ -89,6 +91,17 @@ export function renderMapEditorPanel(root, viewModel = {}) {
           </div>
 
           <div style="padding:10px; border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-weight:700; margin-bottom:8px;">Start State · Deployments</div>
+            <div style="opacity:0.82; margin-bottom:8px;">Author pilot/mech deployment pairs for this map. This only edits map JSON start-state data.</div>
+            <div style="display:grid; gap:10px;">
+              ${deployments.length ? deployments.map((deployment, index) => renderDeploymentRow(deployment, index, deploymentOptions)).join('') : `<div style="padding:10px; border:1px dashed rgba(255,255,255,0.16); opacity:0.82;">No deployments authored yet.</div>`}
+            </div>
+            <div style="margin-top:10px;">
+              <button type="button" data-map-editor-action="add-deployment-row">Add Deployment</button>
+            </div>
+          </div>
+
+          <div style="padding:10px; border:1px solid rgba(255,255,255,0.08);">
             <div style="font-weight:700; margin-bottom:8px;">Resize</div>
             <div style="display:grid; gap:8px; grid-template-columns:1fr 1fr auto; align-items:end;">
               <label style="display:block;">
@@ -147,6 +160,87 @@ export function renderMapEditorPanel(root, viewModel = {}) {
       <div id="ac-map-editor-canvas-slot"></div>
     </section>
   `;
+}
+
+function renderDeploymentRow(deployment, index, options) {
+  const pilotOptions = buildOptions(options.pilots, deployment.pilotDefinitionId, '-- pilot --');
+  const mechOptions = buildOptions(options.mechs, deployment.mechDefinitionId, '-- mech --');
+  const pilotSpawnOptions = buildOptions(options.spawns, deployment.pilotSpawnId, '-- pilot spawn --');
+  const mechSpawnOptions = buildOptions(options.spawns, deployment.mechSpawnId, '-- mech spawn --');
+
+  return `
+    <div style="padding:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02); display:grid; gap:8px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+        <div style="font-weight:700;">Deployment ${index + 1}</div>
+        <button type="button" data-map-editor-action="remove-deployment-row" data-deployment-index="${index}">Remove</button>
+      </div>
+      <div style="display:grid; gap:8px; grid-template-columns:repeat(2, minmax(0,1fr));">
+        <label style="display:block;">
+          <div>Pilot ID</div>
+          <select data-deployment-index="${index}" data-deployment-field="pilotDefinitionId" style="width:100%;">${pilotOptions}</select>
+        </label>
+        <label style="display:block;">
+          <div>Mech ID</div>
+          <select data-deployment-index="${index}" data-deployment-field="mechDefinitionId" style="width:100%;">${mechOptions}</select>
+        </label>
+        <label style="display:block;">
+          <div>Pilot Spawn ID</div>
+          <select data-deployment-index="${index}" data-deployment-field="pilotSpawnId" style="width:100%;">${pilotSpawnOptions}</select>
+        </label>
+        <label style="display:block;">
+          <div>Mech Spawn ID</div>
+          <select data-deployment-index="${index}" data-deployment-field="mechSpawnId" style="width:100%;">${mechSpawnOptions}</select>
+        </label>
+        <label style="display:block;">
+          <div>Team</div>
+          <select data-deployment-index="${index}" data-deployment-field="team" style="width:100%;">
+            <option value="player" ${deployment.team === 'player' ? 'selected' : ''}>player</option>
+            <option value="enemy" ${deployment.team === 'enemy' ? 'selected' : ''}>enemy</option>
+          </select>
+        </label>
+        <label style="display:block;">
+          <div>Control</div>
+          <select data-deployment-index="${index}" data-deployment-field="controlType" style="width:100%;">
+            <option value="PC" ${deployment.controlType === 'PC' ? 'selected' : ''}>PC</option>
+            <option value="CPU" ${deployment.controlType === 'CPU' ? 'selected' : ''}>CPU</option>
+          </select>
+        </label>
+        <label style="display:block;">
+          <div>Pilot Instance ID</div>
+          <input type="text" data-deployment-index="${index}" data-deployment-field="pilotInstanceId" value="${escapeAttr(deployment.pilotInstanceId ?? '')}" style="width:100%;" />
+        </label>
+        <label style="display:block;">
+          <div>Mech Instance ID</div>
+          <input type="text" data-deployment-index="${index}" data-deployment-field="mechInstanceId" value="${escapeAttr(deployment.mechInstanceId ?? '')}" style="width:100%;" />
+        </label>
+      </div>
+      <label style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" data-deployment-index="${index}" data-deployment-field="startEmbarked" ${deployment.startEmbarked ? 'checked' : ''} />
+        <span>Start Embarked</span>
+      </label>
+    </div>
+  `;
+}
+
+function buildOptions(entries, currentValue, placeholderLabel) {
+  const normalized = Array.isArray(entries) ? entries : [];
+  const current = String(currentValue ?? '');
+  const hasCurrent = current && normalized.some((entry) => String(entry?.id ?? '') === current);
+  const list = [];
+
+  list.push(`<option value="">${escapeHtml(placeholderLabel)}</option>`);
+  if (current && !hasCurrent) {
+    list.push(`<option value="${escapeAttr(current)}" selected>${escapeHtml(`${current} (missing)`)}</option>`);
+  }
+
+  for (const entry of normalized) {
+    const value = String(entry?.id ?? '');
+    if (!value) continue;
+    const label = entry?.label ?? value;
+    list.push(`<option value="${escapeAttr(value)}" ${value === current ? 'selected' : ''}>${escapeHtml(label)}</option>`);
+  }
+
+  return list.join('');
 }
 
 function renderModeFields(editor, terrainPresets, movementClasses) {

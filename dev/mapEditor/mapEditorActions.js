@@ -80,6 +80,103 @@ export function setMapEditorStatus(state, message = '', tone = 'info') {
   editor.statusTone = tone === 'error' ? 'error' : tone === 'success' ? 'success' : 'info';
 }
 
+
+
+function ensureMapStartState(map) {
+  if (!map.startState || typeof map.startState !== 'object') {
+    map.startState = { deployments: [] };
+  }
+  if (!Array.isArray(map.startState.deployments)) {
+    map.startState.deployments = [];
+  }
+  return map.startState;
+}
+
+function normalizeDeploymentEntry(entry = {}, index = 0) {
+  const team = entry?.team === 'enemy' ? 'enemy' : 'player';
+  const controlType = entry?.controlType === 'CPU' ? 'CPU' : 'PC';
+
+  return {
+    pilotDefinitionId: String(entry?.pilotDefinitionId ?? entry?.pilotId ?? ''),
+    pilotInstanceId: String(entry?.pilotInstanceId ?? `${team}-pilot-${index + 1}`),
+    pilotSpawnId: String(entry?.pilotSpawnId ?? ''),
+    mechDefinitionId: String(entry?.mechDefinitionId ?? entry?.mechId ?? ''),
+    mechInstanceId: String(entry?.mechInstanceId ?? `${team}-mech-${index + 1}`),
+    mechSpawnId: String(entry?.mechSpawnId ?? ''),
+    team,
+    controlType,
+    startEmbarked: Boolean(entry?.startEmbarked)
+  };
+}
+
+function syncEditorMapDefinition(state) {
+  syncEditorMapDefinition(state);
+}
+
+export function getMapEditorDeployments(state) {
+  const startState = ensureMapStartState(state.map);
+  startState.deployments = startState.deployments.map((entry, index) => normalizeDeploymentEntry(entry, index));
+  return startState.deployments;
+}
+
+export function addMapEditorDeployment(state) {
+  const deployments = getMapEditorDeployments(state);
+  const nextIndex = deployments.length;
+  const nextTeam = nextIndex % 2 === 1 ? 'enemy' : 'player';
+
+  deployments.push(normalizeDeploymentEntry({
+    team: nextTeam,
+    controlType: nextTeam === 'enemy' ? 'CPU' : 'PC',
+    startEmbarked: false
+  }, nextIndex));
+
+  syncEditorMapDefinition(state);
+  return deployments;
+}
+
+export function removeMapEditorDeployment(state, index) {
+  const deployments = getMapEditorDeployments(state);
+  if (index < 0 || index >= deployments.length) return deployments;
+  deployments.splice(index, 1);
+  state.map.startState.deployments = deployments.map((entry, rowIndex) => normalizeDeploymentEntry(entry, rowIndex));
+  syncEditorMapDefinition(state);
+  return state.map.startState.deployments;
+}
+
+export function updateMapEditorDeploymentField(state, index, field, value) {
+  const deployments = getMapEditorDeployments(state);
+  if (index < 0 || index >= deployments.length) return null;
+
+  const entry = { ...deployments[index] };
+
+  switch (field) {
+    case 'pilotDefinitionId':
+    case 'pilotInstanceId':
+    case 'pilotSpawnId':
+    case 'mechDefinitionId':
+    case 'mechInstanceId':
+    case 'mechSpawnId':
+      entry[field] = String(value ?? '');
+      break;
+    case 'team':
+      entry.team = value === 'enemy' ? 'enemy' : 'player';
+      break;
+    case 'controlType':
+      entry.controlType = value === 'CPU' ? 'CPU' : 'PC';
+      break;
+    case 'startEmbarked':
+      entry.startEmbarked = Boolean(value);
+      break;
+    default:
+      return null;
+  }
+
+  deployments[index] = normalizeDeploymentEntry(entry, index);
+  state.map.startState.deployments = deployments;
+  syncEditorMapDefinition(state);
+  return deployments[index];
+}
+
 function getTerrainDefinition(state, presetId) {
   return state?.content?.terrainDefinitions?.[presetId] ?? null;
 }
@@ -169,7 +266,7 @@ export function applyMapEditorAtTile(state, originX, originY) {
     }
   }
 
-  state.content.defaultMap = buildMapDefinitionFromRuntimeMap(state.map);
+  syncEditorMapDefinition(state);
   syncContentSpawnPointsFromMap(state);
   setMapEditorStatus(state, '');
 }
@@ -197,7 +294,7 @@ export function sampleMapEditorFromTile(state, x, y) {
 export function replaceRuntimeMapFromDefinition(state, mapDefinition) {
   const normalized = normalizeMapDefinition(structuredClone(mapDefinition));
   state.map = normalized;
-  state.content.defaultMap = buildMapDefinitionFromRuntimeMap(normalized);
+  syncEditorMapDefinition(state);
   syncContentSpawnPointsFromMap(state);
   const editor = ensureMapEditorState(state);
   editor.activeMapId = normalized.id ?? editor.activeMapId;
