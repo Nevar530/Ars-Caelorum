@@ -56,13 +56,12 @@ export function getSelectedAbilityMenuItems(state) {
 
   if (activeActor.unitType === "pilot" && !activeActor.embarked && activeBody.instanceId === activeActor.instanceId) {
     const boardableMech = (state.units ?? []).find((unit) => canPilotBoardMech(state, activeActor, unit));
-    if (boardableMech) {
-      items.push({
-        id: "enter_mech",
-        label: "Enter Mech",
-        mechId: boardableMech.instanceId
-      });
-    }
+    items.push({
+      id: "enter_mech",
+      label: "Enter Mech",
+      mechId: boardableMech?.instanceId ?? null,
+      enabled: Boolean(boardableMech)
+    });
   }
 
   return items;
@@ -101,7 +100,7 @@ export function confirmAbilitySelection(state) {
   if (!items.length) return false;
 
   const chosen = items[state.ui.action.menuIndex];
-  if (!chosen) return false;
+  if (!chosen || chosen.enabled === false) return false;
 
   state.ui.action.selectedAbility = chosen;
   state.ui.mode = "idle";

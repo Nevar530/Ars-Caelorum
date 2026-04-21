@@ -317,11 +317,18 @@ function renderAbilityMenu(state) {
   return `
     <div class="hud-section-title">Ability</div>
 
-    ${items.map((a, i) => `
-      <button class="hud-menu-button ${i === state.ui.action.menuIndex ? "is-selected" : ""}">
-        ${i === state.ui.action.menuIndex ? "▶ " : ""}${a.label}
-      </button>
-    `).join("")}
+    ${items.map((a, i) => {
+      const isSelected = i === state.ui.action.menuIndex;
+      const isDisabled = a.enabled === false;
+      return `
+        <button
+          class="hud-menu-button ${isSelected ? "is-selected" : ""} ${isDisabled ? "is-disabled" : ""}"
+          ${isDisabled ? "disabled" : ""}
+        >
+          ${isSelected ? "▶ " : ""}${a.label}
+        </button>
+      `;
+    }).join("")}
   `;
 }
 

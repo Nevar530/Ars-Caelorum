@@ -836,6 +836,19 @@ button:disabled {
   color: #fff4c2;
 }
 
+.hud-menu-button.is-disabled,
+.hud-menu-button:disabled {
+  background: #121a22;
+  border-color: #273645;
+  color: rgba(221, 221, 221, 0.42);
+  cursor: not-allowed;
+}
+
+.hud-menu-button.is-disabled:hover,
+.hud-menu-button:disabled:hover {
+  background: #121a22;
+}
+
 .hud-menu-caret {
   width: 12px;
   color: var(--accent);

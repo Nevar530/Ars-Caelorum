@@ -185,8 +185,11 @@ export function createCombatController({
             logDev(`${result.pilotName} entered ${result.mechName}.`);
             clearTransientUi();
             advanceActionTurn();
+            render();
           }
         }
+      } else {
+        render();
       }
       return;
     }
