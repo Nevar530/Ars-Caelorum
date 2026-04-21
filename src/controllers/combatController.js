@@ -3,10 +3,8 @@ import {
   confirmActionTarget,
   confirmAttackSelection,
   confirmAbilitySelection,
-  confirmExitSelection,
   startAttackSelection,
-  startAbilitySelection,
-  startExitSelection
+  startAbilitySelection
 } from "../action.js";
 import { resolveHit } from "../combat/hitResolver.js";
 import { resolveDamage } from "../combat/damageResolver.js";
@@ -189,12 +187,19 @@ export function createCombatController({
             advanceActionTurn();
             render();
           }
-        } else if (selectedAbility?.id === "exit_mech") {
-          if (!startExitSelection(state, selectedAbility)) {
+        } else if (selectedAbility?.id === "exit_mech" && activeActor) {
+          const targetMech = getUnitById(state.units, selectedAbility.mechId);
+          const result = resolveExitMech(state, activeActor, targetMech, selectedAbility.exitTile ?? null);
+
+          if (result.ok) {
+            logDev(`${result.pilotName} exited ${result.mechName} at (${result.exitTile.x},${result.exitTile.y}).`);
+            clearTransientUi();
+            advanceActionTurn();
             render();
-          } else {
-            render();
+            return;
           }
+
+          render();
         } else {
           render();
         }
@@ -204,27 +209,6 @@ export function createCombatController({
       return;
     }
 
-    if (state.ui.mode === "action-exit-select") {
-      const activeActor = getActiveActor(state);
-      const selectedAbility = state.ui.action.selectedAbility;
-      const chosenTile = confirmExitSelection(state);
-
-      if (activeActor && selectedAbility?.mechId && chosenTile) {
-        const targetMech = getUnitById(state.units, selectedAbility.mechId);
-        const result = resolveExitMech(state, activeActor, targetMech, chosenTile);
-
-        if (result.ok) {
-          logDev(`${result.pilotName} exited ${result.mechName} at (${result.exitTile.x},${result.exitTile.y}).`);
-          clearTransientUi();
-          advanceActionTurn();
-          render();
-          return;
-        }
-      }
-
-      render();
-      return;
-    }
 
     if (state.ui.mode === "action-attack-select") {
       const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);

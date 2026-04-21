@@ -130,19 +130,6 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
 
     setStyleForCells(styleMap, focusCells, focusStyle);
   }
-
-
-  if (state.ui?.mode === "action-exit-select") {
-    const exitStyle = makeStyle(
-      "rgba(0, 224, 255, 0.18)",
-      "rgba(0, 224, 255, 1)",
-      3.5,
-      35
-    );
-
-    for (const tile of state.ui?.action?.validTargetTiles || []) {
-      setStyle(styleMap, tile.x, tile.y, exitStyle);
-    }
   }
 
   if (state.ui?.mode === "action-target") {

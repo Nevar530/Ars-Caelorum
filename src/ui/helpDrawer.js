@@ -58,17 +58,6 @@ function getHelpSections(state) {
     });
   }
 
-  if (state.ui.mode === "action-exit-select") {
-    sections.push({
-      title: "Exit Select",
-      items: [
-        { key: "W / A / S / D", label: "Move exit cursor" },
-        { key: "Arrow Keys", label: "Move exit cursor" },
-        { key: "Enter / Space", label: "Confirm exit tile" },
-        { key: "Esc", label: "Back to abilities" }
-      ]
-    });
-  }
 
   if (state.ui.mode === "action-target") {
     sections.push({

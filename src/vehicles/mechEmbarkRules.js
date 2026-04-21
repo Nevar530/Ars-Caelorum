@@ -89,26 +89,11 @@ export function getRearExitTiles(mech) {
   if (!mech) return [];
 
   const center = getRearCenterTile(mech);
-  const rear = getRearDirection(mech.facing ?? 0);
+  return [center];
+}
 
-  switch (rear) {
-    case 0:
-    case 2:
-      return [
-        { x: center.x - 1, y: center.y },
-        { x: center.x, y: center.y },
-        { x: center.x + 1, y: center.y }
-      ];
-    case 1:
-    case 3:
-      return [
-        { x: center.x, y: center.y - 1 },
-        { x: center.x, y: center.y },
-        { x: center.x, y: center.y + 1 }
-      ];
-    default:
-      return [center];
-  }
+export function getRearCenterExitTile(mech) {
+  return getRearCenterTile(mech);
 }
 
 export function isPilotOnRearHatchBoardingTile(pilot, mech) {
@@ -135,13 +120,18 @@ export function getValidRearExitTiles(state, pilot, mech) {
   if (pilot.currentMechId && pilot.currentMechId !== mech.instanceId) return [];
   if (!isUsableMech(mech)) return [];
 
-  return getRearExitTiles(mech).filter((tile) =>
-    canPilotStandAt(state, pilot, tile.x, tile.y)
-  );
+  const centerTile = getRearCenterTile(mech);
+  return canPilotStandAt(state, pilot, centerTile.x, centerTile.y)
+    ? [centerTile]
+    : [];
+}
+
+export function getValidRearExitTile(state, pilot, mech) {
+  return getValidRearExitTiles(state, pilot, mech)[0] ?? null;
 }
 
 export function canEmbarkedPilotExitMech(state, pilot, mech) {
-  return getValidRearExitTiles(state, pilot, mech).length > 0;
+  return getValidRearExitTile(state, pilot, mech) !== null;
 }
 
 export function getMechForEmbarkedPilot(state, pilot) {

@@ -2,7 +2,7 @@
 //
 // Enter / Exit mech resolution helpers.
 
-import { canPilotBoardMech, getValidRearExitTiles } from "./mechEmbarkRules.js";
+import { canPilotBoardMech, getValidRearExitTile } from "./mechEmbarkRules.js";
 
 export function resolveEnterMech(state, pilot, mech) {
   if (!state || !pilot || !mech) return { ok: false, reason: "missing_state" };
@@ -23,17 +23,18 @@ export function resolveEnterMech(state, pilot, mech) {
   };
 }
 
-export function resolveExitMech(state, pilot, mech, exitTile) {
-  if (!state || !pilot || !mech || !exitTile) {
+export function resolveExitMech(state, pilot, mech, exitTile = null) {
+  if (!state || !pilot || !mech) {
     return { ok: false, reason: "missing_state" };
   }
 
-  const validTiles = getValidRearExitTiles(state, pilot, mech);
-  const chosenTile = validTiles.find(
-    (tile) => Number(tile.x) == Number(exitTile.x) && Number(tile.y) == Number(exitTile.y)
-  );
+  const chosenTile = getValidRearExitTile(state, pilot, mech);
 
   if (!chosenTile) {
+    return { ok: false, reason: "invalid_exit_tile" };
+  }
+
+  if (exitTile && (Number(exitTile.x) !== Number(chosenTile.x) || Number(exitTile.y) !== Number(chosenTile.y))) {
     return { ok: false, reason: "invalid_exit_tile" };
   }
 

@@ -142,12 +142,6 @@ function renderCenterPanel(state) {
     `;
   }
 
-  if (state.ui.mode === "action-exit-select") {
-    return `
-      ${summary}
-      ${renderExitMenu(state)}
-    `;
-  }
 
   if (state.ui.mode === "action-target") {
     return `
@@ -350,23 +344,6 @@ function renderAttackMenu(state) {
         ${i === state.ui.action.menuIndex ? "▶ " : ""}${a.label}
       </button>
     `).join("")}
-  `;
-}
-
-function renderExitMenu() {
-  const items = state.ui?.action?.validTargetTiles ?? [];
-
-  return `
-    <div class="hud-section-title">Exit Mech</div>
-    <div class="hud-mode-box" style="margin-bottom:8px;">Choose rear exit tile</div>
-    ${items.map((tile) => {
-      const isSelected = tile.x === state.focus.x && tile.y === state.focus.y;
-      return `
-        <button class="hud-menu-button ${isSelected ? "is-selected" : ""}">
-          ${isSelected ? "▶ " : ""}(${tile.x}, ${tile.y})
-        </button>
-      `;
-    }).join("")}
   `;
 }
 

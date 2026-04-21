@@ -1,6 +1,7 @@
 // src/targeting/rangeRules.js
 
 import { getPrimaryOccupantAt } from "../scale/occupancy.js";
+import { getBoardUnits } from "../actors/actorResolver.js";
 import { getUnitOccupiedCells, getUnitFootprintBounds } from "../scale/scaleMath.js";
 import {
   getCardinalAdjacentTilesForFacing,
@@ -11,7 +12,7 @@ export const DEFAULT_DIRECT_MAX_RANGE = 20;
 export const DEFAULT_MISSILE_MAX_RANGE = 20;
 
 function getStateUnits(state) {
-  return Array.isArray(state?.units) ? state.units : [];
+  return getBoardUnits(state);
 }
 
 function getTargetFocusTile(unit) {
