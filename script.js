@@ -145,14 +145,13 @@ async function init() {
         return;
       }
 
-      if (action === "end_turn") {
-        combatController.completeEndTurnForCurrentUnit();
+      if (action === "ability") {
+        combatController.startAbility();
         return;
       }
 
-      if (action === "ability") {
-        logDev("Ability menu not implemented yet.");
-        gameController.render();
+      if (action === "end_turn") {
+        combatController.completeEndTurnForCurrentUnit();
         return;
       }
 
@@ -178,14 +177,13 @@ async function init() {
         return;
       }
 
-      if (action === "end_turn") {
-        combatController.completeEndTurnForCurrentUnit();
+      if (action === "ability") {
+        combatController.startAbility();
         return;
       }
 
-      if (action === "ability") {
-        logDev("Ability menu not implemented yet.");
-        gameController.render();
+      if (action === "end_turn") {
+        combatController.completeEndTurnForCurrentUnit();
         return;
       }
 
@@ -214,6 +212,7 @@ async function init() {
     zoomOut: gameController.zoomOut,
     startMove: movementController.startMove,
     startAttack: combatController.startAttack,
+    startAbility: combatController.startAbility,
     waitTurn: combatController.waitTurn,
     confirmAction: combatController.confirmAction,
     cancelAction: combatController.cancelAction,

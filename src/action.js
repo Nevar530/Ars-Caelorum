@@ -5,9 +5,13 @@ import {
   resetActionUiState,
   getCommandMenuItemsForPhase,
   getSelectedAttackMenuItems,
+  getSelectedAbilityMenuItems,
   moveAttackSelection,
+  moveAbilitySelection,
   startAttackSelection,
+  startAbilitySelection,
   confirmAttackSelection,
+  confirmAbilitySelection,
   confirmActionTarget,
   cancelActionState
 } from "./actions/actionMenu.js";
@@ -21,9 +25,13 @@ export {
   resetActionUiState,
   getCommandMenuItemsForPhase,
   getSelectedAttackMenuItems,
+  getSelectedAbilityMenuItems,
   moveAttackSelection,
+  moveAbilitySelection,
   startAttackSelection,
+  startAbilitySelection,
   confirmAttackSelection,
+  confirmAbilitySelection,
   updateActionTargetPreview,
   confirmActionTarget,
   cancelActionState

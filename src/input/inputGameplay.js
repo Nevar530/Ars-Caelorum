@@ -1,5 +1,5 @@
 import { clampFocusToBoard, getPathToTile } from "../movement.js";
-import { moveAttackSelection, updateActionTargetPreview } from "../action.js";
+import { moveAbilitySelection, moveAttackSelection, updateActionTargetPreview } from "../action.js";
 import {
   getActiveUnit,
   getBoardDeltaFromScreenDirection,
@@ -118,6 +118,22 @@ function handleViewKeys(key, actions) {
 }
 
 function handleMenuNavigationKeys(key, state, actions) {
+  if (state.ui.mode === "action-ability-select") {
+    if (key === "arrowup" || key === "w") {
+      moveAbilitySelection(state, -1);
+      actions.render();
+      return true;
+    }
+
+    if (key === "arrowdown" || key === "s") {
+      moveAbilitySelection(state, 1);
+      actions.render();
+      return true;
+    }
+
+    return false;
+  }
+
   if (state.ui.mode === "action-attack-select") {
     if (key === "arrowup" || key === "w") {
       moveAttackSelection(state, -1);
@@ -199,6 +215,7 @@ function handleFacingKeys(key, state, actions) {
 function handleFocusKeys(key, state, actions) {
   if (state.ui.commandMenu.open && state.ui.mode === "idle") return false;
   if (state.ui.mode === "action-attack-select") return false;
+  if (state.ui.mode === "action-ability-select") return false;
 
   let direction = null;
 
@@ -249,6 +266,7 @@ function handleConfirmCancelKeys(key, state, actions) {
     state.ui.mode === "move" ||
     state.ui.mode === "face" ||
     state.ui.mode === "action-attack-select" ||
+    state.ui.mode === "action-ability-select" ||
     state.ui.mode === "action-target"
   ) {
     if (isConfirm) {

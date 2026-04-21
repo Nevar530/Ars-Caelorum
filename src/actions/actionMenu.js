@@ -1,7 +1,8 @@
 // src/actions/actionMenu.js
 
 import { getUnitById } from "../mechs.js";
-import { getActiveBody } from "../actors/actorResolver.js";
+import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
+import { canPilotBoardMech } from "../vehicles/mechEmbarkRules.js";
 import { normalizeWeaponToActionProfile, snapFocusToFirstValidTarget, updateActionTargetPreview } from "../targeting/targetingResolver.js";
 
 function getActiveUnit(state) {
@@ -16,7 +17,8 @@ export function createActionUiState() {
     evaluatedTargetTiles: [],
     validTargetTiles: [],
     effectTiles: [],
-    lastConfirmed: null
+    lastConfirmed: null,
+    selectedAbility: null
   };
 }
 
@@ -27,6 +29,7 @@ export function resetActionUiState(state) {
   state.ui.action.evaluatedTargetTiles = [];
   state.ui.action.validTargetTiles = [];
   state.ui.action.effectTiles = [];
+  state.ui.action.selectedAbility = null;
 }
 
 export function getCommandMenuItemsForPhase(phase) {
@@ -39,6 +42,74 @@ export function getCommandMenuItemsForPhase(phase) {
   }
 
   return [];
+}
+
+
+export function getSelectedAbilityMenuItems(state) {
+  if (state.turn.phase !== "action") return [];
+
+  const activeActor = getActiveActor(state);
+  const activeBody = getActiveUnit(state);
+  if (!activeActor || !activeBody) return [];
+
+  const items = [];
+
+  if (activeActor.unitType === "pilot" && !activeActor.embarked && activeBody.instanceId === activeActor.instanceId) {
+    const boardableMech = (state.units ?? []).find((unit) => canPilotBoardMech(state, activeActor, unit));
+    if (boardableMech) {
+      items.push({
+        id: "enter_mech",
+        label: "Enter Mech",
+        mechId: boardableMech.instanceId
+      });
+    }
+  }
+
+  return items;
+}
+
+export function moveAbilitySelection(state, delta) {
+  const items = getSelectedAbilityMenuItems(state);
+  if (!items.length) return;
+
+  const count = items.length;
+  state.ui.action.menuIndex =
+    (state.ui.action.menuIndex + delta + count) % count;
+}
+
+export function startAbilitySelection(state) {
+  if (state.turn.phase !== "action") return false;
+
+  const items = getSelectedAbilityMenuItems(state);
+  if (!items.length) return false;
+
+  state.ui.commandMenu.open = false;
+  state.ui.commandMenu.index = 0;
+
+  state.ui.mode = "action-ability-select";
+  state.selection.action = "ability";
+  state.ui.action.menuIndex = 0;
+  state.ui.action.selectedAbility = null;
+
+  return true;
+}
+
+export function confirmAbilitySelection(state) {
+  if (state.ui.mode !== "action-ability-select") return false;
+
+  const items = getSelectedAbilityMenuItems(state);
+  if (!items.length) return false;
+
+  const chosen = items[state.ui.action.menuIndex];
+  if (!chosen) return false;
+
+  state.ui.action.selectedAbility = chosen;
+  state.ui.mode = "idle";
+  state.selection.action = null;
+  state.ui.commandMenu.open = false;
+  state.ui.commandMenu.index = 0;
+
+  return true;
 }
 
 export function getSelectedAttackMenuItems(state) {
@@ -88,6 +159,7 @@ export function startAttackSelection(state) {
   state.ui.action.evaluatedTargetTiles = [];
   state.ui.action.validTargetTiles = [];
   state.ui.action.effectTiles = [];
+  state.ui.action.selectedAbility = null;
 
   return true;
 }
@@ -154,6 +226,16 @@ export function cancelActionState(state) {
     state.ui.action.evaluatedTargetTiles = [];
     state.ui.action.validTargetTiles = [];
     state.ui.action.effectTiles = [];
+    state.ui.action.selectedAbility = null;
+    return true;
+  }
+
+  if (state.ui.mode === "action-ability-select") {
+    resetActionUiState(state);
+    state.ui.mode = "idle";
+    state.selection.action = null;
+    state.ui.commandMenu.open = true;
+    state.ui.commandMenu.index = 0;
     return true;
   }
 

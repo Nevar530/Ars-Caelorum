@@ -2,13 +2,16 @@ import {
   cancelActionState,
   confirmActionTarget,
   confirmAttackSelection,
-  startAttackSelection
+  confirmAbilitySelection,
+  startAttackSelection,
+  startAbilitySelection
 } from "../action.js";
 import { resolveHit } from "../combat/hitResolver.js";
 import { resolveDamage } from "../combat/damageResolver.js";
 import { addCombatTextMarker, clearCombatTextMarkers } from "../combat/combatTextOverlay.js";
 import { getPrimaryOccupantAt } from "../scale/occupancy.js";
-import { getActiveBody } from "../actors/actorResolver.js";
+import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
+import { resolveEnterMech } from "../vehicles/mechEmbarkActions.js";
 
 export function createCombatController({
   state,
@@ -29,6 +32,19 @@ export function createCombatController({
     if (!startAttackSelection(state)) return;
 
     logDev(`${activeUnit.name} entered attack selection.`);
+    render();
+  }
+
+
+  function startAbility() {
+    if (!state.turn.combatStarted || state.turn.phase !== "action") return;
+
+    const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
+    if (!activeUnit) return;
+
+    if (!startAbilitySelection(state)) return;
+
+    logDev(`${activeUnit.name} entered ability selection.`);
     render();
   }
 
@@ -156,6 +172,25 @@ export function createCombatController({
       return;
     }
 
+    if (state.ui.mode === "action-ability-select") {
+      const activeActor = getActiveActor(state);
+
+      if (confirmAbilitySelection(state)) {
+        const selectedAbility = state.ui.action.selectedAbility;
+        if (selectedAbility?.id === "enter_mech" && activeActor) {
+          const targetMech = getUnitById(state.units, selectedAbility.mechId);
+          const result = resolveEnterMech(state, activeActor, targetMech);
+
+          if (result.ok) {
+            logDev(`${result.pilotName} entered ${result.mechName}.`);
+            clearTransientUi();
+            advanceActionTurn();
+          }
+        }
+      }
+      return;
+    }
+
     if (state.ui.mode === "action-attack-select") {
       const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
 
@@ -198,6 +233,7 @@ export function createCombatController({
 
   return {
     startAttack,
+    startAbility,
     completeEndTurnForCurrentUnit,
     waitTurn,
     confirmAction,
