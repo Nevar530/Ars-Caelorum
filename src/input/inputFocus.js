@@ -1,8 +1,12 @@
 import { getUnitById } from "../mechs.js";
+import { getActiveBody } from "../actors/actorResolver.js";
 import { CAMERA_ZOOM_CONFIG } from "../config.js";
 import { getUnitFootprint, normalizeScale } from "../scale/scaleMath.js";
 
 export function getActiveUnit(state) {
+  const activeBody = getActiveBody(state);
+  if (activeBody) return activeBody;
+
   const activeId = state.turn.activeUnitId ?? null;
   const units = state.units ?? [];
   return getUnitById(units, activeId);

@@ -7,6 +7,7 @@ import {
   isTileMechEnterable
 } from "./map.js";
 import { getUnitById } from "./mechs.js";
+import { getActiveBody } from "./actors/actorResolver.js";
 import { canUnitOccupyCells } from "./scale/occupancy.js";
 import {
   getResolutionBoardSize,
@@ -23,7 +24,10 @@ const CARDINAL_DIRECTIONS = [
   { dx: 0, dy: -1 }
 ];
 
-function getActiveUnit(state) {
+function getMovementBody(state) {
+  const activeBody = getActiveBody(state);
+  if (activeBody) return activeBody;
+
   const activeId = state.turn?.activeUnitId ?? null;
   const units = state.units ?? [];
   return getUnitById(units, activeId);
@@ -240,14 +244,14 @@ export function isTileBlocked(state, x, y, activeUnit = null, _resolution = "bas
 }
 
 export function canStepToTile(state, fromX, fromY, toX, toY, _resolution = "base") {
-  const activeUnit = getActiveUnit(state);
+  const activeUnit = getMovementBody(state);
   if (!activeUnit) return false;
 
   return canTraverseBetweenOrigins(state, activeUnit, fromX, fromY, toX, toY);
 }
 
 export function getTileMoveCost(state, fromX, fromY, toX, toY, _resolution = "base") {
-  const activeUnit = getActiveUnit(state);
+  const activeUnit = getMovementBody(state);
   if (!activeUnit) return Infinity;
 
   const fromUnit = makePreviewUnit(activeUnit, fromX, fromY);
@@ -273,7 +277,7 @@ export function getTileMoveCost(state, fromX, fromY, toX, toY, _resolution = "ba
 }
 
 export function getReachableTileMap(state) {
-  const activeUnit = getActiveUnit(state);
+  const activeUnit = getMovementBody(state);
   if (!activeUnit) return new Map();
 
   const startKey = coordKey(activeUnit.x, activeUnit.y);
@@ -352,7 +356,7 @@ export function getPathToTile(state, targetX, targetY) {
 }
 
 export function moveActiveUnitTo(state, x, y) {
-  const activeUnit = getActiveUnit(state);
+  const activeUnit = getMovementBody(state);
   if (!activeUnit) return false;
 
   const reachable = getReachableTileMap(state).get(coordKey(x, y));

@@ -1,6 +1,7 @@
 // src/controllers/movementController.js
 
 import { canMoveActiveMechTo as canMoveActiveUnitTo, getPathToTile } from "../movement.js";
+import { getActiveBody } from "../actors/actorResolver.js";
 
 function facingToLabel(facing) {
   switch (facing) {
@@ -54,7 +55,7 @@ export function createMovementController({
   function startMove() {
     if (!state.turn.combatStarted || state.turn.phase !== "move") return;
 
-    const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+    const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
     if (!activeUnit) return;
 
     state.ui.commandMenu.open = false;
@@ -80,7 +81,7 @@ export function createMovementController({
   }
 
   function completeBraceForCurrentUnit() {
-    const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+    const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
     if (!activeUnit) return;
 
     activeUnit.isBraced = true;
@@ -100,7 +101,7 @@ export function createMovementController({
 
   function confirmMoveOrFacing() {
     if (state.ui.mode === "move") {
-      const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+      const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
       if (!activeUnit) return true;
 
       if (canMoveActiveUnitTo(state, state.focus.x, state.focus.y)) {
@@ -135,7 +136,7 @@ export function createMovementController({
     }
 
     if (state.ui.mode === "face") {
-      const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+      const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
       if (!activeUnit) return true;
 
       if (state.ui.facingPreview !== null) {
