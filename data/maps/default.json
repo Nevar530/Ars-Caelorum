@@ -11314,5 +11314,31 @@
       "summary": null,
       "movementClass": "clear"
     }
-  ]
+  ],
+  "startState": {
+    "deployments": [
+      {
+        "pilotDefinitionId": "pilot_biggs",
+        "pilotInstanceId": "player-pilot-1",
+        "pilotSpawnId": "player_1",
+        "mechDefinitionId": "mech_a",
+        "mechInstanceId": "player-mech-1",
+        "mechSpawnId": "player_2",
+        "team": "player",
+        "controlType": "PC",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_tom",
+        "pilotInstanceId": "enemy-pilot-1",
+        "pilotSpawnId": "enemy_1",
+        "mechDefinitionId": "mech_c",
+        "mechInstanceId": "enemy-mech-1",
+        "mechSpawnId": "enemy_2",
+        "team": "enemy",
+        "controlType": "CPU",
+        "startEmbarked": true
+      }
+    ]
+  }
 }

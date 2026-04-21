@@ -1,6 +1,6 @@
 // src/mechs.js
 
-import { getMapSpawns } from "./map.js";
+import { getMapSpawns, getMapStartState } from "./map.js";
 
 const DEFAULT_ATTACK_PROFILE_MAP = {
   melee_01: "melee_cardinal_01",
@@ -155,6 +155,80 @@ function buildRuntimeSpawnIndex(content, map = null) {
   return index;
 }
 
+function normalizeControlType(value) {
+  return value === "CPU" ? "CPU" : "PC";
+}
+
+function normalizeTeam(value) {
+  return value === "enemy" ? "enemy" : "player";
+}
+
+function buildUnitsFromStartState(content, map, spawnIndex) {
+  const mechDefinitions = Array.isArray(content?.mechs) ? content.mechs : [];
+  const pilotDefinitions = Array.isArray(content?.pilots) ? content.pilots : [];
+  const startState = getMapStartState(map);
+  const deployments = Array.isArray(startState?.deployments) ? startState.deployments : [];
+
+  if (!deployments.length) {
+    return null;
+  }
+
+  const units = [];
+
+  const atSpawn = (spawnId, fallbackX = 0, fallbackY = 0) => {
+    const spawn = spawnIndex.get(spawnId);
+    return {
+      x: Number(spawn?.x ?? fallbackX),
+      y: Number(spawn?.y ?? fallbackY)
+    };
+  };
+
+  for (const deployment of deployments) {
+    const team = normalizeTeam(deployment?.team);
+    const controlType = normalizeControlType(deployment?.controlType);
+    const startEmbarked = Boolean(deployment?.startEmbarked);
+
+    const pilot = getDefinitionById(pilotDefinitions, deployment?.pilotDefinitionId, 0);
+    const mech = getDefinitionById(mechDefinitions, deployment?.mechDefinitionId, 0);
+    if (!pilot || !mech) continue;
+
+    const pilotInstanceId = deployment?.pilotInstanceId ?? `${team}-pilot-${pilot.id}`;
+    const mechInstanceId = deployment?.mechInstanceId ?? `${team}-mech-${mech.id}`;
+
+    const pilotSpawnId = deployment?.pilotSpawnId ?? null;
+    const mechSpawnId = deployment?.mechSpawnId ?? null;
+    const pilotPos = atSpawn(pilotSpawnId, deployment?.pilotX ?? deployment?.x ?? 0, deployment?.pilotY ?? deployment?.y ?? 0);
+    const mechPos = atSpawn(mechSpawnId, deployment?.mechX ?? deployment?.x ?? 0, deployment?.mechY ?? deployment?.y ?? 0);
+
+    const mechUnit = createMechInstance(mech, {
+      instanceId: mechInstanceId,
+      x: mechPos.x,
+      y: mechPos.y,
+      team,
+      controlType,
+      pilot,
+      spawnId: mechSpawnId,
+      embarkedPilotId: startEmbarked ? pilotInstanceId : null
+    });
+
+    const pilotUnit = createPilotInstance(pilot, {
+      instanceId: pilotInstanceId,
+      x: startEmbarked ? mechPos.x : pilotPos.x,
+      y: startEmbarked ? mechPos.y : pilotPos.y,
+      team,
+      controlType,
+      spawnId: pilotSpawnId,
+      currentMechId: startEmbarked ? mechInstanceId : null,
+      embarked: startEmbarked,
+      parentMechId: mechInstanceId
+    });
+
+    units.push(pilotUnit, mechUnit);
+  }
+
+  return units.length ? units : null;
+}
+
 export function instantiateTestUnits(content, map = null) {
   const mechDefinitions = Array.isArray(content?.mechs) ? content.mechs : [];
   const pilotDefinitions = Array.isArray(content?.pilots) ? content.pilots : [];
@@ -163,7 +237,12 @@ export function instantiateTestUnits(content, map = null) {
     return [];
   }
 
-  const spawnIndex = buildRuntimeSpawnIndex(content, map ?? content?.defaultMap ?? null);
+  const runtimeMap = map ?? content?.defaultMap ?? null;
+  const spawnIndex = buildRuntimeSpawnIndex(content, runtimeMap);
+  const startStateUnits = buildUnitsFromStartState(content, runtimeMap, spawnIndex);
+  if (Array.isArray(startStateUnits) && startStateUnits.length) {
+    return startStateUnits;
+  }
 
   const atSpawn = (spawnId, fallbackX, fallbackY) => {
     const spawn = spawnIndex.get(spawnId);

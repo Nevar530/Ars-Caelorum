@@ -23,6 +23,11 @@ export function attachMapMetadata(map, metadata = {}) {
       writable: true,
       configurable: true
     },
+    startState: {
+      value: structuredClone(metadata.startState ?? map.startState ?? { deployments: [] }),
+      writable: true,
+      configurable: true
+    },
     terrainTypes: {
       value: Array.isArray(metadata.terrainTypes)
         ? [...metadata.terrainTypes]
@@ -97,6 +102,10 @@ export function getMapHeight(map) {
 
 export function getMapSpawns(map) {
   return structuredClone(map?.spawns ?? { player: [], enemy: [] });
+}
+
+export function getMapStartState(map) {
+  return structuredClone(map?.startState ?? { deployments: [] });
 }
 
 export function getTile(map, x, y) {
@@ -194,7 +203,8 @@ export function createInitialMap() {
     name: "Legacy Default Map",
     width: MAP_CONFIG.width,
     height: MAP_CONFIG.height,
-    spawns: { player: [], enemy: [] }
+    spawns: { player: [], enemy: [] },
+    startState: { deployments: [] }
   });
 
   return refreshAllTileSummaries(map);
