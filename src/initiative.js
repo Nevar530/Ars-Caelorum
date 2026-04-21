@@ -1,11 +1,14 @@
 // src/initiative.js
 
+import { getPilotActors } from "./actors/actorResolver.js";
+
 export function rollD6() {
   return Math.floor(Math.random() * 6) + 1;
 }
 
-function isUnitEligible(unit) {
+function isActorEligible(unit) {
   if (!unit) return false;
+  if (unit.unitType !== "pilot") return false;
   if (unit.status === "disabled") return false;
   return true;
 }
@@ -14,8 +17,8 @@ function compareInstanceIds(a, b) {
   return String(a.instanceId ?? "").localeCompare(String(b.instanceId ?? ""));
 }
 
-function getStateUnits(state) {
-  return Array.isArray(state?.units) ? state.units : [];
+function getStatePilotActors(state) {
+  return getPilotActors(state).filter(isActorEligible);
 }
 
 export function rollInitiativeForUnit(unit) {
@@ -35,7 +38,7 @@ export function rollInitiativeForUnit(unit) {
 }
 
 export function rollInitiativeForAll(units) {
-  const validUnits = Array.isArray(units) ? units.filter(isUnitEligible) : [];
+  const validUnits = Array.isArray(units) ? units.filter(isActorEligible) : [];
 
   for (const unit of validUnits) {
     unit.hasMoved = false;
@@ -48,7 +51,7 @@ export function rollInitiativeForAll(units) {
 }
 
 export function getMoveOrder(units) {
-  return [...(Array.isArray(units) ? units.filter(isUnitEligible) : [])]
+  return [...(Array.isArray(units) ? units.filter(isActorEligible) : [])]
     .sort((a, b) => {
       const initDelta = (a.initiative ?? -999) - (b.initiative ?? -999);
       if (initDelta !== 0) return initDelta;
@@ -62,7 +65,7 @@ export function getMoveOrder(units) {
 }
 
 export function getActionOrder(units) {
-  return [...(Array.isArray(units) ? units.filter(isUnitEligible) : [])]
+  return [...(Array.isArray(units) ? units.filter(isActorEligible) : [])]
     .sort((a, b) => {
       const initDelta = (b.initiative ?? -999) - (a.initiative ?? -999);
       if (initDelta !== 0) return initDelta;
@@ -76,10 +79,10 @@ export function getActionOrder(units) {
 }
 
 export function rebuildRoundOrder(state) {
-  const units = getStateUnits(state);
-  const rolledUnits = rollInitiativeForAll(units);
+  const actors = getStatePilotActors(state);
+  const rolledActors = rollInitiativeForAll(actors);
 
-  state.turn.lastInitiativeRolls = rolledUnits.map((unit) => ({
+  state.turn.lastInitiativeRolls = rolledActors.map((unit) => ({
     instanceId: unit.instanceId,
     name: unit.name,
     pilotName: unit.pilotName ?? "",
@@ -88,8 +91,8 @@ export function rebuildRoundOrder(state) {
     reaction: unit.lastInitiativeRoll?.reaction ?? (unit.reaction ?? 0)
   }));
 
-  state.turn.moveOrder = getMoveOrder(rolledUnits);
-  state.turn.actionOrder = getActionOrder(rolledUnits);
+  state.turn.moveOrder = getMoveOrder(rolledActors);
+  state.turn.actionOrder = getActionOrder(rolledActors);
   state.turn.moveIndex = -1;
   state.turn.actionIndex = -1;
 

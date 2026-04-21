@@ -1,4 +1,5 @@
 import { getActiveUnitFromPhaseOrder, rebuildRoundOrder } from "../initiative.js";
+import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
 
 export function createTurnController({
   state,
@@ -24,12 +25,19 @@ export function createTurnController({
   }
 
   function setActiveUnitByCurrentTurnIndex() {
-    const activeUnitId = getActiveUnitFromPhaseOrder(state);
+    const activeActorId = getActiveUnitFromPhaseOrder(state);
 
-    state.turn.activeUnitId = activeUnitId ?? null;
-    state.selection.unitId = activeUnitId ?? null;
+    state.turn.activeActorId = activeActorId ?? null;
 
-    if (activeUnitId) {
+    const activeActor = getActiveActor(state);
+    const activeBody = getActiveBody(state);
+    const activeBodyId = activeBody?.instanceId ?? activeActor?.instanceId ?? null;
+
+    state.turn.activeBodyId = activeBodyId;
+    state.turn.activeUnitId = activeBodyId;
+    state.selection.unitId = activeBodyId;
+
+    if (activeBodyId) {
       snapFocusToActiveUnit();
     }
   }
@@ -87,9 +95,9 @@ export function createTurnController({
   }
 
   function advanceMoveTurn() {
-    const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
-    if (activeUnit) {
-      activeUnit.hasMoved = true;
+    const activeActor = getActiveActor(state) ?? getUnitById(state.units, state.turn.activeActorId);
+    if (activeActor) {
+      activeActor.hasMoved = true;
     }
 
     state.turn.moveIndex = getNextEligiblePhaseIndex(
@@ -108,9 +116,9 @@ export function createTurnController({
   }
 
   function advanceActionTurn() {
-    const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
-    if (activeUnit) {
-      activeUnit.hasActed = true;
+    const activeActor = getActiveActor(state) ?? getUnitById(state.units, state.turn.activeActorId);
+    if (activeActor) {
+      activeActor.hasActed = true;
     }
 
     state.turn.actionIndex = getNextEligiblePhaseIndex(

@@ -80,6 +80,8 @@ export function createGameController({
     clearCombatTextMarkers(state);
 
     state.turn.activeUnitId = null;
+    state.turn.activeActorId = null;
+    state.turn.activeBodyId = null;
     state.turn.round = 1;
     state.turn.phase = "setup";
     state.turn.combatStarted = false;
