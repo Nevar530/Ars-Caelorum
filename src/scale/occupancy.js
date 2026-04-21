@@ -9,9 +9,10 @@ import {
   getUnitOccupiedCells,
   isUnitWithinBoard
 } from "./scaleMath.js";
+import { getBoardUnits } from "../actors/actorResolver.js";
 
 function getStateUnits(state) {
-  return Array.isArray(state?.units) ? state.units : [];
+  return getBoardUnits(state);
 }
 
 function getUnitId(unit) {

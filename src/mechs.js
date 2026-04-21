@@ -90,6 +90,8 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
     spawnLabel: overrides.spawnLabel ?? null,
 
     parentMechId: overrides.parentMechId ?? null,
+    currentMechId: overrides.currentMechId ?? null,
+    embarkedPilotId: overrides.embarkedPilotId ?? null,
     embarked: Boolean(overrides.embarked ?? false),
 
     hasMoved: false,

@@ -12,6 +12,7 @@ import { renderTerrainTile } from "./renderTerrain.js";
 import { getUnitRenderSceneItems } from "./renderUnits.js";
 import { projectScene } from "./projection.js";
 import { getTerrainDepth, getUnitRenderContext, UNIT_SORT_EPSILON } from "./renderSceneMath.js";
+import { getBoardUnits } from "../actors/actorResolver.js";
 
 export function buildTerrainSceneItems(state, reachableMap = new Map(), tileOverlayStyleMap = new Map()) {
   const terrainSceneItems = [];
@@ -114,7 +115,7 @@ export function buildTerrainSceneItems(state, reachableMap = new Map(), tileOver
 }
 
 export function buildUnitSceneItems(state) {
-  const units = state.units ?? [];
+  const units = getBoardUnits(state);
   const unitSceneItems = [];
   const unitStatusTagItems = [];
   const selectedUnitId = state.selection?.unitId ?? null;

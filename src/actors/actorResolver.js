@@ -1,7 +1,8 @@
 // src/actors/actorResolver.js
 //
-// Pass 1 scaffold for pilot-actor / body resolution.
-// This file adds the helper contract without changing current gameplay flow yet.
+// Pilot actor / body resolution helpers.
+// Pass 5 adds board-presence helpers so embarked pilots can be hidden from
+// occupancy/render without faking it in each system.
 
 import { getUnitById } from "../mechs.js";
 
@@ -95,4 +96,25 @@ export function getActiveBody(state) {
   const activeUnitId = state?.turn?.activeUnitId ?? null;
   if (!activeUnitId) return null;
   return getUnitById(getUnitsFromState(state), activeUnitId);
+}
+
+export function isUnitEmbarkedPilot(unit) {
+  return Boolean(unit?.unitType === "pilot" && unit?.embarked);
+}
+
+export function isUnitPresentOnBoard(state, unit) {
+  if (!unit) return false;
+
+  if (isUnitEmbarkedPilot(unit)) {
+    const linkedMech = getLinkedMechForPilot(state, unit);
+    if (linkedMech) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function getBoardUnits(state) {
+  return getUnitsFromState(state).filter((unit) => isUnitPresentOnBoard(state, unit));
 }
