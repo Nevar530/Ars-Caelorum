@@ -1,5 +1,5 @@
 import { getActiveUnitFromPhaseOrder, rebuildRoundOrder } from "../initiative.js";
-import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
+import { getActiveBody, getPilotActorById } from "../actors/actorResolver.js";
 
 export function createTurnController({
   state,
@@ -15,9 +15,9 @@ export function createTurnController({
     if (!Array.isArray(order)) return -1;
 
     for (let i = Math.max(0, startIndex); i < order.length; i += 1) {
-      const unit = getUnitById(state.units, order[i]);
-      if (!unit) continue;
-      if (unit.status === "disabled") continue;
+      const actor = getPilotActorById(state, order[i]);
+      if (!actor) continue;
+      if (actor.status === "disabled") continue;
       return i;
     }
 
@@ -26,13 +26,11 @@ export function createTurnController({
 
   function setActiveUnitByCurrentTurnIndex() {
     const activeActorId = getActiveUnitFromPhaseOrder(state);
-
-    state.turn.activeActorId = activeActorId ?? null;
-
-    const activeActor = getActiveActor(state);
-    const activeBody = getActiveBody(state);
+    const activeActor = activeActorId ? getPilotActorById(state, activeActorId) : null;
+    const activeBody = activeActor ? getActiveBody({ ...state, turn: { ...state.turn, activeActorId, activeBodyId: null } }) : null;
     const activeBodyId = activeBody?.instanceId ?? activeActor?.instanceId ?? null;
 
+    state.turn.activeActorId = activeActor?.instanceId ?? null;
     state.turn.activeBodyId = activeBodyId;
     state.turn.activeUnitId = activeBodyId;
     state.selection.unitId = activeBodyId;
@@ -95,7 +93,7 @@ export function createTurnController({
   }
 
   function advanceMoveTurn() {
-    const activeActor = getActiveActor(state) ?? getUnitById(state.units, state.turn.activeActorId);
+    const activeActor = getPilotActorById(state, state.turn.activeActorId);
     if (activeActor) {
       activeActor.hasMoved = true;
     }
@@ -116,7 +114,7 @@ export function createTurnController({
   }
 
   function advanceActionTurn() {
-    const activeActor = getActiveActor(state) ?? getUnitById(state.units, state.turn.activeActorId);
+    const activeActor = getPilotActorById(state, state.turn.activeActorId);
     if (activeActor) {
       activeActor.hasActed = true;
     }

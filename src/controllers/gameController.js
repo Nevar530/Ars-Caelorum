@@ -245,7 +245,6 @@ export function createGameController({
     hideSplash,
     showSplash,
     clearTransientUi,
-    setPreviewSelectionFromFirstUnit,
     resetCombatToSetup,
     resetMapAndUnits,
     selectFocusedUnitIfPresent,
@@ -253,10 +252,10 @@ export function createGameController({
     closeCommandMenu,
     moveMenuSelection,
     animateRotation,
+    toggleHelpDrawer,
+    closeHelpDrawer,
     toggleView,
     zoomIn,
-    zoomOut,
-    toggleHelpDrawer,
-    closeHelpDrawer
+    zoomOut
   };
 }
