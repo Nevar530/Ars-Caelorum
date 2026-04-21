@@ -1,10 +1,11 @@
 // src/actions/actionMenu.js
 
 import { getUnitById } from "../mechs.js";
+import { getActiveBody } from "../actors/actorResolver.js";
 import { normalizeWeaponToActionProfile, snapFocusToFirstValidTarget, updateActionTargetPreview } from "../targeting/targetingResolver.js";
 
 function getActiveUnit(state) {
-  return getUnitById(state.units, state.turn.activeUnitId);
+  return getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
 }
 
 export function createActionUiState() {

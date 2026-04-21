@@ -8,6 +8,7 @@ import { resolveHit } from "../combat/hitResolver.js";
 import { resolveDamage } from "../combat/damageResolver.js";
 import { addCombatTextMarker, clearCombatTextMarkers } from "../combat/combatTextOverlay.js";
 import { getPrimaryOccupantAt } from "../scale/occupancy.js";
+import { getActiveBody } from "../actors/actorResolver.js";
 
 export function createCombatController({
   state,
@@ -22,7 +23,7 @@ export function createCombatController({
   function startAttack() {
     if (!state.turn.combatStarted || state.turn.phase !== "action") return;
 
-    const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+    const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
     if (!activeUnit) return;
 
     if (!startAttackSelection(state)) return;
@@ -32,7 +33,7 @@ export function createCombatController({
   }
 
   function completeEndTurnForCurrentUnit() {
-    const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+    const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
     if (!activeUnit) return;
 
     logDev(`${activeUnit.name} ended action turn.`);
@@ -156,7 +157,7 @@ export function createCombatController({
     }
 
     if (state.ui.mode === "action-attack-select") {
-      const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+      const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
 
       if (confirmAttackSelection(state)) {
         const selectedAttack = state.ui.action.selectedAction;
@@ -169,7 +170,7 @@ export function createCombatController({
     }
 
     if (state.ui.mode === "action-target") {
-      const activeUnit = getUnitById(state.units, state.turn.activeUnitId);
+      const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
       const selectedAttack = state.ui.action.selectedAction;
 
       if (activeUnit && selectedAttack) {

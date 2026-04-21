@@ -1,6 +1,7 @@
 // src/targeting/targetingResolver.js
 
 import { getUnitById } from "../mechs.js";
+import { getActiveBody } from "../actors/actorResolver.js";
 import { getLineOfSightResult } from "../los.js";
 import { getFireArcTiles, toTileKeySet, DEFAULT_FIRE_ARC_RANGE } from "./fireArc.js";
 import {
@@ -13,7 +14,7 @@ import {
 import { evaluateMissileTargetWithSpotter } from "./missileTargeting.js";
 
 function getActiveUnit(state) {
-  return getUnitById(
+  return getActiveBody(state) ?? getUnitById(
     state.units ?? [],
     state.turn.activeUnitId
   );
