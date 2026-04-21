@@ -7,6 +7,11 @@
       "path": "./data/maps/default.json"
     },
     {
+      "id": "embark_test",
+      "name": "Embark Test Map",
+      "path": "./data/maps/embark_test.json"
+    },
+    {
       "id": "blank_32",
       "name": "Blank 32x32",
       "path": "./data/maps/blank_32.json"

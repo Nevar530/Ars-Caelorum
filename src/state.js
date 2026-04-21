@@ -27,6 +27,8 @@ export function createState({
 
     turn: {
       activeUnitId: null,
+      activeActorId: null,
+      activeBodyId: null,
 
       round: 1,
       phase: "setup",
