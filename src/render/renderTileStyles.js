@@ -130,7 +130,6 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
 
     setStyleForCells(styleMap, focusCells, focusStyle);
   }
-  }
 
   if (state.ui?.mode === "action-target") {
     const fireArcStyle = makeStyle(
