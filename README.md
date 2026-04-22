@@ -2,93 +2,123 @@
 
 **Launch Game:** [Open Ars Caelorum](https://nevar530.github.io/Ars-Caelorum/)
 
-Ars Caelorum is a browser-based tactical mech engine built in HTML, CSS, and JavaScript. It is no longer a loose prototype. The current build has a playable combat loop, a shared mech/pilot battlefield, sprite-based unit rendering, a live dev menu, a working ground-phase map editor, and a clean first-pass pilot/mech embark-disembark system.
+Ars Caelorum is a browser-based tactical mech game engine built in HTML, CSS, and JavaScript.
 
-The project is being built system-first. Board truth, occupancy, LOS, targeting, terrain, and authored data come before polish. Art and presentation will sit on top of stable runtime rules instead of forcing rewrites later.
+The project is now past pure prototype status. The combat layer is real, the shared pilot/mech battlefield is real, embark/disembark is real, disabled mech behavior is real, and item/ability runtime paths have begun to exist in actual game flow.
+
+The next major push is no longer “add another isolated mechanic.”
+The next major push is to build the real mission loop:
+
+**Mission Select -> Deployment -> Begin Mission -> Play -> Victory/Defeat -> Restart/Return**
 
 ---
 
 ## Current State
 
-### Core Tactical Engine
-- 2:1 isometric battlefield
-- shared mech and pilot rules space on one board
-- mech footprint: **3x3**
-- pilot footprint: **1x1**
-- move phase + action phase combat flow
-- height-aware movement
-- height-aware LOS
-- targeting, hit resolution, and damage flow
-- sprite-based unit rendering
-- iso view and tactical top-down view
-
-### Shared Pilot / Mech System
-- **pilots are the only initiative actors**
-- pilots control:
-  - their own body while on foot
-  - their mech body while embarked
-- pilots can **Enter Mech**
-- pilots can **Exit Mech**
-- embark/disembark uses the **action**
-- enter/exit is exposed through **Ability**
-- boarding uses the **rear hatch**
-- exit uses the **single center-rear tile**
-- embarked pilots leave board occupancy and are not targetable
-- empty mechs remain on the board as real blocking/targetable objects
-
-### Rendering + Readability
-- terrain rendering is modularized under `src/render/`
-- unit rendering is modularized and sprite-based
-- overlays resolve through **tile tinting and edge colors**
-- active/focus/move/action previews are integrated into terrain tile styling
-- terrain grid lines use darker terrain-derived strokes instead of flat black
-- status plates and LOS previews remain separate UI layers where appropriate
-
-### Dev Tools + Authoring
-- live dev menu
-- live round / unit / map state inspection
-- ground-phase map editor wired into runtime
-- brush painting for:
-  - height
-  - terrain preset
-  - movement class
-  - spawn placement
-  - erase
-- brush sizes
-- map resize
-- map import/export
-- built-in map load dropdown
-- live validation and status feedback
+### Done Now
+- [x] 2:1 isometric battlefield
+- [x] tactical top-down view
+- [x] shared mech/pilot rules space on one board
+- [x] 3x3 mech occupancy
+- [x] 1x1 pilot occupancy
+- [x] pilot-only initiative
+- [x] actor/body separation
+- [x] embark/disembark working
+- [x] occupied mech damage cascade working
+- [x] disabled occupied mech behavior working
+- [x] move + brace + attack + ability + item + end turn command buckets
+- [x] combat loop working
+- [x] item/ability runtime path V1
+- [x] sprite-based unit rendering
+- [x] live dev menu
+- [x] live map editor
+- [x] JSON-backed map workflow
+- [x] map catalog loading
+- [x] map metadata support for `spawns` and `startState`
+- [x] runtime support for `startState.deployments`
+- [x] primitive mission result evaluation / restart overlay
+- [x] loadout / inventory scaffolding
+- [x] weapon lookup moving in a loadout-first direction
 
 ---
 
-## What Works Now
+## Core Rules Locked In
 
-### Gameplay
-- start combat from setup
-- cycle through move and action phases
-- move mechs and pilots on the same battlefield
-- preview reachable movement
-- preview targeting and LOS
-- resolve attacks
-- apply shield/core damage
-- show combat text markers over impacted units
-- enter mechs during action phase
-- exit mechs during action phase
-- keep empty mechs on the board after disembark
+These are not experimental anymore.
 
-### Map / Terrain Workflow
-- maps load from JSON
-- maps can be edited live in the dev menu
-- terrain presets are data-driven
-- movement classes are data-driven
-- map definitions can be loaded, imported, exported, and resized
-- runtime map state can be replaced cleanly from authored definitions
+- [x] Pilots are the only initiative actors
+- [x] Mechs are controlled bodies, not initiative owners
+- [x] The active pilot actor is not always the active board body
+- [x] Occupancy is authority
+- [x] Enter Mech / Exit Mech remain core contextual verbs
+- [x] Weapons are not generic abilities
+- [x] Items and abilities should share the same broad action pipeline where possible
+- [x] Disabled occupied mechs do not get normal mech actions
+- [x] Disabled occupied mechs must still keep **Exit Mech** available
+- [x] Repair/recovery through items is only allowed when explicitly granted
+- [x] Start-state / deployment must become authored data, not another hardcoded test exception
 
-### Views
-- isometric play view
-- tactical top-down view
-- enlarged editor map view inside the dev menu
+---
+
+## Working Gameplay
+
+### Battlefield + Combat
+- [x] shared mech/pilot battlefield
+- [x] move phase + action phase flow
+- [x] height-aware movement
+- [x] height-aware LOS
+- [x] targeting and hit resolution
+- [x] shield/core damage flow
+- [x] combat text feedback over impacted units
+
+### Pilot / Mech Interaction
+- [x] pilots control themselves on foot
+- [x] pilots control their mech body while embarked
+- [x] Enter Mech during action phase
+- [x] Exit Mech during action phase
+- [x] embarked pilots leave board occupancy
+- [x] embarked pilots are not targetable
+- [x] empty mechs remain on the board as real blocking/targetable objects
+
+### Disabled Occupied Mech Truth
+- [x] no normal move
+- [x] no normal attack
+- [x] no normal brace
+- [x] no normal mech abilities
+- [x] Exit Mech remains available when valid
+- [x] occupied damage cascade remains:
+
+    Mech Shield -> Mech Core -> Pilot Shield -> Pilot Core
+
+---
+
+## Rendering + Readability
+
+- [x] terrain rendering modularized under `src/render/`
+- [x] unit rendering modularized and sprite-based
+- [x] overlay readability improved
+- [x] tile tinting and edge-color overlays integrated into terrain styling
+- [x] terrain-derived grid strokes replacing harsh flat black where applicable
+- [x] LOS/status layers still separated where that makes sense
+
+---
+
+## Dev Tools + Authoring
+
+- [x] live dev menu
+- [x] live round / unit / map state inspection
+- [x] ground-phase map editor wired into runtime
+- [x] brush painting for:
+  - [x] height
+  - [x] terrain preset
+  - [x] movement class
+  - [x] spawn placement
+  - [x] erase
+- [x] brush size support
+- [x] map resize
+- [x] map import/export
+- [x] built-in map load dropdown
+- [x] validation/status feedback
 
 ---
 
@@ -138,90 +168,202 @@ The project is being built system-first. Board truth, occupancy, LOS, targeting,
 - `dev/devMenuModules/`
 - `dev/mapEditor/`
 
-This is now a genuinely split codebase, not a single-file sandbox.
-
 ---
 
 ## Recently Completed
 
-### Major Cleanup / Refactor Pass
-- render responsibilities split into focused modules
-- controller layer split out by responsibility
-- map runtime/editor support split into dedicated modules
-- shared mech/pilot battlefield preserved through cleanup
-- old rendering pressure reduced by moving logic out of monolithic paths
+### Cleanup / Refactor Pass
+- [x] render responsibilities split into focused modules
+- [x] controller responsibilities split more cleanly
+- [x] map runtime/editor support separated into dedicated modules
+- [x] old monolithic pressure reduced
+- [x] shared mech/pilot battlefield preserved through cleanup
 
 ### Overlay Visibility Pass
-- separate overlay-layer dependence reduced
-- terrain tiles now carry gameplay highlight tint directly
-- overlay edges are color-coded on the tile itself
-- grid strokes were adjusted away from harsh black toward terrain-derived darker values
-- iso readability improved without breaking top-down/editor support
+- [x] reduced dependence on separate overlay-only rendering
+- [x] terrain tiles carry gameplay tint directly
+- [x] edge colors show directly on the tile
+- [x] readability improved in active play
 
-### Embark / Disembark V1
-- initiative now belongs to pilots only
-- actor/body resolution is active
-- move/attack/focus flow routes through the active body
-- Enter Mech works
-- Exit Mech works
-- embarked pilots leave board presence
-- hidden embarked pilots are not targetable
-- empty mechs remain on the board after exit
+### Embark / Disembark + Actor/Body Pass
+- [x] pilot-only initiative enforced
+- [x] actor/body resolution active
+- [x] move/attack flow routed through active body
+- [x] Enter Mech works
+- [x] Exit Mech works
+- [x] embarked pilots leave board presence correctly
 
----
-
-## Still Not Done
-
-### Cleanup Tail
-These are smaller than before, but still real:
-- remaining old compatibility inputs and wrappers
-- deprecated map/config compatibility keys
-- stale bridge comments and outdated docs
-- formalizing authored startup state for pilots/mechs
-
-### Gameplay Expansion
-- broader ability system v1
-- structure authority
-- mission/objective layer
-- AI behaviors
-- scenario/save layer
-
-### Art Expansion
-- terrain sprite rendering from sprite sets
-- expanded unit sprite coverage / facings
-- animation / VFX / polish
+### Item / Ability Foundation Pass
+- [x] ability command path exists
+- [x] item command path exists
+- [x] test runtime path is now real
+- [x] groundwork exists for broader content expansion
+- [x] groundwork exists for later weapon/loadout cleanup
 
 ---
 
-## Current Direction
+## On Deck
 
-Ars Caelorum is now past the “is there a game here?” phase.
+## Phase 1 — Mission Start Framework V1
+Goal: replace prototype spawn behavior with a real authored mission start flow.
 
-The engine has:
-- stable board truth
-- occupancy-first rules
-- real combat flow
-- a real pilot/mech shared-body mechanic
-- real authoring workflow
-- cleaner rendering contracts
-- improved overlay readability
+- [ ] mission select entry
+- [ ] two default test missions:
+  - [ ] Pilot Start Test
+  - [ ] Mech Start Test
+- [ ] map-authored player deployment slots
+- [ ] authored enemy starts
+- [ ] Begin Mission gate only after valid deployment
 
-The next clean move is to formalize **authored startup state** for pilot/mech pairings, then continue broader abilities and structure rules before the art/polish pass.
+### Locked V1 Deployment Rule
+- [ ] fixed deployment slots first
+- [ ] no free-roaming FFT-style deployment zone yet
+- [ ] player selects **who** goes into **which** legal slot
+
+### Pilot Start Test
+- [ ] player deploys Biggs + Wedge as pilots
+- [ ] enemy uses Tom + Jerri
+- [ ] optional empty mechs can exist on map as authored board objects
+
+### Mech Start Test
+- [ ] player deploys Mech A + Mech B
+- [ ] enemy uses Mech C + Mech D
+- [ ] paired pilots start already embarked
+
+### Default Test Content Rule
+All default test units should start from default data/loadout authority, not one-off mission hacks.
+
+#### Pilots
+- [ ] Biggs
+- [ ] Wedge
+- [ ] Tom
+- [ ] Jerri
+
+Each should start with:
+- [ ] test pilot heal ability
+- [ ] test pilot damage ability
+- [ ] test spray heal item
+- [ ] test spray damage item
+
+#### Mechs
+- [ ] Mech A
+- [ ] Mech B
+- [ ] Mech C
+- [ ] Mech D
+
+Each should start with:
+- [ ] test mech heal/repair ability
+- [ ] test mech damage ability
+- [ ] test tube heal item
+- [ ] test tube damage item
+
+---
+
+## Next After That
+
+## Phase 2 — Mission End Loop V1
+Goal: close the loop so the repo has a real mission shell.
+
+- [ ] victory condition
+- [ ] defeat condition
+- [ ] mission complete / mission failed overlay cleanup
+- [ ] restart mission
+- [ ] return to mission select
+
+### V1 Win / Loss
+- [ ] victory = all enemy pilot actors out of play
+- [ ] defeat = all player pilot actors out of play
+
+---
+
+## Planned After Mission Loop
+
+## Phase 3 — Cleanup Tail / Contract Lock
+- [ ] remove hardcoded fallback test-spawn dependence
+- [ ] remove stale compatibility paths where safe
+- [ ] clean docs/comments to match runtime truth
+- [ ] lock one clear authority path for:
+  - [ ] mission data
+  - [ ] deployment
+  - [ ] unit instantiation
+  - [ ] mission result
+
+## Phase 4 — Content Expansion
+- [ ] more abilities
+- [ ] more items
+- [ ] targeted effects
+- [ ] buffs / debuffs
+- [ ] movement utility
+- [ ] support actions
+- [ ] broader test/faction content
+- [ ] mission-specific content grants later
+
+## Phase 5 — Equipment / Frame Authority
+- [ ] move farther away from hardwired mech assumptions
+- [ ] frames determine move baseline
+- [ ] frames determine slot layout
+- [ ] frames determine allowed equipment types
+- [ ] weapons become fully equipped combat content
+- [ ] shield modules become equipment authority
+- [ ] core modules become equipment authority
+- [ ] final mech state trends toward:
+  - [ ] frame
+  - [ ] equipped parts
+  - [ ] pilot pairing
+  - [ ] runtime damage state
+
+## Phase 6 — Structure Authority
+- [ ] walls
+- [ ] doors
+- [ ] interior cells
+- [ ] access points
+- [ ] movement / LOS / objective interaction on the same board
+
+## Phase 7 — AI System
+- [ ] basic move + attack
+- [ ] target priority
+- [ ] objective awareness
+- [ ] mech / pilot role handling
+- [ ] structure-aware behavior
+
+## Phase 8 — Scenario / Save Layer
+- [ ] scenario definitions
+- [ ] objective scripting hooks
+- [ ] save/load runtime state
+- [ ] map + scenario packaging
+
+## Phase 9 — Art / Polish
+- [ ] expanded sprite work
+- [ ] terrain sprite-set rendering
+- [ ] animation
+- [ ] VFX
+- [ ] UI polish
+- [ ] readability polish
 
 ---
 
 ## Short Status
 
-**Playable combat loop:** yes  
+**Playable combat core:** yes  
 **Shared mech/pilot battlefield:** yes  
-**3x3 mech authority:** yes  
-**Sprite unit rendering:** yes  
 **Pilot-only initiative:** yes  
-**Embark/disembark V1:** yes  
-**Map editor wired live:** yes  
-**Overlay tint + edge-color pass:** yes  
-**Major cleanup/refactor pass:** mostly yes  
-**Cleanup tail:** still remaining  
-**Broader abilities:** not started  
-**Structures:** not started as runtime authority  
-**AI:** not started
+**Embark/disembark:** yes  
+**Disabled occupied mech behavior:** yes  
+**Item/ability runtime path V1:** yes  
+**Live map editor:** yes  
+**Mission loop:** not yet complete  
+**Mission select/deployment:** next  
+**Equipment/frame authority:** planned  
+**Structures/AI/scenario:** later  
+
+---
+
+## End State Goal
+
+A deterministic, readable tactics engine where:
+- pilots and mechs operate on one battlefield
+- deployment is authored and mission-driven
+- combat start and end loops are real
+- weapons / abilities / items move toward clean content authority
+- terrain, structures, and objectives matter
+- art and polish sit on top of stable rules instead of forcing rewrites
