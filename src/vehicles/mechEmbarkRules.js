@@ -118,7 +118,7 @@ export function getValidRearExitTiles(state, pilot, mech) {
   if (!mech || mech.unitType !== "mech") return [];
   if (!pilot.embarked) return [];
   if (pilot.currentMechId && pilot.currentMechId !== mech.instanceId) return [];
-  if (!isUsableMech(mech)) return [];
+  if (String(mech.status ?? "operational") === "destroyed") return [];
 
   const centerTile = getRearCenterTile(mech);
   return canPilotStandAt(state, pilot, centerTile.x, centerTile.y)
