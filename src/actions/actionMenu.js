@@ -4,6 +4,7 @@ import { getUnitById } from "../mechs.js";
 import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
 import { canEmbarkedPilotExitMech, canPilotBoardMech, getMechForEmbarkedPilot, getValidRearExitTile } from "../vehicles/mechEmbarkRules.js";
 import { normalizeWeaponToActionProfile, snapFocusToFirstValidTarget, updateActionTargetPreview } from "../targeting/targetingResolver.js";
+import { getEquippedWeaponIds } from "../content/unitLoadout.js";
 
 function getActiveUnit(state) {
   return getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
@@ -163,7 +164,7 @@ export function getSelectedAttackMenuItems(state) {
   const activeUnit = getActiveUnit(state);
   if (!activeUnit) return [];
 
-  const weaponIds = Array.isArray(activeUnit.weapons) ? activeUnit.weapons : [];
+  const weaponIds = getEquippedWeaponIds(activeUnit);
   const allWeapons = Array.isArray(state.content.weapons) ? state.content.weapons : [];
 
   return weaponIds

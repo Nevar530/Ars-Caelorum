@@ -1,0 +1,13 @@
+[
+  {
+    "id": "pilot_heal_01",
+    "name": "Field Mend",
+    "kind": "support",
+    "target": "self",
+    "effect": {
+      "type": "restore_core",
+      "amount": 2
+    },
+    "description": "Simple pilot self-heal ability foundation entry."
+  }
+]

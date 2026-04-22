@@ -9,7 +9,11 @@
     "shield": 6,
     "aether": 3,
     "move": 3,
-    "weapons": ["rifle_01", "pistol_01", "melee_01"],
+    "weapons": [
+      "rifle_01",
+      "pistol_01",
+      "melee_01"
+    ],
     "abilities": [],
     "tubes": [],
     "defaultFacing": "S",
@@ -19,6 +23,22 @@
         "NE": "art/mech/hero_001_NE.png",
         "NW": "art/mech/hero_001_NW.png"
       }
+    },
+    "slots": {
+      "weapon": 3,
+      "ability": 1,
+      "item": 2
+    },
+    "loadout": {
+      "weapons": [
+        "rifle_01",
+        "pistol_01",
+        "melee_01"
+      ],
+      "abilities": []
+    },
+    "inventory": {
+      "items": []
     }
   },
   {
@@ -31,7 +51,11 @@
     "shield": 4,
     "aether": 2,
     "move": 2,
-    "weapons": ["machinegun_01", "srm_01", "melee_01"],
+    "weapons": [
+      "machinegun_01",
+      "srm_01",
+      "melee_01"
+    ],
     "abilities": [],
     "tubes": [],
     "defaultFacing": "S",
@@ -41,6 +65,22 @@
         "NE": "art/mech/quad_001_NE.png",
         "NW": "art/mech/quad_001_NW.png"
       }
+    },
+    "slots": {
+      "weapon": 3,
+      "ability": 1,
+      "item": 2
+    },
+    "loadout": {
+      "weapons": [
+        "machinegun_01",
+        "srm_01",
+        "melee_01"
+      ],
+      "abilities": []
+    },
+    "inventory": {
+      "items": []
     }
   },
   {
@@ -53,7 +93,10 @@
     "shield": 8,
     "aether": 2,
     "move": 2,
-    "weapons": ["cannon_01", "lrm_01"],
+    "weapons": [
+      "cannon_01",
+      "lrm_01"
+    ],
     "abilities": [],
     "tubes": [],
     "defaultFacing": "S",
@@ -63,6 +106,24 @@
         "NE": "art/mech/quad_001_NE.png",
         "NW": "art/mech/quad_001_NW.png"
       }
+    },
+    "slots": {
+      "weapon": 2,
+      "ability": 1,
+      "item": 2
+    },
+    "loadout": {
+      "weapons": [
+        "cannon_01",
+        "lrm_01"
+      ],
+      "abilities": []
+    },
+    "inventory": {
+      "items": [
+        "nano_repair_tube",
+        "test_tube"
+      ]
     }
   },
   {
@@ -75,7 +136,11 @@
     "shield": 5,
     "aether": 6,
     "move": 3,
-    "weapons": ["sniper_01", "rifle_01", "pistol_01"],
+    "weapons": [
+      "sniper_01",
+      "rifle_01",
+      "pistol_01"
+    ],
     "abilities": [],
     "tubes": [],
     "defaultFacing": "S",
@@ -85,6 +150,22 @@
         "NE": "art/mech/hero_001_NE.png",
         "NW": "art/mech/hero_001_NW.png"
       }
+    },
+    "slots": {
+      "weapon": 3,
+      "ability": 1,
+      "item": 2
+    },
+    "loadout": {
+      "weapons": [
+        "sniper_01",
+        "rifle_01",
+        "pistol_01"
+      ],
+      "abilities": []
+    },
+    "inventory": {
+      "items": []
     }
   }
 ]

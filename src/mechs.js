@@ -1,6 +1,7 @@
 // src/mechs.js
 
 import { getMapSpawns, getMapStartState } from "./map.js";
+import { buildRuntimeInventory, buildRuntimeLoadout, getDefaultSlotsForUnit } from "./content/unitLoadout.js";
 
 const DEFAULT_ATTACK_PROFILE_MAP = {
   melee_01: "melee_cardinal_01",
@@ -39,6 +40,9 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
   const shield = Number(definition?.shield ?? definition?.armor ?? (isPilot ? 1 : 10));
   const core = Number(definition?.core ?? definition?.structure ?? (isPilot ? 6 : 6));
   const weaponIds = Array.isArray(definition?.weapons) ? [...definition.weapons] : [];
+  const slots = getDefaultSlotsForUnit(unitType, definition);
+  const loadout = buildRuntimeLoadout(unitType, definition, overrides);
+  const inventory = buildRuntimeInventory(definition, overrides);
 
   return {
     unitType,
@@ -61,6 +65,9 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
     scale: unitType,
 
     move: Number(definition.move ?? (isPilot ? 6 : 4)),
+    slots,
+    loadout,
+    inventory,
     armor: shield,
     structure: core,
     shield,
@@ -77,6 +84,7 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
 
     abilities: Array.isArray(definition.abilities) ? [...definition.abilities] : [],
     tubes: Array.isArray(definition.tubes) ? [...definition.tubes] : [],
+    items: Array.isArray(definition.items) ? [...definition.items] : [],
 
     pilotId: overrides.pilotId ?? null,
     pilotName: overrides.pilotName ?? null,

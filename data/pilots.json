@@ -10,7 +10,9 @@
     "reaction": 2,
     "targeting": 2,
     "abilityPoints": 0,
-    "weapons": ["pilot_pistol_01"],
+    "weapons": [
+      "pilot_pistol_01"
+    ],
     "tabs": [],
     "image": null,
     "render": {
@@ -18,6 +20,21 @@
         "NE": "art/pilot/pilot_001_NE.png",
         "NW": "art/pilot/pilot_001_NW.png"
       }
+    },
+    "slots": {
+      "weapon": 2,
+      "armor": 1,
+      "ability": 3
+    },
+    "loadout": {
+      "weapons": [
+        "pilot_pistol_01"
+      ],
+      "armor": null,
+      "abilities": []
+    },
+    "inventory": {
+      "items": []
     }
   },
   {
@@ -31,7 +48,9 @@
     "reaction": 2,
     "targeting": 3,
     "abilityPoints": 0,
-    "weapons": ["pilot_rifle_01"],
+    "weapons": [
+      "pilot_rifle_01"
+    ],
     "tabs": [],
     "image": null,
     "render": {
@@ -39,6 +58,21 @@
         "NE": "art/pilot/pilot_001_NE.png",
         "NW": "art/pilot/pilot_001_NW.png"
       }
+    },
+    "slots": {
+      "weapon": 2,
+      "armor": 1,
+      "ability": 3
+    },
+    "loadout": {
+      "weapons": [
+        "pilot_rifle_01"
+      ],
+      "armor": null,
+      "abilities": []
+    },
+    "inventory": {
+      "items": []
     }
   },
   {
@@ -52,7 +86,9 @@
     "reaction": 3,
     "targeting": 1,
     "abilityPoints": 0,
-    "weapons": ["pilot_smg_01"],
+    "weapons": [
+      "pilot_smg_01"
+    ],
     "tabs": [],
     "image": null,
     "render": {
@@ -60,6 +96,21 @@
         "NE": "art/pilot/pilot_001_NE.png",
         "NW": "art/pilot/pilot_001_NW.png"
       }
+    },
+    "slots": {
+      "weapon": 2,
+      "armor": 1,
+      "ability": 3
+    },
+    "loadout": {
+      "weapons": [
+        "pilot_smg_01"
+      ],
+      "armor": null,
+      "abilities": []
+    },
+    "inventory": {
+      "items": []
     }
   },
   {
@@ -73,7 +124,9 @@
     "reaction": 1,
     "targeting": 2,
     "abilityPoints": 0,
-    "weapons": ["pilot_pistol_01"],
+    "weapons": [
+      "pilot_pistol_01"
+    ],
     "tabs": [],
     "image": null,
     "render": {
@@ -81,6 +134,24 @@
         "NE": "art/pilot/pilot_001_NE.png",
         "NW": "art/pilot/pilot_001_NW.png"
       }
+    },
+    "slots": {
+      "weapon": 2,
+      "armor": 1,
+      "ability": 3
+    },
+    "loadout": {
+      "weapons": [
+        "pilot_pistol_01"
+      ],
+      "armor": null,
+      "abilities": []
+    },
+    "inventory": {
+      "items": [
+        "nano_heal_spray",
+        "test_spray"
+      ]
     }
   }
 ]

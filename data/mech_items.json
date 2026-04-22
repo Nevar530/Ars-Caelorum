@@ -1,0 +1,26 @@
+[
+  {
+    "id": "nano_repair_tube",
+    "name": "Nano Repair Tube",
+    "kind": "consumable",
+    "target": "self",
+    "effect": {
+      "type": "restore_core",
+      "amount": 4
+    },
+    "charges": 1,
+    "description": "Mech consumable repair item foundation entry."
+  },
+  {
+    "id": "test_tube",
+    "name": "Test Tube",
+    "kind": "consumable",
+    "target": "self",
+    "effect": {
+      "type": "self_core_damage",
+      "amount": 2
+    },
+    "charges": 1,
+    "description": "Mech test item for self core damage."
+  }
+]

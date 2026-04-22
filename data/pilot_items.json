@@ -1,0 +1,26 @@
+[
+  {
+    "id": "nano_heal_spray",
+    "name": "Nano Heal Spray",
+    "kind": "consumable",
+    "target": "self",
+    "effect": {
+      "type": "restore_core",
+      "amount": 3
+    },
+    "charges": 1,
+    "description": "Pilot consumable heal item foundation entry."
+  },
+  {
+    "id": "test_spray",
+    "name": "Test Spray",
+    "kind": "consumable",
+    "target": "self",
+    "effect": {
+      "type": "self_core_damage",
+      "amount": 2
+    },
+    "charges": 1,
+    "description": "Pilot test item for self core damage."
+  }
+]

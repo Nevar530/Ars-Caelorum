@@ -1,0 +1,13 @@
+[
+  {
+    "id": "mech_repair_01",
+    "name": "Patch Routine",
+    "kind": "support",
+    "target": "self",
+    "effect": {
+      "type": "restore_core",
+      "amount": 3
+    },
+    "description": "Simple mech repair/heal ability foundation entry."
+  }
+]

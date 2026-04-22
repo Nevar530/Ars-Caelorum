@@ -86,9 +86,23 @@ export function createRuntimeUnit({
     reaction: pilot.reaction,
     targeting: pilot.targeting,
 
+    slots: mech.slots ? { ...mech.slots } : { weapon: Array.isArray(mech.weapons) ? mech.weapons.length : 0, ability: 1, item: 2 },
+    loadout: {
+      weapons: Array.isArray(mech.loadout?.weapons) ? [...mech.loadout.weapons] : (Array.isArray(mech.weapons) ? [...mech.weapons] : []),
+      armor: mech.loadout?.armor ?? null,
+      abilities: Array.isArray(mech.loadout?.abilities) ? [...mech.loadout.abilities] : (Array.isArray(mech.abilities) ? [...mech.abilities] : []),
+      items: Array.isArray(mech.loadout?.items) ? [...mech.loadout.items] : []
+    },
+    inventory: {
+      items: Array.isArray(mech.inventory?.items) ? [...mech.inventory.items] : [],
+      weapons: Array.isArray(mech.inventory?.weapons) ? [...mech.inventory.weapons] : [],
+      armor: Array.isArray(mech.inventory?.armor) ? [...mech.inventory.armor] : [],
+      abilities: Array.isArray(mech.inventory?.abilities) ? [...mech.inventory.abilities] : []
+    },
     weapons: Array.isArray(mech.weapons) ? [...mech.weapons] : [],
     abilities: Array.isArray(mech.abilities) ? [...mech.abilities] : [],
     tubes: Array.isArray(mech.tubes) ? [...mech.tubes] : [],
+    items: Array.isArray(mech.items) ? [...mech.items] : [],
 
     hasMoved: false,
     hasActed: false,
