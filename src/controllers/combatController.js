@@ -3,8 +3,10 @@ import {
   confirmActionTarget,
   confirmAttackSelection,
   confirmAbilitySelection,
+  confirmItemSelection,
   startAttackSelection,
-  startAbilitySelection
+  startAbilitySelection,
+  startItemSelection
 } from "../action.js";
 import { resolveHit } from "../combat/hitResolver.js";
 import { resolveDamage } from "../combat/damageResolver.js";
@@ -13,6 +15,7 @@ import { getPrimaryOccupantAt } from "../scale/occupancy.js";
 import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
 import { evaluateMissionResult } from "../mission/missionState.js";
 import { resolveEnterMech, resolveExitMech } from "../vehicles/mechEmbarkActions.js";
+import { resolveSelectedAbility, resolveSelectedItem } from "../actions/actionResolver.js";
 
 export function createCombatController({
   state,
@@ -38,7 +41,6 @@ export function createCombatController({
     render();
   }
 
-
   function startAbility() {
     if (!state.turn.combatStarted || state.turn.phase !== "action") return;
 
@@ -48,6 +50,18 @@ export function createCombatController({
     if (!startAbilitySelection(state)) return;
 
     logDev(`${activeUnit.name} entered ability selection.`);
+    render();
+  }
+
+  function startItem() {
+    if (!state.turn.combatStarted || state.turn.phase !== "action") return;
+
+    const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
+    if (!activeUnit) return;
+
+    if (!startItemSelection(state)) return;
+
+    logDev(`${activeUnit.name} entered item selection.`);
     render();
   }
 
@@ -183,6 +197,54 @@ export function createCombatController({
     return true;
   }
 
+  function applyResolvedSupportAction(result) {
+    if (!result?.ok) return false;
+
+    logDev(result.log);
+
+    if (result.changes?.shieldDelta > 0) {
+      addCombatTextMarker(state, result.targetId, `+${result.changes.shieldDelta} SHD`, {
+        tone: "shield"
+      });
+    } else if (result.changes?.shieldDelta < 0) {
+      addCombatTextMarker(state, result.targetId, `${result.changes.shieldDelta} SHD`, {
+        tone: "shield"
+      });
+    }
+
+    if (result.changes?.coreDelta > 0) {
+      addCombatTextMarker(state, result.targetId, `+${result.changes.coreDelta} CORE`, {
+        tone: "core"
+      });
+    } else if (result.changes?.coreDelta < 0) {
+      addCombatTextMarker(state, result.targetId, `${result.changes.coreDelta} CORE`, {
+        tone: "core"
+      });
+    }
+
+    if (result.changes?.statusBefore !== result.changes?.statusAfter && result.changes?.statusAfter === "disabled") {
+      addCombatTextMarker(state, result.targetId, "DISABLED", {
+        tone: "disabled"
+      });
+    }
+
+    render();
+
+    if (actionAdvanceTimer) {
+      clearTimeout(actionAdvanceTimer);
+    }
+
+    actionAdvanceTimer = window.setTimeout(() => {
+      actionAdvanceTimer = null;
+      clearCombatTextMarkers(state);
+      clearTransientUi();
+      advanceActionTurn();
+      render();
+    }, 950);
+
+    return true;
+  }
+
   function confirmAction() {
     if (movementController.confirmMoveOrFacing()) {
       return;
@@ -215,6 +277,30 @@ export function createCombatController({
             render();
             return;
           }
+        }
+
+        if (selectedAbility?.source === "content") {
+          const resolved = resolveSelectedAbility(state, selectedAbility);
+          if (applyResolvedSupportAction(resolved)) {
+            return;
+          }
+          logDev(resolved?.log ?? "Ability could not resolve.");
+        }
+      }
+
+      render();
+      return;
+    }
+
+    if (state.ui.mode === "action-item-select") {
+      if (confirmItemSelection(state)) {
+        const selectedItem = state.ui.action.selectedItem;
+        if (selectedItem?.source === "content") {
+          const resolved = resolveSelectedItem(state, selectedItem);
+          if (applyResolvedSupportAction(resolved)) {
+            return;
+          }
+          logDev(resolved?.log ?? "Item could not resolve.");
         }
       }
 
@@ -263,7 +349,7 @@ export function createCombatController({
       return;
     }
 
-    if (state.ui.commandMenu.open && state.ui.mode === "idle") {
+    if (state.ui.mode === "idle" && state.ui.commandMenu.open) {
       state.ui.commandMenu.open = false;
       state.ui.commandMenu.index = 0;
       render();
@@ -273,6 +359,7 @@ export function createCombatController({
   return {
     startAttack,
     startAbility,
+    startItem,
     completeEndTurnForCurrentUnit,
     waitTurn,
     handleConfirmedTarget,

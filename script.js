@@ -170,6 +170,11 @@ async function init() {
         return;
       }
 
+      if (action === "item") {
+        combatController.startItem();
+        return;
+      }
+
       if (action === "end_turn" && state.turn.phase === "move") {
         movementController.skipMoveForCurrentUnit();
         return;
@@ -180,10 +185,6 @@ async function init() {
         return;
       }
 
-      if (action === "item") {
-        logDev("Item menu not implemented yet.");
-        gameController.render();
-      }
     },
 
     selectMenuAction(action) {
@@ -211,6 +212,11 @@ async function init() {
         return;
       }
 
+      if (action === "item") {
+        combatController.startItem();
+        return;
+      }
+
       if (action === "end_turn" && state.turn.phase === "move") {
         movementController.skipMoveForCurrentUnit();
         return;
@@ -221,10 +227,6 @@ async function init() {
         return;
       }
 
-      if (action === "item") {
-        logDev("Item menu not implemented yet.");
-        gameController.render();
-      }
     },
 
     startCombat: turnController.startCombat,
@@ -247,6 +249,7 @@ async function init() {
     startMove: movementController.startMove,
     startAttack: combatController.startAttack,
     startAbility: combatController.startAbility,
+    startItem: combatController.startItem,
     waitTurn: combatController.waitTurn,
     confirmAction: combatController.confirmAction,
     cancelAction: combatController.cancelAction,

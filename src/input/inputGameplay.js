@@ -1,5 +1,5 @@
 import { clampFocusToBoard, getPathToTile } from "../movement.js";
-import { moveAbilitySelection, moveAttackSelection, updateActionTargetPreview } from "../action.js";
+import { moveAbilitySelection, moveAttackSelection, moveItemSelection, updateActionTargetPreview } from "../action.js";
 import {
   getActiveUnit,
   getBoardDeltaFromScreenDirection,
@@ -152,6 +152,22 @@ function handleMenuNavigationKeys(key, state, actions) {
     return false;
   }
 
+  if (state.ui.mode === "action-item-select") {
+    if (key === "arrowup" || key === "w") {
+      moveItemSelection(state, -1);
+      actions.render();
+      return true;
+    }
+
+    if (key === "arrowdown" || key === "s") {
+      moveItemSelection(state, 1);
+      actions.render();
+      return true;
+    }
+
+    return false;
+  }
+
   if (!state.ui.commandMenu.open || state.ui.mode !== "idle") return false;
 
   if (key === "arrowup" || key === "w") {
@@ -218,6 +234,7 @@ function handleFocusKeys(key, state, actions) {
   if (state.ui.commandMenu.open && state.ui.mode === "idle") return false;
   if (state.ui.mode === "action-attack-select") return false;
   if (state.ui.mode === "action-ability-select") return false;
+  if (state.ui.mode === "action-item-select") return false;
   if (state.ui.mode === "action-exit-select") return false;
 
   let direction = null;

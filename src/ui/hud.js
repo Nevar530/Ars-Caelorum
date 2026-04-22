@@ -2,7 +2,7 @@
 
 import { getTile, tileTypeFromElevation } from "../map.js";
 import { getUnitAt, getUnitById } from "../mechs.js";
-import { getSelectedAbilityMenuItems, getSelectedAttackMenuItems, isCommandMenuItemDisabled } from "../action.js";
+import { getSelectedAbilityMenuItems, getSelectedAttackMenuItems, getSelectedItemMenuItems, isCommandMenuItemDisabled } from "../action.js";
 import { getLineOfSightResult } from "../los.js";
 import { getActiveActor, getActiveBody, getEmbarkedPilotForMech } from "../actors/actorResolver.js";
 
@@ -32,6 +32,9 @@ export function bindHudInput(state, refs, actions) {
         break;
       case "ability":
         actions.startAbility?.();
+        break;
+      case "item":
+        actions.startItem?.();
         break;
       case "confirm":
         actions.confirmAction();
@@ -205,6 +208,12 @@ function renderCenterPanel(state) {
     `;
   }
 
+  if (state.ui.mode === "action-item-select") {
+    return `
+      ${summary}
+      ${renderItemMenu(state)}
+    `;
+  }
 
   if (state.ui.mode === "action-target") {
     return `
@@ -427,6 +436,27 @@ function renderAttackMenu(state) {
         ${i === state.ui.action.menuIndex ? "▶ " : ""}${a.label}
       </button>
     `).join("")}
+  `;
+}
+
+function renderItemMenu(state) {
+  const items = getSelectedItemMenuItems(state);
+
+  return `
+    <div class="hud-section-title">Item</div>
+
+    ${items.map((a, i) => {
+      const isSelected = i === state.ui.action.menuIndex;
+      const isDisabled = a.enabled === false;
+      return `
+        <button
+          class="hud-menu-button ${isSelected ? "is-selected" : ""} ${isDisabled ? "is-disabled" : ""}"
+          ${isDisabled ? "disabled" : ""}
+        >
+          ${isSelected ? "▶ " : ""}${a.label}
+        </button>
+      `;
+    }).join("")}
   `;
 }
 

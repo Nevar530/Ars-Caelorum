@@ -56,3 +56,19 @@ export function getEquippedWeaponIds(unit) {
   if (loadoutWeapons.length) return loadoutWeapons;
   return cloneArray(unit?.weapons).filter(Boolean);
 }
+
+export function getEquippedAbilityIds(unit) {
+  const loadoutAbilities = cloneArray(unit?.loadout?.abilities).filter(Boolean);
+  if (loadoutAbilities.length) return loadoutAbilities;
+  return cloneArray(unit?.abilities).filter(Boolean);
+}
+
+export function getEquippedItemIds(unit) {
+  const inventoryItems = cloneArray(unit?.inventory?.items).filter(Boolean);
+  if (inventoryItems.length) return inventoryItems;
+
+  const loadoutItems = cloneArray(unit?.loadout?.items).filter(Boolean);
+  if (loadoutItems.length) return loadoutItems;
+
+  return cloneArray(unit?.items).filter(Boolean);
+}

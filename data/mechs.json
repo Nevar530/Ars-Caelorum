@@ -117,7 +117,9 @@
         "cannon_01",
         "lrm_01"
       ],
-      "abilities": []
+      "abilities": [
+        "mech_repair_01"
+      ]
     },
     "inventory": {
       "items": [
