@@ -282,14 +282,15 @@ function handleConfirmCancelKeys(key, state, actions) {
   const isConfirm = key === "enter" || key === " ";
   const isCancel = key === "escape" || key === "backspace";
 
-  if (
-    state.ui.mode === "move" ||
-    state.ui.mode === "face" ||
-    state.ui.mode === "action-attack-select" ||
-    state.ui.mode === "action-ability-select" ||
-    state.ui.mode === "action-exit-select" ||
-    state.ui.mode === "action-target"
-  ) {
+if (
+  state.ui.mode === "move" ||
+  state.ui.mode === "face" ||
+  state.ui.mode === "action-attack-select" ||
+  state.ui.mode === "action-ability-select" ||
+  state.ui.mode === "action-item-select" ||
+  state.ui.mode === "action-exit-select" ||
+  state.ui.mode === "action-target"
+) {
     if (isConfirm) {
       actions.confirmAction();
       return true;
