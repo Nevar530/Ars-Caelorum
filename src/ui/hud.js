@@ -4,6 +4,7 @@ import { getTile, tileTypeFromElevation } from "../map.js";
 import { getUnitAt, getUnitById } from "../mechs.js";
 import { getSelectedAbilityMenuItems, getSelectedAttackMenuItems } from "../action.js";
 import { getLineOfSightResult } from "../los.js";
+import { getActiveActor, getActiveBody, getEmbarkedPilotForMech } from "../actors/actorResolver.js";
 
 /* =========================
    INPUT
@@ -66,39 +67,98 @@ export function renderHud(state, refs) {
 ========================= */
 
 function renderActivePanel(state) {
-  const mech = getUnitById(state.units, state.turn.activeUnitId);
+  const activeBody = getActiveBody(state);
+  const activeActor = getActiveActor(state);
 
-  if (!mech) {
+  if (!activeBody) {
     return `
       <div class="hud-section-title">Unit</div>
       <div class="hud-mini-card">No Active Unit</div>
     `;
   }
 
+  const mech = activeBody.unitType === "mech" ? activeBody : null;
+  const pilot = activeActor?.unitType === "pilot"
+    ? activeActor
+    : mech
+      ? getEmbarkedPilotForMech(state, mech)
+      : null;
+
+  const name = activeBody.name;
+  const sublineParts = [activeBody.team];
+  if (activeActor?.embarked && mech && pilot) {
+    sublineParts.unshift(`Pilot: ${pilot.name}`);
+  }
+
+  const bodyStats = activeBody.unitType === "mech"
+    ? `
+      <div class="hud-mini-card" style="margin-bottom:8px;">
+        <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Mech</div>
+        <div class="hud-stat-row">
+          ${stat("SHD", `${activeBody.shield}/${activeBody.maxShield}`)}
+          ${stat("CORE", `${activeBody.core}/${activeBody.maxCore}`)}
+          ${stat("REACT", activeBody.reaction)}
+          ${stat("TARG", activeBody.targeting)}
+        </div>
+        <div class="hud-stat-row">
+          ${stat("MV", activeBody.move)}
+          ${stat("INIT", activeBody.initiative ?? "-")}
+          ${stat("F", facingLabel(activeBody.facing))}
+          ${stat("STAT", activeBody.status ?? "-")}
+        </div>
+      </div>
+    `
+    : `
+      <div class="hud-mini-card" style="margin-bottom:8px;">
+        <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Pilot</div>
+        <div class="hud-stat-row">
+          ${stat("SHD", `${activeBody.shield}/${activeBody.maxShield}`)}
+          ${stat("CORE", `${activeBody.core}/${activeBody.maxCore}`)}
+          ${stat("REACT", activeBody.reaction)}
+          ${stat("TARG", activeBody.targeting)}
+        </div>
+        <div class="hud-stat-row">
+          ${stat("MV", activeBody.move)}
+          ${stat("INIT", activeBody.initiative ?? "-")}
+          ${stat("F", facingLabel(activeBody.facing))}
+          ${stat("STAT", activeBody.status ?? "-")}
+        </div>
+      </div>
+    `;
+
+  const pilotStats = mech && pilot
+    ? `
+      <div class="hud-mini-card">
+        <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Embarked Pilot</div>
+        <div class="hud-stat-row">
+          ${stat("SHD", `${pilot.shield}/${pilot.maxShield}`)}
+          ${stat("CORE", `${pilot.core}/${pilot.maxCore}`)}
+          ${stat("REACT", pilot.reaction)}
+          ${stat("TARG", pilot.targeting)}
+        </div>
+        <div class="hud-stat-row">
+          ${stat("MV", pilot.move)}
+          ${stat("INIT", pilot.initiative ?? "-")}
+          ${stat("F", facingLabel(pilot.facing))}
+          ${stat("STAT", pilot.status ?? "-")}
+        </div>
+      </div>
+    `
+    : "";
+
   return `
     <div class="hud-section-title">Unit</div>
 
     <div class="hud-unit-row">
       <div>
-        <div class="hud-unit-name">${mech.name}</div>
-        <div class="hud-subline">${mech.pilotName ?? "No Pilot"} · ${mech.team}</div>
+        <div class="hud-unit-name">${name}</div>
+        <div class="hud-subline">${sublineParts.join(" · ")}</div>
       </div>
       <div class="hud-tag">ACTIVE</div>
     </div>
 
-    <div class="hud-stat-row">
-      ${stat("SHD", `${mech.shield}/${mech.maxShield}`)}
-      ${stat("CORE", `${mech.core}/${mech.maxCore}`)}
-      ${stat("REACT", mech.reaction)}
-      ${stat("TARG", mech.targeting)}
-    </div>
-
-    <div class="hud-stat-row">
-      ${stat("MV", mech.move)}
-      ${stat("INIT", mech.initiative ?? "-")}
-      ${stat("F", facingLabel(mech.facing))}
-      ${stat("CTRL", mech.controlType)}
-    </div>
+    ${bodyStats}
+    ${pilotStats}
   `;
 }
 
@@ -238,35 +298,51 @@ function renderTurnSummary(state) {
 
 function renderContextPanel(state) {
   const tile = getTile(state.map, state.focus.x, state.focus.y);
-  const mech = getUnitAt(state.units, state.focus.x, state.focus.y);
-  const active = getUnitById(state.units, state.turn.activeUnitId);
+  const focusedUnit = getUnitAt(state.units, state.focus.x, state.focus.y);
+  const activeBody = getActiveBody(state);
 
-  if (mech && mech.instanceId !== active?.instanceId) {
+  if (focusedUnit && focusedUnit.instanceId !== activeBody?.instanceId) {
+    const targetPilot = focusedUnit.unitType === "mech"
+      ? getEmbarkedPilotForMech(state, focusedUnit)
+      : null;
+
     return `
       <div class="hud-section-title">Target</div>
 
       <div class="hud-mini-card">
-        <div>${mech.name}</div>
-        <div style="opacity:.7;">${mech.pilotName}</div>
+        <div>${focusedUnit.name}</div>
+        <div style="opacity:.7;">${focusedUnit.team}</div>
       </div>
 
       <div class="hud-stat-row">
-        ${stat("SHD", mech.shield)}
-        ${stat("CORE", mech.core)}
-        ${stat("REACT", mech.reaction)}
-        ${stat("TARG", mech.targeting)}
+        ${stat("SHD", focusedUnit.shield)}
+        ${stat("CORE", focusedUnit.core)}
+        ${stat("REACT", focusedUnit.reaction)}
+        ${stat("TARG", focusedUnit.targeting)}
       </div>
+
+      ${targetPilot ? `
+        <div class="hud-mini-card" style="margin-top:8px;">
+          <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Embarked Pilot</div>
+          <div class="hud-stat-row">
+            ${stat("PSHD", targetPilot.shield)}
+            ${stat("PCORE", targetPilot.core)}
+            ${stat("STAT", targetPilot.status ?? "-")}
+            ${stat("INIT", targetPilot.initiative ?? "-")}
+          </div>
+        </div>
+      ` : ""}
     `;
   }
 
   const elev = tile?.elevation ?? 0;
 
   let los = "-";
-  if (active) {
+  if (activeBody) {
     const result = getLineOfSightResult(
       state,
-      active.x,
-      active.y,
+      activeBody.x,
+      activeBody.y,
       state.focus.x,
       state.focus.y
     );

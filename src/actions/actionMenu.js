@@ -54,7 +54,10 @@ export function getCommandMenuItemsForPhase(phase, state = null) {
   if (phase === "action") {
     if (state && isDisabledEmbarkedBody(state)) {
       const abilityItems = getSelectedAbilityMenuItems(state).filter((item) => item.enabled !== false);
-      return abilityItems.length ? ["ability", "end_turn"] : ["end_turn"];
+      const items = [];
+      if (abilityItems.length) items.push("ability");
+      items.push("item", "end_turn");
+      return items;
     }
 
     return ["attack", "ability", "item", "end_turn"];
@@ -256,47 +259,4 @@ export function confirmActionTarget(state) {
   state.ui.commandMenu.index = 0;
 
   return true;
-}
-
-export function cancelActionState(state) {
-  if (state.ui.mode === "action-target") {
-    state.ui.mode = "action-attack-select";
-    state.ui.action.selectedAction = null;
-    state.ui.action.fireArcTiles = [];
-    state.ui.action.evaluatedTargetTiles = [];
-    state.ui.action.validTargetTiles = [];
-    state.ui.action.effectTiles = [];
-    state.ui.action.selectedAbility = null;
-    return true;
-  }
-
-  if (state.ui.mode === "action-exit-select") {
-    state.ui.mode = "action-ability-select";
-    state.selection.action = "ability";
-    state.ui.action.validTargetTiles = [];
-    state.ui.action.evaluatedTargetTiles = [];
-    state.ui.action.fireArcTiles = [];
-    state.ui.action.effectTiles = [];
-    return true;
-  }
-
-  if (state.ui.mode === "action-ability-select") {
-    resetActionUiState(state);
-    state.ui.mode = "idle";
-    state.selection.action = null;
-    state.ui.commandMenu.open = true;
-    state.ui.commandMenu.index = 0;
-    return true;
-  }
-
-  if (state.ui.mode === "action-attack-select") {
-    resetActionUiState(state);
-    state.ui.mode = "idle";
-    state.selection.action = null;
-    state.ui.commandMenu.open = true;
-    state.ui.commandMenu.index = 0;
-    return true;
-  }
-
-  return false;
 }
