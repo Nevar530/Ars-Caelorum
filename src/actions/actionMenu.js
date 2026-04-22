@@ -9,6 +9,17 @@ function getActiveUnit(state) {
   return getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
 }
 
+function isDisabledEmbarkedMechBody(state) {
+  const activeActor = getActiveActor(state);
+  const activeBody = getActiveUnit(state);
+  return Boolean(
+    activeActor?.unitType === "pilot" &&
+    activeActor?.embarked === true &&
+    activeBody?.unitType === "mech" &&
+    activeBody?.status === "disabled"
+  );
+}
+
 export function createActionUiState() {
   return {
     menuIndex: 0,
@@ -32,8 +43,11 @@ export function resetActionUiState(state) {
   state.ui.action.selectedAbility = null;
 }
 
-export function getCommandMenuItemsForPhase(phase) {
+export function getCommandMenuItemsForPhase(phase, state = null) {
   if (phase === "move") {
+    if (state && isDisabledEmbarkedMechBody(state)) {
+      return ["move", "end_turn"];
+    }
     return ["move", "brace"];
   }
 
@@ -42,6 +56,21 @@ export function getCommandMenuItemsForPhase(phase) {
   }
 
   return [];
+}
+
+export function isCommandMenuItemDisabled(state, item) {
+  if (!state || !item) return false;
+  if (!isDisabledEmbarkedMechBody(state)) return false;
+
+  if (state.turn.phase === "move") {
+    return item === "move";
+  }
+
+  if (state.turn.phase === "action") {
+    return item === "attack";
+  }
+
+  return false;
 }
 
 

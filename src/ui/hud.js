@@ -2,7 +2,7 @@
 
 import { getTile, tileTypeFromElevation } from "../map.js";
 import { getUnitAt, getUnitById } from "../mechs.js";
-import { getSelectedAbilityMenuItems, getSelectedAttackMenuItems } from "../action.js";
+import { getSelectedAbilityMenuItems, getSelectedAttackMenuItems, isCommandMenuItemDisabled } from "../action.js";
 import { getLineOfSightResult } from "../los.js";
 import { getActiveActor, getActiveBody, getEmbarkedPilotForMech } from "../actors/actorResolver.js";
 
@@ -380,14 +380,18 @@ function renderCommandMenu(state) {
   return `
     <div class="hud-section-title">Command</div>
 
-    ${menu.items.map((item, i) => `
+    ${menu.items.map((item, i) => {
+      const isDisabled = isCommandMenuItemDisabled(state, item);
+      return `
       <button 
-        class="hud-menu-button ${i === menu.index ? "is-selected" : ""}" 
+        class="hud-menu-button ${i === menu.index ? "is-selected" : ""} ${isDisabled ? "is-disabled" : ""}" 
         data-hud-action="menu-select"
-        data-menu-action="${item}">
+        data-menu-action="${item}"
+        ${isDisabled ? "disabled" : ""}>
         ${i === menu.index ? "▶ " : ""}${item}
       </button>
-    `).join("")}
+    `;
+    }).join("")}
   `;
 }
 

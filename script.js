@@ -17,6 +17,7 @@ import { createGameController } from "./src/controllers/gameController.js";
 import { createTurnController } from "./src/controllers/turnController.js";
 import { createMovementController } from "./src/controllers/movementController.js";
 import { createCombatController } from "./src/controllers/combatController.js";
+import { isCommandMenuItemDisabled } from "./src/action.js";
 
 const refs = {
   editor: document.getElementById("editor"),
@@ -140,6 +141,9 @@ async function init() {
       if (!menu.open) return;
 
       const action = menu.items[menu.index];
+      if (isCommandMenuItemDisabled(state, action)) {
+        return;
+      }
 
       if (action === "move") {
         movementController.startMove();
@@ -183,6 +187,10 @@ async function init() {
     },
 
     selectMenuAction(action) {
+      if (isCommandMenuItemDisabled(state, action)) {
+        return;
+      }
+
       if (action === "move") {
         movementController.startMove();
         return;
