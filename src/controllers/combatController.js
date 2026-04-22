@@ -194,11 +194,10 @@ export function createCombatController({
       if (confirmAbilitySelection(state)) {
         const selectedAbility = state.ui.action.selectedAbility;
         if (selectedAbility?.id === "enter_mech" && activeActor) {
-          const enterResult = resolveEnterMech(state, activeActor, selectedAbility.mechId);
+          const targetMech = getUnitById(state.units, selectedAbility.mechId);
+          const enterResult = resolveEnterMech(state, activeActor, targetMech);
           if (enterResult.ok) {
-            for (const line of enterResult.logs) {
-              logDev(line);
-            }
+            logDev(`${enterResult.pilotName} entered ${enterResult.mechName}.`);
             clearTransientUi();
             advanceActionTurn();
             render();
@@ -207,11 +206,10 @@ export function createCombatController({
         }
 
         if (selectedAbility?.id === "exit_mech" && activeActor) {
-          const exitResult = resolveExitMech(state, activeActor, selectedAbility.exitTile);
+          const targetMech = getUnitById(state.units, selectedAbility.mechId);
+          const exitResult = resolveExitMech(state, activeActor, targetMech, selectedAbility.exitTile ?? null);
           if (exitResult.ok) {
-            for (const line of exitResult.logs) {
-              logDev(line);
-            }
+            logDev(`${exitResult.pilotName} exited ${exitResult.mechName} at (${exitResult.exitTile.x},${exitResult.exitTile.y}).`);
             clearTransientUi();
             advanceActionTurn();
             render();
