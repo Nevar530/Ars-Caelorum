@@ -1,3 +1,4 @@
+import { getCommandMenuItemsForPhase } from "../action.js";
 import { getActiveUnitFromPhaseOrder, rebuildRoundOrder } from "../initiative.js";
 import { getActiveBody, getPilotActorById } from "../actors/actorResolver.js";
 
@@ -24,6 +25,10 @@ export function createTurnController({
     return -1;
   }
 
+  function syncCommandMenuItems() {
+    state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase, state);
+  }
+
   function setActiveUnitByCurrentTurnIndex() {
     const activeActorId = getActiveUnitFromPhaseOrder(state);
     const activeActor = activeActorId ? getPilotActorById(state, activeActorId) : null;
@@ -38,6 +43,8 @@ export function createTurnController({
     if (activeBodyId) {
       snapFocusToActiveUnit();
     }
+
+    syncCommandMenuItems();
   }
 
   function logRoundInitiative() {

@@ -3,6 +3,8 @@ import {
   clearCombatTextMarkers,
   renderCombatTextOverlay
 } from "../combat/combatTextOverlay.js";
+import { clearMissionResult } from "../mission/missionState.js";
+import { renderMissionOverlay } from "../ui/missionOverlay.js";
 import { renderHud } from "../ui/hud.js";
 import { renderHelpDrawer } from "../ui/helpDrawer.js";
 import { renderAll } from "../render.js";
@@ -22,6 +24,7 @@ export function createGameController({
     renderHud(state, refs);
     renderHelpDrawer(state, refs);
     renderCombatTextOverlay(state, refs);
+    renderMissionOverlay(state, refs);
   }
 
   function hideSplash() {
@@ -55,7 +58,7 @@ export function createGameController({
     resetActionUiState(state);
     state.ui.commandMenu.open = false;
     state.ui.commandMenu.index = 0;
-    state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
+    state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase, state);
   }
 
   function setPreviewSelectionFromFirstUnit() {
@@ -78,6 +81,7 @@ export function createGameController({
     clearTransientUi();
     hideSplash();
     clearCombatTextMarkers(state);
+    clearMissionResult(state);
 
     state.turn.activeUnitId = null;
     state.turn.activeActorId = null;
@@ -95,7 +99,8 @@ export function createGameController({
   }
 
   function resetMapAndUnits() {
-    state.map = resetMap(state.content?.defaultMap ?? null);
+    const sourceMap = state.mission?.sourceMap ?? state.content?.defaultMap ?? null;
+    state.map = resetMap(sourceMap);
     state.units = instantiateTestUnits(state.content, state.map);
 
     state.rotation = 0;
@@ -106,6 +111,21 @@ export function createGameController({
     resetCombatToSetup();
 
     logDev("Map reset and test units reloaded.");
+    render();
+  }
+
+  function endMission(result) {
+    if (!result) return;
+
+    clearTransientUi();
+    hideSplash();
+    state.turn.combatStarted = false;
+    state.turn.phase = "setup";
+    state.turn.activeUnitId = null;
+    state.turn.activeActorId = null;
+    state.turn.activeBodyId = null;
+    state.mission.result = result;
+    logDev(result === "victory" ? "Mission ended: Victory." : "Mission ended: Defeat.");
     render();
   }
 
@@ -141,7 +161,7 @@ export function createGameController({
 
     state.ui.commandMenu.open = true;
     state.ui.commandMenu.index = 0;
-    state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase);
+    state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase, state);
     state.selection.action = null;
 
     render();
@@ -247,6 +267,7 @@ export function createGameController({
     clearTransientUi,
     resetCombatToSetup,
     resetMapAndUnits,
+    endMission,
     selectFocusedUnitIfPresent,
     openCommandMenu,
     closeCommandMenu,

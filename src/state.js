@@ -60,6 +60,11 @@ export function createState({
       scale: previewUnit?.scale ?? "pilot"
     },
 
+    mission: {
+      sourceMap: map ? structuredClone(map) : null,
+      result: null
+    },
+
     ui: {
       mode: "idle",
       previewPath: [],

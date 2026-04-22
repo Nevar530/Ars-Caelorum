@@ -102,7 +102,18 @@ async function init() {
     logDev,
     clearTransientUi,
     advanceActionTurn: turnController.advanceActionTurn,
-    movementController
+    movementController,
+    endMission: gameController.endMission
+  });
+
+
+  refs.combatOverlay.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-combat-overlay-action]");
+    if (!button) return;
+
+    if (button.dataset.combatOverlayAction === "restart-mission") {
+      actions.resetMap();
+    }
   });
 
   const actions = {
@@ -137,6 +148,16 @@ async function init() {
 
       if (action === "brace") {
         movementController.completeBraceForCurrentUnit();
+        return;
+      }
+
+      if (action === "end_turn" && state.turn.phase === "move") {
+        movementController.skipMoveForCurrentUnit();
+        return;
+      }
+
+      if (action === "end_turn" && state.turn.phase === "move") {
+        movementController.skipMoveForCurrentUnit();
         return;
       }
 

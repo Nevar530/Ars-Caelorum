@@ -9,6 +9,17 @@ function getActiveUnit(state) {
   return getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
 }
 
+function isDisabledEmbarkedBody(state) {
+  const activeActor = getActiveActor(state);
+  const activeBody = getActiveUnit(state);
+  return Boolean(
+    activeActor?.unitType === "pilot" &&
+    activeActor?.embarked &&
+    activeBody?.unitType === "mech" &&
+    activeBody?.status === "disabled"
+  );
+}
+
 export function createActionUiState() {
   return {
     menuIndex: 0,
@@ -32,12 +43,20 @@ export function resetActionUiState(state) {
   state.ui.action.selectedAbility = null;
 }
 
-export function getCommandMenuItemsForPhase(phase) {
+export function getCommandMenuItemsForPhase(phase, state = null) {
   if (phase === "move") {
+    if (state && isDisabledEmbarkedBody(state)) {
+      return ["end_turn"];
+    }
     return ["move", "brace"];
   }
 
   if (phase === "action") {
+    if (state && isDisabledEmbarkedBody(state)) {
+      const abilityItems = getSelectedAbilityMenuItems(state).filter((item) => item.enabled !== false);
+      return abilityItems.length ? ["ability", "end_turn"] : ["end_turn"];
+    }
+
     return ["attack", "ability", "item", "end_turn"];
   }
 
@@ -133,6 +152,7 @@ export function confirmAbilitySelection(state) {
 export function getSelectedAttackMenuItems(state) {
   const activeUnit = getActiveUnit(state);
   if (!activeUnit) return [];
+  if (activeUnit.status === "disabled") return [];
 
   const weaponIds = Array.isArray(activeUnit.weapons) ? activeUnit.weapons : [];
   const allWeapons = Array.isArray(state.content.weapons) ? state.content.weapons : [];

@@ -11,6 +11,7 @@ import { resolveDamage } from "../combat/damageResolver.js";
 import { addCombatTextMarker, clearCombatTextMarkers } from "../combat/combatTextOverlay.js";
 import { getPrimaryOccupantAt } from "../scale/occupancy.js";
 import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
+import { evaluateMissionResult } from "../mission/missionState.js";
 import { resolveEnterMech, resolveExitMech } from "../vehicles/mechEmbarkActions.js";
 
 export function createCombatController({
@@ -20,7 +21,8 @@ export function createCombatController({
   logDev,
   clearTransientUi,
   advanceActionTurn,
-  movementController
+  movementController,
+  endMission
 }) {
   let actionAdvanceTimer = null;
   function startAttack() {
@@ -28,6 +30,7 @@ export function createCombatController({
 
     const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
     if (!activeUnit) return;
+    if (activeUnit.status === "disabled") return;
 
     if (!startAttackSelection(state)) return;
 
@@ -127,30 +130,43 @@ export function createCombatController({
         logDev(line);
       }
 
-      if (!damageResult.result) continue;
-
       const dr = damageResult.result;
+      if (!dr) continue;
 
-      if (dr.shieldDamage > 0) {
-        addCombatTextMarker(state, dr.targetId, `-${dr.shieldDamage} SHD`, {
-          tone: "shield"
-        });
-      }
+      for (const event of dr.damageEvents ?? []) {
+        if (event.shieldDamage > 0) {
+          addCombatTextMarker(state, event.targetId, `-${event.shieldDamage} SHD`, {
+            tone: "shield"
+          });
+        }
 
-      if (dr.coreDamage > 0) {
-        addCombatTextMarker(state, dr.targetId, `-${dr.coreDamage} CORE`, {
-          tone: "core"
-        });
-      }
+        if (event.coreDamage > 0) {
+          addCombatTextMarker(state, event.targetId, `-${event.coreDamage} CORE`, {
+            tone: "core"
+          });
+        }
 
-      if (dr.statusAfter === "disabled") {
-        addCombatTextMarker(state, dr.targetId, "DISABLED", {
-          tone: "disabled"
-        });
+        if (event.statusAfter === "disabled") {
+          addCombatTextMarker(state, event.targetId, "DISABLED", {
+            tone: "disabled"
+          });
+        }
       }
     }
 
+    const missionResult = evaluateMissionResult(state);
+
     render();
+
+    if (missionResult) {
+      if (actionAdvanceTimer) {
+        clearTimeout(actionAdvanceTimer);
+        actionAdvanceTimer = null;
+      }
+      clearCombatTextMarkers(state);
+      endMission(missionResult);
+      return true;
+    }
 
     if (actionAdvanceTimer) {
       clearTimeout(actionAdvanceTimer);
@@ -178,72 +194,78 @@ export function createCombatController({
       if (confirmAbilitySelection(state)) {
         const selectedAbility = state.ui.action.selectedAbility;
         if (selectedAbility?.id === "enter_mech" && activeActor) {
-          const targetMech = getUnitById(state.units, selectedAbility.mechId);
-          const result = resolveEnterMech(state, activeActor, targetMech);
-
-          if (result.ok) {
-            logDev(`${result.pilotName} entered ${result.mechName}.`);
-            clearTransientUi();
-            advanceActionTurn();
-            render();
-          }
-        } else if (selectedAbility?.id === "exit_mech" && activeActor) {
-          const targetMech = getUnitById(state.units, selectedAbility.mechId);
-          const result = resolveExitMech(state, activeActor, targetMech, selectedAbility.exitTile ?? null);
-
-          if (result.ok) {
-            logDev(`${result.pilotName} exited ${result.mechName} at (${result.exitTile.x},${result.exitTile.y}).`);
+          const enterResult = resolveEnterMech(state, activeActor, selectedAbility.mechId);
+          if (enterResult.ok) {
+            for (const line of enterResult.logs) {
+              logDev(line);
+            }
             clearTransientUi();
             advanceActionTurn();
             render();
             return;
           }
-
-          render();
-        } else {
-          render();
         }
-      } else {
-        render();
+
+        if (selectedAbility?.id === "exit_mech" && activeActor) {
+          const exitResult = resolveExitMech(state, activeActor, selectedAbility.exitTile);
+          if (exitResult.ok) {
+            for (const line of exitResult.logs) {
+              logDev(line);
+            }
+            clearTransientUi();
+            advanceActionTurn();
+            render();
+            return;
+          }
+        }
       }
+
+      render();
       return;
     }
 
-
     if (state.ui.mode === "action-attack-select") {
       const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
+      if (!activeUnit) return;
 
       if (confirmAttackSelection(state)) {
         const selectedAttack = state.ui.action.selectedAction;
-        if (activeUnit && selectedAttack) {
-          logDev(`${activeUnit.name} selected attack ${selectedAttack.name}.`);
+        if (selectedAttack) {
+          logDev(`${activeUnit.name} selected ${selectedAttack.name}.`);
         }
-        render();
       }
+
+      render();
       return;
     }
 
     if (state.ui.mode === "action-target") {
       const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
       const selectedAttack = state.ui.action.selectedAction;
+      if (!activeUnit || !selectedAttack) return;
 
-      if (activeUnit && selectedAttack) {
-        handleConfirmedTarget(activeUnit, selectedAttack);
-      }
+      handleConfirmedTarget(activeUnit, selectedAttack);
+      return;
+    }
+
+    if (state.ui.mode === "idle" && state.ui.commandMenu.open) {
+      state.ui.commandMenu.open = false;
+      state.ui.commandMenu.index = 0;
+      render();
     }
   }
 
   function cancelAction() {
+    if (movementController.cancelMoveOrFacing()) {
+      return;
+    }
+
     if (cancelActionState(state)) {
       render();
       return;
     }
 
-    if (movementController.cancelMoveOrFacing()) {
-      return;
-    }
-
-    if (state.ui.mode === "idle" && state.ui.commandMenu.open) {
+    if (state.ui.commandMenu.open && state.ui.mode === "idle") {
       state.ui.commandMenu.open = false;
       state.ui.commandMenu.index = 0;
       render();
@@ -255,6 +277,7 @@ export function createCombatController({
     startAbility,
     completeEndTurnForCurrentUnit,
     waitTurn,
+    handleConfirmedTarget,
     confirmAction,
     cancelAction
   };

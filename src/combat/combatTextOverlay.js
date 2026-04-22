@@ -47,15 +47,8 @@ export function clearCombatTextMarkers(state) {
 export function renderCombatTextOverlay(state, refs) {
   ensureMarkerState(state);
 
-  const overlay = refs?.combatOverlay;
   const worldUi = refs?.worldUi;
   const markers = state.turn.combatTextMarkers ?? [];
-
-  if (overlay) {
-    overlay.innerHTML = "";
-    overlay.classList.remove("is-visible");
-    overlay.classList.add("is-clickthrough");
-  }
 
   if (!worldUi) return;
 

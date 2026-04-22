@@ -57,6 +57,7 @@ export function createMovementController({
 
     const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
     if (!activeUnit) return;
+    if (activeUnit.status === "disabled") return;
 
     state.ui.commandMenu.open = false;
 
@@ -83,6 +84,10 @@ export function createMovementController({
   function completeBraceForCurrentUnit() {
     const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
     if (!activeUnit) return;
+    if (activeUnit.status === "disabled") {
+      skipMoveForCurrentUnit();
+      return;
+    }
 
     activeUnit.isBraced = true;
     logDev(`${activeUnit.name} braced.`);
@@ -97,6 +102,15 @@ export function createMovementController({
     if (state.turn.phase === "action") {
       advanceActionTurn();
     }
+  }
+
+  function skipMoveForCurrentUnit() {
+    const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
+    if (!activeUnit) return;
+
+    logDev(`${activeUnit.name} skipped movement.`);
+    clearTransientUi();
+    advanceMoveTurn();
   }
 
   function confirmMoveOrFacing() {
@@ -197,6 +211,7 @@ export function createMovementController({
     getDefaultFacingFromPath,
     startMove,
     completeBraceForCurrentUnit,
+    skipMoveForCurrentUnit,
     confirmMoveOrFacing,
     cancelMoveOrFacing
   };

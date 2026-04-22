@@ -1,4 +1,5 @@
 import { getUnitById } from "../mechs.js";
+import { getEmbarkedPilotForMech } from "../actors/actorResolver.js";
 
 const SIDE_DAMAGE_BONUS = 2;
 const BRACE_DAMAGE_REDUCTION = 2;
@@ -16,10 +17,10 @@ function getAttackDirectionFromSourceToTarget(sourceX, sourceY, targetX, targetY
   const dy = sourceY - targetY;
 
   if (Math.abs(dx) > Math.abs(dy)) {
-    return dx > 0 ? 1 : 3; // source is east/west of target
+    return dx > 0 ? 1 : 3;
   }
 
-  return dy > 0 ? 2 : 0; // source is south/north of target
+  return dy > 0 ? 2 : 0;
 }
 
 function getFacingZone(sourceX, sourceY, target) {
@@ -96,6 +97,58 @@ function updateUnitStatus(target) {
   return "operational";
 }
 
+function createDamageEvent(target) {
+  return {
+    targetId: target.instanceId,
+    targetName: target.name,
+    targetType: target.unitType,
+    shieldBefore: Number(target.shield ?? 0),
+    coreBefore: Number(target.core ?? 0),
+    shieldAfter: Number(target.shield ?? 0),
+    coreAfter: Number(target.core ?? 0),
+    shieldDamage: 0,
+    coreDamage: 0,
+    statusBefore: target.status,
+    statusAfter: target.status
+  };
+}
+
+function finalizeDamageEvent(target, event) {
+  target.shield = clampMinZero(target.shield);
+  target.core = clampMinZero(target.core);
+  event.shieldAfter = target.shield;
+  event.coreAfter = target.core;
+  event.statusAfter = updateUnitStatus(target);
+  return event;
+}
+
+function applyDamageToUnit(target, damage, options = {}) {
+  const event = createDamageEvent(target);
+  let remainingDamage = clampMinZero(damage);
+
+  if (remainingDamage <= 0) {
+    finalizeDamageEvent(target, event);
+    return { event, remainingDamage: 0 };
+  }
+
+  if (options.bypassShield !== true) {
+    const shieldDamage = Math.min(Number(target.shield ?? 0), remainingDamage);
+    target.shield -= shieldDamage;
+    event.shieldDamage = shieldDamage;
+    remainingDamage -= shieldDamage;
+  }
+
+  if (remainingDamage > 0) {
+    const coreDamage = Math.min(Number(target.core ?? 0), remainingDamage);
+    target.core -= coreDamage;
+    event.coreDamage = coreDamage;
+    remainingDamage -= coreDamage;
+  }
+
+  finalizeDamageEvent(target, event);
+  return { event, remainingDamage };
+}
+
 export function resolveDamage(state, attacker, weapon, confirmed, hitResult) {
   if (!state || !attacker || !weapon || !confirmed || !hitResult?.targetId) {
     return {
@@ -124,11 +177,6 @@ export function resolveDamage(state, attacker, weapon, confirmed, hitResult) {
 
   const { baseDamage, ring } = getBaseDamage(weapon, confirmed, target);
   const facingZone = getFacingZone(attacker.x, attacker.y, target);
-
-  const statusBefore = target.status;
-  const shieldBefore = target.shield;
-  const coreBefore = target.core;
-
   const logs = [];
 
   if (confirmed.weaponType === "missile") {
@@ -142,64 +190,66 @@ export function resolveDamage(state, attacker, weapon, confirmed, hitResult) {
     );
   }
 
-  let modifiedDamage = baseDamage;
+  let finalDamage = baseDamage;
 
   if (facingZone === "front") {
     logs.push("Facing: Front (0)");
   } else if (facingZone === "side") {
-    modifiedDamage += SIDE_DAMAGE_BONUS;
+    finalDamage += SIDE_DAMAGE_BONUS;
     logs.push(`Facing: Side (+${SIDE_DAMAGE_BONUS})`);
   } else {
     logs.push("Facing: Rear (shield bypass)");
   }
 
   if (target.isBraced) {
-    modifiedDamage -= BRACE_DAMAGE_REDUCTION;
+    finalDamage -= BRACE_DAMAGE_REDUCTION;
     logs.push(`Brace: -${BRACE_DAMAGE_REDUCTION} damage`);
   }
 
-  modifiedDamage = clampMinZero(modifiedDamage);
-  logs.push(`Final damage: ${modifiedDamage}`);
+  finalDamage = clampMinZero(finalDamage);
+  logs.push(`Final damage: ${finalDamage}`);
 
-  let shieldDamage = 0;
-  let coreDamage = 0;
+  const damageEvents = [];
+  let remainingDamage = finalDamage;
 
-  if (modifiedDamage > 0) {
-    if (facingZone === "rear") {
-      coreDamage = modifiedDamage;
-      target.core -= coreDamage;
-    } else {
-      shieldDamage = Math.min(target.shield, modifiedDamage);
-      target.shield -= shieldDamage;
+  const primary = applyDamageToUnit(target, remainingDamage, {
+    bypassShield: facingZone === "rear"
+  });
+  remainingDamage = primary.remainingDamage;
+  damageEvents.push(primary.event);
 
-      const overflow = modifiedDamage - shieldDamage;
-      if (overflow > 0) {
-        coreDamage = overflow;
-        target.core -= coreDamage;
-      }
+  if (target.unitType === "mech") {
+    const embarkedPilot = getEmbarkedPilotForMech(state, target);
+    if (embarkedPilot && remainingDamage > 0) {
+      logs.push(`${target.name} overflow reaches embarked pilot ${embarkedPilot.name}.`);
+      const pilotResult = applyDamageToUnit(embarkedPilot, remainingDamage, {
+        bypassShield: false
+      });
+      remainingDamage = pilotResult.remainingDamage;
+      damageEvents.push(pilotResult.event);
     }
   }
 
-  const shieldAfter = target.shield;
-  const coreAfter = clampMinZero(target.core);
-  target.core = coreAfter;
+  for (const event of damageEvents) {
+    if (event.targetType === "mech") {
+      if (facingZone !== "rear") {
+        logs.push(`Shield: ${event.shieldBefore} -> ${event.shieldAfter}`);
+      } else {
+        logs.push(`Shield: ${event.shieldBefore} -> ${event.shieldAfter} (bypassed)`);
+      }
+    } else {
+      logs.push(`${event.targetName} shield: ${event.shieldBefore} -> ${event.shieldAfter}`);
+    }
 
-  const statusAfter = updateUnitStatus(target);
+    logs.push(`${event.targetName} core: ${event.coreBefore} -> ${event.coreAfter}`);
 
-  if (facingZone !== "rear") {
-    logs.push(`Shield: ${shieldBefore} -> ${shieldAfter}`);
-  } else {
-    logs.push(`Shield: ${shieldBefore} -> ${shieldAfter} (bypassed)`);
-  }
+    if (event.statusBefore !== event.statusAfter) {
+      logs.push(`${event.targetName} status: ${event.statusBefore} -> ${event.statusAfter}`);
+    }
 
-  logs.push(`Core: ${coreBefore} -> ${target.core}`);
-
-  if (statusBefore !== statusAfter) {
-    logs.push(`${target.name} status: ${statusBefore} -> ${statusAfter}`);
-  }
-
-  if (statusAfter === "disabled") {
-    logs.push(`${target.name} disabled.`);
+    if (event.statusAfter === "disabled") {
+      logs.push(`${event.targetName} disabled.`);
+    }
   }
 
   return {
@@ -209,17 +259,12 @@ export function resolveDamage(state, attacker, weapon, confirmed, hitResult) {
       targetId: target.instanceId,
       targetName: target.name,
       baseDamage,
-      finalDamage: modifiedDamage,
-      shieldDamage,
-      coreDamage,
+      finalDamage,
       ring,
       facingZone,
-      shieldBefore,
-      shieldAfter,
-      coreBefore,
-      coreAfter: target.core,
-      statusBefore,
-      statusAfter
+      damageEvents,
+      statusAfter: primary.event.statusAfter,
+      overflowRemaining: remainingDamage
     }
   };
 }

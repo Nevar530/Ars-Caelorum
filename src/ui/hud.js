@@ -41,6 +41,9 @@ export function bindHudInput(state, refs, actions) {
       case "start-combat":
         actions.startCombat();
         break;
+      case "restart-mission":
+        actions.resetMap();
+        break;
       case "menu-select":
         actions.selectMenuAction(button.dataset.menuAction);
         break;
