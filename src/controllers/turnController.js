@@ -145,6 +145,10 @@ export function createTurnController({
     if (state.turn.combatStarted) return;
     if (!state.units.length) return;
 
+    state.mission = state.mission ?? { sourceMap: null, result: null };
+    state.mission.sourceMap = structuredClone(state.map);
+    state.mission.result = null;
+
     clearTransientUi();
     clearCombatTextMarkers(state);
     state.turn.combatStarted = true;

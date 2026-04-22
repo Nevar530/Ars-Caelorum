@@ -156,11 +156,6 @@ async function init() {
         return;
       }
 
-      if (action === "end_turn" && state.turn.phase === "move") {
-        movementController.skipMoveForCurrentUnit();
-        return;
-      }
-
       if (action === "attack") {
         combatController.startAttack();
         return;
@@ -168,6 +163,11 @@ async function init() {
 
       if (action === "ability") {
         combatController.startAbility();
+        return;
+      }
+
+      if (action === "end_turn" && state.turn.phase === "move") {
+        movementController.skipMoveForCurrentUnit();
         return;
       }
 
@@ -200,6 +200,11 @@ async function init() {
 
       if (action === "ability") {
         combatController.startAbility();
+        return;
+      }
+
+      if (action === "end_turn" && state.turn.phase === "move") {
+        movementController.skipMoveForCurrentUnit();
         return;
       }
 
