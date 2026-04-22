@@ -9,17 +9,6 @@ function getActiveUnit(state) {
   return getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
 }
 
-function isDisabledEmbarkedBody(state) {
-  const activeActor = getActiveActor(state);
-  const activeBody = getActiveUnit(state);
-  return Boolean(
-    activeActor?.unitType === "pilot" &&
-    activeActor?.embarked &&
-    activeBody?.unitType === "mech" &&
-    activeBody?.status === "disabled"
-  );
-}
-
 export function createActionUiState() {
   return {
     menuIndex: 0,
@@ -43,23 +32,12 @@ export function resetActionUiState(state) {
   state.ui.action.selectedAbility = null;
 }
 
-export function getCommandMenuItemsForPhase(phase, state = null) {
+export function getCommandMenuItemsForPhase(phase) {
   if (phase === "move") {
-    if (state && isDisabledEmbarkedBody(state)) {
-      return ["end_turn"];
-    }
     return ["move", "brace"];
   }
 
   if (phase === "action") {
-    if (state && isDisabledEmbarkedBody(state)) {
-      const abilityItems = getSelectedAbilityMenuItems(state).filter((item) => item.enabled !== false);
-      const items = [];
-      if (abilityItems.length) items.push("ability");
-      items.push("item", "end_turn");
-      return items;
-    }
-
     return ["attack", "ability", "item", "end_turn"];
   }
 
@@ -155,7 +133,6 @@ export function confirmAbilitySelection(state) {
 export function getSelectedAttackMenuItems(state) {
   const activeUnit = getActiveUnit(state);
   if (!activeUnit) return [];
-  if (activeUnit.status === "disabled") return [];
 
   const weaponIds = Array.isArray(activeUnit.weapons) ? activeUnit.weapons : [];
   const allWeapons = Array.isArray(state.content.weapons) ? state.content.weapons : [];
@@ -259,4 +236,47 @@ export function confirmActionTarget(state) {
   state.ui.commandMenu.index = 0;
 
   return true;
+}
+
+export function cancelActionState(state) {
+  if (state.ui.mode === "action-target") {
+    state.ui.mode = "action-attack-select";
+    state.ui.action.selectedAction = null;
+    state.ui.action.fireArcTiles = [];
+    state.ui.action.evaluatedTargetTiles = [];
+    state.ui.action.validTargetTiles = [];
+    state.ui.action.effectTiles = [];
+    state.ui.action.selectedAbility = null;
+    return true;
+  }
+
+  if (state.ui.mode === "action-exit-select") {
+    state.ui.mode = "action-ability-select";
+    state.selection.action = "ability";
+    state.ui.action.validTargetTiles = [];
+    state.ui.action.evaluatedTargetTiles = [];
+    state.ui.action.fireArcTiles = [];
+    state.ui.action.effectTiles = [];
+    return true;
+  }
+
+  if (state.ui.mode === "action-ability-select") {
+    resetActionUiState(state);
+    state.ui.mode = "idle";
+    state.selection.action = null;
+    state.ui.commandMenu.open = true;
+    state.ui.commandMenu.index = 0;
+    return true;
+  }
+
+  if (state.ui.mode === "action-attack-select") {
+    resetActionUiState(state);
+    state.ui.mode = "idle";
+    state.selection.action = null;
+    state.ui.commandMenu.open = true;
+    state.ui.commandMenu.index = 0;
+    return true;
+  }
+
+  return false;
 }
