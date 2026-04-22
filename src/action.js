@@ -5,7 +5,6 @@ import {
   resetActionUiState,
   getCommandMenuItemsForPhase,
   isCommandMenuItemDisabled,
-  isCommandMenuItemDisabled,
   getSelectedAttackMenuItems,
   getSelectedAbilityMenuItems,
   moveAttackSelection,
