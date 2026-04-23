@@ -135,7 +135,7 @@ export function instantiateTestMechs(content) {
   return instantiateTestUnits(content);
 }
 
-function buildRuntimeSpawnIndex(content, map = null) {
+function buildRuntimeSpawnIndex(map = null) {
   const index = new Map();
   const mapSpawns = getMapSpawns(map);
 
@@ -149,15 +149,6 @@ function buildRuntimeSpawnIndex(content, map = null) {
         y: Number(spawn.y)
       });
     });
-  }
-
-  if (index.size > 0) {
-    return index;
-  }
-
-  for (const spawn of Array.isArray(content?.spawnPoints) ? content.spawnPoints : []) {
-    if (!spawn?.id) continue;
-    index.set(spawn.id, spawn);
   }
 
   return index;
@@ -183,12 +174,14 @@ function buildUnitsFromStartState(content, map, spawnIndex) {
 
   const units = [];
 
-  const atSpawn = (spawnId, fallbackX = 0, fallbackY = 0) => {
+  const atSpawn = (spawnId) => {
     const spawn = spawnIndex.get(spawnId);
-    return {
-      x: Number(spawn?.x ?? fallbackX),
-      y: Number(spawn?.y ?? fallbackY)
-    };
+    return spawn
+      ? {
+          x: Number(spawn.x),
+          y: Number(spawn.y)
+        }
+      : null;
   };
 
   for (const deployment of deployments) {
@@ -205,8 +198,17 @@ function buildUnitsFromStartState(content, map, spawnIndex) {
 
     const pilotSpawnId = deployment?.pilotSpawnId ?? null;
     const mechSpawnId = deployment?.mechSpawnId ?? null;
-    const pilotPos = atSpawn(pilotSpawnId, deployment?.pilotX ?? deployment?.x ?? 0, deployment?.pilotY ?? deployment?.y ?? 0);
-    const mechPos = atSpawn(mechSpawnId, deployment?.mechX ?? deployment?.x ?? 0, deployment?.mechY ?? deployment?.y ?? 0);
+    const pilotPos = pilotSpawnId ? atSpawn(pilotSpawnId) : null;
+    const mechPos = mechSpawnId ? atSpawn(mechSpawnId) : null;
+
+    if (!pilotPos || !mechPos) {
+      console.warn("Skipping deployment with missing map spawn.", {
+        pilotSpawnId,
+        mechSpawnId,
+        deployment
+      });
+      continue;
+    }
 
     const mechUnit = createMechInstance(mech, {
       instanceId: mechInstanceId,

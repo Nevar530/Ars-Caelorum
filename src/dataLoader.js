@@ -1,4 +1,4 @@
-import { normalizeMapDefinition, getMapSpawns } from "./map.js";
+import { normalizeMapDefinition } from "./map.js";
 
 export async function loadGameData() {
   const [
@@ -44,9 +44,7 @@ export async function loadGameData() {
     mechAbilities,
     pilotItems,
     mechItems,
-    spawnPoints: normalizedDefaultMap
-      ? mapSpawnsToLegacySpawnPoints(getMapSpawns(normalizedDefaultMap))
-      : spawnPoints,
+    spawnPoints,
     mapCatalog,
     terrainList,
     terrainDefinitions,
@@ -73,37 +71,4 @@ async function loadDefaultMap(mapCatalog) {
   if (!defaultEntry?.path) return null;
 
   return loadJson(defaultEntry.path);
-}
-
-function mapSpawnsToLegacySpawnPoints(spawns = {}) {
-  const points = [];
-
-  for (const team of ["player", "enemy"]) {
-    const entries = Array.isArray(spawns?.[team]) ? spawns[team] : [];
-
-    entries.forEach((spawn, index) => {
-      if (!spawn || !Number.isFinite(spawn.x) || !Number.isFinite(spawn.y)) return;
-
-      points.push({
-        id: `${team}_${index + 1}`,
-        label: `${capitalize(team)} ${index + 1}`,
-        x: spawn.x,
-        y: spawn.y,
-        unitType: "mech"
-      });
-    });
-  }
-
-  return points;
-}
-
-function capitalize(value) {
-  return String(value).charAt(0).toUpperCase() + String(value).slice(1);
-}
-
-
-export async function loadMapDefinitionByPath(path) {
-  if (!path) return null;
-  const map = await loadJson(path);
-  return normalizeMapDefinition(map);
 }
