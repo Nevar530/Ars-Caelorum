@@ -13,7 +13,7 @@
     },
     {
       "id": "002_test",
-      "name": "002 Test Blank 32x32",
+      "name": "002 Test Map",
       "path": "./data/maps/002_test.json"
     }
   ]
