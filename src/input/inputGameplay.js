@@ -185,7 +185,6 @@ function handleMenuNavigationKeys(key, state, actions) {
 
 function handleIdleKeys(key, state, actions) {
   if (state.ui.mode !== "idle") return false;
-  if (state.ui?.shell?.screen && state.ui.shell.screen !== "in-mission") return false;
 
   if (key === "tab") {
     actions.snapFocusToActiveUnit?.({ resetZoom: true });

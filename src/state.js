@@ -62,8 +62,6 @@ export function createState({
 
     mission: {
       sourceMap: map ? structuredClone(map) : null,
-      currentMissionId: null,
-      selectedMissionId: null,
       result: null
     },
 
@@ -92,10 +90,6 @@ export function createState({
 
       helpDrawer: {
         open: false
-      },
-
-      shell: {
-        screen: "main-menu"
       }
     },
 

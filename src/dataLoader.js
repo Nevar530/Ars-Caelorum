@@ -14,8 +14,7 @@ export async function loadGameData() {
     spawnPoints,
     mapCatalog,
     terrainList,
-    terrainDefinitions,
-    missionCatalog
+    terrainDefinitions
   ] = await Promise.all([
     loadJson("./data/mechs.json"),
     loadJson("./data/weapons.json"),
@@ -29,12 +28,10 @@ export async function loadGameData() {
     loadJson("./data/spawnPoints.json"),
     loadJson("./data/maps/mapList.json").catch(() => null),
     loadJson("./data/terrain/terrainList.json").catch(() => []),
-    loadJson("./data/terrain/terrain.json").catch(() => ({})),
-    loadJson("./data/missions.json").catch(() => ({ defaultMissionId: null, missions: [] }))
+    loadJson("./data/terrain/terrain.json").catch(() => ({}))
   ]);
 
-  const hydratedMapCatalog = await hydrateMapCatalog(mapCatalog).catch(() => mapCatalog);
-  const defaultMap = await loadDefaultMap(hydratedMapCatalog).catch(() => null);
+  const defaultMap = await loadDefaultMap(mapCatalog).catch(() => null);
   const normalizedDefaultMap = defaultMap ? normalizeMapDefinition(defaultMap) : null;
 
   return {
@@ -50,29 +47,13 @@ export async function loadGameData() {
     spawnPoints: normalizedDefaultMap
       ? mapSpawnsToLegacySpawnPoints(getMapSpawns(normalizedDefaultMap))
       : spawnPoints,
-    mapCatalog: hydratedMapCatalog,
+    mapCatalog,
     terrainList,
     terrainDefinitions,
-    missionCatalog,
     defaultMap: normalizedDefaultMap
   };
 }
 
-
-async function hydrateMapCatalog(mapCatalog) {
-  const maps = Array.isArray(mapCatalog?.maps) ? mapCatalog.maps : [];
-  if (!maps.length) return mapCatalog;
-
-  const hydratedMaps = await Promise.all(maps.map(async (entry) => ({
-    ...entry,
-    definition: entry?.path ? await loadJson(entry.path).catch(() => null) : null
-  })));
-
-  return {
-    ...mapCatalog,
-    maps: hydratedMaps
-  };
-}
 async function loadJson(path) {
   const response = await fetch(path);
 
