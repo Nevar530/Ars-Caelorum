@@ -3,6 +3,8 @@ export function renderFrontScreen(state, refs) {
   const main = refs?.main;
   const titleScreen = refs?.titleScreen;
   const missionSelectScreen = refs?.missionSelectScreen;
+  const titleStartButton = refs?.titleStartButton;
+  const titleMissionSelectButton = refs?.titleMissionSelectButton;
   const missionList = refs?.missionList;
   const missionDescription = refs?.missionDescription;
   const missionStartButton = refs?.missionStartButton;
@@ -14,6 +16,9 @@ export function renderFrontScreen(state, refs) {
   const selectedMapId = state?.ui?.shell?.selectedMapId ?? null;
   const maps = getMissionMaps(state);
   const selectedMap = maps.find((entry) => entry.id === selectedMapId) ?? maps[0] ?? null;
+  const titleMenuIndex = Number.isFinite(Number(state?.ui?.shell?.titleMenuIndex))
+    ? Number(state.ui.shell.titleMenuIndex)
+    : 0;
 
   frontScreen.classList.toggle("is-hidden", screen === "game");
   main.classList.toggle("is-hidden", screen !== "game");
@@ -22,6 +27,14 @@ export function renderFrontScreen(state, refs) {
 
   if (missionBackButton) {
     missionBackButton.disabled = false;
+  }
+
+  if (titleStartButton) {
+    titleStartButton.classList.toggle("is-selected", screen === "title" && titleMenuIndex === 0);
+  }
+
+  if (titleMissionSelectButton) {
+    titleMissionSelectButton.classList.toggle("is-selected", screen === "title" && titleMenuIndex === 1);
   }
 
   if (missionList) {

@@ -94,7 +94,8 @@ export function createState({
 
       shell: {
         screen: "title",
-        selectedMapId: content?.mapCatalog?.defaultMapId ?? "default"
+        selectedMapId: content?.mapCatalog?.defaultMapId ?? "default",
+        titleMenuIndex: 0
       }
     },
 

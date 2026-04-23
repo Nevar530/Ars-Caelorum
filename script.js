@@ -165,6 +165,23 @@ async function init() {
       gameController.render();
     },
 
+    moveTitleSelection(delta) {
+      const count = 2;
+      const current = Number.isFinite(Number(state.ui.shell.titleMenuIndex))
+        ? Number(state.ui.shell.titleMenuIndex)
+        : 0;
+      state.ui.shell.titleMenuIndex = (current + delta + count) % count;
+      gameController.render();
+    },
+
+    confirmTitleSelection() {
+      if ((state.ui.shell.titleMenuIndex ?? 0) === 1) {
+        actions.openMissionSelect();
+        return;
+      }
+      actions.openMissionSelect();
+    },
+
     selectMissionMap(mapId) {
       if (!mapId) return;
       state.ui.shell.selectedMapId = mapId;
@@ -180,6 +197,17 @@ async function init() {
       const mapDefinition = await loadMapDefinitionByPath(selectedEntry.path);
       state.ui.shell.screen = "game";
       gameController.loadMapAndUnits(mapDefinition);
+    },
+
+    moveMissionSelection(delta) {
+      const maps = Array.isArray(state.content?.mapCatalog?.maps)
+        ? state.content.mapCatalog.maps.filter((entry) => entry?.id === "default" || entry?.id === "embark_test")
+        : [];
+      if (!maps.length) return;
+
+      const currentIndex = Math.max(0, maps.findIndex((entry) => entry?.id === state.ui.shell.selectedMapId));
+      const nextIndex = (currentIndex + delta + maps.length) % maps.length;
+      actions.selectMissionMap(maps[nextIndex].id);
     },
     
     setEditorMode() {

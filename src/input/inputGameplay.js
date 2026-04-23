@@ -17,6 +17,9 @@ export function bindGameplayInput(state, refs, actions) {
 
   window.addEventListener("keydown", (event) => {
     if (state?.ui?.shell?.screen && state.ui.shell.screen !== "game") {
+      if (handleShellKeys(event, state, actions)) {
+        event.preventDefault();
+      }
       return;
     }
 
@@ -306,6 +309,57 @@ if (
 
     if (isCancel) {
       actions.cancelAction();
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+function handleShellKeys(event, state, actions) {
+  const screen = state?.ui?.shell?.screen ?? "game";
+  if (screen === "game") return false;
+
+  const key = event.key.toLowerCase();
+
+  if (screen === "title") {
+    if (key === "arrowup" || key === "w" || key === "arrowleft" || key === "a") {
+      actions.moveTitleSelection?.(-1);
+      return true;
+    }
+
+    if (key === "arrowdown" || key === "s" || key === "arrowright" || key === "d") {
+      actions.moveTitleSelection?.(1);
+      return true;
+    }
+
+    if (key === "enter" || key === " ") {
+      actions.confirmTitleSelection?.();
+      return true;
+    }
+
+    return false;
+  }
+
+  if (screen === "mission-select") {
+    if (key === "arrowup" || key === "w") {
+      actions.moveMissionSelection?.(-1);
+      return true;
+    }
+
+    if (key === "arrowdown" || key === "s") {
+      actions.moveMissionSelection?.(1);
+      return true;
+    }
+
+    if (key === "escape" || key === "backspace") {
+      actions.showTitleScreen?.();
+      return true;
+    }
+
+    if (key === "enter" || key === " ") {
+      actions.startSelectedMission?.();
       return true;
     }
   }
