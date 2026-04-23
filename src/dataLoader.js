@@ -1,4 +1,4 @@
-import { normalizeMapDefinition, getMapSpawns } from "./map.js";
+import { normalizeMapDefinition } from "./map.js";
 
 export async function loadGameData() {
   const [

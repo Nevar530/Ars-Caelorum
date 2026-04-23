@@ -58,7 +58,7 @@ async function init() {
 
   const state = createState({
     map: initialMap,
-    units: instantiateTestUnits(content, initialMap),
+    units: [],
     rotation: 0,
     content
   });

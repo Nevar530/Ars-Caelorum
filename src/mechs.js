@@ -248,101 +248,18 @@ export function instantiateTestUnits(content, map = null) {
   }
 
   const runtimeMap = map ?? content?.defaultMap ?? null;
-  const spawnIndex = buildRuntimeSpawnIndex(content, runtimeMap);
+  const spawnIndex = buildRuntimeSpawnIndex(runtimeMap);
   const startStateUnits = buildUnitsFromStartState(content, runtimeMap, spawnIndex);
   if (Array.isArray(startStateUnits) && startStateUnits.length) {
     return startStateUnits;
   }
 
-  const atSpawn = (spawnId, fallbackX, fallbackY) => {
-    const spawn = spawnIndex.get(spawnId);
-    return {
-      x: Number(spawn?.x ?? fallbackX),
-      y: Number(spawn?.y ?? fallbackY)
-    };
-  };
+  console.warn("No valid map-authored startState.deployments found for map.", {
+    mapId: runtimeMap?.id ?? null
+  });
+  return [];
 
-  const playerPilot = atSpawn("player_1", 30, 30);
-  const playerMech = atSpawn("player_2", 34, 30);
-  const enemyPilot = atSpawn("enemy_1", 10, 10);
-  const enemyMech = atSpawn("enemy_2", 14, 10);
 
-  const setup = [
-    {
-      unitType: "pilot",
-      definitionId: "pilot_biggs",
-      instanceId: "player-pilot-1",
-      x: playerPilot.x,
-      y: playerPilot.y,
-      team: "player",
-      controlType: "PC",
-      spawnId: "player_1"
-    },
-    {
-      unitType: "mech",
-      definitionId: "mech_a",
-      pilotId: "pilot_biggs",
-      instanceId: "player-mech-1",
-      x: playerMech.x,
-      y: playerMech.y,
-      team: "player",
-      controlType: "PC",
-      spawnId: "player_2"
-    },
-    {
-      unitType: "pilot",
-      definitionId: "pilot_tom",
-      instanceId: "enemy-pilot-1",
-      x: enemyPilot.x,
-      y: enemyPilot.y,
-      team: "enemy",
-      controlType: "CPU",
-      spawnId: "enemy_1"
-    },
-    {
-      unitType: "mech",
-      definitionId: "mech_c",
-      pilotId: "pilot_tom",
-      instanceId: "enemy-mech-1",
-      x: enemyMech.x,
-      y: enemyMech.y,
-      team: "enemy",
-      controlType: "CPU",
-      spawnId: "enemy_2"
-    }
-  ];
-
-  return setup
-    .map((entry) => {
-      if (entry.unitType === "pilot") {
-        const pilot = getDefinitionById(pilotDefinitions, entry.definitionId, 0);
-        if (!pilot) return null;
-
-        return createPilotInstance(pilot, {
-          instanceId: entry.instanceId,
-          x: entry.x,
-          y: entry.y,
-          team: entry.team,
-          controlType: entry.controlType,
-          spawnId: entry.spawnId ?? null
-        });
-      }
-
-      const mech = getDefinitionById(mechDefinitions, entry.definitionId, 0);
-      const pilot = getDefinitionById(pilotDefinitions, entry.pilotId, 0);
-      if (!mech) return null;
-
-      return createMechInstance(mech, {
-        instanceId: entry.instanceId,
-        x: entry.x,
-        y: entry.y,
-        team: entry.team,
-        controlType: entry.controlType,
-        pilot,
-        spawnId: entry.spawnId ?? null
-      });
-    })
-    .filter(Boolean);
 }
 
 export function getUnitById(units, instanceId) {
