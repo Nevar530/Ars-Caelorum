@@ -8,7 +8,7 @@
     "core": 18,
     "shield": 6,
     "aether": 3,
-    "move": 3,
+    "move": 12,
     "weapons": [
       "rifle_01",
       "pistol_01",
@@ -50,7 +50,7 @@
     "core": 14,
     "shield": 4,
     "aether": 2,
-    "move": 2,
+    "move": 15,
     "weapons": [
       "machinegun_01",
       "srm_01",
@@ -92,7 +92,7 @@
     "core": 22,
     "shield": 8,
     "aether": 2,
-    "move": 2,
+    "move": 9,
     "weapons": [
       "cannon_01",
       "lrm_01"
@@ -137,7 +137,7 @@
     "core": 16,
     "shield": 5,
     "aether": 6,
-    "move": 3,
+    "move": 12,
     "weapons": [
       "sniper_01",
       "rifle_01",

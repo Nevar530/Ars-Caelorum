@@ -1,7 +1,7 @@
 import { getUnitById } from "../mechs.js";
 import { getActiveBody } from "../actors/actorResolver.js";
 import { CAMERA_ZOOM_CONFIG } from "../config.js";
-import { getUnitFootprint, normalizeScale } from "../scale/scaleMath.js";
+import { normalizeScale } from "../scale/scaleMath.js";
 
 export function getActiveUnit(state) {
   const activeBody = getActiveBody(state);
@@ -50,14 +50,7 @@ export function getFocusStep(state) {
   const activeUnit = getActiveUnit(state);
 
   if (state.ui.mode === "move" && activeUnit) {
-    const footprint = getUnitFootprint(activeUnit);
-
-    if ((activeUnit.scale ?? activeUnit.unitType ?? "mech") === "mech") {
-      return {
-        dx: Math.max(1, footprint.width),
-        dy: Math.max(1, footprint.height)
-      };
-    }
+    return { dx: 1, dy: 1 };
   }
 
   return { dx: 1, dy: 1 };
