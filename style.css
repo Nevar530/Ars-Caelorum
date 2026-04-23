@@ -782,6 +782,70 @@ button:disabled {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
 }
 
+.combat-overlay.is-splash-visible {
+  align-items: center;
+  justify-content: center;
+}
+
+.combat-splash-card {
+  min-width: min(78vw, 520px);
+  max-width: min(88vw, 720px);
+  padding: 26px 34px 28px;
+  border-radius: 20px;
+  border: 1px solid rgba(240, 176, 0, 0.65);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%),
+    rgba(10, 15, 21, 0.96);
+  box-shadow:
+    0 22px 52px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  text-align: center;
+  animation: combatSplashPulse 1800ms ease-out both;
+}
+
+.combat-splash-round {
+  font-size: clamp(20px, 2vw, 26px);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #f0b000;
+  text-shadow: 0 0 16px rgba(240, 176, 0, 0.18);
+}
+
+.combat-splash-phase {
+  margin-top: 10px;
+  font-size: clamp(34px, 4vw, 52px);
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f6f1d5;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+@keyframes combatSplashPulse {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+
+  12% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  84% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(1.01);
+  }
+}
+
 /* =========================================
    HUD LAYOUT
 ========================================= */

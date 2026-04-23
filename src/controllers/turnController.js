@@ -100,7 +100,7 @@ export function createTurnController({
 
     logDev(`Round advanced to ${state.turn.round}.`);
     logDev("Phase changed to MOVE.");
-    showSplash(`ROUND ${state.turn.round} — MOVEMENT PHASE`);
+    showSplash(`ROUND ${state.turn.round} — MOVE PHASE`);
 
     render();
   }
@@ -169,7 +169,7 @@ export function createTurnController({
 
     logDev("Combat started.");
     logDev("Phase changed to MOVE.");
-    showSplash(`ROUND ${state.turn.round} — MOVEMENT PHASE`);
+    showSplash(`ROUND ${state.turn.round} — MOVE PHASE`);
 
     render();
   }

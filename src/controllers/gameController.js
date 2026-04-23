@@ -36,7 +36,7 @@ export function createGameController({
     state.turn.splashKind = null;
   }
 
-  function showSplash(text, kind = "round-phase", durationMs = 1200) {
+  function showSplash(text, kind = "round-phase", durationMs = 1800) {
     state.turn.splashText = text;
     state.turn.splashVisible = true;
     state.turn.splashKind = kind;
