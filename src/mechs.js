@@ -93,7 +93,7 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
     abilityPoints: Number(overrides.abilityPoints ?? definition.abilityPoints ?? 0),
 
     team: overrides.team ?? "player",
-    controlType: overrides.controlType ?? "PC",
+    controlType: normalizeControlType(overrides.controlType, overrides.team ?? "player"),
     spawnId: overrides.spawnId ?? null,
     spawnLabel: overrides.spawnLabel ?? null,
 
@@ -154,8 +154,10 @@ function buildRuntimeSpawnIndex(map = null) {
   return index;
 }
 
-function normalizeControlType(value) {
-  return value === "CPU" ? "CPU" : "PC";
+function normalizeControlType(value, team = "player") {
+  if (value === "CPU") return "CPU";
+  if (value === "PC") return "PC";
+  return team === "enemy" ? "CPU" : "PC";
 }
 
 function normalizeTeam(value) {
@@ -188,7 +190,7 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
 
   for (const deployment of deployments) {
     const team = normalizeTeam(deployment?.team);
-    const controlType = normalizeControlType(deployment?.controlType);
+    const controlType = normalizeControlType(deployment?.controlType, team);
     const startEmbarked = Boolean(deployment?.startEmbarked);
 
     if (!includePlayerDeployments && controlType === "PC") continue;

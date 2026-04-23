@@ -21,8 +21,10 @@ function nextRuntimeUnitId() {
   return `unit_${String(runtimeUnitCounter).padStart(4, "0")}`;
 }
 
-function normalizeControlType(controlType) {
-  return controlType === "CPU" ? "CPU" : "PC";
+function normalizeControlType(controlType, team = "player") {
+  if (controlType === "CPU") return "CPU";
+  if (controlType === "PC") return "PC";
+  return team === "enemy" ? "CPU" : "PC";
 }
 
 function normalizeTeam(team) {
@@ -70,8 +72,8 @@ export function createRuntimeUnit({
     pilotId: pilot.id,
     pilotName: pilot.name,
 
-    controlType: normalizeControlType(controlType),
     team: normalizeTeam(team),
+    controlType: normalizeControlType(controlType, normalizeTeam(team)),
 
     spawnId: spawnPoint.id,
     x: spawnPoint.x,
