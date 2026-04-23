@@ -1,4 +1,4 @@
-import { normalizeMapDefinition } from "./map.js";
+import { normalizeMapDefinition, getMapSpawns } from "./map.js";
 
 export async function loadGameData() {
   const [
@@ -50,6 +50,12 @@ export async function loadGameData() {
     terrainDefinitions,
     defaultMap: normalizedDefaultMap
   };
+}
+
+export async function loadMapDefinitionByPath(path) {
+  if (!path) return null;
+  const map = await loadJson(path);
+  return normalizeMapDefinition(map);
 }
 
 async function loadJson(path) {
