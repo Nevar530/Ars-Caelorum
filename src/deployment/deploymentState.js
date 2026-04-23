@@ -45,7 +45,8 @@ export function createDeploymentUiState() {
     roster: [],
     listOpen: false,
     listIndex: 0,
-    selectedCellKey: null
+    selectedCellKey: null,
+    menuFocus: "map"
   };
 }
 
@@ -88,7 +89,8 @@ export function initializeDeploymentState(state) {
     roster,
     listOpen: false,
     listIndex: 0,
-    selectedCellKey: null
+    selectedCellKey: null,
+    menuFocus: "map"
   };
 
   if (state.ui.deployment.active) {
@@ -127,6 +129,10 @@ export function getDeploymentReady(state) {
   return getDeploymentPlacementCount(state) >= Math.max(0, Number(state.ui.deployment.requiredCount ?? 0));
 }
 
+export function isDeploymentMenuFocused(state) {
+  return state?.ui?.deployment?.menuFocus === "start";
+}
+
 export function getDeploymentAvailableRoster(state) {
   const placed = new Set(getDeployedPlayerUnits(state).map((unit) => unit.instanceId));
   return (state?.ui?.deployment?.roster ?? []).filter((entry) => !placed.has(entry.instanceId));
@@ -148,6 +154,7 @@ export function openDeploymentListAtFocus(state) {
   state.ui.deployment.listOpen = true;
   state.ui.deployment.listIndex = Math.max(0, Math.min(state.ui.deployment.listIndex ?? 0, available.length - 1));
   state.ui.deployment.selectedCellKey = `${state.focus.x},${state.focus.y}`;
+  state.ui.deployment.menuFocus = "map";
   return true;
 }
 
@@ -202,6 +209,7 @@ export function confirmDeploymentPlacement(state) {
   state.focus.y = y;
   state.focus.scale = "pilot";
   closeDeploymentList(state);
+  state.ui.deployment.menuFocus = getDeploymentReady(state) ? "start" : "map";
   return true;
 }
 
@@ -211,6 +219,9 @@ export function removeDeploymentPlacementAtFocus(state) {
   state.units = state.units.filter((entry) => entry?.instanceId !== unit.instanceId);
   if (state.selection.unitId === unit.instanceId) {
     state.selection.unitId = null;
+  }
+  if (state?.ui?.deployment) {
+    state.ui.deployment.menuFocus = "map";
   }
   return true;
 }

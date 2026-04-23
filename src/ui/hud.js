@@ -5,7 +5,7 @@ import { getUnitAt, getUnitById } from "../mechs.js";
 import { getSelectedAbilityMenuItems, getSelectedAttackMenuItems, getSelectedItemMenuItems, isCommandMenuItemDisabled } from "../action.js";
 import { getLineOfSightResult } from "../los.js";
 import { getActiveActor, getActiveBody, getEmbarkedPilotForMech } from "../actors/actorResolver.js";
-import { getDeploymentAvailableRoster, getDeploymentPlacedUnitAt, getDeploymentPlacementCount, getDeploymentReady, isDeploymentActive } from "../deployment/deploymentState.js";
+import { getDeploymentAvailableRoster, getDeploymentPlacedUnitAt, getDeploymentPlacementCount, getDeploymentReady, isDeploymentActive, isDeploymentMenuFocused } from "../deployment/deploymentState.js";
 
 /* =========================
    INPUT
@@ -197,20 +197,20 @@ function renderCenterPanel(state) {
         </div>
 
         ${listOpen ? `
-          <button class="hud-command-button" data-hud-action="confirm-deployment-placement">
+          <button class="hud-command-button compact" data-hud-action="confirm-deployment-placement">
             Confirm Unit
           </button>
         ` : placedUnit ? `
-          <button class="hud-command-button" data-hud-action="remove-deployment-placement">
+          <button class="hud-command-button compact" data-hud-action="remove-deployment-placement">
             Remove Unit
           </button>
         ` : `
-          <button class="hud-command-button" data-hud-action="open-deployment-list">
+          <button class="hud-command-button compact" data-hud-action="open-deployment-list">
             Open Unit List
           </button>
         `}
 
-        <button class="hud-command-button" data-hud-action="start-combat" ${ready ? '' : 'disabled'}>
+        <button class="hud-command-button compact ${isDeploymentMenuFocused(state) ? 'is-selected' : ''}" data-hud-action="start-combat" ${ready ? '' : 'disabled'}>
           Begin Mission
         </button>
       `;

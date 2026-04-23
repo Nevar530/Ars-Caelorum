@@ -992,6 +992,12 @@ button:disabled {
 .hud-command-button.compact:hover:not(:disabled) {
   background: #233343;
 }
+.hud-command-button.compact.is-selected {
+  background: rgba(240, 176, 0, 0.14);
+  border-color: rgba(240, 176, 0, 0.7);
+  color: #fff4c2;
+}
+
 
 .hud-command-key {
   font-size: 10px;

@@ -100,7 +100,8 @@ export function createState({
         roster: [],
         listOpen: false,
         listIndex: 0,
-        selectedCellKey: null
+        selectedCellKey: null,
+        menuFocus: "map"
       },
 
       shell: {

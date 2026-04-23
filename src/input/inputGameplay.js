@@ -1,5 +1,5 @@
 import { clampFocusToBoard, getPathToTile } from "../movement.js";
-import { closeDeploymentList, confirmDeploymentPlacement, getDeploymentPlacedUnitAt, isDeploymentActive, moveDeploymentListSelection, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "../deployment/deploymentState.js";
+import { closeDeploymentList, confirmDeploymentPlacement, getDeploymentPlacedUnitAt, getDeploymentReady, isDeploymentActive, isDeploymentMenuFocused, moveDeploymentListSelection, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "../deployment/deploymentState.js";
 import { moveAbilitySelection, moveAttackSelection, moveItemSelection, updateActionTargetPreview } from "../action.js";
 import {
   getActiveUnit,
@@ -167,6 +167,21 @@ function handleDeploymentKeys(key, state, actions) {
     }
 
     return false;
+  }
+
+  if (isDeploymentMenuFocused(state)) {
+    if (key === "enter" || key === " ") {
+      if (getDeploymentReady(state)) {
+        actions.startCombat?.();
+      }
+      return true;
+    }
+
+    if (key === "escape" || key === "backspace" || key === "arrowleft" || key === "a" || key === "arrowright" || key === "d" || key === "arrowup" || key === "w" || key === "arrowdown" || key === "s") {
+      state.ui.deployment.menuFocus = "map";
+      actions.render();
+      return true;
+    }
   }
 
   if (key === "enter" || key === " ") {
