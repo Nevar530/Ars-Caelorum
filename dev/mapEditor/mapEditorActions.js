@@ -64,6 +64,38 @@ export function setMapEditorSpawnBrush(state, team, index) {
   editor.selectedSpawnIndex = Math.max(0, Math.min(3, Number(index) || 0));
 }
 
+
+export function setMapEditorDeploymentUnitType(state, unitType) {
+  const editor = ensureMapEditorState(state);
+  editor.selectedDeploymentUnitType = unitType === 'mech' ? 'mech' : 'pilot';
+}
+
+function getMapEditorDeploymentCells(state) {
+  const startState = ensureMapStartState(state.map);
+  startState.deploymentCells = startState.deploymentCells
+    .filter((cell) => Number.isFinite(Number(cell?.x)) && Number.isFinite(Number(cell?.y)))
+    .map((cell) => ({
+      x: Number(cell.x),
+      y: Number(cell.y),
+      unitType: cell.unitType === 'mech' ? 'mech' : 'pilot',
+      controlType: cell.controlType === 'CPU' ? 'CPU' : 'PC'
+    }));
+  return startState.deploymentCells;
+}
+
+function upsertDeploymentCell(state, x, y, unitType = 'pilot', controlType = 'PC') {
+  const cells = getMapEditorDeploymentCells(state);
+  const key = `${x},${y}`;
+  const next = cells.filter((cell) => `${cell.x},${cell.y}` !== key);
+  next.push({ x, y, unitType: unitType === 'mech' ? 'mech' : 'pilot', controlType: controlType === 'CPU' ? 'CPU' : 'PC' });
+  state.map.startState.deploymentCells = next;
+}
+
+function removeDeploymentCell(state, x, y) {
+  const cells = getMapEditorDeploymentCells(state);
+  state.map.startState.deploymentCells = cells.filter((cell) => cell.x !== x || cell.y !== y);
+}
+
 export function setMapEditorPendingResize(state, width, height, anchor = 'topLeft') {
   const editor = ensureMapEditorState(state);
   editor.pendingResize = {
@@ -88,6 +120,15 @@ function ensureMapStartState(map) {
   }
   if (!Array.isArray(map.startState.deployments)) {
     map.startState.deployments = [];
+  }
+  if (!Array.isArray(map.startState.deploymentCells)) {
+    map.startState.deploymentCells = [];
+  }
+  if (!map.startState.playerDeployment || typeof map.startState.playerDeployment !== 'object') {
+    map.startState.playerDeployment = { unitType: 'pilot', requiredCount: 2 };
+  }
+  if (!map.startState.startMode) {
+    map.startState.startMode = 'authored';
   }
   return map.startState;
 }
@@ -221,6 +262,18 @@ function applySpawnBrush(state, tile, editor) {
   syncContentSpawnPointsFromMap(state);
 }
 
+
+function applyDeploymentBrush(state, tile, editor) {
+  const startState = ensureMapStartState(state.map);
+  startState.startMode = 'deployment';
+  startState.playerDeployment = {
+    ...(startState.playerDeployment ?? {}),
+    unitType: editor.selectedDeploymentUnitType === 'mech' ? 'mech' : 'pilot',
+    requiredCount: Number(startState.playerDeployment?.requiredCount ?? 2) || 2
+  };
+  upsertDeploymentCell(state, tile.x, tile.y, editor.selectedDeploymentUnitType, 'PC');
+}
+
 function applyEraseBrush(state, tile) {
   const defaults = getTerrainDefaults(state, 'grass');
   tile.terrainTypeId = defaults.terrainTypeId;
@@ -233,6 +286,7 @@ function applyEraseBrush(state, tile) {
     }
   }
   tile.spawnId = null;
+  removeDeploymentCell(state, tile.x, tile.y);
   syncContentSpawnPointsFromMap(state);
 }
 
@@ -259,6 +313,9 @@ export function applyMapEditorAtTile(state, originX, originY) {
       case MAP_EDITOR_MODES.SPAWN:
         applySpawnBrush(state, tile, editor);
         break;
+      case MAP_EDITOR_MODES.DEPLOYMENT:
+        applyDeploymentBrush(state, tile, editor);
+        break;
       case MAP_EDITOR_MODES.ERASE:
         applyEraseBrush(state, tile);
         break;
@@ -280,6 +337,11 @@ export function sampleMapEditorFromTile(state, x, y) {
   editor.selectedHeight = Number(tile.elevation ?? 0);
   editor.selectedTerrainPresetId = tile.terrainTypeId ?? 'grass';
   editor.selectedMovementClass = tile.movementClass ?? 'clear';
+
+  const deploymentCell = getMapEditorDeploymentCells(state).find((cell) => cell.x === x && cell.y === y);
+  if (deploymentCell) {
+    editor.selectedDeploymentUnitType = deploymentCell.unitType ?? 'pilot';
+  }
 
   if (tile.spawnId) {
     const parsed = parseSpawnId(tile.spawnId);
@@ -333,6 +395,11 @@ export function resizeRuntimeMap(state, width, height) {
       if (spawn.x < 0 || spawn.y < 0 || spawn.x >= nextWidth || spawn.y >= nextHeight) return null;
       return { x: spawn.x, y: spawn.y };
     });
+  }
+
+  blank.startState = structuredClone(currentDefinition.startState ?? blank.startState);
+  if (Array.isArray(blank.startState?.deploymentCells)) {
+    blank.startState.deploymentCells = blank.startState.deploymentCells.filter((cell) => cell.x >= 0 && cell.y >= 0 && cell.x < nextWidth && cell.y < nextHeight);
   }
 
   return replaceRuntimeMapFromDefinition(state, blank);

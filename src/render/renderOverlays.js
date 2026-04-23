@@ -7,6 +7,7 @@ import {
   isDetailTileUniform
 } from "../map.js";
 import { getUnitById } from "../mechs.js";
+import { getDeploymentPlacedUnitAt, isDeploymentActive, isDeploymentCell } from "../deployment/deploymentState.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { getTopdownCellSize, projectScene, projectTileCenter, projectTopDown } from "./projection.js";
 import {
@@ -80,6 +81,26 @@ export function drawSceneActionOverlayForTile(state, item, parent, options = DEF
   }
 
   drawOverlayForTile(state, item, "action-preview-tile", fill, stroke, parent);
+}
+
+
+export function drawSceneDeploymentOverlayForTile(state, item, parent, options = DEFAULT_DRAW_OPTIONS) {
+  const { drawShapes } = normalizeOptions(options);
+  if (!isDeploymentActive(state)) return;
+  if (!drawShapes) return;
+  if (!isDeploymentCell(state, item.x, item.y)) return;
+  if (shouldUseTerrainTileOverlay(state, item)) return;
+
+  const placedUnit = getDeploymentPlacedUnitAt(state, item.x, item.y);
+  const fill = placedUnit ? "rgba(66, 196, 114, 0.24)" : "rgba(0, 224, 255, 0.16)";
+  const stroke = placedUnit ? "rgba(66, 196, 114, 1)" : "rgba(0, 224, 255, 1)";
+
+  if (state.ui.viewMode === "top") {
+    drawTopOverlayBox(state, item.screenX, item.screenY, fill, stroke, parent);
+    return;
+  }
+
+  drawOverlayForTile(state, item, "deployment-preview-tile", fill, stroke, parent);
 }
 
 export function drawSceneFocusOverlayForTile(state, item, parent, options = DEFAULT_DRAW_OPTIONS) {

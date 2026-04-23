@@ -1,6 +1,6 @@
 {
   "id": "002_test",
-  "name": "002 Test Blank 32x32",
+  "name": "002 Deployment Test",
   "width": 32,
   "height": 32,
   "terrainTypes": [
@@ -19,8 +19,14 @@
       null
     ],
     "enemy": [
-      null,
-      null,
+      {
+        "x": 12,
+        "y": 5
+      },
+      {
+        "x": 18,
+        "y": 5
+      },
       null,
       null
     ]
@@ -11290,5 +11296,96 @@
       "summary": null,
       "movementClass": "clear"
     }
-  ]
+  ],
+  "startState": {
+    "startMode": "deployment",
+    "playerDeployment": {
+      "unitType": "pilot",
+      "requiredCount": 2
+    },
+    "deploymentCells": [
+      {
+        "x": 12,
+        "y": 25,
+        "unitType": "pilot",
+        "controlType": "PC"
+      },
+      {
+        "x": 14,
+        "y": 25,
+        "unitType": "pilot",
+        "controlType": "PC"
+      },
+      {
+        "x": 16,
+        "y": 25,
+        "unitType": "pilot",
+        "controlType": "PC"
+      },
+      {
+        "x": 18,
+        "y": 25,
+        "unitType": "pilot",
+        "controlType": "PC"
+      },
+      {
+        "x": 13,
+        "y": 27,
+        "unitType": "pilot",
+        "controlType": "PC"
+      },
+      {
+        "x": 17,
+        "y": 27,
+        "unitType": "pilot",
+        "controlType": "PC"
+      }
+    ],
+    "deployments": [
+      {
+        "pilotDefinitionId": "pilot_biggs",
+        "pilotInstanceId": "player-pilot-1",
+        "pilotSpawnId": "",
+        "mechDefinitionId": "",
+        "mechInstanceId": "",
+        "mechSpawnId": "",
+        "team": "player",
+        "controlType": "PC",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_wedge",
+        "pilotInstanceId": "player-pilot-2",
+        "pilotSpawnId": "",
+        "mechDefinitionId": "",
+        "mechInstanceId": "",
+        "mechSpawnId": "",
+        "team": "player",
+        "controlType": "PC",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_tom",
+        "pilotInstanceId": "enemy-pilot-1",
+        "pilotSpawnId": "enemy_1",
+        "mechDefinitionId": "",
+        "mechInstanceId": "",
+        "mechSpawnId": "",
+        "team": "enemy",
+        "controlType": "CPU",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_jerri",
+        "pilotInstanceId": "enemy-pilot-2",
+        "pilotSpawnId": "enemy_2",
+        "mechDefinitionId": "",
+        "mechInstanceId": "",
+        "mechSpawnId": "",
+        "team": "enemy",
+        "controlType": "CPU",
+        "startEmbarked": false
+      }
+    ]
+  }
 }

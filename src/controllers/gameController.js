@@ -10,6 +10,7 @@ import { renderHud } from "../ui/hud.js";
 import { renderHelpDrawer } from "../ui/helpDrawer.js";
 import { renderAll } from "../render.js";
 import { cloneMapDefinition, resetMap } from "../map.js";
+import { initializeDeploymentState, resetDeploymentState } from "../deployment/deploymentState.js";
 
 export function createGameController({
   state,
@@ -103,7 +104,8 @@ export function createGameController({
   function loadMapAndUnits(mapDefinition = null) {
     const sourceMap = mapDefinition ?? state.mission?.sourceMap ?? state.content?.defaultMap ?? null;
     state.map = resetMap(sourceMap);
-    state.units = instantiateTestUnits(state.content, state.map);
+    const isDeploymentMap = state.map?.startState?.startMode === "deployment";
+    state.units = instantiateTestUnits(state.content, state.map, { includePlayerDeployments: !isDeploymentMap });
     state.mission.sourceMap = cloneMapDefinition(sourceMap);
 
     state.rotation = 0;
@@ -112,6 +114,12 @@ export function createGameController({
     state.ui.viewMode = "iso";
 
     resetCombatToSetup();
+
+    if (isDeploymentMap) {
+      initializeDeploymentState(state);
+    } else {
+      resetDeploymentState(state);
+    }
 
     logDev("Map reset and test units reloaded.");
     render();
@@ -122,6 +130,7 @@ export function createGameController({
     hideSplash();
     clearMissionResult(state);
     state.ui.shell.screen = "title";
+    resetDeploymentState(state);
     render();
   }
 

@@ -1,4 +1,5 @@
 import { clampFocusToBoard, getPathToTile } from "../movement.js";
+import { closeDeploymentList, confirmDeploymentPlacement, getDeploymentPlacedUnitAt, isDeploymentActive, moveDeploymentListSelection, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "../deployment/deploymentState.js";
 import { moveAbilitySelection, moveAttackSelection, moveItemSelection, updateActionTargetPreview } from "../action.js";
 import {
   getActiveUnit,
@@ -45,6 +46,11 @@ export function bindGameplayInput(state, refs, actions) {
     }
 
     if (handleViewKeys(key, actions)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (handleDeploymentKeys(key, state, actions)) {
       event.preventDefault();
       return;
     }
@@ -123,6 +129,63 @@ function handleViewKeys(key, actions) {
   if (key === "r") {
     actions.toggleView();
     return true;
+  }
+
+  return false;
+}
+
+
+function handleDeploymentKeys(key, state, actions) {
+  if (!isDeploymentActive(state)) return false;
+
+  if (state.ui.deployment.listOpen) {
+    if (key === "arrowup" || key === "w") {
+      moveDeploymentListSelection(state, -1);
+      actions.render();
+      return true;
+    }
+
+    if (key === "arrowdown" || key === "s") {
+      moveDeploymentListSelection(state, 1);
+      actions.render();
+      return true;
+    }
+
+    if (key === "arrowleft" || key === "a" || key === "arrowright" || key === "d") {
+      return true;
+    }
+
+    if (key === "enter" || key === " ") {
+      actions.confirmDeploymentPlacement?.();
+      return true;
+    }
+
+    if (key === "escape" || key === "backspace") {
+      closeDeploymentList(state);
+      actions.render();
+      return true;
+    }
+
+    return false;
+  }
+
+  if (key === "enter" || key === " ") {
+    const placedUnit = getDeploymentPlacedUnitAt(state, state.focus.x, state.focus.y);
+    if (placedUnit) {
+      actions.removeDeploymentPlacement?.();
+      return true;
+    }
+
+    actions.openDeploymentList?.();
+    return true;
+  }
+
+  if (key === "escape" || key === "backspace") {
+    const removed = removeDeploymentPlacementAtFocus(state);
+    if (removed) {
+      actions.render();
+      return true;
+    }
   }
 
   return false;

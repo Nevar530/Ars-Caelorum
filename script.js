@@ -19,6 +19,7 @@ import { createMovementController } from "./src/controllers/movementController.j
 import { createCombatController } from "./src/controllers/combatController.js";
 import { isCommandMenuItemDisabled } from "./src/action.js";
 import { getMissionMaps } from "./src/ui/frontScreen.js";
+import { confirmDeploymentPlacement, getDeploymentReady, isDeploymentActive, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "./src/deployment/deploymentState.js";
 
 const refs = {
   frontScreen: document.getElementById("frontScreen"),
@@ -315,7 +316,30 @@ async function init() {
 
     },
 
-    startCombat: turnController.startCombat,
+    startCombat() {
+      if (isDeploymentActive(state) && !getDeploymentReady(state)) {
+        return;
+      }
+      turnController.startCombat();
+    },
+
+    openDeploymentList() {
+      if (openDeploymentListAtFocus(state)) {
+        gameController.render();
+      }
+    },
+
+    confirmDeploymentPlacement() {
+      if (confirmDeploymentPlacement(state)) {
+        gameController.render();
+      }
+    },
+
+    removeDeploymentPlacement() {
+      if (removeDeploymentPlacementAtFocus(state)) {
+        gameController.render();
+      }
+    },
     clearTransientUi,
     setActiveUnitByCurrentTurnIndex: turnController.setActiveUnitByCurrentTurnIndex,
     rebuildOrdersAndLog: turnController.rebuildOrdersAndLog,

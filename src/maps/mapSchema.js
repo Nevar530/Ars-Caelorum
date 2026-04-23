@@ -33,6 +33,9 @@ export function createBlankMapDefinition({ id = 'new_map', name = 'New Map', wid
       enemy: [null, null, null, null]
     },
     startState: {
+      startMode: 'authored',
+      playerDeployment: { unitType: 'pilot', requiredCount: 2 },
+      deploymentCells: [],
       deployments: []
     },
     tiles

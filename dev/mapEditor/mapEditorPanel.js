@@ -128,6 +128,7 @@ export function renderMapEditorPanel(root, viewModel = {}) {
               <div>Behavior: <strong>${escapeHtml(selectedTile.movementClass ?? 'clear')}</strong></div>
               <div>Sprite Set: <strong>${escapeHtml(selectedTile.terrainSpriteId ?? '-')}</strong></div>
               <div>Spawn: <strong>${escapeHtml(selectedTile.spawnId ?? '-')}</strong></div>
+              <div>Deploy: <strong>${selectedTile.deploymentCell ? escapeHtml(`${selectedTile.deploymentCell.unitType}/${selectedTile.deploymentCell.controlType}`) : '-'}</strong></div>
               <div style="margin-top:6px; opacity:0.8;">Foot Height ${escapeHtml(selectedSummary?.mechFootElevation ?? '-')} · Enterable ${selectedSummary?.mechEnterable ? 'YES' : 'NO'}</div>
             ` : '<div style="opacity:0.8;">No tile selected.</div>'}
           </div>
@@ -289,9 +290,19 @@ function renderModeFields(editor, terrainPresets, movementClasses) {
           </select>
         </label>
       `;
+    case MAP_EDITOR_MODES.DEPLOYMENT:
+      return `
+        <label style="display:block; grid-column: span 2;">
+          <div>Deploy Brush</div>
+          <select id="ac-map-editor-deployment-unit-type" style="width:100%;">
+            <option value="pilot" ${editor.selectedDeploymentUnitType === 'pilot' ? 'selected' : ''}>pilot / PC</option>
+            <option value="mech" ${editor.selectedDeploymentUnitType === 'mech' ? 'selected' : ''}>mech / PC</option>
+          </select>
+        </label>
+      `;
     case MAP_EDITOR_MODES.ERASE:
       return `
-        <div style="grid-column: span 2; opacity:0.82; align-self:end; padding-bottom:8px;">Erase resets the tile to grass / clear and removes any spawn marker.</div>
+        <div style="grid-column: span 2; opacity:0.82; align-self:end; padding-bottom:8px;">Erase resets the tile to grass / clear and removes any spawn marker or deploy marker.</div>
       `;
     default:
       return '';
@@ -326,6 +337,7 @@ function formatModeLabel(mode) {
   switch (mode) {
     case 'terrainPreset': return 'Terrain Preset';
     case 'movementClass': return 'Tile Behavior';
+    case 'deployment': return 'Deployment';
     default: return mode.charAt(0).toUpperCase() + mode.slice(1);
   }
 }

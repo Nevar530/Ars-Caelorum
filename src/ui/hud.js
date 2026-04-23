@@ -5,6 +5,7 @@ import { getUnitAt, getUnitById } from "../mechs.js";
 import { getSelectedAbilityMenuItems, getSelectedAttackMenuItems, getSelectedItemMenuItems, isCommandMenuItemDisabled } from "../action.js";
 import { getLineOfSightResult } from "../los.js";
 import { getActiveActor, getActiveBody, getEmbarkedPilotForMech } from "../actors/actorResolver.js";
+import { getDeploymentAvailableRoster, getDeploymentPlacedUnitAt, getDeploymentPlacementCount, getDeploymentReady, isDeploymentActive } from "../deployment/deploymentState.js";
 
 /* =========================
    INPUT
@@ -44,6 +45,15 @@ export function bindHudInput(state, refs, actions) {
         break;
       case "start-combat":
         actions.startCombat();
+        break;
+      case "open-deployment-list":
+        actions.openDeploymentList?.();
+        break;
+      case "confirm-deployment-placement":
+        actions.confirmDeploymentPlacement?.();
+        break;
+      case "remove-deployment-placement":
+        actions.removeDeploymentPlacement?.();
         break;
       case "restart-mission":
         actions.resetMap();
@@ -171,6 +181,41 @@ function renderActivePanel(state) {
 
 function renderCenterPanel(state) {
   if (!state.turn.combatStarted) {
+    if (isDeploymentActive(state)) {
+      const placed = getDeploymentPlacementCount(state);
+      const required = Number(state.ui.deployment.requiredCount ?? 0);
+      const ready = getDeploymentReady(state);
+      const listOpen = Boolean(state.ui.deployment.listOpen);
+      const placedUnit = getDeploymentPlacedUnitAt(state, state.focus.x, state.focus.y);
+
+      return `
+        <div class="hud-section-title">Deployment</div>
+
+        <div class="hud-mode-box">
+          <div class="hud-mode-title">Place Units</div>
+          <div class="hud-mode-text">${placed}/${required} placed · Cursor to legal cell · Enter to assign</div>
+        </div>
+
+        ${listOpen ? `
+          <button class="hud-command-button" data-hud-action="confirm-deployment-placement">
+            Confirm Unit
+          </button>
+        ` : placedUnit ? `
+          <button class="hud-command-button" data-hud-action="remove-deployment-placement">
+            Remove Unit
+          </button>
+        ` : `
+          <button class="hud-command-button" data-hud-action="open-deployment-list">
+            Open Unit List
+          </button>
+        `}
+
+        <button class="hud-command-button" data-hud-action="start-combat" ${ready ? '' : 'disabled'}>
+          Begin Mission
+        </button>
+      `;
+    }
+
     return `
       <div class="hud-section-title">Combat</div>
 
@@ -306,6 +351,10 @@ function renderTurnSummary(state) {
 ========================= */
 
 function renderContextPanel(state) {
+  if (isDeploymentActive(state)) {
+    return renderDeploymentPanel(state);
+  }
+
   const tile = getTile(state.map, state.focus.x, state.focus.y);
   const focusedUnit = getUnitAt(state.units, state.focus.x, state.focus.y);
   const activeBody = getActiveBody(state);
@@ -496,4 +545,47 @@ function stat(label, value) {
 
 function facingLabel(f) {
   return ["N", "E", "S", "W"][f] ?? "?";
+}
+
+function renderDeploymentPanel(state) {
+  const available = getDeploymentAvailableRoster(state);
+  const selectedIndex = Math.max(0, Math.min(Number(state.ui.deployment.listIndex ?? 0), Math.max(0, available.length - 1)));
+  const placedUnit = getDeploymentPlacedUnitAt(state, state.focus.x, state.focus.y);
+
+  if (state.ui.deployment.listOpen) {
+    return `
+      <div class="hud-section-title">Available Units</div>
+      <div class="hud-mini-card" style="margin-bottom:8px;">Select pilot for (${state.focus.x}, ${state.focus.y})</div>
+      ${available.length ? available.map((entry, index) => `
+        <button class="hud-menu-button ${index === selectedIndex ? "is-selected" : ""}">
+          ${index === selectedIndex ? "▶ " : ""}${entry.definition?.name ?? entry.pilotDefinitionId}
+        </button>
+      `).join("") : `<div class="hud-mini-card">No available units.</div>`}
+    `;
+  }
+
+  if (placedUnit) {
+    return `
+      <div class="hud-section-title">Placed Unit</div>
+      <div class="hud-mini-card">
+        <div>${placedUnit.name}</div>
+        <div style="opacity:.7;">Press Esc to remove</div>
+      </div>
+      <div class="hud-stat-row">
+        ${stat("SHD", placedUnit.shield)}
+        ${stat("CORE", placedUnit.core)}
+        ${stat("MV", placedUnit.move)}
+        ${stat("CTRL", placedUnit.controlType)}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="hud-section-title">Deploy Tile</div>
+    <div class="hud-mini-card">(${state.focus.x}, ${state.focus.y})</div>
+    <div class="hud-mode-box">
+      <div class="hud-mode-title">Available Pilots</div>
+      <div class="hud-mode-text">${available.length} remaining</div>
+    </div>
+  `;
 }

@@ -162,7 +162,7 @@ function normalizeTeam(value) {
   return value === "enemy" ? "enemy" : "player";
 }
 
-function buildUnitsFromStartState(content, map, spawnIndex) {
+function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
   const mechDefinitions = Array.isArray(content?.mechs) ? content.mechs : [];
   const pilotDefinitions = Array.isArray(content?.pilots) ? content.pilots : [];
   const startState = getMapStartState(map);
@@ -184,24 +184,58 @@ function buildUnitsFromStartState(content, map, spawnIndex) {
       : null;
   };
 
+  const includePlayerDeployments = options.includePlayerDeployments !== false;
+
   for (const deployment of deployments) {
     const team = normalizeTeam(deployment?.team);
     const controlType = normalizeControlType(deployment?.controlType);
     const startEmbarked = Boolean(deployment?.startEmbarked);
 
+    if (!includePlayerDeployments && controlType === "PC") continue;
+
     const pilot = getDefinitionById(pilotDefinitions, deployment?.pilotDefinitionId, 0);
-    const mech = getDefinitionById(mechDefinitions, deployment?.mechDefinitionId, 0);
-    if (!pilot || !mech) continue;
+    const mech = deployment?.mechDefinitionId
+      ? getDefinitionById(mechDefinitions, deployment?.mechDefinitionId, 0)
+      : null;
+    if (!pilot) continue;
 
     const pilotInstanceId = deployment?.pilotInstanceId ?? `${team}-pilot-${pilot.id}`;
-    const mechInstanceId = deployment?.mechInstanceId ?? `${team}-mech-${mech.id}`;
+    const mechInstanceId = mech
+      ? (deployment?.mechInstanceId ?? `${team}-mech-${mech.id}`)
+      : null;
 
     const pilotSpawnId = deployment?.pilotSpawnId ?? null;
     const mechSpawnId = deployment?.mechSpawnId ?? null;
     const pilotPos = pilotSpawnId ? atSpawn(pilotSpawnId) : null;
     const mechPos = mechSpawnId ? atSpawn(mechSpawnId) : null;
 
-    if (!pilotPos || !mechPos) {
+    if (!pilotPos) {
+      console.warn("Skipping deployment with missing map spawn.", {
+        pilotSpawnId,
+        mechSpawnId,
+        deployment
+      });
+      continue;
+    }
+
+    if (!mech) {
+      const pilotUnit = createPilotInstance(pilot, {
+        instanceId: pilotInstanceId,
+        x: pilotPos.x,
+        y: pilotPos.y,
+        team,
+        controlType,
+        spawnId: pilotSpawnId,
+        currentMechId: null,
+        embarked: false,
+        parentMechId: null
+      });
+
+      units.push(pilotUnit);
+      continue;
+    }
+
+    if (!mechPos) {
       console.warn("Skipping deployment with missing map spawn.", {
         pilotSpawnId,
         mechSpawnId,
@@ -239,7 +273,7 @@ function buildUnitsFromStartState(content, map, spawnIndex) {
   return units.length ? units : null;
 }
 
-export function instantiateTestUnits(content, map = null) {
+export function instantiateTestUnits(content, map = null, options = {}) {
   const mechDefinitions = Array.isArray(content?.mechs) ? content.mechs : [];
   const pilotDefinitions = Array.isArray(content?.pilots) ? content.pilots : [];
 
@@ -249,7 +283,7 @@ export function instantiateTestUnits(content, map = null) {
 
   const runtimeMap = map ?? content?.defaultMap ?? null;
   const spawnIndex = buildRuntimeSpawnIndex(runtimeMap);
-  const startStateUnits = buildUnitsFromStartState(content, runtimeMap, spawnIndex);
+  const startStateUnits = buildUnitsFromStartState(content, runtimeMap, spawnIndex, options);
   if (Array.isArray(startStateUnits) && startStateUnits.length) {
     return startStateUnits;
   }

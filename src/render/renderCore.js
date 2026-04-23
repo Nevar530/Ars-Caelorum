@@ -16,6 +16,7 @@ import {
   drawSceneMoveOverlay,
   drawScenePathOverlayForTile,
   drawSceneActionOverlayForTile,
+  drawSceneDeploymentOverlayForTile,
   drawSceneFocusOverlayForTile,
   drawSceneActiveUnitOverlay
 } from "./renderOverlays.js";
@@ -80,6 +81,11 @@ export function renderIso(state, refs) {
       drawLabels: false
     });
 
+    drawSceneDeploymentOverlayForTile(state, item, worldScene, {
+      drawShapes: true,
+      drawLabels: false
+    });
+
     drawSceneFocusOverlayForTile(state, item, worldScene, {
       drawShapes: true,
       drawLabels: false
@@ -134,6 +140,7 @@ export function renderEditor(state, refs) {
     }
   }
 
+  renderEditorDeploymentMarkers(state, editor, layout);
   renderEditorUnitMarkers(state, editor, layout);
   renderEditorFocusMarker(state, editor, layout);
 }
@@ -176,6 +183,24 @@ function getEditorCellRect(layout, x, y) {
     width: layout.cellSize,
     height: layout.cellSize
   };
+}
+
+
+function renderEditorDeploymentMarkers(state, parent, layout) {
+  const cells = Array.isArray(state.map?.startState?.deploymentCells) ? state.map.startState.deploymentCells : [];
+  for (const cell of cells) {
+    const rect = getEditorCellRect(layout, Number(cell.x), Number(cell.y));
+    const marker = svgEl("rect");
+    marker.setAttribute("x", String(rect.x + (layout.cellSize * 0.24)));
+    marker.setAttribute("y", String(rect.y + (layout.cellSize * 0.24)));
+    marker.setAttribute("width", String(Math.max(0, rect.width - (layout.cellSize * 0.48))));
+    marker.setAttribute("height", String(Math.max(0, rect.height - (layout.cellSize * 0.48))));
+    marker.setAttribute("fill", "rgba(0,224,255,0.18)");
+    marker.setAttribute("stroke", "rgba(0,224,255,0.9)");
+    marker.setAttribute("stroke-width", "2");
+    marker.setAttribute("pointer-events", "none");
+    parent.appendChild(marker);
+  }
 }
 
 function renderEditorUnitMarkers(state, parent, layout) {

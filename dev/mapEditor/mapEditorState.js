@@ -7,6 +7,7 @@ export const MAP_EDITOR_MODES = Object.freeze({
   TERRAIN_PRESET: 'terrainPreset',
   MOVEMENT_CLASS: 'movementClass',
   SPAWN: 'spawn',
+  DEPLOYMENT: 'deployment',
   ERASE: 'erase'
 });
 
@@ -36,6 +37,7 @@ export const DEFAULT_MAP_EDITOR_STATE = Object.freeze({
   selectedMovementClass: 'clear',
   selectedSpawnTeam: 'player',
   selectedSpawnIndex: 0,
+  selectedDeploymentUnitType: 'pilot',
   hoverTiles: [],
   statusMessage: '',
   statusTone: 'info',

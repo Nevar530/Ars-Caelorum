@@ -23,6 +23,7 @@ import {
   setMapEditorMode,
   setMapEditorPendingResize,
   setMapEditorSpawnBrush,
+  setMapEditorDeploymentUnitType,
   setMapEditorTerrainPreset,
   setMapEditorStatus,
   getMapEditorDeployments,
@@ -777,6 +778,14 @@ class DevMenu {
       }
     }
 
+    const deploymentCells = Array.isArray(this.appState?.map?.startState?.deploymentCells) ? this.appState.map.startState.deploymentCells : [];
+
+    deploymentCells.forEach((cell, index) => {
+      if (cell.x < 0 || cell.y < 0 || cell.x >= width || cell.y >= height) {
+        issues.push(`Deployment Cell ${index + 1} is out of bounds.`);
+      }
+    });
+
     deployments.forEach((deployment, index) => {
       const label = `Deployment ${index + 1}`;
 
@@ -786,10 +795,12 @@ class DevMenu {
         issues.push(`${label} pilot ${deployment.pilotDefinitionId} is not in pilots data.`);
       }
 
-      if (!deployment.mechDefinitionId) {
+      if (deployment.mechDefinitionId) {
+        if (!mechIds.has(deployment.mechDefinitionId)) {
+          issues.push(`${label} mech ${deployment.mechDefinitionId} is not in mechs data.`);
+        }
+      } else if (deployment.startEmbarked) {
         warnings.push(`${label} is missing Mech ID.`);
-      } else if (!mechIds.has(deployment.mechDefinitionId)) {
-        issues.push(`${label} mech ${deployment.mechDefinitionId} is not in mechs data.`);
       }
 
       if (!deployment.pilotSpawnId) {
@@ -798,10 +809,12 @@ class DevMenu {
         issues.push(`${label} pilot spawn ${deployment.pilotSpawnId} is not on this map.`);
       }
 
-      if (!deployment.mechSpawnId) {
-        warnings.push(`${label} is missing Mech Spawn ID.`);
-      } else if (!spawnIds.has(deployment.mechSpawnId)) {
-        issues.push(`${label} mech spawn ${deployment.mechSpawnId} is not on this map.`);
+      if (deployment.mechDefinitionId) {
+        if (!deployment.mechSpawnId) {
+          warnings.push(`${label} is missing Mech Spawn ID.`);
+        } else if (!spawnIds.has(deployment.mechSpawnId)) {
+          issues.push(`${label} mech spawn ${deployment.mechSpawnId} is not on this map.`);
+        }
       }
     });
 
@@ -858,7 +871,8 @@ class DevMenu {
         terrainTypeId: tile.terrainTypeId ?? 'grass',
         terrainSpriteId: tile.terrainSpriteId ?? null,
         movementClass: tile.movementClass ?? 'clear',
-        spawnId: tile.spawnId ?? null
+        spawnId: tile.spawnId ?? null,
+        deploymentCell: (Array.isArray(this.appState?.map?.startState?.deploymentCells) ? this.appState.map.startState.deploymentCells : []).find((cell) => cell.x === selected.x && cell.y === selected.y) ?? null
       } : null,
       selectedSummary: summary,
       validation,
@@ -941,6 +955,9 @@ class DevMenu {
         setMapEditorSpawnBrush(this.appState, team, (Number(rawIndex) || 1) - 1);
         break;
       }
+      case 'ac-map-editor-deployment-unit-type':
+        setMapEditorDeploymentUnitType(this.appState, target.value);
+        break;
       case 'ac-map-editor-resize-width':
       case 'ac-map-editor-resize-height': {
         const width = this.mapEditorHostEl?.querySelector('#ac-map-editor-resize-width')?.value;

@@ -92,6 +92,17 @@ export function createState({
         open: false
       },
 
+      deployment: {
+        active: false,
+        unitType: "pilot",
+        requiredCount: 0,
+        cells: [],
+        roster: [],
+        listOpen: false,
+        listIndex: 0,
+        selectedCellKey: null
+      },
+
       shell: {
         screen: "title",
         selectedMapId: content?.mapCatalog?.defaultMapId ?? "000_test",
