@@ -1,0 +1,131 @@
+{
+  "defaultMissionId": "pilot_start_test",
+  "missions": [
+    {
+      "id": "pilot_start_test",
+      "name": "Pilot Start Test",
+      "description": "Pilots start on foot. Empty mechs are already on the field for embark validation.",
+      "mapId": "embark_test",
+      "missionType": "pilot",
+      "units": [
+        {
+          "unitType": "pilot",
+          "definitionId": "pilot_biggs",
+          "instanceId": "player-pilot-biggs",
+          "team": "player",
+          "controlType": "PC",
+          "spawnId": "player_1"
+        },
+        {
+          "unitType": "pilot",
+          "definitionId": "pilot_wedge",
+          "instanceId": "player-pilot-wedge",
+          "team": "player",
+          "controlType": "PC",
+          "spawnId": "player_2"
+        },
+        {
+          "unitType": "mech",
+          "definitionId": "mech_a",
+          "instanceId": "player-empty-mech-a",
+          "team": "player",
+          "controlType": "PC",
+          "spawnId": "player_3"
+        },
+        {
+          "unitType": "mech",
+          "definitionId": "mech_b",
+          "instanceId": "player-empty-mech-b",
+          "team": "player",
+          "controlType": "PC",
+          "spawnId": "player_4"
+        },
+        {
+          "unitType": "pilot",
+          "definitionId": "pilot_tom",
+          "instanceId": "enemy-pilot-tom",
+          "team": "enemy",
+          "controlType": "CPU",
+          "spawnId": "enemy_1"
+        },
+        {
+          "unitType": "pilot",
+          "definitionId": "pilot_jerri",
+          "instanceId": "enemy-pilot-jerri",
+          "team": "enemy",
+          "controlType": "CPU",
+          "spawnId": "enemy_2"
+        },
+        {
+          "unitType": "mech",
+          "definitionId": "mech_c",
+          "instanceId": "enemy-empty-mech-c",
+          "team": "enemy",
+          "controlType": "CPU",
+          "spawnId": "enemy_3"
+        },
+        {
+          "unitType": "mech",
+          "definitionId": "mech_d",
+          "instanceId": "enemy-empty-mech-d",
+          "team": "enemy",
+          "controlType": "CPU",
+          "spawnId": "enemy_4"
+        }
+      ]
+    },
+    {
+      "id": "mech_start_test",
+      "name": "Mech Start Test",
+      "description": "Pilots begin already embarked. Mission selection is now the startup authority.",
+      "mapId": "default",
+      "missionType": "mech",
+      "units": [
+        {
+          "unitType": "combined",
+          "pilotDefinitionId": "pilot_biggs",
+          "mechDefinitionId": "mech_a",
+          "pilotInstanceId": "player-pilot-biggs",
+          "mechInstanceId": "player-mech-a",
+          "team": "player",
+          "controlType": "PC",
+          "spawnId": "player_1",
+          "startEmbarked": true
+        },
+        {
+          "unitType": "combined",
+          "pilotDefinitionId": "pilot_wedge",
+          "mechDefinitionId": "mech_b",
+          "pilotInstanceId": "player-pilot-wedge",
+          "mechInstanceId": "player-mech-b",
+          "team": "player",
+          "controlType": "PC",
+          "spawnId": "player_2",
+          "startEmbarked": true
+        },
+        {
+          "unitType": "combined",
+          "pilotDefinitionId": "pilot_tom",
+          "mechDefinitionId": "mech_c",
+          "pilotInstanceId": "enemy-pilot-tom",
+          "mechInstanceId": "enemy-mech-c",
+          "team": "enemy",
+          "controlType": "CPU",
+          "spawnId": "enemy_1",
+          "startEmbarked": true
+        },
+        {
+          "unitType": "combined",
+          "pilotDefinitionId": "pilot_jerri",
+          "mechDefinitionId": "mech_d",
+          "pilotInstanceId": "enemy-pilot-jerri",
+          "mechInstanceId": "enemy-mech-d",
+          "team": "enemy",
+          "controlType": "CPU",
+          "spawnId": "enemy_2",
+          "startEmbarked": true
+        }
+      ]
+    }
+  ]
+}

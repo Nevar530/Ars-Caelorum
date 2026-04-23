@@ -4,6 +4,8 @@ import {
   renderCombatTextOverlay
 } from "../combat/combatTextOverlay.js";
 import { clearMissionResult } from "../mission/missionState.js";
+import { getDefaultMissionDefinition, getMissionDefinitionById, getMissionMapDefinition } from "../mission/missionCatalog.js";
+import { instantiateMissionUnits } from "../mission/missionRuntime.js";
 import { renderMissionOverlay } from "../ui/missionOverlay.js";
 import { renderHud } from "../ui/hud.js";
 import { renderHelpDrawer } from "../ui/helpDrawer.js";
@@ -67,7 +69,7 @@ export function createGameController({
       state.focus.x = state.units[0].x;
       state.focus.y = state.units[0].y;
       state.focus.scale = state.units[0].scale ?? state.units[0].unitType ?? "pilot";
-      state.camera.zoomMode = "map";
+      state.camera.zoomMode = state.camera.zoomMode ?? "map";
       state.camera.zoomScale = state.camera.zoomMode;
       return;
     }
@@ -75,6 +77,7 @@ export function createGameController({
     state.selection.unitId = null;
     state.focus.x = 0;
     state.focus.y = 0;
+    state.focus.scale = "pilot";
   }
 
   function resetCombatToSetup() {
@@ -98,7 +101,68 @@ export function createGameController({
     setPreviewSelectionFromFirstUnit();
   }
 
+  function setShellScreen(screen) {
+    state.ui.shell.screen = screen;
+  }
+
+  function goToMainMenu() {
+    clearTransientUi();
+    hideSplash();
+    clearMissionResult(state);
+    state.turn.combatStarted = false;
+    state.turn.phase = "setup";
+    state.turn.activeUnitId = null;
+    state.turn.activeActorId = null;
+    state.turn.activeBodyId = null;
+    setShellScreen("main-menu");
+    render();
+  }
+
+  function openMissionSelect() {
+    const defaultMission = getDefaultMissionDefinition(state.content);
+    state.mission.selectedMissionId = state.mission.selectedMissionId ?? defaultMission?.id ?? null;
+    setShellScreen("mission-select");
+    render();
+  }
+
+  function selectMission(missionId) {
+    const mission = getMissionDefinitionById(state.content, missionId);
+    if (!mission) return;
+    state.mission.selectedMissionId = mission.id;
+    render();
+  }
+
+  function loadMissionById(missionId) {
+    const mission = getMissionDefinitionById(state.content, missionId);
+    if (!mission) return false;
+
+    const missionMap = getMissionMapDefinition(state.content, mission);
+    state.map = resetMap(missionMap ?? state.content?.defaultMap ?? null);
+    state.units = instantiateMissionUnits(state.content, state.map, mission);
+    state.mission.sourceMap = state.map ? structuredClone(state.map) : null;
+    state.mission.currentMissionId = mission.id;
+    state.mission.selectedMissionId = mission.id;
+
+    state.rotation = 0;
+    state.camera.angle = 0;
+    state.camera.isTurning = false;
+    state.ui.viewMode = "iso";
+    state.camera.zoomMode = "map";
+    state.camera.zoomScale = "map";
+
+    resetCombatToSetup();
+    setShellScreen("in-mission");
+    logDev(`Mission loaded: ${mission.name}.`);
+    render();
+    return true;
+  }
+
   function resetMapAndUnits() {
+    if (state.mission?.currentMissionId) {
+      loadMissionById(state.mission.currentMissionId);
+      return;
+    }
+
     const sourceMap = state.mission?.sourceMap ?? state.content?.defaultMap ?? null;
     state.map = resetMap(sourceMap);
     state.units = instantiateTestUnits(state.content, state.map);
@@ -109,6 +173,7 @@ export function createGameController({
     state.ui.viewMode = "iso";
 
     resetCombatToSetup();
+    setShellScreen("in-mission");
 
     logDev("Map reset and test units reloaded.");
     render();
@@ -130,6 +195,7 @@ export function createGameController({
   }
 
   function selectFocusedUnitIfPresent(getUnitAt) {
+    if (state.ui?.shell?.screen !== "in-mission") return false;
     if (state.turn.combatStarted) return false;
     if (state.ui.mode !== "idle") return false;
     if (state.ui.commandMenu.open) return false;
@@ -154,6 +220,7 @@ export function createGameController({
   }
 
   function openCommandMenu() {
+    if (state.ui?.shell?.screen !== "in-mission") return;
     if (!state.turn.combatStarted) return;
     if (state.ui.mode !== "idle") return;
 
@@ -229,7 +296,7 @@ export function createGameController({
     state.ui.helpDrawer.open = false;
     render();
   }
-  
+
   function toggleView() {
     state.ui.viewMode = state.ui.viewMode === "iso" ? "top" : "iso";
 
@@ -277,6 +344,10 @@ export function createGameController({
     closeHelpDrawer,
     toggleView,
     zoomIn,
-    zoomOut
+    zoomOut,
+    goToMainMenu,
+    openMissionSelect,
+    selectMission,
+    loadMissionById
   };
 }

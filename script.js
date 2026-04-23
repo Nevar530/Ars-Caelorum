@@ -18,6 +18,7 @@ import { createTurnController } from "./src/controllers/turnController.js";
 import { createMovementController } from "./src/controllers/movementController.js";
 import { createCombatController } from "./src/controllers/combatController.js";
 import { isCommandMenuItemDisabled } from "./src/action.js";
+import { getDefaultMissionDefinition } from "./src/mission/missionCatalog.js";
 
 const refs = {
   editor: document.getElementById("editor"),
@@ -48,10 +49,13 @@ async function init() {
 
   const state = createState({
     map: initialMap,
-    units: instantiateTestUnits(content, initialMap),
+    units: [],
     rotation: 0,
     content
   });
+
+  const defaultMission = getDefaultMissionDefinition(content);
+  state.mission.selectedMissionId = defaultMission?.id ?? null;
 
   setDevLogSize(25);
 
@@ -107,13 +111,43 @@ async function init() {
     endMission: gameController.endMission
   });
 
-
   refs.combatOverlay.addEventListener("click", (event) => {
     const button = event.target.closest("[data-combat-overlay-action]");
     if (!button) return;
 
-    if (button.dataset.combatOverlayAction === "restart-mission") {
+    const action = button.dataset.combatOverlayAction;
+    const missionId = button.dataset.missionId ?? null;
+
+    if (action === "restart-mission") {
       actions.resetMap();
+      return;
+    }
+
+    if (action === "open-mission-select") {
+      gameController.openMissionSelect();
+      return;
+    }
+
+    if (action === "return-main-menu") {
+      gameController.goToMainMenu();
+      return;
+    }
+
+    if (action === "return-mission-select") {
+      gameController.openMissionSelect();
+      return;
+    }
+
+    if (action === "select-mission" && missionId) {
+      gameController.selectMission(missionId);
+      return;
+    }
+
+    if (action === "start-selected-mission") {
+      const selectedMissionId = state.mission?.selectedMissionId ?? null;
+      if (selectedMissionId) {
+        gameController.loadMissionById(selectedMissionId);
+      }
     }
   });
 
@@ -122,7 +156,7 @@ async function init() {
     snapFocusToActiveUnit,
     toggleHelpDrawer: gameController.toggleHelpDrawer,
     closeHelpDrawer: gameController.closeHelpDrawer,
-    
+
     setEditorMode() {
       state.ui.editor.mode = "mech";
       gameController.render();
@@ -184,7 +218,6 @@ async function init() {
         combatController.completeEndTurnForCurrentUnit();
         return;
       }
-
     },
 
     selectMenuAction(action) {
@@ -226,7 +259,6 @@ async function init() {
         combatController.completeEndTurnForCurrentUnit();
         return;
       }
-
     },
 
     startCombat: turnController.startCombat,
@@ -267,7 +299,7 @@ async function init() {
     refs
   });
 
-  gameController.render();
+  gameController.goToMainMenu();
 }
 
 init().catch((error) => {
