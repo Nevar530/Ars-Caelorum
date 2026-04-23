@@ -1,4 +1,5 @@
 import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
+import { isDeploymentActive } from "../deployment/deploymentState.js";
 import { chooseCpuAttackPlan, chooseCpuMoveDestination } from "./cpuTurnPlanner.js";
 
 const DEFAULT_AI_DELAY_MS = 420;
@@ -26,7 +27,7 @@ export function createCpuTurnController({
 
   function isCpuTurnReady() {
     if (!state.turn?.combatStarted) return false;
-    if (state.ui?.deployment?.active) return false;
+    if (isDeploymentActive(state)) return false;
     if (state.mission?.result) return false;
     if (state.ui?.shell?.screen !== "game") return false;
 
