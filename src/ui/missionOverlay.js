@@ -13,8 +13,8 @@ export function renderMissionOverlay(state, refs) {
 
   const title = missionResult === "victory" ? "Victory" : "Defeat";
   const text = missionResult === "victory"
-    ? "Validation pass complete. Restart the mission to run it again."
-    : "Mission failed. Restart to validate the flow again.";
+    ? "Mission complete. Return to the title screen to choose another mission."
+    : "Mission failed. Return to the title screen to try again.";
 
   overlay.classList.add("is-visible");
 
@@ -25,9 +25,9 @@ export function renderMissionOverlay(state, refs) {
       <button
         type="button"
         class="combat-start-button"
-        data-combat-overlay-action="restart-mission"
+        data-combat-overlay-action="return-title"
       >
-        Restart Mission
+        Return to Title Screen
       </button>
     </div>
   `;

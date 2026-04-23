@@ -16,6 +16,14 @@ export function bindGameplayInput(state, refs, actions) {
   resetMapButton.addEventListener("click", () => actions.resetMap());
 
   window.addEventListener("keydown", (event) => {
+    if (state?.ui?.shell?.screen && state.ui.shell.screen !== "game") {
+      return;
+    }
+
+    if (state?.mission?.result) {
+      return;
+    }
+
     const key = event.key.toLowerCase();
 
     if (handleHelpKeys(event, actions)) {

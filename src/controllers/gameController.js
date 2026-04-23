@@ -5,6 +5,7 @@ import {
 } from "../combat/combatTextOverlay.js";
 import { clearMissionResult } from "../mission/missionState.js";
 import { renderMissionOverlay } from "../ui/missionOverlay.js";
+import { renderFrontScreen } from "../ui/frontScreen.js";
 import { renderHud } from "../ui/hud.js";
 import { renderHelpDrawer } from "../ui/helpDrawer.js";
 import { renderAll } from "../render.js";
@@ -25,6 +26,7 @@ export function createGameController({
     renderHelpDrawer(state, refs);
     renderCombatTextOverlay(state, refs);
     renderMissionOverlay(state, refs);
+    renderFrontScreen(state, refs);
   }
 
   function hideSplash() {
@@ -98,10 +100,11 @@ export function createGameController({
     setPreviewSelectionFromFirstUnit();
   }
 
-  function resetMapAndUnits() {
-    const sourceMap = state.mission?.sourceMap ?? state.content?.defaultMap ?? null;
+  function loadMapAndUnits(mapDefinition = null) {
+    const sourceMap = mapDefinition ?? state.mission?.sourceMap ?? state.content?.defaultMap ?? null;
     state.map = resetMap(sourceMap);
     state.units = instantiateTestUnits(state.content, state.map);
+    state.mission.sourceMap = sourceMap ? structuredClone(sourceMap) : null;
 
     state.rotation = 0;
     state.camera.angle = 0;
@@ -111,6 +114,14 @@ export function createGameController({
     resetCombatToSetup();
 
     logDev("Map reset and test units reloaded.");
+    render();
+  }
+
+  function showTitleScreen() {
+    clearTransientUi();
+    hideSplash();
+    clearMissionResult(state);
+    state.ui.shell.screen = "title";
     render();
   }
 
@@ -266,7 +277,9 @@ export function createGameController({
     showSplash,
     clearTransientUi,
     resetCombatToSetup,
-    resetMapAndUnits,
+    loadMapAndUnits,
+    showTitleScreen,
+    resetMapAndUnits: loadMapAndUnits,
     endMission,
     selectFocusedUnitIfPresent,
     openCommandMenu,

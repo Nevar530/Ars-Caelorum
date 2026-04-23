@@ -8,7 +8,7 @@ import {
   setUnitFacing
 } from "./src/mechs.js";
 import { bindInput, snapFocusToActiveUnit as snapFocusHelper } from "./src/input.js";
-import { loadGameData } from "./src/dataLoader.js";
+import { loadGameData, loadMapDefinitionByPath } from "./src/dataLoader.js";
 import { bindHudInput } from "./src/ui/hud.js";
 import { clearCombatTextMarkers } from "./src/combat/combatTextOverlay.js";
 import { initializeDevMenu } from "./dev/devMenu.js";
@@ -20,6 +20,16 @@ import { createCombatController } from "./src/controllers/combatController.js";
 import { isCommandMenuItemDisabled } from "./src/action.js";
 
 const refs = {
+  frontScreen: document.getElementById("frontScreen"),
+  titleScreen: document.getElementById("titleScreen"),
+  missionSelectScreen: document.getElementById("missionSelectScreen"),
+  titleStartButton: document.getElementById("titleStartButton"),
+  titleMissionSelectButton: document.getElementById("titleMissionSelectButton"),
+  missionList: document.getElementById("missionList"),
+  missionDescription: document.getElementById("missionDescription"),
+  missionBackButton: document.getElementById("missionBackButton"),
+  missionStartButton: document.getElementById("missionStartButton"),
+  main: document.getElementById("mainRoot"),
   editor: document.getElementById("editor"),
   board: document.getElementById("board"),
   worldScene: document.getElementById("world-scene"),
@@ -112,9 +122,31 @@ async function init() {
     const button = event.target.closest("[data-combat-overlay-action]");
     if (!button) return;
 
-    if (button.dataset.combatOverlayAction === "restart-mission") {
-      actions.resetMap();
+    if (button.dataset.combatOverlayAction === "return-title") {
+      actions.showTitleScreen();
     }
+  });
+
+  refs.titleStartButton?.addEventListener("click", () => {
+    actions.openMissionSelect();
+  });
+
+  refs.titleMissionSelectButton?.addEventListener("click", () => {
+    actions.openMissionSelect();
+  });
+
+  refs.missionBackButton?.addEventListener("click", () => {
+    actions.showTitleScreen();
+  });
+
+  refs.missionList?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-front-screen-map-id]");
+    if (!button) return;
+    actions.selectMissionMap(button.dataset.frontScreenMapId);
+  });
+
+  refs.missionStartButton?.addEventListener("click", () => {
+    actions.startSelectedMission();
   });
 
   const actions = {
@@ -122,6 +154,33 @@ async function init() {
     snapFocusToActiveUnit,
     toggleHelpDrawer: gameController.toggleHelpDrawer,
     closeHelpDrawer: gameController.closeHelpDrawer,
+
+    showTitleScreen() {
+      state.ui.shell.screen = "title";
+      gameController.showTitleScreen();
+    },
+
+    openMissionSelect() {
+      state.ui.shell.screen = "mission-select";
+      gameController.render();
+    },
+
+    selectMissionMap(mapId) {
+      if (!mapId) return;
+      state.ui.shell.selectedMapId = mapId;
+      gameController.render();
+    },
+
+    async startSelectedMission() {
+      const maps = Array.isArray(state.content?.mapCatalog?.maps) ? state.content.mapCatalog.maps : [];
+      const selectedMapId = state.ui.shell.selectedMapId ?? state.content?.mapCatalog?.defaultMapId ?? null;
+      const selectedEntry = maps.find((entry) => entry?.id === selectedMapId) ?? null;
+      if (!selectedEntry?.path) return;
+
+      const mapDefinition = await loadMapDefinitionByPath(selectedEntry.path);
+      state.ui.shell.screen = "game";
+      gameController.loadMapAndUnits(mapDefinition);
+    },
     
     setEditorMode() {
       state.ui.editor.mode = "mech";

@@ -100,3 +100,10 @@ function mapSpawnsToLegacySpawnPoints(spawns = {}) {
 function capitalize(value) {
   return String(value).charAt(0).toUpperCase() + String(value).slice(1);
 }
+
+
+export async function loadMapDefinitionByPath(path) {
+  if (!path) return null;
+  const map = await loadJson(path);
+  return normalizeMapDefinition(map);
+}

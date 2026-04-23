@@ -90,6 +90,11 @@ export function createState({
 
       helpDrawer: {
         open: false
+      },
+
+      shell: {
+        screen: "title",
+        selectedMapId: content?.mapCatalog?.defaultMapId ?? "default"
       }
     },
 
