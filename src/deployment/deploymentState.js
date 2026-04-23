@@ -1,4 +1,5 @@
-import { createPilotInstance, getUnitAt } from "../mechs.js";
+import { createMechInstance, createPilotInstance } from "../mechs.js";
+import { getOccupantsAt, canUnitOccupyCells } from "../scale/occupancy.js";
 
 function getStartState(map) {
   const startState = map?.startState;
@@ -18,6 +19,11 @@ function getPilotDefinition(content, id) {
   return pilots.find((pilot) => pilot?.id === id) ?? null;
 }
 
+function getMechDefinition(content, id) {
+  const mechs = Array.isArray(content?.mechs) ? content.mechs : [];
+  return mechs.find((mech) => mech?.id === id) ?? null;
+}
+
 function normalizeCell(cell = {}) {
   return {
     x: Number(cell?.x ?? 0),
@@ -31,6 +37,9 @@ function normalizeDeployment(entry = {}) {
   return {
     pilotDefinitionId: String(entry?.pilotDefinitionId ?? ""),
     pilotInstanceId: String(entry?.pilotInstanceId ?? ""),
+    mechDefinitionId: String(entry?.mechDefinitionId ?? ""),
+    mechInstanceId: String(entry?.mechInstanceId ?? ""),
+    startEmbarked: Boolean(entry?.startEmbarked),
     team: entry?.team === "enemy" ? "enemy" : "player",
     controlType: entry?.controlType === "CPU" ? "CPU" : "PC"
   };
@@ -71,15 +80,47 @@ export function initializeDeploymentState(state) {
     .map(normalizeDeployment)
     .filter((entry) => entry.controlType === "PC" && entry.team === "player")
     .map((entry, index) => {
-      const definition = getPilotDefinition(state.content, entry.pilotDefinitionId);
+      const pilotDefinition = getPilotDefinition(state.content, entry.pilotDefinitionId);
+      const mechDefinition = entry.mechDefinitionId
+        ? getMechDefinition(state.content, entry.mechDefinitionId)
+        : null;
+
+      if (unitType === "mech") {
+        if (!pilotDefinition || !mechDefinition) return null;
+
+        const pilotInstanceId = entry.pilotInstanceId || `player-pilot-${index + 1}`;
+        const mechInstanceId = entry.mechInstanceId || `player-mech-${index + 1}`;
+
+        return {
+          ...entry,
+          definition: mechDefinition,
+          pilotDefinition,
+          mechDefinition,
+          instanceId: pilotInstanceId,
+          pilotInstanceId,
+          mechInstanceId,
+          linkedInstanceIds: [pilotInstanceId, mechInstanceId],
+          displayName: `${mechDefinition.name} / ${pilotDefinition.name}`,
+          unitType: "mech"
+        };
+      }
+
+      if (!pilotDefinition) return null;
+
+      const pilotInstanceId = entry.pilotInstanceId || `player-pilot-${index + 1}`;
       return {
         ...entry,
-        definition,
-        instanceId: entry.pilotInstanceId || `player-pilot-${index + 1}`,
+        definition: pilotDefinition,
+        pilotDefinition,
+        instanceId: pilotInstanceId,
+        pilotInstanceId,
+        mechInstanceId: null,
+        linkedInstanceIds: [pilotInstanceId],
+        displayName: pilotDefinition.name,
         unitType: "pilot"
       };
     })
-    .filter((entry) => entry.definition);
+    .filter(Boolean);
 
   state.ui.deployment = {
     active: Boolean(cells.length && requiredCount > 0 && roster.length),
@@ -115,9 +156,13 @@ export function isDeploymentCell(state, x, y) {
   return getDeploymentCells(state).some((cell) => cell.x === x && cell.y === y);
 }
 
+function isRosterEntryPlaced(state, entry) {
+  const linkedIds = Array.isArray(entry?.linkedInstanceIds) ? entry.linkedInstanceIds : [entry?.instanceId];
+  return linkedIds.some((instanceId) => (state?.units ?? []).some((unit) => unit?.instanceId === instanceId));
+}
+
 export function getDeployedPlayerUnits(state) {
-  const rosterIds = new Set((state?.ui?.deployment?.roster ?? []).map((entry) => entry.instanceId));
-  return (Array.isArray(state?.units) ? state.units : []).filter((unit) => rosterIds.has(unit?.instanceId));
+  return (state?.ui?.deployment?.roster ?? []).filter((entry) => isRosterEntryPlaced(state, entry));
 }
 
 export function getDeploymentPlacementCount(state) {
@@ -134,14 +179,24 @@ export function isDeploymentMenuFocused(state) {
 }
 
 export function getDeploymentAvailableRoster(state) {
-  const placed = new Set(getDeployedPlayerUnits(state).map((unit) => unit.instanceId));
-  return (state?.ui?.deployment?.roster ?? []).filter((entry) => !placed.has(entry.instanceId));
+  return (state?.ui?.deployment?.roster ?? []).filter((entry) => !isRosterEntryPlaced(state, entry));
 }
 
 export function getDeploymentPlacedUnitAt(state, x, y) {
-  const rosterIds = new Set((state?.ui?.deployment?.roster ?? []).map((entry) => entry.instanceId));
-  const unit = getUnitAt(state.units, x, y, "pilot");
-  return rosterIds.has(unit?.instanceId) ? unit : null;
+  const roster = state?.ui?.deployment?.roster ?? [];
+  const occupants = getOccupantsAt(state, x, y);
+
+  for (const occupant of occupants) {
+    const unitId = occupant?.unit?.instanceId;
+    if (!unitId) continue;
+
+    const entry = roster.find((candidate) => (candidate?.linkedInstanceIds ?? []).includes(unitId));
+    if (!entry) continue;
+
+    return occupant.unit;
+  }
+
+  return null;
 }
 
 export function openDeploymentListAtFocus(state) {
@@ -191,23 +246,63 @@ export function confirmDeploymentPlacement(state) {
   if (!Number.isFinite(x) || !Number.isFinite(y) || !isDeploymentCell(state, x, y)) return false;
   if (getDeploymentPlacedUnitAt(state, x, y)) return false;
 
-  const pilotUnit = createPilotInstance(selected.definition, {
-    instanceId: selected.instanceId,
-    x,
-    y,
-    team: "player",
-    controlType: "PC",
-    spawnId: null,
-    currentMechId: null,
-    embarked: false,
-    parentMechId: null
-  });
+  if (selected.unitType === "mech") {
+    const mechUnit = createMechInstance(selected.mechDefinition, {
+      instanceId: selected.mechInstanceId,
+      x,
+      y,
+      team: "player",
+      controlType: "PC",
+      pilot: selected.pilotDefinition,
+      spawnId: null,
+      embarkedPilotId: selected.pilotInstanceId
+    });
 
-  state.units.push(pilotUnit);
-  state.selection.unitId = pilotUnit.instanceId;
-  state.focus.x = x;
-  state.focus.y = y;
-  state.focus.scale = "pilot";
+    if (!canUnitOccupyCells(state, mechUnit)) {
+      return false;
+    }
+
+    const pilotUnit = createPilotInstance(selected.pilotDefinition, {
+      instanceId: selected.pilotInstanceId,
+      x,
+      y,
+      team: "player",
+      controlType: "PC",
+      spawnId: null,
+      currentMechId: selected.mechInstanceId,
+      embarked: true,
+      parentMechId: selected.mechInstanceId
+    });
+
+    state.units.push(pilotUnit, mechUnit);
+    state.selection.unitId = pilotUnit.instanceId;
+    state.focus.x = x;
+    state.focus.y = y;
+    state.focus.scale = "mech";
+  } else {
+    const pilotUnit = createPilotInstance(selected.pilotDefinition, {
+      instanceId: selected.instanceId,
+      x,
+      y,
+      team: "player",
+      controlType: "PC",
+      spawnId: null,
+      currentMechId: null,
+      embarked: false,
+      parentMechId: null
+    });
+
+    if (!canUnitOccupyCells(state, pilotUnit)) {
+      return false;
+    }
+
+    state.units.push(pilotUnit);
+    state.selection.unitId = pilotUnit.instanceId;
+    state.focus.x = x;
+    state.focus.y = y;
+    state.focus.scale = "pilot";
+  }
+
   closeDeploymentList(state);
   state.ui.deployment.menuFocus = getDeploymentReady(state) ? "start" : "map";
   return true;
@@ -216,8 +311,14 @@ export function confirmDeploymentPlacement(state) {
 export function removeDeploymentPlacementAtFocus(state) {
   const unit = getDeploymentPlacedUnitAt(state, state.focus.x, state.focus.y);
   if (!unit) return false;
-  state.units = state.units.filter((entry) => entry?.instanceId !== unit.instanceId);
-  if (state.selection.unitId === unit.instanceId) {
+
+  const rosterEntry = (state?.ui?.deployment?.roster ?? []).find((entry) =>
+    (entry?.linkedInstanceIds ?? []).includes(unit.instanceId)
+  );
+  const removeIds = new Set(rosterEntry?.linkedInstanceIds ?? [unit.instanceId]);
+
+  state.units = state.units.filter((entry) => !removeIds.has(entry?.instanceId));
+  if (removeIds.has(state.selection.unitId)) {
     state.selection.unitId = null;
   }
   if (state?.ui?.deployment) {

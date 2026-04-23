@@ -555,10 +555,10 @@ function renderDeploymentPanel(state) {
   if (state.ui.deployment.listOpen) {
     return `
       <div class="hud-section-title">Available Units</div>
-      <div class="hud-mini-card" style="margin-bottom:8px;">Select pilot for (${state.focus.x}, ${state.focus.y})</div>
+      <div class="hud-mini-card" style="margin-bottom:8px;">Select ${state.ui.deployment.unitType} for (${state.focus.x}, ${state.focus.y})</div>
       ${available.length ? available.map((entry, index) => `
         <button class="hud-menu-button ${index === selectedIndex ? "is-selected" : ""}">
-          ${index === selectedIndex ? "▶ " : ""}${entry.definition?.name ?? entry.pilotDefinitionId}
+          ${index === selectedIndex ? "▶ " : ""}${entry.displayName ?? entry.definition?.name ?? entry.pilotDefinitionId}
         </button>
       `).join("") : `<div class="hud-mini-card">No available units.</div>`}
     `;
@@ -584,7 +584,7 @@ function renderDeploymentPanel(state) {
     <div class="hud-section-title">Deploy Tile</div>
     <div class="hud-mini-card">(${state.focus.x}, ${state.focus.y})</div>
     <div class="hud-mode-box">
-      <div class="hud-mode-title">Available Pilots</div>
+      <div class="hud-mode-title">Available ${state.ui.deployment.unitType === "mech" ? "Mechs" : "Pilots"}</div>
       <div class="hud-mode-text">${available.length} remaining</div>
     </div>
   `;
