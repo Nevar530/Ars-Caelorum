@@ -1,6 +1,7 @@
 import { getCommandMenuItemsForPhase } from "../action.js";
 import { getActiveUnitFromPhaseOrder, rebuildRoundOrder } from "../initiative.js";
 import { getActiveBody, getPilotActorById } from "../actors/actorResolver.js";
+import { cloneMapDefinition } from "../map.js";
 
 export function createTurnController({
   state,
