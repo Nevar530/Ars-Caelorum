@@ -173,6 +173,30 @@ export function createMovementController({
     return false;
   }
 
+  function executeCpuMove(targetX, targetY) {
+    const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
+    if (!activeUnit) return false;
+    if (activeUnit.status === "disabled") return false;
+    if (!canMoveActiveUnitTo(state, targetX, targetY)) return false;
+
+    const fromX = activeUnit.x;
+    const fromY = activeUnit.y;
+    const path = getPathToTile(state, targetX, targetY);
+    const nextFacing = getDefaultFacingFromPath(path, activeUnit.facing);
+
+    moveUnitTo(state.units, activeUnit.instanceId, targetX, targetY);
+    setUnitFacing(state.units, activeUnit.instanceId, nextFacing);
+
+    logDev(
+      `${activeUnit.name} moved from (${fromX},${fromY}) to (${targetX},${targetY}).`
+    );
+
+    clearTransientUi();
+    advanceMoveTurn();
+    render();
+    return true;
+  }
+
   function cancelMoveOrFacing() {
     if (state.ui.mode === "move") {
       state.ui.mode = "idle";
@@ -213,6 +237,7 @@ export function createMovementController({
     completeBraceForCurrentUnit,
     skipMoveForCurrentUnit,
     confirmMoveOrFacing,
-    cancelMoveOrFacing
+    cancelMoveOrFacing,
+    executeCpuMove
   };
 }

@@ -41,7 +41,18 @@ function makePreviewUnit(unit, x, y) {
   };
 }
 
-function getUnitStride(_unit) {
+function getUnitStride(unit) {
+  const footprint = getUnitFootprint(unit);
+
+  if ((unit?.unitType ?? "mech") === "mech") {
+    return {
+      x: 1,
+      y: 1,
+      footprintWidth: footprint.width,
+      footprintHeight: footprint.height
+    };
+  }
+
   return { x: 1, y: 1 };
 }
 

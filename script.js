@@ -17,6 +17,7 @@ import { createGameController } from "./src/controllers/gameController.js";
 import { createTurnController } from "./src/controllers/turnController.js";
 import { createMovementController } from "./src/controllers/movementController.js";
 import { createCombatController } from "./src/controllers/combatController.js";
+import { createCpuTurnController } from "./src/ai/cpuTurnController.js";
 import { isCommandMenuItemDisabled } from "./src/action.js";
 import { getMissionMaps } from "./src/ui/frontScreen.js";
 import { confirmDeploymentPlacement, getDeploymentReady, isDeploymentActive, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "./src/deployment/deploymentState.js";
@@ -83,6 +84,8 @@ async function init() {
     gameController.clearTransientUi();
   }
 
+  let cpuTurnController = null;
+
   const turnController = createTurnController({
     state,
     getUnitById,
@@ -91,7 +94,8 @@ async function init() {
     render: gameController.render,
     logDev,
     showSplash: gameController.showSplash,
-    clearCombatTextMarkers
+    clearCombatTextMarkers,
+    onTurnReady: () => cpuTurnController?.scheduleForCurrentTurn()
   });
 
   const movementController = createMovementController({
@@ -119,6 +123,13 @@ async function init() {
     endMission: gameController.endMission
   });
 
+  cpuTurnController = createCpuTurnController({
+    state,
+    render: gameController.render,
+    logDev,
+    movementController,
+    combatController
+  });
 
   refs.combatOverlay.addEventListener("click", (event) => {
     const button = event.target.closest("[data-combat-overlay-action]");

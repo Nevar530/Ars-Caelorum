@@ -4,6 +4,7 @@ import {
   confirmAttackSelection,
   confirmAbilitySelection,
   confirmItemSelection,
+  updateActionTargetPreview,
   startAttackSelection,
   startAbilitySelection,
   startItemSelection
@@ -245,6 +246,21 @@ export function createCombatController({
     return true;
   }
 
+  function executeCpuAttack(attackPlan) {
+    const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
+    if (!activeUnit || !attackPlan?.profile) return false;
+
+    state.ui.mode = "action-target";
+    state.selection.action = "attack";
+    state.ui.action.selectedAction = attackPlan.profile;
+    state.focus.x = Number(attackPlan.targetX);
+    state.focus.y = Number(attackPlan.targetY);
+
+    updateActionTargetPreview(state);
+
+    return handleConfirmedTarget(activeUnit, attackPlan.profile);
+  }
+
   function confirmAction() {
     if (movementController.confirmMoveOrFacing()) {
       return;
@@ -363,6 +379,7 @@ export function createCombatController({
     completeEndTurnForCurrentUnit,
     waitTurn,
     handleConfirmedTarget,
+    executeCpuAttack,
     confirmAction,
     cancelAction
   };

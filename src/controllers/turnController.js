@@ -11,7 +11,8 @@ export function createTurnController({
   render,
   logDev,
   showSplash,
-  clearCombatTextMarkers
+  clearCombatTextMarkers,
+  onTurnReady = null
 }) {
   function getNextEligiblePhaseIndex(order, startIndex) {
     if (!Array.isArray(order)) return -1;
@@ -46,6 +47,10 @@ export function createTurnController({
     }
 
     syncCommandMenuItems();
+
+    if (typeof onTurnReady === "function") {
+      onTurnReady();
+    }
   }
 
   function logRoundInitiative() {
