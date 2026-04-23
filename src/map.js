@@ -2,6 +2,7 @@ import { GAME_CONFIG } from "./config.js";
 import {
   attachMapMetadata,
   buildMapFromFlatTiles,
+  cloneMapDefinition,
   createInitialMap,
   getMapHeight,
   getMapSpawns,
@@ -46,6 +47,7 @@ export {
   applyDetailPattern,
   attachMapMetadata,
   buildMapFromFlatTiles,
+  cloneMapDefinition,
   buildTileSummary,
   createDetailGridForElevation,
   createInitialMap,

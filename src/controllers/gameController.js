@@ -9,7 +9,7 @@ import { renderFrontScreen } from "../ui/frontScreen.js";
 import { renderHud } from "../ui/hud.js";
 import { renderHelpDrawer } from "../ui/helpDrawer.js";
 import { renderAll } from "../render.js";
-import { resetMap } from "../map.js";
+import { cloneMapDefinition, resetMap } from "../map.js";
 
 export function createGameController({
   state,
@@ -104,7 +104,7 @@ export function createGameController({
     const sourceMap = mapDefinition ?? state.mission?.sourceMap ?? state.content?.defaultMap ?? null;
     state.map = resetMap(sourceMap);
     state.units = instantiateTestUnits(state.content, state.map);
-    state.mission.sourceMap = sourceMap ? structuredClone(sourceMap) : null;
+    state.mission.sourceMap = cloneMapDefinition(sourceMap);
 
     state.rotation = 0;
     state.camera.angle = 0;

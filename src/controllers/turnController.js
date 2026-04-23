@@ -146,7 +146,7 @@ export function createTurnController({
     if (!state.units.length) return;
 
     state.mission = state.mission ?? { sourceMap: null, result: null };
-    state.mission.sourceMap = structuredClone(state.map);
+    state.mission.sourceMap = cloneMapDefinition(state.map);
     state.mission.result = null;
 
     clearTransientUi();

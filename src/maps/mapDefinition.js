@@ -129,10 +129,37 @@ export function getTile(map, x, y) {
 
 export function normalizeMapDefinition(definition) {
   if (Array.isArray(definition)) {
-    return attachMapMetadata(refreshAllTileSummaries(definition));
+    return attachMapMetadata(refreshAllTileSummaries(definition), {
+      id: definition.id,
+      name: definition.name,
+      width: definition.width,
+      height: definition.height,
+      spawns: definition.spawns,
+      startState: definition.startState,
+      terrainTypes: definition.terrainTypes
+    });
   }
 
   return refreshAllTileSummaries(buildMapFromFlatTiles(definition ?? {}));
+}
+
+export function cloneMapDefinition(sourceMap = null) {
+  if (!sourceMap) return null;
+
+  if (Array.isArray(sourceMap)) {
+    const clonedRows = structuredClone(sourceMap);
+    return attachMapMetadata(clonedRows, {
+      id: sourceMap.id,
+      name: sourceMap.name,
+      width: sourceMap.width,
+      height: sourceMap.height,
+      spawns: sourceMap.spawns,
+      startState: sourceMap.startState,
+      terrainTypes: sourceMap.terrainTypes
+    });
+  }
+
+  return structuredClone(sourceMap);
 }
 
 export function createInitialMap() {
@@ -212,7 +239,7 @@ export function createInitialMap() {
 
 export function resetMap(sourceMap = null) {
   if (sourceMap) {
-    return normalizeMapDefinition(structuredClone(sourceMap));
+    return normalizeMapDefinition(cloneMapDefinition(sourceMap));
   }
 
   return createInitialMap();
