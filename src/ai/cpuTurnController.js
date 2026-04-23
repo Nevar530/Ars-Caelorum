@@ -1,7 +1,7 @@
 import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
 import { chooseCpuAttackPlan, chooseCpuMoveDestination } from "./cpuTurnPlanner.js";
 
-const DEFAULT_AI_DELAY_MS = 260;
+const DEFAULT_AI_DELAY_MS = 420;
 
 export function createCpuTurnController({
   state,

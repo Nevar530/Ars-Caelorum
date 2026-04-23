@@ -24,6 +24,8 @@ function sign(value) {
   return 0;
 }
 
+const CPU_MOVE_STEP_DELAY_MS = 85;
+
 export function createMovementController({
   state,
   getUnitById,
@@ -183,17 +185,44 @@ export function createMovementController({
     const fromY = activeUnit.y;
     const path = getPathToTile(state, targetX, targetY);
     const nextFacing = getDefaultFacingFromPath(path, activeUnit.facing);
+    const steps = Array.isArray(path) ? path.slice(1) : [];
 
-    moveUnitTo(state.units, activeUnit.instanceId, targetX, targetY);
-    setUnitFacing(state.units, activeUnit.instanceId, nextFacing);
+    function finishCpuMove() {
+      setUnitFacing(state.units, activeUnit.instanceId, nextFacing);
+      logDev(
+        `${activeUnit.name} moved from (${fromX},${fromY}) to (${targetX},${targetY}).`
+      );
+      clearTransientUi();
+      advanceMoveTurn();
+      render();
+    }
 
-    logDev(
-      `${activeUnit.name} moved from (${fromX},${fromY}) to (${targetX},${targetY}).`
-    );
+    if (!steps.length) {
+      finishCpuMove();
+      return true;
+    }
 
-    clearTransientUi();
-    advanceMoveTurn();
-    render();
+    let stepIndex = 0;
+    function advanceCpuStep() {
+      const step = steps[stepIndex];
+      if (!step) {
+        finishCpuMove();
+        return;
+      }
+
+      moveUnitTo(state.units, activeUnit.instanceId, step.x, step.y);
+      render();
+      stepIndex += 1;
+
+      if (stepIndex >= steps.length) {
+        window.setTimeout(finishCpuMove, CPU_MOVE_STEP_DELAY_MS);
+        return;
+      }
+
+      window.setTimeout(advanceCpuStep, CPU_MOVE_STEP_DELAY_MS);
+    }
+
+    advanceCpuStep();
     return true;
   }
 
