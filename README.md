@@ -1,4 +1,4 @@
-# Ars Caelorum 
+# Ars Caelorum
 
 **Launch Game:** [Open Ars Caelorum](https://nevar530.github.io/Ars-Caelorum/)
 
