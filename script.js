@@ -18,6 +18,7 @@ import { createTurnController } from "./src/controllers/turnController.js";
 import { createMovementController } from "./src/controllers/movementController.js";
 import { createCombatController } from "./src/controllers/combatController.js";
 import { isCommandMenuItemDisabled } from "./src/action.js";
+import { getMissionMaps } from "./src/ui/frontScreen.js";
 
 const refs = {
   frontScreen: document.getElementById("frontScreen"),
@@ -200,9 +201,7 @@ async function init() {
     },
 
     moveMissionSelection(delta) {
-      const maps = Array.isArray(state.content?.mapCatalog?.maps)
-        ? state.content.mapCatalog.maps.filter((entry) => entry?.id === "default" || entry?.id === "embark_test")
-        : [];
+      const maps = getMissionMaps(state);
       if (!maps.length) return;
 
       const currentIndex = Math.max(0, maps.findIndex((entry) => entry?.id === state.ui.shell.selectedMapId));

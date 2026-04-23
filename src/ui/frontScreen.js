@@ -47,7 +47,7 @@ export function renderFrontScreen(state, refs) {
             class="front-screen-list-button${isSelected ? " is-selected" : ""}"
             data-front-screen-map-id="${escapeHtml(entry.id)}"
           >
-            <span class="front-screen-list-title">${escapeHtml(entry.name)}</span>
+            <span class="front-screen-list-title">${escapeHtml(entry.name || entry.id)}</span>
             <span class="front-screen-list-sub">${escapeHtml(entry.id)}</span>
           </button>
         `;
@@ -58,7 +58,7 @@ export function renderFrontScreen(state, refs) {
   if (missionDescription) {
     if (selectedMap) {
       missionDescription.innerHTML = `
-        <div class="front-screen-card-title">${escapeHtml(selectedMap.name)}</div>
+        <div class="front-screen-card-title">${escapeHtml(selectedMap.name || selectedMap.id)}</div>
         <div class="front-screen-card-text">
           Load the existing <strong>${escapeHtml(selectedMap.id)}</strong> map using the current stable runtime.
         </div>
@@ -66,7 +66,7 @@ export function renderFrontScreen(state, refs) {
     } else {
       missionDescription.innerHTML = `
         <div class="front-screen-card-title">No Mission Available</div>
-        <div class="front-screen-card-text">No playable maps were found in the current map catalog.</div>
+        <div class="front-screen-card-text">No maps were found in the current map catalog.</div>
       `;
     }
   }
@@ -76,9 +76,15 @@ export function renderFrontScreen(state, refs) {
   }
 }
 
-function getMissionMaps(state) {
+export function getMissionMaps(state) {
   const maps = Array.isArray(state?.content?.mapCatalog?.maps) ? state.content.mapCatalog.maps : [];
-  return maps.filter((entry) => entry?.id === "default" || entry?.id === "embark_test");
+  return [...maps].sort(compareMissionEntries);
+}
+
+function compareMissionEntries(a, b) {
+  const aLabel = String(a?.name || a?.id || "");
+  const bLabel = String(b?.name || b?.id || "");
+  return aLabel.localeCompare(bLabel, undefined, { numeric: true, sensitivity: "base" });
 }
 
 function escapeHtml(value) {

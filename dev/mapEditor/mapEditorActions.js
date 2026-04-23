@@ -16,7 +16,7 @@ import {
 export function ensureMapEditorState(state) {
   if (!state.ui.mapEditor) {
     state.ui.mapEditor = createMapEditorState({
-      activeMapId: state.map?.id ?? 'default',
+      activeMapId: state.map?.id ?? '000_test',
       pendingResize: {
         width: getMapWidth(state.map) || 32,
         height: getMapHeight(state.map) || 32,

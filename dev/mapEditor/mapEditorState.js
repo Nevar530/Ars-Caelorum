@@ -28,7 +28,7 @@ export const DEFAULT_TERRAIN_PRESETS = Object.freeze([
 
 export const DEFAULT_MAP_EDITOR_STATE = Object.freeze({
   isEnabled: false,
-  activeMapId: 'default',
+  activeMapId: '000_test',
   mode: MAP_EDITOR_MODES.HEIGHT,
   brushSize: 1,
   selectedHeight: 0,
