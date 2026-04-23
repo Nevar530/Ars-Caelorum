@@ -12,7 +12,7 @@ export async function loadGameData() {
     pilotItems,
     mechItems,
     spawnPoints,
-    mapCatalog: hydratedMapCatalog,
+    mapCatalog,
     terrainList,
     terrainDefinitions,
     missionCatalog
