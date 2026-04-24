@@ -7,7 +7,7 @@ import {
   formatDetailElevation
 } from "../map.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
-import { getTopdownCellSize } from "./projection.js";
+import { getTopdownCellSize, projectIso } from "./projection.js";
 import { getWorldFaceForScreenSide } from "./renderCompass.js";
 
 let terrainFaceClipId = 0;
@@ -245,12 +245,19 @@ function drawIsoTerrainCell(state, item, parent) {
   }
 
   const topFace = [top.top, top.right, top.bottom, top.left];
+  const topTextureOrigin = projectIso(state, x, y, elevation, 1);
+  const topTextureXAxisEnd = projectIso(state, x + size, y, elevation, 1);
+  const topTextureYAxisEnd = projectIso(state, x, y + size, elevation, 1);
+
   drawIsoTerrainTop({
     parentGroup: group,
     points: topFace,
     fallbackColor: colors.top,
     strokeColor: darkerTerrainGridStroke(colors.top),
-    imagePath: sprites.top
+    imagePath: sprites.top,
+    textureOrigin: topTextureOrigin,
+    textureXAxisEnd: topTextureXAxisEnd,
+    textureYAxisEnd: topTextureYAxisEnd
   });
 
   if (tileOverlayStyle?.fill) {
@@ -408,7 +415,10 @@ function drawIsoTerrainTop({
   points,
   fallbackColor,
   strokeColor,
-  imagePath
+  imagePath,
+  textureOrigin,
+  textureXAxisEnd,
+  textureYAxisEnd
 }) {
   const fallbackPolygon = makePolygon(points, "tile-top", fallbackColor);
   fallbackPolygon.setAttribute("stroke", "none");
@@ -430,9 +440,9 @@ function drawIsoTerrainTop({
 
     appendSkewedTopTexture({
       parentGroup: textureGroup,
-      topLeft: points[3],
-      topAxisEnd: points[0],
-      sideAxisEnd: points[2],
+      origin: textureOrigin ?? points[3],
+      xAxisEnd: textureXAxisEnd ?? points[0],
+      yAxisEnd: textureYAxisEnd ?? points[2],
       imagePath
     });
 
@@ -446,15 +456,15 @@ function drawIsoTerrainTop({
 
 function appendSkewedTopTexture({
   parentGroup,
-  topLeft,
-  topAxisEnd,
-  sideAxisEnd,
+  origin,
+  xAxisEnd,
+  yAxisEnd,
   imagePath
 }) {
-  const ux = topAxisEnd.x - topLeft.x;
-  const uy = topAxisEnd.y - topLeft.y;
-  const vx = sideAxisEnd.x - topLeft.x;
-  const vy = sideAxisEnd.y - topLeft.y;
+  const ux = xAxisEnd.x - origin.x;
+  const uy = xAxisEnd.y - origin.y;
+  const vx = yAxisEnd.x - origin.x;
+  const vy = yAxisEnd.y - origin.y;
   const sourceSize = Math.max(1, Math.hypot(ux, uy), Math.hypot(vx, vy));
 
   const image = svgEl("image");
@@ -470,8 +480,8 @@ function appendSkewedTopTexture({
   const b = uy / sourceSize;
   const c = vx / sourceSize;
   const d = vy / sourceSize;
-  const e = topLeft.x;
-  const f = topLeft.y;
+  const e = origin.x;
+  const f = origin.y;
 
   image.setAttribute("transform", `matrix(${a} ${b} ${c} ${d} ${e} ${f})`);
   parentGroup.appendChild(image);
