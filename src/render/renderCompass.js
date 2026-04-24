@@ -7,7 +7,10 @@
 export const WORLD_FACES = Object.freeze(["ne", "se", "sw", "nw"]);
 
 const BASE_SCREEN_FACE_MAP = Object.freeze({
-  left: "nw",
+  // North-up rotation 0: visible south-facing world sides.
+  // E/camera clockwise rotation advances the visible pair around the compass:
+  // 0 = sw/se, 1 = se/ne, 2 = ne/nw, 3 = nw/sw.
+  left: "sw",
   right: "se"
 });
 
