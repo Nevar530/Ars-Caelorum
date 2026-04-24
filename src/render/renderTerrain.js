@@ -479,7 +479,7 @@ function appendSkewedTopTexture({
   const baseF = topLeft.y;
 
   const rot = normalizeTopTextureRotation(textureRotation);
-  const radians = (rot * -Math.PI) / 2;
+  const radians = (rot * Math.PI) / 2;
   const cos = Math.cos(radians);
   const sin = Math.sin(radians);
   const center = sourceSize / 2;
