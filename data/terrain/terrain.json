@@ -2,6 +2,8 @@
   "grass": {
     "label": "Grass",
     "spriteSetId": "grass_001",
+    "topSprite": "art/tiles/grass_top.png",
+    "faceSprite": "art/tiles/grass_face.png",
     "baseColor": "#5f8f4f",
     "movementClass": "clear"
   },
@@ -26,12 +28,16 @@
   "asphalt": {
     "label": "Asphalt",
     "spriteSetId": "asphalt_001",
+    "topSprite": "art/tiles/asphalt_top.png",
+    "faceSprite": "art/tiles/asphalt_face.png",
     "baseColor": "#4c4f55",
     "movementClass": "clear"
   },
   "concrete": {
     "label": "Concrete",
     "spriteSetId": "concrete_001",
+    "topSprite": "art/tiles/concrete_top.png",
+    "faceSprite": "art/tiles/concrete_face.png",
     "baseColor": "#9a9a94",
     "movementClass": "clear"
   }
