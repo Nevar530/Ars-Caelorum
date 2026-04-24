@@ -9,6 +9,8 @@ import {
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { getTopdownCellSize } from "./projection.js";
 
+let terrainFaceClipId = 0;
+
 export function renderTerrainTile(state, item, parent) {
   if (state.ui.viewMode === "top") {
     drawTopTerrainCell(state, item, parent);
@@ -208,12 +210,15 @@ function drawIsoTerrainCell(state, item, parent) {
       { x: top.left.x, y: top.left.y + leftHeightPx }
     ];
 
-    const leftFill = sprites.face
-      ? getTerrainPatternFill(parent, sprites.face, colors.left, "face")
-      : colors.left;
-    const leftPolygon = makePolygon(leftFace, "tile-left", leftFill);
-    applyTerrainFaceStroke(leftPolygon, darkerTerrainGridStroke(colors.left));
-    group.appendChild(leftPolygon);
+    drawIsoTerrainFace({
+      parentGroup: group,
+      points: leftFace,
+      className: "tile-left",
+      fallbackColor: colors.left,
+      strokeColor: darkerTerrainGridStroke(colors.left),
+      imagePath: sprites.face,
+      faceHeightPx: leftHeightPx
+    });
   }
 
   if (rightHeightPx > 0) {
@@ -224,12 +229,15 @@ function drawIsoTerrainCell(state, item, parent) {
       { x: top.right.x, y: top.right.y + rightHeightPx }
     ];
 
-    const rightFill = sprites.face
-      ? getTerrainPatternFill(parent, sprites.face, colors.right, "face")
-      : colors.right;
-    const rightPolygon = makePolygon(rightFace, "tile-right", rightFill);
-    applyTerrainFaceStroke(rightPolygon, darkerTerrainGridStroke(colors.right));
-    group.appendChild(rightPolygon);
+    drawIsoTerrainFace({
+      parentGroup: group,
+      points: rightFace,
+      className: "tile-right",
+      fallbackColor: colors.right,
+      strokeColor: darkerTerrainGridStroke(colors.right),
+      imagePath: sprites.face,
+      faceHeightPx: rightHeightPx
+    });
   }
 
   const topFace = [top.top, top.right, top.bottom, top.left];
@@ -372,6 +380,91 @@ function normalizeSpritePath(path) {
   const value = String(path ?? "").trim();
   return value || null;
 }
+
+
+function drawIsoTerrainFace({
+  parentGroup,
+  points,
+  className,
+  fallbackColor,
+  strokeColor,
+  imagePath,
+  faceHeightPx
+}) {
+  const fallbackPolygon = makePolygon(points, className, fallbackColor);
+  fallbackPolygon.setAttribute("stroke", "none");
+  parentGroup.appendChild(fallbackPolygon);
+
+  if (imagePath) {
+    const clipId = `terrain-face-clip-${terrainFaceClipId += 1}`;
+
+    const clipPath = svgEl("clipPath");
+    clipPath.setAttribute("id", clipId);
+    clipPath.setAttribute("clipPathUnits", "userSpaceOnUse");
+
+    const clipPolygon = makePolygon(points, `${className}-clip`, "#fff");
+    clipPath.appendChild(clipPolygon);
+    parentGroup.appendChild(clipPath);
+
+    const textureGroup = svgEl("g");
+    textureGroup.setAttribute("clip-path", `url(#${clipId})`);
+
+    appendSkewedFaceTextureBands({
+      parentGroup: textureGroup,
+      topStart: points[0],
+      topEnd: points[1],
+      imagePath,
+      faceHeightPx
+    });
+
+    parentGroup.appendChild(textureGroup);
+  }
+
+  const outline = makePolygon(points, className, "none");
+  applyTerrainFaceStroke(outline, strokeColor);
+  parentGroup.appendChild(outline);
+}
+
+function appendSkewedFaceTextureBands({
+  parentGroup,
+  topStart,
+  topEnd,
+  imagePath,
+  faceHeightPx
+}) {
+  const dx = topEnd.x - topStart.x;
+  const dy = topEnd.y - topStart.y;
+  const faceWidth = Math.max(1, Math.hypot(dx, dy));
+  const bandHeight = Math.max(8, RENDER_CONFIG.elevationStepPx);
+  const totalHeight = Math.max(0, faceHeightPx);
+  const bandCount = Math.max(1, Math.ceil(totalHeight / bandHeight));
+
+  for (let bandIndex = 0; bandIndex < bandCount; bandIndex += 1) {
+    const yOffset = bandIndex * bandHeight;
+    const currentBandHeight = Math.min(bandHeight, totalHeight - yOffset);
+    if (currentBandHeight <= 0) continue;
+
+    const image = svgEl("image");
+    image.setAttribute("x", "0");
+    image.setAttribute("y", "0");
+    image.setAttribute("width", String(faceWidth));
+    image.setAttribute("height", String(currentBandHeight));
+    image.setAttribute("preserveAspectRatio", "none");
+    image.setAttribute("href", imagePath);
+    image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
+
+    const a = dx / faceWidth;
+    const b = dy / faceWidth;
+    const c = 0;
+    const d = 1;
+    const e = topStart.x;
+    const f = topStart.y + yOffset;
+
+    image.setAttribute("transform", `matrix(${a} ${b} ${c} ${d} ${e} ${f})`);
+    parentGroup.appendChild(image);
+  }
+}
+
 
 function getTerrainPatternFill(parent, imagePath, fallbackColor, role) {
   const svg = parent?.ownerSVGElement ?? parent;
