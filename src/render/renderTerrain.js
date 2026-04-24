@@ -8,8 +8,10 @@ import {
 } from "../map.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { getTopdownCellSize } from "./projection.js";
+import { getWorldFaceForScreenSide } from "./renderCompass.js";
 
 let terrainFaceClipId = 0;
+let terrainTopClipId = 0;
 
 export function renderTerrainTile(state, item, parent) {
   if (state.ui.viewMode === "top") {
@@ -210,13 +212,14 @@ function drawIsoTerrainCell(state, item, parent) {
       { x: top.left.x, y: top.left.y + leftHeightPx }
     ];
 
+    const leftWorldFace = getWorldFaceForScreenSide(state.rotation, "left");
     drawIsoTerrainFace({
       parentGroup: group,
       points: leftFace,
       className: "tile-left",
       fallbackColor: colors.left,
       strokeColor: darkerTerrainGridStroke(colors.left),
-      imagePath: sprites.face,
+      imagePath: getTerrainFaceSprite(sprites, leftWorldFace),
       faceHeightPx: leftHeightPx
     });
   }
@@ -229,24 +232,26 @@ function drawIsoTerrainCell(state, item, parent) {
       { x: top.right.x, y: top.right.y + rightHeightPx }
     ];
 
+    const rightWorldFace = getWorldFaceForScreenSide(state.rotation, "right");
     drawIsoTerrainFace({
       parentGroup: group,
       points: rightFace,
       className: "tile-right",
       fallbackColor: colors.right,
       strokeColor: darkerTerrainGridStroke(colors.right),
-      imagePath: sprites.face,
+      imagePath: getTerrainFaceSprite(sprites, rightWorldFace),
       faceHeightPx: rightHeightPx
     });
   }
 
   const topFace = [top.top, top.right, top.bottom, top.left];
-  const topFill = sprites.top
-    ? getTerrainPatternFill(parent, sprites.top, colors.top, "top")
-    : colors.top;
-  const topPolygon = makePolygon(topFace, "tile-top", topFill);
-  applyTerrainFaceStroke(topPolygon, darkerTerrainGridStroke(colors.top));
-  group.appendChild(topPolygon);
+  drawIsoTerrainTop({
+    parentGroup: group,
+    points: topFace,
+    fallbackColor: colors.top,
+    strokeColor: darkerTerrainGridStroke(colors.top),
+    imagePath: sprites.top
+  });
 
   if (tileOverlayStyle?.fill) {
     const overlayFill = makePolygon(topFace, "tile-top-overlay-fill", tileOverlayStyle.fill);
@@ -362,13 +367,29 @@ function resolveTerrainColors(state, tileLike, fallbackType, fineElevation = nul
 function resolveTerrainSprites(state, tileLike, fineElevation = null) {
   const definition = getTerrainDefinition(state, tileLike.terrainTypeId);
   if (!definition) {
-    return { top: null, face: null };
+    return { top: null, face: null, faces: {} };
   }
+
+  const legacyFace = normalizeSpritePath(definition.faceSprite);
+  const sourceFaces = definition.faceSprites && typeof definition.faceSprites === "object"
+    ? definition.faceSprites
+    : {};
 
   return {
     top: normalizeSpritePath(definition.topSprite),
-    face: normalizeSpritePath(definition.faceSprite)
+    face: legacyFace,
+    faces: {
+      ne: normalizeSpritePath(sourceFaces.ne) ?? legacyFace,
+      se: normalizeSpritePath(sourceFaces.se) ?? legacyFace,
+      sw: normalizeSpritePath(sourceFaces.sw) ?? legacyFace,
+      nw: normalizeSpritePath(sourceFaces.nw) ?? legacyFace
+    }
   };
+}
+
+function getTerrainFaceSprite(sprites, worldFace) {
+  const faceKey = String(worldFace ?? "").toLowerCase();
+  return sprites?.faces?.[faceKey] ?? sprites?.face ?? null;
 }
 
 function getTerrainDefinition(state, terrainTypeId) {
@@ -381,6 +402,80 @@ function normalizeSpritePath(path) {
   return value || null;
 }
 
+
+function drawIsoTerrainTop({
+  parentGroup,
+  points,
+  fallbackColor,
+  strokeColor,
+  imagePath
+}) {
+  const fallbackPolygon = makePolygon(points, "tile-top", fallbackColor);
+  fallbackPolygon.setAttribute("stroke", "none");
+  parentGroup.appendChild(fallbackPolygon);
+
+  if (imagePath) {
+    const clipId = `terrain-top-clip-${terrainTopClipId += 1}`;
+
+    const clipPath = svgEl("clipPath");
+    clipPath.setAttribute("id", clipId);
+    clipPath.setAttribute("clipPathUnits", "userSpaceOnUse");
+
+    const clipPolygon = makePolygon(points, "tile-top-clip", "#fff");
+    clipPath.appendChild(clipPolygon);
+    parentGroup.appendChild(clipPath);
+
+    const textureGroup = svgEl("g");
+    textureGroup.setAttribute("clip-path", `url(#${clipId})`);
+
+    appendSkewedTopTexture({
+      parentGroup: textureGroup,
+      topLeft: points[3],
+      topAxisEnd: points[0],
+      sideAxisEnd: points[2],
+      imagePath
+    });
+
+    parentGroup.appendChild(textureGroup);
+  }
+
+  const outline = makePolygon(points, "tile-top", "none");
+  applyTerrainFaceStroke(outline, strokeColor);
+  parentGroup.appendChild(outline);
+}
+
+function appendSkewedTopTexture({
+  parentGroup,
+  topLeft,
+  topAxisEnd,
+  sideAxisEnd,
+  imagePath
+}) {
+  const ux = topAxisEnd.x - topLeft.x;
+  const uy = topAxisEnd.y - topLeft.y;
+  const vx = sideAxisEnd.x - topLeft.x;
+  const vy = sideAxisEnd.y - topLeft.y;
+  const sourceSize = Math.max(1, Math.hypot(ux, uy), Math.hypot(vx, vy));
+
+  const image = svgEl("image");
+  image.setAttribute("x", "0");
+  image.setAttribute("y", "0");
+  image.setAttribute("width", String(sourceSize));
+  image.setAttribute("height", String(sourceSize));
+  image.setAttribute("preserveAspectRatio", "none");
+  image.setAttribute("href", imagePath);
+  image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
+
+  const a = ux / sourceSize;
+  const b = uy / sourceSize;
+  const c = vx / sourceSize;
+  const d = vy / sourceSize;
+  const e = topLeft.x;
+  const f = topLeft.y;
+
+  image.setAttribute("transform", `matrix(${a} ${b} ${c} ${d} ${e} ${f})`);
+  parentGroup.appendChild(image);
+}
 
 function drawIsoTerrainFace({
   parentGroup,

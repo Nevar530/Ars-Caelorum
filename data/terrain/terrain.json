@@ -5,7 +5,13 @@
     "topSprite": "art/tiles/grass_top.png",
     "faceSprite": "art/tiles/grass_face.png",
     "baseColor": "#5f8f4f",
-    "movementClass": "clear"
+    "movementClass": "clear",
+    "faceSprites": {
+      "ne": "art/tiles/grass_face.png",
+      "se": "art/tiles/grass_face.png",
+      "sw": "art/tiles/grass_face.png",
+      "nw": "art/tiles/grass_face.png"
+    }
   },
   "rock": {
     "label": "Rock",
@@ -31,7 +37,13 @@
     "topSprite": "art/tiles/asphalt_top.png",
     "faceSprite": "art/tiles/asphalt_face.png",
     "baseColor": "#4c4f55",
-    "movementClass": "clear"
+    "movementClass": "clear",
+    "faceSprites": {
+      "ne": "art/tiles/asphalt_face.png",
+      "se": "art/tiles/asphalt_face.png",
+      "sw": "art/tiles/asphalt_face.png",
+      "nw": "art/tiles/asphalt_face.png"
+    }
   },
   "concrete": {
     "label": "Concrete",
@@ -39,6 +51,12 @@
     "topSprite": "art/tiles/concrete_top.png",
     "faceSprite": "art/tiles/concrete_face.png",
     "baseColor": "#9a9a94",
-    "movementClass": "clear"
+    "movementClass": "clear",
+    "faceSprites": {
+      "ne": "art/tiles/concrete_face.png",
+      "se": "art/tiles/concrete_face.png",
+      "sw": "art/tiles/concrete_face.png",
+      "nw": "art/tiles/concrete_face.png"
+    }
   }
 }
