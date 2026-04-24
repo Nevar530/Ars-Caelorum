@@ -15,7 +15,7 @@ export function renderTerrainTile(state, item, parent) {
     return;
   }
 
-  drawIsoTerrainCell(item, parent);
+  drawIsoTerrainCell(state, item, parent);
 }
 
 export function renderEditorTile(tile, x, y, px, py, cellWidth, cellHeight, parent, options = {}) {
@@ -164,7 +164,7 @@ export function renderEditorDetailCell(
   parent.appendChild(group);
 }
 
-function drawIsoTerrainCell(item, parent) {
+function drawIsoTerrainCell(state, item, parent) {
   const {
     x,
     y,
@@ -181,7 +181,8 @@ function drawIsoTerrainCell(item, parent) {
   const type = fineElevation === null
     ? tileTypeFromElevation(elevation)
     : detailTypeFromFineElevation(fineElevation);
-  const colors = resolveTerrainColors(item, type, fineElevation);
+  const colors = resolveTerrainColors(state, item, type, fineElevation);
+  const sprites = resolveTerrainSprites(state, item, fineElevation);
 
   const halfW = (RENDER_CONFIG.isoTileWidth * size) / 2;
   const halfH = (RENDER_CONFIG.isoTileHeight * size) / 2;
@@ -207,7 +208,10 @@ function drawIsoTerrainCell(item, parent) {
       { x: top.left.x, y: top.left.y + leftHeightPx }
     ];
 
-    const leftPolygon = makePolygon(leftFace, "tile-left", colors.left);
+    const leftFill = sprites.face
+      ? getTerrainPatternFill(parent, sprites.face, colors.left, "face")
+      : colors.left;
+    const leftPolygon = makePolygon(leftFace, "tile-left", leftFill);
     applyTerrainFaceStroke(leftPolygon, darkerTerrainGridStroke(colors.left));
     group.appendChild(leftPolygon);
   }
@@ -220,13 +224,19 @@ function drawIsoTerrainCell(item, parent) {
       { x: top.right.x, y: top.right.y + rightHeightPx }
     ];
 
-    const rightPolygon = makePolygon(rightFace, "tile-right", colors.right);
+    const rightFill = sprites.face
+      ? getTerrainPatternFill(parent, sprites.face, colors.right, "face")
+      : colors.right;
+    const rightPolygon = makePolygon(rightFace, "tile-right", rightFill);
     applyTerrainFaceStroke(rightPolygon, darkerTerrainGridStroke(colors.right));
     group.appendChild(rightPolygon);
   }
 
   const topFace = [top.top, top.right, top.bottom, top.left];
-  const topPolygon = makePolygon(topFace, "tile-top", colors.top);
+  const topFill = sprites.top
+    ? getTerrainPatternFill(parent, sprites.top, colors.top, "top")
+    : colors.top;
+  const topPolygon = makePolygon(topFace, "tile-top", topFill);
   applyTerrainFaceStroke(topPolygon, darkerTerrainGridStroke(colors.top));
   group.appendChild(topPolygon);
 
@@ -263,7 +273,8 @@ function drawTopTerrainCell(state, item, parent) {
   const type = fineElevation === null
     ? tileTypeFromElevation(elevation)
     : detailTypeFromFineElevation(fineElevation);
-  const colors = resolveTerrainColors(item, type, fineElevation);
+  const colors = resolveTerrainColors(state, item, type, fineElevation);
+  const sprites = resolveTerrainSprites(state, item, fineElevation);
   const cellSize = getTopdownCellSize(state);
   const sizePx = cellSize * size;
 
@@ -272,7 +283,10 @@ function drawTopTerrainCell(state, item, parent) {
   rect.setAttribute("y", screenY);
   rect.setAttribute("width", sizePx);
   rect.setAttribute("height", sizePx);
-  rect.setAttribute("fill", colors.top);
+  const topFill = sprites.top
+    ? getTerrainPatternFill(parent, sprites.top, colors.top, "top")
+    : colors.top;
+  rect.setAttribute("fill", topFill);
   rect.setAttribute("stroke", tileOverlayStyle?.stroke ?? "rgba(255,255,255,0.08)");
   rect.setAttribute("stroke-width", String(tileOverlayStyle?.strokeWidth ?? (size < 1 ? 0.5 : 1)));
   rect.dataset.x = String(x);
@@ -317,17 +331,114 @@ function darkerTerrainGridStroke(fillColor) {
   return shiftHexBrightness(fillColor, -24);
 }
 
-function resolveTerrainColors(tileLike, fallbackType, fineElevation = null) {
+function resolveTerrainColors(state, tileLike, fallbackType, fineElevation = null) {
   if (fineElevation !== null) {
-    return tileColors(fallbackType);
+    const definition = getTerrainDefinition(state, tileLike.terrainTypeId);
+    const top = definition?.baseColor ?? tileColors(fallbackType).top;
+    return {
+      top,
+      left: shiftHexBrightness(top, -28),
+      right: shiftHexBrightness(top, -16)
+    };
   }
 
-  const top = editorCellColor(tileLike);
+  const definition = getTerrainDefinition(state, tileLike.terrainTypeId);
+  const top = definition?.baseColor ?? editorCellColor(tileLike);
   return {
     top,
     left: shiftHexBrightness(top, -28),
     right: shiftHexBrightness(top, -16)
   };
+}
+
+function resolveTerrainSprites(state, tileLike, fineElevation = null) {
+  const definition = getTerrainDefinition(state, tileLike.terrainTypeId);
+  if (!definition) {
+    return { top: null, face: null };
+  }
+
+  return {
+    top: normalizeSpritePath(definition.topSprite),
+    face: normalizeSpritePath(definition.faceSprite)
+  };
+}
+
+function getTerrainDefinition(state, terrainTypeId) {
+  const id = terrainTypeId ?? "grass";
+  return state?.content?.terrainDefinitions?.[id] ?? null;
+}
+
+function normalizeSpritePath(path) {
+  const value = String(path ?? "").trim();
+  return value || null;
+}
+
+function getTerrainPatternFill(parent, imagePath, fallbackColor, role) {
+  const svg = parent?.ownerSVGElement ?? parent;
+  if (!svg) return fallbackColor;
+
+  const patternId = terrainPatternId(imagePath, role);
+  let pattern = svg.querySelector(`[id="${patternId}"]`);
+
+  if (!pattern) {
+    pattern = buildTerrainPattern(patternId, imagePath, fallbackColor, role);
+    const defs = ensureSvgDefs(svg);
+    defs.appendChild(pattern);
+  }
+
+  return `url(#${patternId})`;
+}
+
+function ensureSvgDefs(svg) {
+  let defs = Array.from(svg.children).find((child) => child.tagName?.toLowerCase() === "defs") ?? null;
+  if (!defs) {
+    defs = svgEl("defs");
+    svg.insertBefore(defs, svg.firstChild);
+  }
+  return defs;
+}
+
+function buildTerrainPattern(patternId, imagePath, fallbackColor, role) {
+  const isFace = role === "face";
+  const width = RENDER_CONFIG.isoTileWidth;
+  const height = isFace
+    ? Math.max(8, RENDER_CONFIG.elevationStepPx)
+    : RENDER_CONFIG.isoTileHeight;
+
+  const pattern = svgEl("pattern");
+  pattern.setAttribute("id", patternId);
+  pattern.setAttribute("patternUnits", "userSpaceOnUse");
+  pattern.setAttribute("width", String(width));
+  pattern.setAttribute("height", String(height));
+
+  const fallback = svgEl("rect");
+  fallback.setAttribute("x", "0");
+  fallback.setAttribute("y", "0");
+  fallback.setAttribute("width", String(width));
+  fallback.setAttribute("height", String(height));
+  fallback.setAttribute("fill", fallbackColor);
+  pattern.appendChild(fallback);
+
+  const image = svgEl("image");
+  image.setAttribute("x", "0");
+  image.setAttribute("y", "0");
+  image.setAttribute("width", String(width));
+  image.setAttribute("height", String(height));
+  image.setAttribute("preserveAspectRatio", "none");
+  image.setAttribute("href", imagePath);
+  image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
+  pattern.appendChild(image);
+
+  return pattern;
+}
+
+function terrainPatternId(imagePath, role) {
+  const safe = String(imagePath)
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+
+  return `terrain-pattern-${role}-${safe}`;
 }
 
 export function tileColors(type) {
