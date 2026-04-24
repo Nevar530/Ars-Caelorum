@@ -31,7 +31,7 @@ export function rotateWorldFace(face, rotation = 0) {
 
   const index = WORLD_FACES.indexOf(normalizedFace);
   const rot = normalizeRotation(rotation);
-  return WORLD_FACES[(index + rot) % WORLD_FACES.length];
+  return WORLD_FACES[(index - rot + WORLD_FACES.length) % WORLD_FACES.length];
 }
 
 export function getVisibleWorldFaces(rotation = 0) {
