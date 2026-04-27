@@ -139,54 +139,78 @@ function makeTopItem(state, structure) {
 }
 
 function geometry(state, structure) {
-  const p = projectScene(state, structure.x, structure.y, structure.elevation, 1);
-  const halfW = RENDER_CONFIG.isoTileWidth / 2;
-  const halfH = RENDER_CONFIG.isoTileHeight / 2;
-  const rise = structure.heightPx;
+  const riseLevels = structure.heightLevels;
+  const bottomCorners = makeProjectedStructureCorners(state, structure, structure.elevation);
+  const topCorners = makeProjectedStructureCorners(state, structure, structure.elevation + riseLevels);
 
-  const base = {
-    screenY: p.y,
-    top: { x: p.x, y: p.y },
-    right: { x: p.x + halfW, y: p.y + halfH },
-    bottom: { x: p.x, y: p.y + (halfH * 2) },
-    left: { x: p.x - halfW, y: p.y + halfH }
+  const rawFaces = {
+    // World edge truth. These are not screen-left/screen-right aliases.
+    // They stay attached to the authored map edge and the camera rotates around them.
+    ne: makeFaceFromEdge(topCorners.nw, topCorners.ne, bottomCorners.ne, bottomCorners.nw),
+    se: makeFaceFromEdge(topCorners.ne, topCorners.se, bottomCorners.se, bottomCorners.ne),
+    sw: makeFaceFromEdge(topCorners.sw, topCorners.se, bottomCorners.se, bottomCorners.sw),
+    nw: makeFaceFromEdge(topCorners.nw, topCorners.sw, bottomCorners.sw, bottomCorners.nw)
   };
 
-  const roof = {
-    top: { x: base.top.x, y: base.top.y - rise },
-    right: { x: base.right.x, y: base.right.y - rise },
-    bottom: { x: base.bottom.x, y: base.bottom.y - rise },
-    left: { x: base.left.x, y: base.left.y - rise }
-  };
-
-  // These four screen planes are stable for the projected tile diamond.
-  // The map from world face -> screen plane rotates with camera below.
-  const screenFaces = {
-    left: [roof.left, roof.bottom, base.bottom, base.left],
-    right: [roof.right, roof.bottom, base.bottom, base.right],
-    backRight: [roof.top, roof.right, base.right, base.top],
-    backLeft: [roof.left, roof.top, base.top, base.left]
-  };
+  const faces = {};
+  for (const worldFace of WORLD_FACES) {
+    faces[worldFace] = orientFaceForNonMirroredTexture(rawFaces[worldFace]);
+  }
 
   return {
-    base,
-    roof: [roof.top, roof.right, roof.bottom, roof.left],
-    screenFaces,
-    faces: getWorldFaceGeometry(state.rotation, screenFaces)
+    base: {
+      screenY: Math.max(
+        bottomCorners.nw.y,
+        bottomCorners.ne.y,
+        bottomCorners.se.y,
+        bottomCorners.sw.y
+      ),
+      corners: bottomCorners
+    },
+    roof: [topCorners.nw, topCorners.ne, topCorners.se, topCorners.sw],
+    faces
   };
 }
 
-function getWorldFaceGeometry(rotation, screenFaces) {
-  const faces = {};
-  const leftWorldFace = getWorldFaceForScreenSide(rotation, "left");
-  const rightWorldFace = getWorldFaceForScreenSide(rotation, "right");
+function makeProjectedStructureCorners(state, structure, elevation) {
+  const x0 = structure.x;
+  const y0 = structure.y;
+  const x1 = structure.x + structure.w;
+  const y1 = structure.y + structure.h;
 
-  faces[leftWorldFace] = screenFaces.left;
-  faces[rightWorldFace] = screenFaces.right;
-  faces[getOppositeStructureFace(leftWorldFace)] = screenFaces.backRight;
-  faces[getOppositeStructureFace(rightWorldFace)] = screenFaces.backLeft;
+  return {
+    // Names are world/map-edge corners, not current screen positions.
+    nw: projectScene(state, x0, y0, elevation, 1),
+    ne: projectScene(state, x1, y0, elevation, 1),
+    se: projectScene(state, x1, y1, elevation, 1),
+    sw: projectScene(state, x0, y1, elevation, 1)
+  };
+}
 
-  return faces;
+function makeFaceFromEdge(topStart, topEnd, bottomEnd, bottomStart) {
+  return [topStart, topEnd, bottomEnd, bottomStart];
+}
+
+function orientFaceForNonMirroredTexture(points) {
+  if (!Array.isArray(points) || points.length !== 4) return points;
+
+  // SVG image projection maps image X along points[0] -> points[1]
+  // and image Y along points[0] -> points[3]. If that basis has a negative
+  // determinant, the wall art is mirrored. Reverse the edge direction while
+  // keeping the same physical wall plane so every world edge uses the same
+  // non-mirrored texture handedness.
+  const topStart = points[0];
+  const topEnd = points[1];
+  const bottomStart = points[3];
+
+  const ux = topEnd.x - topStart.x;
+  const uy = topEnd.y - topStart.y;
+  const vx = bottomStart.x - topStart.x;
+  const vy = bottomStart.y - topStart.y;
+  const determinant = (ux * vy) - (uy * vx);
+
+  if (determinant >= 0) return points;
+  return [points[1], points[0], points[3], points[2]];
 }
 
 function resolveDoorwayBacking(state, structure, worldFace, imagePath, frontFacePoints, g) {
@@ -281,9 +305,11 @@ function drawFace(item, parent) {
   group.dataset.worldFace = item.worldFace ?? "";
   group.dataset.screenSide = item.screenSide ?? "";
 
-  const fallback = makePolygon(item.points, "structure-face", FACE_COLOR);
-  fallback.setAttribute("stroke", "none");
-  group.appendChild(fallback);
+  if (!item.imagePath) {
+    const fallback = makePolygon(item.points, "structure-face", FACE_COLOR);
+    fallback.setAttribute("stroke", "none");
+    group.appendChild(fallback);
+  }
 
   if (item.doorwayBacking?.imagePath) {
     appendProjectedFaceImage(
