@@ -58,7 +58,8 @@ export function normalizeStructureForMap(state, raw) {
     drawFallbackFaces: raw?.drawFallbackFaces === true,
     roofSprite: resolveStructureSpritePath(raw?.roof ?? raw?.roofSprite),
     floorSprite: resolveStructureSpritePath(raw?.floor ?? raw?.floorSprite ?? raw?.interiorFloor),
-    debug: raw?.debug === true
+    debug: raw?.debug === true,
+    showInteriorFloor: raw?.showInteriorFloor === true
   };
 }
 

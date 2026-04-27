@@ -17,8 +17,8 @@ import {
 
 let clipId = 0;
 
-const EDGE_FALLBACK_COLOR = "rgba(80,74,84,0.72)";
-const ROOF_COLOR = "rgba(120,68,86,0.82)";
+const EDGE_FALLBACK_COLOR = "rgb(80,74,84)";
+const ROOF_COLOR = "rgb(120,68,86)";
 const FLOOR_COLOR = "rgba(42,38,50,0.62)";
 const DEBUG_CELL_COLOR = "rgba(255, 221, 80, 0.16)";
 const DEBUG_EDGE_COLOR = "rgba(255, 221, 80, 0.78)";
@@ -82,6 +82,11 @@ function makeTopItems(state, structure) {
 }
 
 function makeFloorItems(state, structure) {
+  // Floors/interior fills are intentionally opt-in. Drawing a translucent
+  // fallback floor under normal roofed structures was bleeding over wall faces
+  // in the global sort and made the structure look transparent.
+  if (!structure.floorSprite && structure.showInteriorFloor !== true) return [];
+
   const items = [];
 
   for (const cell of getStructureCells(structure)) {
@@ -94,13 +99,8 @@ function makeFloorItems(state, structure) {
       cell,
       points,
       imagePath: structure.floorSprite,
-      sortDepth: getTerrainDepth({
-        size: 1,
-        screenY,
-        leftFaceHeight: structure.elevation,
-        rightFaceHeight: structure.elevation
-      }) + 0.03,
-      sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation) + 0.03,
+      sortDepth: screenY - 0.25,
+      sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation) - 0.25,
       render(parent) {
         drawFloor(this, parent);
       }
@@ -155,8 +155,9 @@ function makeRoofItems(state, structure) {
   if (!structure.roofSprite) return items;
 
   for (const cell of getStructureCells(structure)) {
+    const floorPoints = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
     const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, structure.heightPx);
-    const screenY = Math.max(...points.map((point) => point.y));
+    const floorScreenY = Math.max(...floorPoints.map((point) => point.y));
 
     items.push({
       kind: "structure_roof",
@@ -165,7 +166,10 @@ function makeRoofItems(state, structure) {
       points,
       imagePath: structure.roofSprite,
       textureRotation: state.rotation,
-      sortDepth: screenY + 0.42,
+      // Roofs are a separate cover layer. Sort them after their walls so they
+      // read as closed rooms until a future cutaway/inside-unit state hides
+      // them. This fixes the "no roofs" symptom from the first rewrite pass.
+      sortDepth: floorScreenY + structure.heightPx + 0.42,
       sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation + structure.heightLevels) + 0.3,
       render(parent) {
         drawRoof(this, parent);
@@ -267,10 +271,8 @@ function drawRoof(item, parent) {
 }
 
 function getCellRoofOrFloorPoints(state, x, y, elevation, risePx = 0) {
-  const corners = getCellProjectedCorners(state, x, y, elevation)
+  return getWorldOrderedCellCorners(state, x, y, elevation)
     .map((point) => ({ x: point.x, y: point.y - risePx }));
-
-  return orderDiamondPoints(corners);
 }
 
 function getEdgePlanePoints(state, x, y, edge, elevation, heightPx) {
@@ -279,8 +281,10 @@ function getEdgePlanePoints(state, x, y, edge, elevation, heightPx) {
 
   let [a, b] = endpoints;
 
-  // Keep texture handedness stable on screen. This avoids the old mirrored face
-  // problem while leaving the map edge itself fixed in world space.
+  // Texture readability is screen-oriented, while edge placement is still
+  // world-oriented. Swapping endpoint order here does not move the wall; it
+  // only prevents the same wall art from being mirrored when camera rotation
+  // puts the edge on the opposite screen side.
   if (a.x > b.x) {
     [a, b] = [b, a];
   }
@@ -292,53 +296,37 @@ function getEdgePlanePoints(state, x, y, edge, elevation, heightPx) {
 }
 
 function getWorldEdgeEndpoints(state, x, y, edge, elevation) {
-  const corners = getNamedCellCorners(state, x, y, elevation);
+  const corners = getWorldNamedCellCorners(state, x, y, elevation);
 
   switch (String(edge ?? "").toLowerCase()) {
     case "ne":
-      return [corners.top, corners.right];
+      return [corners.nw, corners.ne];
     case "se":
-      return [corners.right, corners.bottom];
+      return [corners.ne, corners.se];
     case "sw":
-      return [corners.left, corners.bottom];
+      return [corners.sw, corners.se];
     case "nw":
-      return [corners.top, corners.left];
+      return [corners.nw, corners.sw];
     default:
       return null;
   }
 }
 
-function getNamedCellCorners(state, x, y, elevation) {
-  const ordered = orderDiamondPoints(getCellProjectedCorners(state, x, y, elevation));
+function getWorldOrderedCellCorners(state, x, y, elevation) {
+  const corners = getWorldNamedCellCorners(state, x, y, elevation);
+  return [corners.nw, corners.ne, corners.se, corners.sw];
+}
 
+function getWorldNamedCellCorners(state, x, y, elevation) {
+  // These names are WORLD corner names. Do not reclassify them by screen
+  // top/right/bottom/left after projection. Reclassification was the rotation
+  // bug: it made authored edges slide to whichever face was currently visible.
   return {
-    top: ordered[0],
-    right: ordered[1],
-    bottom: ordered[2],
-    left: ordered[3]
+    nw: projectScene(state, x, y, elevation, 1),
+    ne: projectScene(state, x + 1, y, elevation, 1),
+    se: projectScene(state, x + 1, y + 1, elevation, 1),
+    sw: projectScene(state, x, y + 1, elevation, 1)
   };
-}
-
-function getCellProjectedCorners(state, x, y, elevation) {
-  return [
-    projectScene(state, x, y, elevation, 1),
-    projectScene(state, x + 1, y, elevation, 1),
-    projectScene(state, x + 1, y + 1, elevation, 1),
-    projectScene(state, x, y + 1, elevation, 1)
-  ];
-}
-
-function orderDiamondPoints(points) {
-  const sortedByY = [...points].sort((a, b) => {
-    if (a.y !== b.y) return a.y - b.y;
-    return a.x - b.x;
-  });
-
-  const top = sortedByY[0];
-  const bottom = sortedByY[sortedByY.length - 1];
-  const middle = sortedByY.slice(1, -1).sort((a, b) => a.x - b.x);
-
-  return [top, middle[1], bottom, middle[0]];
 }
 
 function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight) {

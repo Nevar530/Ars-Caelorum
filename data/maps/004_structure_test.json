@@ -46,7 +46,7 @@
       "blocksLOS": true,
       "roof": "roof_001.png",
       "floor": null,
-      "debug": true,
+      "debug": false,
       "edges": [
         {
           "x": 5,
@@ -106,7 +106,8 @@
           "type": "wall",
           "spriteId": "wall_001.png"
         }
-      ]
+      ],
+      "showInteriorFloor": false
     }
   ],
   "startState": {
