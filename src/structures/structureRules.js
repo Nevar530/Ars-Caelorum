@@ -49,6 +49,21 @@ export function resolveStructureSpritePath(name) {
   return `${DEFAULT_STRUCTURE_ART_ROOT}${value}`;
 }
 
+export function getOppositeStructureFace(worldFace) {
+  switch (normalizeWorldFace(worldFace)) {
+    case "ne":
+      return "sw";
+    case "se":
+      return "nw";
+    case "sw":
+      return "ne";
+    case "nw":
+      return "se";
+    default:
+      return null;
+  }
+}
+
 export function getStructureFaceSprite(structure, worldFace) {
   const face = normalizeWorldFace(worldFace);
   return face ? (structure?.faceSprites?.[face] ?? null) : null;

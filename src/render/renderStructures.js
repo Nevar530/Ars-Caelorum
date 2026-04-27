@@ -1,15 +1,24 @@
 // src/render/renderStructures.js
-// Structure Render V2.5
-// Keeps world-face lock, no sprite mirroring, and doorway openings reveal a
-// recessed interior return plane so transparent doors read as depth, not void.
+// Structure Render V3
+//
+// Structures are world-edge authored parts, not prefab buildings.
+// A structure cell owns four persistent world faces (ne/se/sw/nw) plus a roof.
+// Camera rotation only decides which world faces are front-visible on screen.
+// Door transparency can reveal the opposite/back wall because that wall exists
+// as real structure data, not as a fake same-face fill.
 
 import { RENDER_CONFIG } from "../config.js";
 import { svgEl, makePolygon } from "../utils.js";
 import { projectScene, getTopdownCellSize, getSceneSortKey } from "./projection.js";
-import { getWorldFaceForScreenSide } from "./renderCompass.js";
+import {
+  getScreenSideForWorldFace,
+  getWorldFaceForScreenSide,
+  WORLD_FACES
+} from "./renderCompass.js";
 import { getTerrainDepth } from "./renderSceneMath.js";
 import {
   getMapStructures,
+  getOppositeStructureFace,
   getStructureFaceSprite,
   getStructureInteriorSprite,
   normalizeStructureForMap
@@ -19,7 +28,7 @@ let clipId = 0;
 
 const FACE_COLOR = "rgba(80,74,84,0.72)";
 const ROOF_COLOR = "rgba(120,68,86,0.82)";
-const DOOR_PATTERN = /(^|[_-])door([_-]|\.|$)/i;
+const DOOR_PATTERN = /(^|[\\/_-])door([\\/_-]|\.|$)/i;
 
 export function getStructureSceneItems(state) {
   const list = getMapStructures(state?.map);
@@ -34,31 +43,38 @@ export function getStructureSceneItems(state) {
       continue;
     }
 
-    const leftWorldFace = getWorldFaceForScreenSide(state.rotation, "left");
-    const rightWorldFace = getWorldFaceForScreenSide(state.rotation, "right");
+    const g = geometry(state, structure);
+    const visibleFaces = new Set([
+      getWorldFaceForScreenSide(state.rotation, "left"),
+      getWorldFaceForScreenSide(state.rotation, "right")
+    ]);
 
-    const leftSprite = getStructureFaceSprite(structure, leftWorldFace);
-    const rightSprite = getStructureFaceSprite(structure, rightWorldFace);
+    // Draw only the two camera-front exterior faces for now, but those faces
+    // are chosen from four real world edges. The other two faces still exist in
+    // geometry and can be projected through door/window openings or later shown
+    // by roof/cutaway rules when a pilot is inside.
+    for (const worldFace of WORLD_FACES) {
+      if (!visibleFaces.has(worldFace)) continue;
 
-    if (leftSprite || structure.drawFallbackFaces) {
-      items.push(makeFaceItem(state, structure, "left", leftWorldFace, leftSprite));
-    }
-
-    if (rightSprite || structure.drawFallbackFaces) {
-      items.push(makeFaceItem(state, structure, "right", rightWorldFace, rightSprite));
+      const imagePath = getStructureFaceSprite(structure, worldFace);
+      if (imagePath || structure.drawFallbackFaces) {
+        items.push(makeFaceItem(state, structure, worldFace, imagePath, g));
+      }
     }
 
     if (structure.roofSprite) {
-      items.push(makeRoofItem(state, structure));
+      items.push(makeRoofItem(state, structure, g));
     }
   }
 
   return items.filter(Boolean);
 }
 
-function makeFaceItem(state, structure, screenSide, worldFace, imagePath) {
-  const g = geometry(state, structure);
-  const points = screenSide === "left" ? g.leftFace : g.rightFace;
+function makeFaceItem(state, structure, worldFace, imagePath, g) {
+  const points = g.faces[worldFace];
+  if (!points) return null;
+
+  const screenSide = getScreenSideForWorldFace(state.rotation, worldFace);
   const depth = getTerrainDepth({
     size: 1,
     screenY: g.base.screenY,
@@ -73,7 +89,7 @@ function makeFaceItem(state, structure, screenSide, worldFace, imagePath) {
     worldFace,
     points,
     imagePath,
-    doorwayBacking: resolveDoorwayBacking(state, structure, screenSide, worldFace, imagePath, points),
+    doorwayBacking: resolveDoorwayBacking(state, structure, worldFace, imagePath, points, g),
     sortDepth: depth + (screenSide === "left" ? 0.36 : 0.37),
     sortKey: getSceneSortKey(state, structure.x, structure.y, structure.elevation) + (screenSide === "left" ? 0.1 : 0.2),
     render(parent) {
@@ -82,8 +98,7 @@ function makeFaceItem(state, structure, screenSide, worldFace, imagePath) {
   };
 }
 
-function makeRoofItem(state, structure) {
-  const g = geometry(state, structure);
+function makeRoofItem(state, structure, g) {
   const depth = getTerrainDepth({
     size: 1,
     screenY: g.base.screenY,
@@ -144,74 +159,63 @@ function geometry(state, structure) {
     left: { x: base.left.x, y: base.left.y - rise }
   };
 
+  // These four screen planes are stable for the projected tile diamond.
+  // The map from world face -> screen plane rotates with camera below.
+  const screenFaces = {
+    left: [roof.left, roof.bottom, base.bottom, base.left],
+    right: [roof.right, roof.bottom, base.bottom, base.right],
+    backRight: [roof.top, roof.right, base.right, base.top],
+    backLeft: [roof.left, roof.top, base.top, base.left]
+  };
+
   return {
     base,
     roof: [roof.top, roof.right, roof.bottom, roof.left],
-    leftFace: [roof.left, roof.bottom, base.bottom, base.left],
-    rightFace: [roof.right, roof.bottom, base.bottom, base.right]
+    screenFaces,
+    faces: getWorldFaceGeometry(state.rotation, screenFaces)
   };
 }
 
-function resolveDoorwayBacking(state, structure, screenSide, worldFace, imagePath, frontFacePoints) {
+function getWorldFaceGeometry(rotation, screenFaces) {
+  const faces = {};
+  const leftWorldFace = getWorldFaceForScreenSide(rotation, "left");
+  const rightWorldFace = getWorldFaceForScreenSide(rotation, "right");
+
+  faces[leftWorldFace] = screenFaces.left;
+  faces[rightWorldFace] = screenFaces.right;
+  faces[getOppositeStructureFace(leftWorldFace)] = screenFaces.backRight;
+  faces[getOppositeStructureFace(rightWorldFace)] = screenFaces.backLeft;
+
+  return faces;
+}
+
+function resolveDoorwayBacking(state, structure, worldFace, imagePath, frontFacePoints, g) {
   if (!looksLikeDoorSprite(imagePath)) return null;
 
-  const backingSprite = resolveDoorwayBackingSprite(state, structure, worldFace);
-  if (!backingSprite) return null;
+  const backFace = getOppositeStructureFace(worldFace);
+  const backingSprite = resolveDoorwayBackingSprite(state, structure, worldFace, backFace);
+  const backingPoints = g.faces?.[backFace];
 
-  // The transparent pixels in door_*.png are the aperture mask.
-  // Do NOT map the backing onto the same exterior face as the door.
-  // That makes the doorway read as a flat wall pasted behind the hole.
-  // Instead, map the texture onto a recessed return plane that runs inward
-  // from the outside vertical edge of the face. The front door image still
-  // clips/covers it, so only the transparent opening reveals this skewed depth.
+  if (!backingSprite || !backingPoints) return null;
+
+  // The front door sprite is drawn over this. Its transparent pixels become the
+  // aperture, so only the part visible through the doorway shows. The backing is
+  // projected from the opposite/back wall plane, not pasted onto the door plane.
   return {
     imagePath: backingSprite,
-    points: makeDoorwayReturnPlanePoints(screenSide, frontFacePoints)
+    clipPoints: frontFacePoints,
+    imagePoints: backingPoints
   };
 }
 
-function makeDoorwayReturnPlanePoints(screenSide, frontFacePoints) {
-  if (!Array.isArray(frontFacePoints) || frontFacePoints.length < 4) return frontFacePoints;
-
-  const topOuter = frontFacePoints[0];
-  const bottomOuter = frontFacePoints[3];
-  const topInnerOnFrontFace = frontFacePoints[1];
-
-  // Face points are ordered as:
-  //   [roof outer, roof/bottom shared edge, base/bottom shared edge, base outer]
-  // for both visible side faces. The top edge vector lies along the exterior face.
-  // Flipping its screen-Y component gives the roof-depth vector into the tile.
-  const faceTopVector = {
-    x: topInnerOnFrontFace.x - topOuter.x,
-    y: topInnerOnFrontFace.y - topOuter.y
-  };
-
-  const depthScale = 1;
-  const inward = {
-    x: faceTopVector.x * depthScale,
-    y: -faceTopVector.y * depthScale
-  };
-
-  const topInner = {
-    x: topOuter.x + inward.x,
-    y: topOuter.y + inward.y
-  };
-  const bottomInner = {
-    x: bottomOuter.x + inward.x,
-    y: bottomOuter.y + inward.y
-  };
-
-  return [topOuter, topInner, bottomInner, bottomOuter];
+function resolveDoorwayBackingSprite(state, structure, worldFace, backFace) {
+  return getStructureInteriorSprite(structure, backFace)
+    ?? getStructureFaceSprite(structure, backFace)
+    ?? getStructureInteriorSprite(structure, worldFace)
+    ?? findNeighborFaceSprite(state, structure, worldFace, backFace);
 }
 
-function resolveDoorwayBackingSprite(state, structure, worldFace) {
-  const sameFaceInterior =
-    getStructureInteriorSprite(structure, worldFace)
-    ?? getStructureFaceSprite(structure, getOppositeWorldFace(worldFace))
-    ?? getStructureInteriorSprite(structure, getOppositeWorldFace(worldFace));
-
-  if (sameFaceInterior) return sameFaceInterior;
-
+function findNeighborFaceSprite(state, structure, worldFace, backFace) {
   const inward = getInteriorOffsetForWorldFace(worldFace);
   if (!inward) return null;
 
@@ -220,8 +224,8 @@ function resolveDoorwayBackingSprite(state, structure, worldFace) {
 
   return getStructureFaceSprite(neighbor, worldFace)
     ?? getStructureInteriorSprite(neighbor, worldFace)
-    ?? getStructureFaceSprite(neighbor, getOppositeWorldFace(worldFace))
-    ?? getStructureInteriorSprite(neighbor, getOppositeWorldFace(worldFace));
+    ?? getStructureFaceSprite(neighbor, backFace)
+    ?? getStructureInteriorSprite(neighbor, backFace);
 }
 
 function findStructureAt(state, x, y, excludedId = null) {
@@ -254,21 +258,6 @@ function getInteriorOffsetForWorldFace(worldFace) {
   }
 }
 
-function getOppositeWorldFace(worldFace) {
-  switch (String(worldFace ?? "").toLowerCase()) {
-    case "sw":
-      return "ne";
-    case "se":
-      return "nw";
-    case "ne":
-      return "sw";
-    case "nw":
-      return "se";
-    default:
-      return worldFace;
-  }
-}
-
 function looksLikeDoorSprite(imagePath) {
   return DOOR_PATTERN.test(String(imagePath ?? "").trim());
 }
@@ -297,7 +286,13 @@ function drawFace(item, parent) {
   group.appendChild(fallback);
 
   if (item.doorwayBacking?.imagePath) {
-    appendProjectedFaceImage(group, item.points, item.doorwayBacking.points, item.doorwayBacking.imagePath, "doorway-backing");
+    appendProjectedFaceImage(
+      group,
+      item.doorwayBacking.clipPoints,
+      item.doorwayBacking.imagePoints,
+      item.doorwayBacking.imagePath,
+      "doorway-backing"
+    );
   }
 
   if (item.imagePath) {
