@@ -1,7 +1,7 @@
 // src/render/renderStructures.js
-// Structure Render V2.2
+// Structure Render V2.4
 // Keeps world-face lock, no sprite mirroring, and doorway openings reveal the
-// correct interior/back wall surface instead of empty space.
+// doorway openings use same-face interior backing so transparency never shows fallback color.
 
 import { RENDER_CONFIG } from "../config.js";
 import { svgEl, makePolygon } from "../utils.js";
@@ -155,66 +155,44 @@ function geometry(state, structure) {
 function resolveDoorwayBacking(state, structure, screenSide, worldFace, imagePath, frontFacePoints) {
   if (!looksLikeDoorSprite(imagePath)) return null;
 
-  const backSurface = resolveBackSurface(state, structure, screenSide, worldFace);
-  if (!backSurface?.imagePath || !backSurface?.points) return null;
+  const backingSprite = resolveDoorwayBackingSprite(state, structure, worldFace);
+  if (!backingSprite) return null;
 
+  // The transparent pixels in door_*.png are the aperture mask.
+  // The backing must occupy the same projected face so the doorway reveals
+  // wall/interior texture instead of the fallback face color or terrain.
   return {
-    imagePath: backSurface.imagePath,
-    points: insetToward(frontFacePoints, backSurface.points, 0.34)
+    imagePath: backingSprite,
+    points: frontFacePoints
   };
 }
 
-function resolveBackSurface(state, structure, screenSide, worldFace) {
+function resolveDoorwayBackingSprite(state, structure, worldFace) {
+  const sameFaceInterior =
+    getStructureInteriorSprite(structure, worldFace)
+    ?? getStructureFaceSprite(structure, getOppositeWorldFace(worldFace))
+    ?? getStructureInteriorSprite(structure, getOppositeWorldFace(worldFace));
+
+  if (sameFaceInterior) return sameFaceInterior;
+
   const inward = getInteriorOffsetForWorldFace(worldFace);
-  const backScreenSide = oppositeScreenSide(screenSide);
+  if (!inward) return null;
 
-  if (!inward) {
-    return resolveSameTileBackSurface(state, structure, backScreenSide);
-  }
+  const neighbor = findStructureAt(state, structure.x + inward.x, structure.y + inward.y, structure.id);
+  if (!neighbor) return null;
 
-  const neighbor = findStructureAt(state, structure.x + inward.x, structure.y + inward.y);
-  if (neighbor) {
-    return resolveStructureFaceSurface(state, neighbor, backScreenSide)
-      ?? resolveSameTileBackSurface(state, structure, backScreenSide);
-  }
-
-  return resolveSameTileBackSurface(state, structure, backScreenSide);
+  return getStructureFaceSprite(neighbor, worldFace)
+    ?? getStructureInteriorSprite(neighbor, worldFace)
+    ?? getStructureFaceSprite(neighbor, getOppositeWorldFace(worldFace))
+    ?? getStructureInteriorSprite(neighbor, getOppositeWorldFace(worldFace));
 }
 
-function resolveSameTileBackSurface(state, structure, backScreenSide) {
-  const backWorldFace = getWorldFaceForScreenSide(state.rotation, backScreenSide);
-  const sprite =
-    getStructureFaceSprite(structure, backWorldFace)
-    ?? getStructureInteriorSprite(structure, backWorldFace)
-    ?? getStructureInteriorSprite(structure, getOppositeWorldFace(backWorldFace));
-
-  if (!sprite) return null;
-
-  const g = geometry(state, structure);
-  const points = backScreenSide === "left" ? g.leftFace : g.rightFace;
-
-  return { imagePath: sprite, points };
-}
-
-function resolveStructureFaceSurface(state, structure, screenSide) {
-  const worldFace = getWorldFaceForScreenSide(state.rotation, screenSide);
-  const sprite =
-    getStructureFaceSprite(structure, worldFace)
-    ?? getStructureInteriorSprite(structure, worldFace);
-
-  if (!sprite) return null;
-
-  const g = geometry(state, structure);
-  const points = screenSide === "left" ? g.leftFace : g.rightFace;
-  return { imagePath: sprite, points };
-}
-
-function findStructureAt(state, x, y) {
+function findStructureAt(state, x, y, excludedId = null) {
   const list = getMapStructures(state?.map);
 
   for (const raw of list) {
     const structure = normalizeStructureForMap(state, raw);
-    if (!structure) continue;
+    if (!structure || structure.id === excludedId) continue;
 
     const withinX = x >= structure.x && x < (structure.x + (structure.w ?? 1));
     const withinY = y >= structure.y && y < (structure.y + (structure.h ?? 1));
@@ -222,17 +200,6 @@ function findStructureAt(state, x, y) {
   }
 
   return null;
-}
-
-function insetToward(frontFacePoints, backFacePoints, amount = 0.34) {
-  return frontFacePoints.map((point, index) => ({
-    x: point.x + ((backFacePoints[index].x - point.x) * amount),
-    y: point.y + ((backFacePoints[index].y - point.y) * amount)
-  }));
-}
-
-function oppositeScreenSide(screenSide) {
-  return screenSide === "left" ? "right" : "left";
 }
 
 function getInteriorOffsetForWorldFace(worldFace) {
