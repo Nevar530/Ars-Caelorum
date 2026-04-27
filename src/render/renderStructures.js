@@ -1,24 +1,15 @@
 // src/render/renderStructures.js
-// Structure Render V3
-//
-// Structures are world-edge authored parts, not prefab buildings.
-// A structure cell owns four persistent world faces (ne/se/sw/nw) plus a roof.
-// Camera rotation only decides which world faces are front-visible on screen.
-// Door transparency can reveal the opposite/back wall because that wall exists
-// as real structure data, not as a fake same-face fill.
+// Structure Render V2.5
+// Keeps world-face lock, no sprite mirroring, and doorway openings reveal a
+// recessed interior return plane so transparent doors read as depth, not void.
 
 import { RENDER_CONFIG } from "../config.js";
 import { svgEl, makePolygon } from "../utils.js";
 import { projectScene, getTopdownCellSize, getSceneSortKey } from "./projection.js";
-import {
-  getScreenSideForWorldFace,
-  getWorldFaceForScreenSide,
-  WORLD_FACES
-} from "./renderCompass.js";
+import { getWorldFaceForScreenSide } from "./renderCompass.js";
 import { getTerrainDepth } from "./renderSceneMath.js";
 import {
   getMapStructures,
-  getOppositeStructureFace,
   getStructureFaceSprite,
   getStructureInteriorSprite,
   normalizeStructureForMap
@@ -28,7 +19,7 @@ let clipId = 0;
 
 const FACE_COLOR = "rgba(80,74,84,0.72)";
 const ROOF_COLOR = "rgba(120,68,86,0.82)";
-const DOOR_PATTERN = /(^|[\\/_-])door([\\/_-]|\.|$)/i;
+const DOOR_PATTERN = /(^|[_-])door([_-]|\.|$)/i;
 
 export function getStructureSceneItems(state) {
   const list = getMapStructures(state?.map);
@@ -43,38 +34,31 @@ export function getStructureSceneItems(state) {
       continue;
     }
 
-    const g = geometry(state, structure);
-    const visibleFaces = new Set([
-      getWorldFaceForScreenSide(state.rotation, "left"),
-      getWorldFaceForScreenSide(state.rotation, "right")
-    ]);
+    const leftWorldFace = getWorldFaceForScreenSide(state.rotation, "left");
+    const rightWorldFace = getWorldFaceForScreenSide(state.rotation, "right");
 
-    // Draw only the two camera-front exterior faces for now, but those faces
-    // are chosen from four real world edges. The other two faces still exist in
-    // geometry and can be projected through door/window openings or later shown
-    // by roof/cutaway rules when a pilot is inside.
-    for (const worldFace of WORLD_FACES) {
-      if (!visibleFaces.has(worldFace)) continue;
+    const leftSprite = getStructureFaceSprite(structure, leftWorldFace);
+    const rightSprite = getStructureFaceSprite(structure, rightWorldFace);
 
-      const imagePath = getStructureFaceSprite(structure, worldFace);
-      if (imagePath || structure.drawFallbackFaces) {
-        items.push(makeFaceItem(state, structure, worldFace, imagePath, g));
-      }
+    if (leftSprite || structure.drawFallbackFaces) {
+      items.push(makeFaceItem(state, structure, "left", leftWorldFace, leftSprite));
+    }
+
+    if (rightSprite || structure.drawFallbackFaces) {
+      items.push(makeFaceItem(state, structure, "right", rightWorldFace, rightSprite));
     }
 
     if (structure.roofSprite) {
-      items.push(makeRoofItem(state, structure, g));
+      items.push(makeRoofItem(state, structure));
     }
   }
 
   return items.filter(Boolean);
 }
 
-function makeFaceItem(state, structure, worldFace, imagePath, g) {
-  const points = g.faces[worldFace];
-  if (!points) return null;
-
-  const screenSide = getScreenSideForWorldFace(state.rotation, worldFace);
+function makeFaceItem(state, structure, screenSide, worldFace, imagePath) {
+  const g = geometry(state, structure);
+  const points = screenSide === "left" ? g.leftFace : g.rightFace;
   const depth = getTerrainDepth({
     size: 1,
     screenY: g.base.screenY,
@@ -89,7 +73,7 @@ function makeFaceItem(state, structure, worldFace, imagePath, g) {
     worldFace,
     points,
     imagePath,
-    doorwayBacking: resolveDoorwayBacking(state, structure, worldFace, imagePath, points, g),
+    doorwayBacking: resolveDoorwayBacking(state, structure, screenSide, worldFace, imagePath, points),
     sortDepth: depth + (screenSide === "left" ? 0.36 : 0.37),
     sortKey: getSceneSortKey(state, structure.x, structure.y, structure.elevation) + (screenSide === "left" ? 0.1 : 0.2),
     render(parent) {
@@ -98,7 +82,8 @@ function makeFaceItem(state, structure, worldFace, imagePath, g) {
   };
 }
 
-function makeRoofItem(state, structure, g) {
+function makeRoofItem(state, structure) {
+  const g = geometry(state, structure);
   const depth = getTerrainDepth({
     size: 1,
     screenY: g.base.screenY,
@@ -139,107 +124,124 @@ function makeTopItem(state, structure) {
 }
 
 function geometry(state, structure) {
-  const riseLevels = structure.heightLevels;
-  const bottomCorners = makeProjectedStructureCorners(state, structure, structure.elevation);
-  const topCorners = makeProjectedStructureCorners(state, structure, structure.elevation + riseLevels);
+  const rise = structure.heightPx;
+  const w = Math.max(1, Number(structure.w ?? 1));
+  const h = Math.max(1, Number(structure.h ?? 1));
 
-  const rawFaces = {
-    // World edge truth. These are not screen-left/screen-right aliases.
-    // They stay attached to the authored map edge and the camera rotates around them.
-    ne: makeFaceFromEdge(topCorners.nw, topCorners.ne, bottomCorners.ne, bottomCorners.nw),
-    se: makeFaceFromEdge(topCorners.ne, topCorners.se, bottomCorners.se, bottomCorners.ne),
-    sw: makeFaceFromEdge(topCorners.sw, topCorners.se, bottomCorners.se, bottomCorners.sw),
-    nw: makeFaceFromEdge(topCorners.nw, topCorners.sw, bottomCorners.sw, bottomCorners.nw)
+  // Structure anchoring must use the same board-space truth as units:
+  // x/y identify the map cell footprint, then the renderer projects the actual
+  // footprint corners for the current camera rotation. Do not build the box by
+  // taking one projected point and adding fixed screen offsets; that drifts from
+  // tile truth as the camera rotates.
+  const footprintCorners = [
+    projectScene(state, structure.x, structure.y, structure.elevation, 1),
+    projectScene(state, structure.x + w, structure.y, structure.elevation, 1),
+    projectScene(state, structure.x + w, structure.y + h, structure.elevation, 1),
+    projectScene(state, structure.x, structure.y + h, structure.elevation, 1)
+  ];
+
+  const base = classifyProjectedDiamond(footprintCorners);
+
+  const roof = {
+    top: liftPoint(base.top, rise),
+    right: liftPoint(base.right, rise),
+    bottom: liftPoint(base.bottom, rise),
+    left: liftPoint(base.left, rise)
   };
-
-  const faces = {};
-  for (const worldFace of WORLD_FACES) {
-    faces[worldFace] = orientFaceForNonMirroredTexture(rawFaces[worldFace]);
-  }
 
   return {
-    base: {
-      screenY: Math.max(
-        bottomCorners.nw.y,
-        bottomCorners.ne.y,
-        bottomCorners.se.y,
-        bottomCorners.sw.y
-      ),
-      corners: bottomCorners
-    },
-    roof: [topCorners.nw, topCorners.ne, topCorners.se, topCorners.sw],
-    faces
+    base,
+    roof: [roof.top, roof.right, roof.bottom, roof.left],
+    leftFace: [roof.left, roof.bottom, base.bottom, base.left],
+    rightFace: [roof.right, roof.bottom, base.bottom, base.right]
   };
 }
 
-function makeProjectedStructureCorners(state, structure, elevation) {
-  const x0 = structure.x;
-  const y0 = structure.y;
-  const x1 = structure.x + structure.w;
-  const y1 = structure.y + structure.h;
+function liftPoint(point, rise) {
+  return { x: point.x, y: point.y - rise };
+}
+
+function classifyProjectedDiamond(points) {
+  const sortedByY = [...points].sort((a, b) => {
+    if (a.y !== b.y) return a.y - b.y;
+    return a.x - b.x;
+  });
+
+  const top = sortedByY[0];
+  const bottom = sortedByY[sortedByY.length - 1];
+  const middle = sortedByY.slice(1, -1).sort((a, b) => a.x - b.x);
+  const left = middle[0];
+  const right = middle[middle.length - 1];
 
   return {
-    // Names are world/map-edge corners, not current screen positions.
-    nw: projectScene(state, x0, y0, elevation, 1),
-    ne: projectScene(state, x1, y0, elevation, 1),
-    se: projectScene(state, x1, y1, elevation, 1),
-    sw: projectScene(state, x0, y1, elevation, 1)
+    screenY: top.y,
+    top,
+    right,
+    bottom,
+    left
   };
 }
 
-function makeFaceFromEdge(topStart, topEnd, bottomEnd, bottomStart) {
-  return [topStart, topEnd, bottomEnd, bottomStart];
-}
-
-function orientFaceForNonMirroredTexture(points) {
-  if (!Array.isArray(points) || points.length !== 4) return points;
-
-  // SVG image projection maps image X along points[0] -> points[1]
-  // and image Y along points[0] -> points[3]. If that basis has a negative
-  // determinant, the wall art is mirrored. Reverse the edge direction while
-  // keeping the same physical wall plane so every world edge uses the same
-  // non-mirrored texture handedness.
-  const topStart = points[0];
-  const topEnd = points[1];
-  const bottomStart = points[3];
-
-  const ux = topEnd.x - topStart.x;
-  const uy = topEnd.y - topStart.y;
-  const vx = bottomStart.x - topStart.x;
-  const vy = bottomStart.y - topStart.y;
-  const determinant = (ux * vy) - (uy * vx);
-
-  if (determinant >= 0) return points;
-  return [points[1], points[0], points[3], points[2]];
-}
-
-function resolveDoorwayBacking(state, structure, worldFace, imagePath, frontFacePoints, g) {
+function resolveDoorwayBacking(state, structure, screenSide, worldFace, imagePath, frontFacePoints) {
   if (!looksLikeDoorSprite(imagePath)) return null;
 
-  const backFace = getOppositeStructureFace(worldFace);
-  const backingSprite = resolveDoorwayBackingSprite(state, structure, worldFace, backFace);
-  const backingPoints = g.faces?.[backFace];
+  const backingSprite = resolveDoorwayBackingSprite(state, structure, worldFace);
+  if (!backingSprite) return null;
 
-  if (!backingSprite || !backingPoints) return null;
-
-  // The front door sprite is drawn over this. Its transparent pixels become the
-  // aperture, so only the part visible through the doorway shows. The backing is
-  // projected from the opposite/back wall plane, not pasted onto the door plane.
+  // The transparent pixels in door_*.png are the aperture mask.
+  // Do NOT map the backing onto the same exterior face as the door.
+  // That makes the doorway read as a flat wall pasted behind the hole.
+  // Instead, map the texture onto a recessed return plane that runs inward
+  // from the outside vertical edge of the face. The front door image still
+  // clips/covers it, so only the transparent opening reveals this skewed depth.
   return {
     imagePath: backingSprite,
-    clipPoints: frontFacePoints,
-    imagePoints: backingPoints
+    points: makeDoorwayReturnPlanePoints(screenSide, frontFacePoints)
   };
 }
 
-function resolveDoorwayBackingSprite(state, structure, worldFace, backFace) {
-  return getStructureInteriorSprite(structure, backFace)
-    ?? getStructureFaceSprite(structure, backFace)
-    ?? getStructureInteriorSprite(structure, worldFace)
-    ?? findNeighborFaceSprite(state, structure, worldFace, backFace);
+function makeDoorwayReturnPlanePoints(screenSide, frontFacePoints) {
+  if (!Array.isArray(frontFacePoints) || frontFacePoints.length < 4) return frontFacePoints;
+
+  const topOuter = frontFacePoints[0];
+  const bottomOuter = frontFacePoints[3];
+  const topInnerOnFrontFace = frontFacePoints[1];
+
+  // Face points are ordered as:
+  //   [roof outer, roof/bottom shared edge, base/bottom shared edge, base outer]
+  // for both visible side faces. The top edge vector lies along the exterior face.
+  // Flipping its screen-Y component gives the roof-depth vector into the tile.
+  const faceTopVector = {
+    x: topInnerOnFrontFace.x - topOuter.x,
+    y: topInnerOnFrontFace.y - topOuter.y
+  };
+
+  const depthScale = 1;
+  const inward = {
+    x: faceTopVector.x * depthScale,
+    y: -faceTopVector.y * depthScale
+  };
+
+  const topInner = {
+    x: topOuter.x + inward.x,
+    y: topOuter.y + inward.y
+  };
+  const bottomInner = {
+    x: bottomOuter.x + inward.x,
+    y: bottomOuter.y + inward.y
+  };
+
+  return [topOuter, topInner, bottomInner, bottomOuter];
 }
 
-function findNeighborFaceSprite(state, structure, worldFace, backFace) {
+function resolveDoorwayBackingSprite(state, structure, worldFace) {
+  const sameFaceInterior =
+    getStructureInteriorSprite(structure, worldFace)
+    ?? getStructureFaceSprite(structure, getOppositeWorldFace(worldFace))
+    ?? getStructureInteriorSprite(structure, getOppositeWorldFace(worldFace));
+
+  if (sameFaceInterior) return sameFaceInterior;
+
   const inward = getInteriorOffsetForWorldFace(worldFace);
   if (!inward) return null;
 
@@ -248,8 +250,8 @@ function findNeighborFaceSprite(state, structure, worldFace, backFace) {
 
   return getStructureFaceSprite(neighbor, worldFace)
     ?? getStructureInteriorSprite(neighbor, worldFace)
-    ?? getStructureFaceSprite(neighbor, backFace)
-    ?? getStructureInteriorSprite(neighbor, backFace);
+    ?? getStructureFaceSprite(neighbor, getOppositeWorldFace(worldFace))
+    ?? getStructureInteriorSprite(neighbor, getOppositeWorldFace(worldFace));
 }
 
 function findStructureAt(state, x, y, excludedId = null) {
@@ -282,6 +284,21 @@ function getInteriorOffsetForWorldFace(worldFace) {
   }
 }
 
+function getOppositeWorldFace(worldFace) {
+  switch (String(worldFace ?? "").toLowerCase()) {
+    case "sw":
+      return "ne";
+    case "se":
+      return "nw";
+    case "ne":
+      return "sw";
+    case "nw":
+      return "se";
+    default:
+      return worldFace;
+  }
+}
+
 function looksLikeDoorSprite(imagePath) {
   return DOOR_PATTERN.test(String(imagePath ?? "").trim());
 }
@@ -305,20 +322,12 @@ function drawFace(item, parent) {
   group.dataset.worldFace = item.worldFace ?? "";
   group.dataset.screenSide = item.screenSide ?? "";
 
-  if (!item.imagePath) {
-    const fallback = makePolygon(item.points, "structure-face", FACE_COLOR);
-    fallback.setAttribute("stroke", "none");
-    group.appendChild(fallback);
-  }
+  const fallback = makePolygon(item.points, "structure-face", FACE_COLOR);
+  fallback.setAttribute("stroke", "none");
+  group.appendChild(fallback);
 
   if (item.doorwayBacking?.imagePath) {
-    appendProjectedFaceImage(
-      group,
-      item.doorwayBacking.clipPoints,
-      item.doorwayBacking.imagePoints,
-      item.doorwayBacking.imagePath,
-      "doorway-backing"
-    );
+    appendProjectedFaceImage(group, item.points, item.doorwayBacking.points, item.doorwayBacking.imagePath, "doorway-backing");
   }
 
   if (item.imagePath) {
