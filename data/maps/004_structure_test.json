@@ -27,8 +27,8 @@
   "structures": [
     {
       "id": "structure_test_00",
-      "x": 6,
-      "y": 8,
+      "x": 5,
+      "y": 7,
       "w": 1,
       "h": 1,
       "heightPx": 64,
