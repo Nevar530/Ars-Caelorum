@@ -25,6 +25,11 @@
       "id": "004_structure_test",
       "name": "004 Structure Test",
       "path": "./data/maps/004_structure_test.json"
+    },
+    {
+      "id": "005_warehouse_district",
+      "name": "005 Warehouse District",
+      "path": "./data/maps/005_warehouse_district.json"
     }
   ]
 }

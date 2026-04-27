@@ -1,0 +1,2196 @@
+{
+  "id": "005_warehouse_district",
+  "name": "005 Warehouse District",
+  "width": 20,
+  "height": 18,
+  "terrainTypes": [
+    "grass",
+    "rock",
+    "sand",
+    "water",
+    "asphalt",
+    "concrete"
+  ],
+  "spawns": {
+    "player": [
+      {
+        "x": 2,
+        "y": 15
+      },
+      {
+        "x": 3,
+        "y": 15
+      },
+      {
+        "x": 2,
+        "y": 14
+      },
+      {
+        "x": 3,
+        "y": 14
+      }
+    ],
+    "enemy": [
+      {
+        "x": 17,
+        "y": 2
+      },
+      {
+        "x": 16,
+        "y": 2
+      },
+      {
+        "x": 17,
+        "y": 3
+      },
+      {
+        "x": 16,
+        "y": 3
+      }
+    ]
+  },
+  "structures": [
+    {
+      "id": "warehouse_long_01",
+      "cells": [
+        {
+          "x": 3,
+          "y": 4
+        },
+        {
+          "x": 4,
+          "y": 4
+        },
+        {
+          "x": 5,
+          "y": 4
+        },
+        {
+          "x": 6,
+          "y": 4
+        },
+        {
+          "x": 7,
+          "y": 4
+        },
+        {
+          "x": 3,
+          "y": 5
+        },
+        {
+          "x": 4,
+          "y": 5
+        },
+        {
+          "x": 5,
+          "y": 5
+        },
+        {
+          "x": 6,
+          "y": 5
+        },
+        {
+          "x": 7,
+          "y": 5
+        }
+      ],
+      "heightPx": 64,
+      "blocksMove": true,
+      "blocksLOS": true,
+      "roof": "roof_001.png",
+      "floor": null,
+      "debug": false,
+      "edges": [
+        {
+          "x": 3,
+          "y": 4,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 3,
+          "y": 5,
+          "edge": "sw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 4,
+          "y": 4,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 4,
+          "y": 5,
+          "edge": "sw",
+          "type": "door",
+          "spriteId": "door_001.png",
+          "blocksMove": false,
+          "blocksLOS": false
+        },
+        {
+          "x": 5,
+          "y": 4,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 5,
+          "y": 5,
+          "edge": "sw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 6,
+          "y": 4,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 6,
+          "y": 5,
+          "edge": "sw",
+          "type": "door",
+          "spriteId": "door_001.png",
+          "blocksMove": false,
+          "blocksLOS": false
+        },
+        {
+          "x": 7,
+          "y": 4,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 7,
+          "y": 5,
+          "edge": "sw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 3,
+          "y": 4,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 7,
+          "y": 4,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 3,
+          "y": 5,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 7,
+          "y": 5,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        }
+      ]
+    },
+    {
+      "id": "warehouse_narrow_02",
+      "cells": [
+        {
+          "x": 10,
+          "y": 3
+        },
+        {
+          "x": 11,
+          "y": 3
+        },
+        {
+          "x": 10,
+          "y": 4
+        },
+        {
+          "x": 11,
+          "y": 4
+        },
+        {
+          "x": 10,
+          "y": 5
+        },
+        {
+          "x": 11,
+          "y": 5
+        },
+        {
+          "x": 10,
+          "y": 6
+        },
+        {
+          "x": 11,
+          "y": 6
+        }
+      ],
+      "heightPx": 64,
+      "blocksMove": true,
+      "blocksLOS": true,
+      "roof": "roof_001.png",
+      "floor": null,
+      "debug": false,
+      "edges": [
+        {
+          "x": 10,
+          "y": 3,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 10,
+          "y": 6,
+          "edge": "sw",
+          "type": "door",
+          "spriteId": "door_001.png",
+          "blocksMove": false,
+          "blocksLOS": false
+        },
+        {
+          "x": 11,
+          "y": 3,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 11,
+          "y": 6,
+          "edge": "sw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 10,
+          "y": 3,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 11,
+          "y": 3,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 10,
+          "y": 4,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 11,
+          "y": 4,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 10,
+          "y": 5,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 11,
+          "y": 5,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 10,
+          "y": 6,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 11,
+          "y": 6,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        }
+      ]
+    },
+    {
+      "id": "warehouse_block_03",
+      "cells": [
+        {
+          "x": 4,
+          "y": 9
+        },
+        {
+          "x": 5,
+          "y": 9
+        },
+        {
+          "x": 6,
+          "y": 9
+        },
+        {
+          "x": 4,
+          "y": 10
+        },
+        {
+          "x": 5,
+          "y": 10
+        },
+        {
+          "x": 6,
+          "y": 10
+        },
+        {
+          "x": 4,
+          "y": 11
+        },
+        {
+          "x": 5,
+          "y": 11
+        },
+        {
+          "x": 6,
+          "y": 11
+        }
+      ],
+      "heightPx": 64,
+      "blocksMove": true,
+      "blocksLOS": true,
+      "roof": "roof_001.png",
+      "floor": null,
+      "debug": false,
+      "edges": [
+        {
+          "x": 4,
+          "y": 9,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 4,
+          "y": 11,
+          "edge": "sw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 5,
+          "y": 9,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 5,
+          "y": 11,
+          "edge": "sw",
+          "type": "door",
+          "spriteId": "door_001.png",
+          "blocksMove": false,
+          "blocksLOS": false
+        },
+        {
+          "x": 6,
+          "y": 9,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 6,
+          "y": 11,
+          "edge": "sw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 4,
+          "y": 9,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 6,
+          "y": 9,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 4,
+          "y": 10,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 6,
+          "y": 10,
+          "edge": "se",
+          "type": "door",
+          "spriteId": "door_001.png",
+          "blocksMove": false,
+          "blocksLOS": false
+        },
+        {
+          "x": 4,
+          "y": 11,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 6,
+          "y": 11,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        }
+      ]
+    },
+    {
+      "id": "warehouse_l_shape_04",
+      "cells": [
+        {
+          "x": 10,
+          "y": 9
+        },
+        {
+          "x": 11,
+          "y": 9
+        },
+        {
+          "x": 12,
+          "y": 9
+        },
+        {
+          "x": 10,
+          "y": 10
+        },
+        {
+          "x": 10,
+          "y": 11
+        },
+        {
+          "x": 11,
+          "y": 11
+        },
+        {
+          "x": 12,
+          "y": 11
+        }
+      ],
+      "heightPx": 64,
+      "blocksMove": true,
+      "blocksLOS": true,
+      "roof": "roof_001.png",
+      "floor": null,
+      "debug": false,
+      "edges": [
+        {
+          "x": 10,
+          "y": 9,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 11,
+          "y": 9,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 12,
+          "y": 9,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 10,
+          "y": 9,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 12,
+          "y": 9,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 11,
+          "y": 9,
+          "edge": "sw",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 12,
+          "y": 9,
+          "edge": "sw",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 10,
+          "y": 10,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 10,
+          "y": 10,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 10,
+          "y": 10,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 10,
+          "y": 11,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 10,
+          "y": 11,
+          "edge": "sw",
+          "type": "door",
+          "spriteId": "door_001.png",
+          "blocksMove": false,
+          "blocksLOS": false
+        },
+        {
+          "x": 11,
+          "y": 11,
+          "edge": "sw",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 12,
+          "y": 11,
+          "edge": "sw",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 12,
+          "y": 11,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 11,
+          "y": 11,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 12,
+          "y": 11,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        }
+      ]
+    },
+    {
+      "id": "warehouse_office_05",
+      "cells": [
+        {
+          "x": 14,
+          "y": 5
+        }
+      ],
+      "heightPx": 64,
+      "blocksMove": true,
+      "blocksLOS": true,
+      "roof": "roof_001.png",
+      "floor": null,
+      "debug": false,
+      "edges": [
+        {
+          "x": 14,
+          "y": 5,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 14,
+          "y": 5,
+          "edge": "sw",
+          "type": "door",
+          "spriteId": "door_001.png",
+          "blocksMove": false,
+          "blocksLOS": false
+        },
+        {
+          "x": 14,
+          "y": 5,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 14,
+          "y": 5,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        }
+      ]
+    },
+    {
+      "id": "storage_row_06",
+      "cells": [
+        {
+          "x": 14,
+          "y": 9
+        },
+        {
+          "x": 15,
+          "y": 9
+        },
+        {
+          "x": 16,
+          "y": 9
+        }
+      ],
+      "heightPx": 64,
+      "blocksMove": true,
+      "blocksLOS": true,
+      "roof": "roof_001.png",
+      "floor": null,
+      "debug": false,
+      "edges": [
+        {
+          "x": 14,
+          "y": 9,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 14,
+          "y": 9,
+          "edge": "sw",
+          "type": "door",
+          "spriteId": "door_001.png",
+          "blocksMove": false,
+          "blocksLOS": false
+        },
+        {
+          "x": 15,
+          "y": 9,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 15,
+          "y": 9,
+          "edge": "sw",
+          "type": "door",
+          "spriteId": "door_001.png",
+          "blocksMove": false,
+          "blocksLOS": false
+        },
+        {
+          "x": 16,
+          "y": 9,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 16,
+          "y": 9,
+          "edge": "sw",
+          "type": "door",
+          "spriteId": "door_001.png",
+          "blocksMove": false,
+          "blocksLOS": false
+        },
+        {
+          "x": 14,
+          "y": 9,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        },
+        {
+          "x": 16,
+          "y": 9,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png",
+          "blocksMove": true,
+          "blocksLOS": true
+        }
+      ]
+    }
+  ],
+  "startState": {
+    "deployments": [
+      {
+        "pilotDefinitionId": "pilot_biggs",
+        "pilotInstanceId": "player-pilot-1",
+        "pilotSpawnId": "player_1",
+        "team": "player",
+        "controlType": "PC",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_jerri",
+        "pilotInstanceId": "player-pilot-2",
+        "pilotSpawnId": "player_2",
+        "mechDefinitionId": "mech_b",
+        "mechInstanceId": "player-mech-2",
+        "mechSpawnId": "player_2",
+        "team": "player",
+        "controlType": "PC",
+        "startEmbarked": true
+      }
+    ]
+  },
+  "tiles": [
+    {
+      "x": 8,
+      "y": 2,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 2,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 3,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 3,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 4,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 4,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 5,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 5,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 6,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 6,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 2,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 3,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 4,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 5,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 6,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 10,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 11,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 12,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 13,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 14,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 15,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 16,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 17,
+      "y": 7,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 3,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 4,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 5,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 6,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 7,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 10,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 11,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 12,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 13,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 14,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 15,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 16,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 17,
+      "y": 8,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 9,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 9,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 10,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 10,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 11,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 11,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 12,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 12,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 13,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 13,
+      "terrainTypeId": "concrete",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 3,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 4,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 6,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 10,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 11,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 12,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 13,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 14,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 15,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 16,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 17,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 0,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 4,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 6,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 7,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 10,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 11,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 12,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 13,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 14,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 15,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 16,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 17,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 1,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 2,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 2,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 3,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 3,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 4,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 4,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 4,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 4,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 5,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 5,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 5,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 6,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 6,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 6,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 7,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 7,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 7,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 8,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 8,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 8,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 8,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 9,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 9,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 9,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 9,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 10,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 10,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 10,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 10,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 11,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 11,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 11,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 11,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 12,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 12,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 12,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 12,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 13,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 13,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 13,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 13,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 14,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 14,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 14,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 14,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 15,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 15,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 15,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 15,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 2,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 3,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 4,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 5,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 6,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 7,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 10,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 11,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 12,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 13,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 14,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 15,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 16,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 17,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 16,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 0,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 1,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 2,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 3,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 4,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 5,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 6,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 7,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 8,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 9,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 10,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 11,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 12,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 13,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 14,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 15,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 16,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 17,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 18,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    },
+    {
+      "x": 19,
+      "y": 17,
+      "terrainTypeId": "asphalt",
+      "movementClass": "clear",
+      "elevation": 0
+    }
+  ]
+}
