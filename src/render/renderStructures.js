@@ -383,9 +383,10 @@ function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceW
   image.setAttribute("href", imagePath);
   image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
 
-  const topStart = points[0];
-  const topEnd = points[1];
-  const bottomStart = points[3];
+  const imagePoints = getImageMappingPoints(points, layerName);
+  const topStart = imagePoints[0];
+  const topEnd = imagePoints[1];
+  const bottomStart = imagePoints[3];
 
   const ux = topEnd.x - topStart.x;
   const uy = topEnd.y - topStart.y;
@@ -399,6 +400,18 @@ function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceW
 
   group.appendChild(image);
   parentGroup.appendChild(group);
+}
+
+function getImageMappingPoints(points, layerName) {
+  // Edge geometry order is locked to world/rotation math for correct placement.
+  // Texture mapping can be re-ordered independently so wall/door art is not
+  // horizontally mirrored on edges whose projected top segment runs right-to-left.
+  if (layerName !== "edge") return points;
+
+  const [topA, topB, bottomB, bottomA] = points;
+  if (topA.x <= topB.x) return points;
+
+  return [topB, topA, bottomA, bottomB];
 }
 
 function edgeSortBias(edge) {
