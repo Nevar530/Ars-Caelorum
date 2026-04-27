@@ -1,7 +1,7 @@
 // src/render/renderStructures.js
-// Structure Render V2.4
-// Keeps world-face lock, no sprite mirroring, and doorway openings reveal the
-// doorway openings use same-face interior backing so transparency never shows fallback color.
+// Structure Render V2.5
+// Keeps world-face lock, no sprite mirroring, and doorway openings reveal a
+// recessed interior return plane so transparent doors read as depth, not void.
 
 import { RENDER_CONFIG } from "../config.js";
 import { svgEl, makePolygon } from "../utils.js";
@@ -19,7 +19,7 @@ let clipId = 0;
 
 const FACE_COLOR = "rgba(80,74,84,0.72)";
 const ROOF_COLOR = "rgba(120,68,86,0.82)";
-const DOOR_PATTERN = /(^|[\\/_-])door([_-]|\.|$)/i;
+const DOOR_PATTERN = /(^|[_-])door([_-]|\.|$)/i;
 
 export function getStructureSceneItems(state) {
   const list = getMapStructures(state?.map);
@@ -159,12 +159,49 @@ function resolveDoorwayBacking(state, structure, screenSide, worldFace, imagePat
   if (!backingSprite) return null;
 
   // The transparent pixels in door_*.png are the aperture mask.
-  // The backing must occupy the same projected face so the doorway reveals
-  // wall/interior texture instead of the fallback face color or terrain.
+  // Do NOT map the backing onto the same exterior face as the door.
+  // That makes the doorway read as a flat wall pasted behind the hole.
+  // Instead, map the texture onto a recessed return plane that runs inward
+  // from the outside vertical edge of the face. The front door image still
+  // clips/covers it, so only the transparent opening reveals this skewed depth.
   return {
     imagePath: backingSprite,
-    points: frontFacePoints
+    points: makeDoorwayReturnPlanePoints(screenSide, frontFacePoints)
   };
+}
+
+function makeDoorwayReturnPlanePoints(screenSide, frontFacePoints) {
+  if (!Array.isArray(frontFacePoints) || frontFacePoints.length < 4) return frontFacePoints;
+
+  const topOuter = frontFacePoints[0];
+  const bottomOuter = frontFacePoints[3];
+  const topInnerOnFrontFace = frontFacePoints[1];
+
+  // Face points are ordered as:
+  //   [roof outer, roof/bottom shared edge, base/bottom shared edge, base outer]
+  // for both visible side faces. The top edge vector lies along the exterior face.
+  // Flipping its screen-Y component gives the roof-depth vector into the tile.
+  const faceTopVector = {
+    x: topInnerOnFrontFace.x - topOuter.x,
+    y: topInnerOnFrontFace.y - topOuter.y
+  };
+
+  const depthScale = 1;
+  const inward = {
+    x: faceTopVector.x * depthScale,
+    y: -faceTopVector.y * depthScale
+  };
+
+  const topInner = {
+    x: topOuter.x + inward.x,
+    y: topOuter.y + inward.y
+  };
+  const bottomInner = {
+    x: bottomOuter.x + inward.x,
+    y: bottomOuter.y + inward.y
+  };
+
+  return [topOuter, topInner, bottomInner, bottomOuter];
 }
 
 function resolveDoorwayBackingSprite(state, structure, worldFace) {
@@ -233,11 +270,7 @@ function getOppositeWorldFace(worldFace) {
 }
 
 function looksLikeDoorSprite(imagePath) {
-  const value = String(imagePath ?? "").trim().toLowerCase();
-  if (!value) return false;
-
-  const filename = value.split(/[\\/]/).pop() ?? value;
-  return DOOR_PATTERN.test(filename) || DOOR_PATTERN.test(value);
+  return DOOR_PATTERN.test(String(imagePath ?? "").trim());
 }
 
 function drawTop(item, parent) {
