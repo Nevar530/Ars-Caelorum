@@ -1,23 +1,28 @@
 // src/render/renderStructures.js
-// Structure Render V1.2: render-only, compass-locked world faces.
+// Structure Render V1.3: compass-locked faces plus optional interior backing.
 
 import { RENDER_CONFIG } from "../config.js";
-import { getTile, getTileRenderElevation } from "../map.js";
 import { svgEl, makePolygon } from "../utils.js";
 import { projectScene, getTopdownCellSize, getSceneSortKey } from "./projection.js";
-import { getWorldFaceForScreenSide, normalizeWorldFace } from "./renderCompass.js";
+import { getWorldFaceForScreenSide } from "./renderCompass.js";
 import { getTerrainDepth } from "./renderSceneMath.js";
+import {
+  getMapStructures,
+  getStructureFaceSprite,
+  getStructureInteriorSprite,
+  normalizeStructureForMap
+} from "../structures/structureRules.js";
 
 let clipId = 0;
 const FACE_COLOR = "rgba(80,74,84,0.72)";
 const ROOF_COLOR = "rgba(120,68,86,0.82)";
 
 export function getStructureSceneItems(state) {
-  const list = Array.isArray(state?.map?.structures) ? state.map.structures : [];
+  const list = getMapStructures(state?.map);
   const items = [];
 
   for (const raw of list) {
-    const s = normalizeStructure(state, raw);
+    const s = normalizeStructureForMap(state, raw);
     if (!s) continue;
 
     if (state.ui?.viewMode === "top") {
@@ -27,71 +32,25 @@ export function getStructureSceneItems(state) {
 
     const leftWorldFace = getWorldFaceForScreenSide(state.rotation, "left");
     const rightWorldFace = getWorldFaceForScreenSide(state.rotation, "right");
-    const leftSprite = faceSprite(s, leftWorldFace);
-    const rightSprite = faceSprite(s, rightWorldFace);
+    const leftSprite = getStructureFaceSprite(s, leftWorldFace);
+    const rightSprite = getStructureFaceSprite(s, rightWorldFace);
+    const leftInteriorSprite = getStructureInteriorSprite(s, leftWorldFace);
+    const rightInteriorSprite = getStructureInteriorSprite(s, rightWorldFace);
 
-    if (leftSprite || s.drawFallbackFaces) items.push(makeFaceItem(state, s, "left", leftWorldFace, leftSprite));
-    if (rightSprite || s.drawFallbackFaces) items.push(makeFaceItem(state, s, "right", rightWorldFace, rightSprite));
+    if (leftSprite || leftInteriorSprite || s.drawFallbackFaces) {
+      items.push(makeFaceItem(state, s, "left", leftWorldFace, leftSprite, leftInteriorSprite));
+    }
+
+    if (rightSprite || rightInteriorSprite || s.drawFallbackFaces) {
+      items.push(makeFaceItem(state, s, "right", rightWorldFace, rightSprite, rightInteriorSprite));
+    }
     if (s.roofSprite) items.push(makeRoofItem(state, s));
   }
 
   return items.filter(Boolean);
 }
 
-function normalizeStructure(state, raw) {
-  const x = Number(raw?.x ?? raw?.tileX);
-  const y = Number(raw?.y ?? raw?.tileY);
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-  const tile = getTile(state.map, x, y);
-  if (!tile) return null;
-  const elevation = Number(raw?.elevation ?? getTileRenderElevation(tile) ?? 0);
-  const heightPx = Math.max(1, Number(raw?.heightPx ?? 64));
-
-  return {
-    id: String(raw?.id ?? `structure_${x}_${y}`),
-    x,
-    y,
-    w: Math.max(1, Number(raw?.w ?? raw?.width ?? 1)),
-    h: Math.max(1, Number(raw?.h ?? raw?.height ?? 1)),
-    elevation,
-    heightPx,
-    heightLevels: heightPx / RENDER_CONFIG.elevationStepPx,
-    drawFallbackFaces: raw?.drawFallbackFaces === true,
-    faceSprites: normalizeFaceSprites(raw),
-    roofSprite: spritePath(raw?.roof ?? raw?.roofSprite)
-  };
-}
-
-function normalizeFaceSprites(raw) {
-  const src = raw?.faceSprites && typeof raw.faceSprites === "object"
-    ? raw.faceSprites
-    : raw?.faces && typeof raw.faces === "object"
-      ? raw.faces
-      : {};
-  const legacyFace = spritePath(raw?.face ?? raw?.faceSprite);
-  const legacyLeft = spritePath(raw?.leftFace);
-  const legacyRight = spritePath(raw?.rightFace);
-  return {
-    ne: spritePath(src.ne) ?? legacyFace,
-    se: spritePath(src.se) ?? legacyRight ?? legacyFace,
-    sw: spritePath(src.sw) ?? legacyLeft ?? legacyFace,
-    nw: spritePath(src.nw) ?? legacyFace
-  };
-}
-
-function spritePath(name) {
-  const value = String(name ?? "").trim();
-  if (!value) return null;
-  if (value.startsWith("./") || value.startsWith("/") || value.startsWith("art/")) return value;
-  return `art/structures/${value}`;
-}
-
-function faceSprite(s, worldFace) {
-  const face = normalizeWorldFace(worldFace);
-  return face ? (s.faceSprites?.[face] ?? null) : null;
-}
-
-function makeFaceItem(state, s, screenSide, worldFace, imagePath) {
+function makeFaceItem(state, s, screenSide, worldFace, imagePath, interiorImagePath = null) {
   const g = geometry(state, s);
   const points = screenSide === "left" ? g.leftFace : g.rightFace;
   const depth = getTerrainDepth({ size: 1, screenY: g.base.screenY, leftFaceHeight: s.elevation, rightFaceHeight: s.elevation });
@@ -102,6 +61,7 @@ function makeFaceItem(state, s, screenSide, worldFace, imagePath) {
     worldFace,
     points,
     imagePath,
+    interiorImagePath,
     sortDepth: depth + 0.36,
     sortKey: getSceneSortKey(state, s.x, s.y, s.elevation) + (screenSide === "left" ? 0.1 : 0.2),
     render(parent) { drawFace(this, parent); }
@@ -186,7 +146,8 @@ function drawFace(item, parent) {
   const fallback = makePolygon(item.points, "structure-face", FACE_COLOR);
   fallback.setAttribute("stroke", "none");
   group.appendChild(fallback);
-  if (item.imagePath) appendFaceImage(group, item.points, item.imagePath);
+  if (item.interiorImagePath) appendFaceImage(group, item.points, item.interiorImagePath, "interior");
+  if (item.imagePath) appendFaceImage(group, item.points, item.imagePath, "exterior");
   const outline = makePolygon(item.points, "structure-face-outline", "none");
   outline.setAttribute("stroke", "rgba(20,18,24,0.82)");
   outline.setAttribute("stroke-width", "1.2");
@@ -212,7 +173,7 @@ function drawRoof(item, parent) {
   parent.appendChild(group);
 }
 
-function appendFaceImage(parentGroup, points, imagePath) {
+function appendFaceImage(parentGroup, points, imagePath, layerName = "face") {
   const id = `structure-face-clip-${clipId += 1}`;
   const clip = svgEl("clipPath");
   clip.setAttribute("id", id);
@@ -221,6 +182,7 @@ function appendFaceImage(parentGroup, points, imagePath) {
   parentGroup.appendChild(clip);
 
   const group = svgEl("g");
+  group.dataset.structureImageLayer = layerName;
   group.setAttribute("clip-path", `url(#${id})`);
   const image = svgEl("image");
   image.setAttribute("x", "0");

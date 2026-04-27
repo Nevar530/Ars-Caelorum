@@ -13,8 +13,14 @@
   ],
   "spawns": {
     "player": [
-      { "x": 5, "y": 10 },
-      { "x": 2, "y": 10 }
+      {
+        "x": 5,
+        "y": 10
+      },
+      {
+        "x": 2,
+        "y": 10
+      }
     ],
     "enemy": []
   },
@@ -34,7 +40,13 @@
         "ne": "wall_001.png",
         "nw": "wall_001.png"
       },
-      "roof": "roof_001.png"
+      "roof": "roof_001.png",
+      "interiorSprites": {
+        "sw": "wall_001.png",
+        "se": "wall_001.png",
+        "ne": "wall_001.png",
+        "nw": "wall_001.png"
+      }
     },
     {
       "id": "structure_test_02",
@@ -51,7 +63,13 @@
         "ne": "wall_001.png",
         "nw": "wall_001.png"
       },
-      "roof": "roof_001.png"
+      "roof": "roof_001.png",
+      "interiorSprites": {
+        "sw": "wall_001.png",
+        "se": "wall_001.png",
+        "ne": "wall_001.png",
+        "nw": "wall_001.png"
+      }
     }
   ],
   "startState": {
