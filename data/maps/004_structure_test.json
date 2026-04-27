@@ -26,6 +26,29 @@
   },
   "structures": [
     {
+      "id": "structure_test_00",
+      "x": 5,
+      "y": 7,
+      "w": 1,
+      "h": 1,
+      "heightPx": 64,
+      "blocksMove": true,
+      "blocksLOS": true,
+      "faceSprites": {
+        "sw": "wall_001.png",
+        "se": null,
+        "ne": "wall_001.png",
+        "nw": "wall_001.png"
+      },
+      "roof": "roof_001.png",
+      "interiorSprites": {
+        "sw": "wall_001.png",
+        "se": null,
+        "ne": "wall_001.png",
+        "nw": "wall_001.png"
+      }
+    },
+    {
       "id": "structure_test_01",
       "x": 6,
       "y": 7,
