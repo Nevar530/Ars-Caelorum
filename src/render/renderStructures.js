@@ -127,23 +127,86 @@ function geometry(state, s) {
 }
 
 function getInteriorProjection(state, s, screenSide, worldFace, imagePath, interiorImagePath) {
-  if (!interiorImagePath) return null;
   if (!looksLikeDoorSprite(imagePath)) return null;
 
   const inward = getInteriorOffsetForWorldFace(worldFace);
   if (!inward) return null;
 
-  const shifted = {
+  const neighbor = findStructureAt(state, s.x + inward.x, s.y + inward.y, s.id);
+  const currentFace = screenSide === "left"
+    ? geometry(state, s).leftFace
+    : geometry(state, s).rightFace;
+
+  if (neighbor) {
+    const neighborScreenSide = oppositeScreenSide(screenSide);
+    const neighborWorldFace = getWorldFaceForScreenSide(state.rotation, neighborScreenSide);
+    const neighborSprite =
+      getStructureFaceSprite(neighbor, neighborWorldFace) ??
+      getStructureInteriorSprite(neighbor, neighborWorldFace) ??
+      interiorImagePath;
+
+    if (neighborSprite) {
+      const neighborFace = neighborScreenSide === "left"
+        ? geometry(state, neighbor).leftFace
+        : geometry(state, neighbor).rightFace;
+
+      return {
+        imagePath: neighborSprite,
+        points: makeDoorwayBackFacePoints(currentFace, neighborFace)
+      };
+    }
+  }
+
+  if (!interiorImagePath) return null;
+
+  const fallback = {
     ...s,
-    x: s.x + inward.x,
-    y: s.y + inward.y
+    x: s.x + (inward.x * 0.5),
+    y: s.y + (inward.y * 0.5)
   };
-  const g = geometry(state, shifted);
+  const fallbackFace = screenSide === "left"
+    ? geometry(state, fallback).rightFace
+    : geometry(state, fallback).leftFace;
 
   return {
     imagePath: interiorImagePath,
-    points: screenSide === "left" ? g.rightFace : g.leftFace
+    points: makeDoorwayBackFacePoints(currentFace, fallbackFace)
   };
+}
+
+function findStructureAt(state, x, y, excludedId = null) {
+  const list = getMapStructures(state?.map);
+  for (const raw of list) {
+    const candidate = normalizeStructureForMap(state, raw);
+    if (!candidate || candidate.id === excludedId) continue;
+
+    if (
+      x >= candidate.x &&
+      x < candidate.x + candidate.w &&
+      y >= candidate.y &&
+      y < candidate.y + candidate.h
+    ) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function oppositeScreenSide(screenSide) {
+  return screenSide === "left" ? "right" : "left";
+}
+
+function makeDoorwayBackFacePoints(frontFace, rearFace) {
+  if (!Array.isArray(frontFace) || !Array.isArray(rearFace) || frontFace.length !== 4 || rearFace.length !== 4) {
+    return rearFace;
+  }
+
+  const inset = 0.42;
+  return frontFace.map((point, index) => ({
+    x: point.x + ((rearFace[index].x - point.x) * inset),
+    y: point.y + ((rearFace[index].y - point.y) * inset)
+  }));
 }
 
 function looksLikeDoorSprite(imagePath) {
