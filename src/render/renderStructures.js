@@ -7,6 +7,7 @@
 import { RENDER_CONFIG } from "../config.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { projectScene, getTopdownCellSize, getSceneSortKey } from "./projection.js";
+import { getWorldFaceForScreenSide } from "./renderCompass.js";
 import { getTerrainDepth } from "./renderSceneMath.js";
 import {
   getMapStructures,
@@ -282,62 +283,83 @@ function drawRoof(item, parent) {
 }
 
 function getCellRoofOrFloorPoints(state, x, y, elevation, risePx = 0) {
-  return getWorldOrderedCellCorners(state, x, y, elevation)
+  const diamond = getCellScreenDiamond(state, x, y, elevation);
+  return [diamond.top, diamond.right, diamond.bottom, diamond.left]
     .map((point) => ({ x: point.x, y: point.y - risePx }));
 }
 
 function getEdgePlanePoints(state, x, y, edge, elevation, heightPx) {
-  const endpoints = getWorldEdgeEndpoints(state, x, y, edge, elevation);
+  const endpoints = getScreenEdgeEndpointsForWorldFace(state, x, y, edge, elevation);
   if (!endpoints) return null;
 
-  let [a, b] = endpoints;
-
-  // Texture readability is screen-oriented, while edge placement is still
-  // world-oriented. Swapping endpoint order here does not move the wall; it
-  // only prevents the same wall art from being mirrored when camera rotation
-  // puts the edge on the opposite screen side.
-  if (a.x > b.x) {
-    [a, b] = [b, a];
-  }
-
+  const [a, b] = endpoints;
   const topA = { x: a.x, y: a.y - heightPx };
   const topB = { x: b.x, y: b.y - heightPx };
 
   return [topA, topB, b, a];
 }
 
-function getWorldEdgeEndpoints(state, x, y, edge, elevation) {
-  const corners = getWorldNamedCellCorners(state, x, y, elevation);
+function getScreenEdgeEndpointsForWorldFace(state, x, y, worldFace, elevation) {
+  const diamond = getCellScreenDiamond(state, x, y, elevation);
+  const screenEdge = getScreenEdgeForWorldFace(state.rotation, worldFace);
 
-  switch (String(edge ?? "").toLowerCase()) {
-    case "ne":
-      return [corners.nw, corners.ne];
-    case "se":
-      return [corners.ne, corners.se];
-    case "sw":
-      return [corners.sw, corners.se];
-    case "nw":
-      return [corners.nw, corners.sw];
+  switch (screenEdge) {
+    case "topLeft":
+      return [diamond.top, diamond.left];
+    case "topRight":
+      return [diamond.top, diamond.right];
+    case "bottomRight":
+      return [diamond.right, diamond.bottom];
+    case "bottomLeft":
+      return [diamond.left, diamond.bottom];
     default:
       return null;
   }
 }
 
-function getWorldOrderedCellCorners(state, x, y, elevation) {
-  const corners = getWorldNamedCellCorners(state, x, y, elevation);
-  return [corners.nw, corners.ne, corners.se, corners.sw];
+function getScreenEdgeForWorldFace(rotation, worldFace) {
+  const face = String(worldFace ?? "").toLowerCase();
+  const leftWorldFace = getWorldFaceForScreenSide(rotation, "left");
+  const rightWorldFace = getWorldFaceForScreenSide(rotation, "right");
+  const topRightWorldFace = getOppositeWorldFace(leftWorldFace);
+  const topLeftWorldFace = getOppositeWorldFace(rightWorldFace);
+
+  if (face === leftWorldFace) return "bottomLeft";
+  if (face === rightWorldFace) return "bottomRight";
+  if (face === topRightWorldFace) return "topRight";
+  if (face === topLeftWorldFace) return "topLeft";
+  return null;
 }
 
-function getWorldNamedCellCorners(state, x, y, elevation) {
-  // These names are WORLD corner names. Do not reclassify them by screen
-  // top/right/bottom/left after projection. Reclassification was the rotation
-  // bug: it made authored edges slide to whichever face was currently visible.
+function getCellScreenDiamond(state, x, y, elevation) {
+  // Match terrain rendering exactly: project the authored tile origin once,
+  // then build the screen diamond from fixed iso offsets. Do not use
+  // projectScene(x + 1, y) etc.; that was the rotation drift.
+  const p = projectScene(state, x, y, elevation, 1);
+  const halfW = RENDER_CONFIG.isoTileWidth / 2;
+  const halfH = RENDER_CONFIG.isoTileHeight / 2;
+
   return {
-    nw: projectScene(state, x, y, elevation, 1),
-    ne: projectScene(state, x + 1, y, elevation, 1),
-    se: projectScene(state, x + 1, y + 1, elevation, 1),
-    sw: projectScene(state, x, y + 1, elevation, 1)
+    top: { x: p.x, y: p.y },
+    right: { x: p.x + halfW, y: p.y + halfH },
+    bottom: { x: p.x, y: p.y + (halfH * 2) },
+    left: { x: p.x - halfW, y: p.y + halfH }
   };
+}
+
+function getOppositeWorldFace(worldFace) {
+  switch (String(worldFace ?? "").toLowerCase()) {
+    case "sw":
+      return "ne";
+    case "se":
+      return "nw";
+    case "ne":
+      return "sw";
+    case "nw":
+      return "se";
+    default:
+      return null;
+  }
 }
 
 function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight) {
