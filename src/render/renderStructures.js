@@ -1,25 +1,27 @@
 // src/render/renderStructures.js
-// Structure Render V2.5
-// Keeps world-face lock, no sprite mirroring, and doorway openings reveal a
-// recessed interior return plane so transparent doors read as depth, not void.
+//
+// Structure Render V3
+// Board truth: structure cells + real world edge parts + separate roof.
+// No prefab boxes. No left/right face swapping. Rotation only changes projection.
 
 import { RENDER_CONFIG } from "../config.js";
-import { svgEl, makePolygon } from "../utils.js";
+import { svgEl, makePolygon, makeText } from "../utils.js";
 import { projectScene, getTopdownCellSize, getSceneSortKey } from "./projection.js";
-import { getWorldFaceForScreenSide } from "./renderCompass.js";
 import { getTerrainDepth } from "./renderSceneMath.js";
 import {
   getMapStructures,
-  getStructureFaceSprite,
-  getStructureInteriorSprite,
+  getStructureCells,
+  getStructureEdgeParts,
   normalizeStructureForMap
 } from "../structures/structureRules.js";
 
 let clipId = 0;
 
-const FACE_COLOR = "rgba(80,74,84,0.72)";
+const EDGE_FALLBACK_COLOR = "rgba(80,74,84,0.72)";
 const ROOF_COLOR = "rgba(120,68,86,0.82)";
-const DOOR_PATTERN = /(^|[_-])door([_-]|\.|$)/i;
+const FLOOR_COLOR = "rgba(42,38,50,0.62)";
+const DEBUG_CELL_COLOR = "rgba(255, 221, 80, 0.16)";
+const DEBUG_EDGE_COLOR = "rgba(255, 221, 80, 0.78)";
 
 export function getStructureSceneItems(state) {
   const list = getMapStructures(state?.map);
@@ -30,311 +32,210 @@ export function getStructureSceneItems(state) {
     if (!structure) continue;
 
     if (state.ui?.viewMode === "top") {
-      items.push(makeTopItem(state, structure));
+      items.push(...makeTopItems(state, structure));
       continue;
     }
 
-    const leftWorldFace = getWorldFaceForScreenSide(state.rotation, "left");
-    const rightWorldFace = getWorldFaceForScreenSide(state.rotation, "right");
+    items.push(...makeFloorItems(state, structure));
+    items.push(...makeEdgeItems(state, structure));
+    items.push(...makeRoofItems(state, structure));
 
-    const leftSprite = getStructureFaceSprite(structure, leftWorldFace);
-    const rightSprite = getStructureFaceSprite(structure, rightWorldFace);
-
-    if (leftSprite || structure.drawFallbackFaces) {
-      items.push(makeFaceItem(state, structure, "left", leftWorldFace, leftSprite));
-    }
-
-    if (rightSprite || structure.drawFallbackFaces) {
-      items.push(makeFaceItem(state, structure, "right", rightWorldFace, rightSprite));
-    }
-
-    if (structure.roofSprite) {
-      items.push(makeRoofItem(state, structure));
+    if (structure.debug) {
+      items.push(...makeDebugItems(state, structure));
     }
   }
 
   return items.filter(Boolean);
 }
 
-function makeFaceItem(state, structure, screenSide, worldFace, imagePath) {
-  const g = geometry(state, structure);
-  const points = screenSide === "left" ? g.leftFace : g.rightFace;
-  const depth = getTerrainDepth({
-    size: 1,
-    screenY: g.base.screenY,
-    leftFaceHeight: structure.elevation,
-    rightFaceHeight: structure.elevation
-  });
-
-  return {
-    kind: "structure_face",
-    structureId: structure.id,
-    screenSide,
-    worldFace,
-    points,
-    imagePath,
-    doorwayBacking: resolveDoorwayBacking(state, structure, screenSide, worldFace, imagePath, points),
-    sortDepth: depth + (screenSide === "left" ? 0.36 : 0.37),
-    sortKey: getSceneSortKey(state, structure.x, structure.y, structure.elevation) + (screenSide === "left" ? 0.1 : 0.2),
-    render(parent) {
-      drawFace(this, parent);
-    }
-  };
-}
-
-function makeRoofItem(state, structure) {
-  const g = geometry(state, structure);
-  const depth = getTerrainDepth({
-    size: 1,
-    screenY: g.base.screenY,
-    leftFaceHeight: structure.elevation,
-    rightFaceHeight: structure.elevation
-  });
-
-  return {
-    kind: "structure_roof",
-    structureId: structure.id,
-    imagePath: structure.roofSprite,
-    points: g.roof,
-    textureRotation: state.rotation,
-    sortDepth: depth + 0.42,
-    sortKey: getSceneSortKey(state, structure.x, structure.y, structure.elevation + structure.heightLevels) + 0.3,
-    render(parent) {
-      drawRoof(this, parent);
-    }
-  };
-}
-
-function makeTopItem(state, structure) {
+function makeTopItems(state, structure) {
   const size = getTopdownCellSize(state);
-  const p = projectScene(state, structure.x, structure.y, structure.elevation, 1);
+  const items = [];
 
-  return {
-    kind: "structure_topdown",
-    x: p.x,
-    y: p.y,
-    width: size * structure.w,
-    height: size * structure.h,
-    sortDepth: p.y + 0.2,
-    sortKey: getSceneSortKey(state, structure.x, structure.y, structure.elevation) + 0.2,
-    render(parent) {
-      drawTop(this, parent);
-    }
-  };
-}
+  for (const cell of getStructureCells(structure)) {
+    const p = projectScene(state, cell.x, cell.y, structure.elevation, 1);
 
-function geometry(state, structure) {
-  const rise = structure.heightPx;
-  const w = Math.max(1, Number(structure.w ?? 1));
-  const h = Math.max(1, Number(structure.h ?? 1));
-
-  // Structure anchoring must use the same board-space truth as units:
-  // x/y identify the map cell footprint, then the renderer projects the actual
-  // footprint corners for the current camera rotation. Do not build the box by
-  // taking one projected point and adding fixed screen offsets; that drifts from
-  // tile truth as the camera rotates.
-  const footprintCorners = [
-    projectScene(state, structure.x, structure.y, structure.elevation, 1),
-    projectScene(state, structure.x + w, structure.y, structure.elevation, 1),
-    projectScene(state, structure.x + w, structure.y + h, structure.elevation, 1),
-    projectScene(state, structure.x, structure.y + h, structure.elevation, 1)
-  ];
-
-  const base = classifyProjectedDiamond(footprintCorners);
-
-  const roof = {
-    top: liftPoint(base.top, rise),
-    right: liftPoint(base.right, rise),
-    bottom: liftPoint(base.bottom, rise),
-    left: liftPoint(base.left, rise)
-  };
-
-  return {
-    base,
-    roof: [roof.top, roof.right, roof.bottom, roof.left],
-    leftFace: [roof.left, roof.bottom, base.bottom, base.left],
-    rightFace: [roof.right, roof.bottom, base.bottom, base.right]
-  };
-}
-
-function liftPoint(point, rise) {
-  return { x: point.x, y: point.y - rise };
-}
-
-function classifyProjectedDiamond(points) {
-  const sortedByY = [...points].sort((a, b) => {
-    if (a.y !== b.y) return a.y - b.y;
-    return a.x - b.x;
-  });
-
-  const top = sortedByY[0];
-  const bottom = sortedByY[sortedByY.length - 1];
-  const middle = sortedByY.slice(1, -1).sort((a, b) => a.x - b.x);
-  const left = middle[0];
-  const right = middle[middle.length - 1];
-
-  return {
-    screenY: top.y,
-    top,
-    right,
-    bottom,
-    left
-  };
-}
-
-function resolveDoorwayBacking(state, structure, screenSide, worldFace, imagePath, frontFacePoints) {
-  if (!looksLikeDoorSprite(imagePath)) return null;
-
-  const backingSprite = resolveDoorwayBackingSprite(state, structure, worldFace);
-  if (!backingSprite) return null;
-
-  // The transparent pixels in door_*.png are the aperture mask.
-  // Do NOT map the backing onto the same exterior face as the door.
-  // That makes the doorway read as a flat wall pasted behind the hole.
-  // Instead, map the texture onto a recessed return plane that runs inward
-  // from the outside vertical edge of the face. The front door image still
-  // clips/covers it, so only the transparent opening reveals this skewed depth.
-  return {
-    imagePath: backingSprite,
-    points: makeDoorwayReturnPlanePoints(screenSide, frontFacePoints)
-  };
-}
-
-function makeDoorwayReturnPlanePoints(screenSide, frontFacePoints) {
-  if (!Array.isArray(frontFacePoints) || frontFacePoints.length < 4) return frontFacePoints;
-
-  const topOuter = frontFacePoints[0];
-  const bottomOuter = frontFacePoints[3];
-  const topInnerOnFrontFace = frontFacePoints[1];
-
-  // Face points are ordered as:
-  //   [roof outer, roof/bottom shared edge, base/bottom shared edge, base outer]
-  // for both visible side faces. The top edge vector lies along the exterior face.
-  // Flipping its screen-Y component gives the roof-depth vector into the tile.
-  const faceTopVector = {
-    x: topInnerOnFrontFace.x - topOuter.x,
-    y: topInnerOnFrontFace.y - topOuter.y
-  };
-
-  const depthScale = 1;
-  const inward = {
-    x: faceTopVector.x * depthScale,
-    y: -faceTopVector.y * depthScale
-  };
-
-  const topInner = {
-    x: topOuter.x + inward.x,
-    y: topOuter.y + inward.y
-  };
-  const bottomInner = {
-    x: bottomOuter.x + inward.x,
-    y: bottomOuter.y + inward.y
-  };
-
-  return [topOuter, topInner, bottomInner, bottomOuter];
-}
-
-function resolveDoorwayBackingSprite(state, structure, worldFace) {
-  const sameFaceInterior =
-    getStructureInteriorSprite(structure, worldFace)
-    ?? getStructureFaceSprite(structure, getOppositeWorldFace(worldFace))
-    ?? getStructureInteriorSprite(structure, getOppositeWorldFace(worldFace));
-
-  if (sameFaceInterior) return sameFaceInterior;
-
-  const inward = getInteriorOffsetForWorldFace(worldFace);
-  if (!inward) return null;
-
-  const neighbor = findStructureAt(state, structure.x + inward.x, structure.y + inward.y, structure.id);
-  if (!neighbor) return null;
-
-  return getStructureFaceSprite(neighbor, worldFace)
-    ?? getStructureInteriorSprite(neighbor, worldFace)
-    ?? getStructureFaceSprite(neighbor, getOppositeWorldFace(worldFace))
-    ?? getStructureInteriorSprite(neighbor, getOppositeWorldFace(worldFace));
-}
-
-function findStructureAt(state, x, y, excludedId = null) {
-  const list = getMapStructures(state?.map);
-
-  for (const raw of list) {
-    const structure = normalizeStructureForMap(state, raw);
-    if (!structure || structure.id === excludedId) continue;
-
-    const withinX = x >= structure.x && x < (structure.x + (structure.w ?? 1));
-    const withinY = y >= structure.y && y < (structure.y + (structure.h ?? 1));
-    if (withinX && withinY) return structure;
+    items.push({
+      kind: "structure_topdown_cell",
+      x: p.x,
+      y: p.y,
+      width: size,
+      height: size,
+      sortDepth: p.y + 0.2,
+      sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation) + 0.2,
+      render(parent) {
+        const rect = svgEl("rect");
+        rect.setAttribute("x", String(this.x));
+        rect.setAttribute("y", String(this.y));
+        rect.setAttribute("width", String(this.width));
+        rect.setAttribute("height", String(this.height));
+        rect.setAttribute("fill", "rgba(180,120,170,0.34)");
+        rect.setAttribute("stroke", "rgba(255,255,255,0.72)");
+        rect.setAttribute("stroke-width", "2");
+        rect.setAttribute("pointer-events", "none");
+        parent.appendChild(rect);
+      }
+    });
   }
 
-  return null;
+  return items;
 }
 
-function getInteriorOffsetForWorldFace(worldFace) {
-  switch (String(worldFace ?? "").toLowerCase()) {
-    case "sw":
-      return { x: 1, y: 0 };
-    case "se":
-      return { x: 0, y: 1 };
-    case "ne":
-      return { x: -1, y: 0 };
-    case "nw":
-      return { x: 0, y: -1 };
-    default:
-      return null;
+function makeFloorItems(state, structure) {
+  const items = [];
+
+  for (const cell of getStructureCells(structure)) {
+    const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
+    const screenY = Math.max(...points.map((point) => point.y));
+
+    items.push({
+      kind: "structure_floor",
+      structureId: structure.id,
+      cell,
+      points,
+      imagePath: structure.floorSprite,
+      sortDepth: getTerrainDepth({
+        size: 1,
+        screenY,
+        leftFaceHeight: structure.elevation,
+        rightFaceHeight: structure.elevation
+      }) + 0.03,
+      sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation) + 0.03,
+      render(parent) {
+        drawFloor(this, parent);
+      }
+    });
   }
+
+  return items;
 }
 
-function getOppositeWorldFace(worldFace) {
-  switch (String(worldFace ?? "").toLowerCase()) {
-    case "sw":
-      return "ne";
-    case "se":
-      return "nw";
-    case "ne":
-      return "sw";
-    case "nw":
-      return "se";
-    default:
-      return worldFace;
+function makeEdgeItems(state, structure) {
+  const items = [];
+
+  for (const edgePart of getStructureEdgeParts(structure)) {
+    if (!edgePart?.sprite && edgePart?.type === "open") continue;
+
+    const points = getEdgePlanePoints(
+      state,
+      edgePart.x,
+      edgePart.y,
+      edgePart.edge,
+      structure.elevation,
+      structure.heightPx
+    );
+
+    if (!points) continue;
+
+    const screenY = Math.max(...points.map((point) => point.y));
+    const midpoint = getMidpoint(points[2], points[3]);
+
+    items.push({
+      kind: "structure_edge",
+      structureId: structure.id,
+      edgePart,
+      points,
+      imagePath: edgePart.sprite,
+      sortDepth: screenY + 0.18,
+      sortKey:
+        getSceneSortKey(state, midpoint.worldX ?? edgePart.x, midpoint.worldY ?? edgePart.y, structure.elevation) +
+        edgeSortBias(edgePart.edge),
+      render(parent) {
+        drawEdge(this, parent);
+      }
+    });
   }
+
+  return items;
 }
 
-function looksLikeDoorSprite(imagePath) {
-  return DOOR_PATTERN.test(String(imagePath ?? "").trim());
+function makeRoofItems(state, structure) {
+  const items = [];
+
+  if (!structure.roofSprite) return items;
+
+  for (const cell of getStructureCells(structure)) {
+    const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, structure.heightPx);
+    const screenY = Math.max(...points.map((point) => point.y));
+
+    items.push({
+      kind: "structure_roof",
+      structureId: structure.id,
+      cell,
+      points,
+      imagePath: structure.roofSprite,
+      textureRotation: state.rotation,
+      sortDepth: screenY + 0.42,
+      sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation + structure.heightLevels) + 0.3,
+      render(parent) {
+        drawRoof(this, parent);
+      }
+    });
+  }
+
+  return items;
 }
 
-function drawTop(item, parent) {
-  const rect = svgEl("rect");
-  rect.setAttribute("x", String(item.x));
-  rect.setAttribute("y", String(item.y));
-  rect.setAttribute("width", String(item.width));
-  rect.setAttribute("height", String(item.height));
-  rect.setAttribute("fill", "rgba(180,120,170,0.34)");
-  rect.setAttribute("stroke", "rgba(255,255,255,0.72)");
-  rect.setAttribute("stroke-width", "2");
-  rect.setAttribute("pointer-events", "none");
-  parent.appendChild(rect);
+function makeDebugItems(state, structure) {
+  const items = [];
+
+  for (const cell of getStructureCells(structure)) {
+    const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
+    const center = averagePoint(points);
+
+    items.push({
+      kind: "structure_debug_cell",
+      sortDepth: center.y + 0.8,
+      sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation) + 0.8,
+      render(parent) {
+        const poly = makePolygon(points, "structure-debug-cell", DEBUG_CELL_COLOR);
+        poly.setAttribute("stroke", DEBUG_EDGE_COLOR);
+        poly.setAttribute("stroke-width", "1");
+        parent.appendChild(poly);
+
+        const label = makeText(center.x, center.y, `${cell.x},${cell.y}`, "structure-debug-text");
+        label.setAttribute("fill", "rgba(255,240,120,0.95)");
+        label.setAttribute("font-size", "10");
+        parent.appendChild(label);
+      }
+    });
+  }
+
+  return items;
 }
 
-function drawFace(item, parent) {
+function drawFloor(item, parent) {
   const group = svgEl("g");
   group.dataset.structureId = item.structureId;
-  group.dataset.worldFace = item.worldFace ?? "";
-  group.dataset.screenSide = item.screenSide ?? "";
+  group.dataset.structurePart = "floor";
 
-  const fallback = makePolygon(item.points, "structure-face", FACE_COLOR);
+  const fallback = makePolygon(item.points, "structure-floor", FLOOR_COLOR);
   fallback.setAttribute("stroke", "none");
   group.appendChild(fallback);
 
-  if (item.doorwayBacking?.imagePath) {
-    appendProjectedFaceImage(group, item.points, item.doorwayBacking.points, item.doorwayBacking.imagePath, "doorway-backing");
+  if (item.imagePath) {
+    appendProjectedImage(group, item.points, item.imagePath, "floor", 32, 32);
   }
+
+  parent.appendChild(group);
+}
+
+function drawEdge(item, parent) {
+  const group = svgEl("g");
+  group.dataset.structureId = item.structureId;
+  group.dataset.structurePart = "edge";
+  group.dataset.edge = item.edgePart?.edge ?? "";
+  group.dataset.edgeType = item.edgePart?.type ?? "";
+
+  const fallback = makePolygon(item.points, "structure-edge-face", EDGE_FALLBACK_COLOR);
+  fallback.setAttribute("stroke", "none");
+  group.appendChild(fallback);
 
   if (item.imagePath) {
-    appendProjectedFaceImage(group, item.points, item.points, item.imagePath, "exterior");
+    appendProjectedImage(group, item.points, item.imagePath, "edge", 32, 64);
   }
 
-  const outline = makePolygon(item.points, "structure-face-outline", "none");
+  const outline = makePolygon(item.points, "structure-edge-outline", "none");
   outline.setAttribute("stroke", "rgba(20,18,24,0.82)");
   outline.setAttribute("stroke-width", "1.2");
   outline.setAttribute("stroke-linejoin", "round");
@@ -353,7 +254,7 @@ function drawRoof(item, parent) {
   group.appendChild(fallback);
 
   if (item.imagePath) {
-    appendRoofImage(group, item.points, item.imagePath, item.textureRotation);
+    appendProjectedImage(group, item.points, item.imagePath, "roof", 32, 32);
   }
 
   const outline = makePolygon(item.points, "structure-roof-outline", "none");
@@ -365,12 +266,87 @@ function drawRoof(item, parent) {
   parent.appendChild(group);
 }
 
-function appendProjectedFaceImage(parentGroup, clipPoints, imagePoints, imagePath, layerName = "face") {
-  const id = `structure-face-clip-${clipId += 1}`;
+function getCellRoofOrFloorPoints(state, x, y, elevation, risePx = 0) {
+  const corners = getCellProjectedCorners(state, x, y, elevation)
+    .map((point) => ({ x: point.x, y: point.y - risePx }));
+
+  return orderDiamondPoints(corners);
+}
+
+function getEdgePlanePoints(state, x, y, edge, elevation, heightPx) {
+  const endpoints = getWorldEdgeEndpoints(state, x, y, edge, elevation);
+  if (!endpoints) return null;
+
+  let [a, b] = endpoints;
+
+  // Keep texture handedness stable on screen. This avoids the old mirrored face
+  // problem while leaving the map edge itself fixed in world space.
+  if (a.x > b.x) {
+    [a, b] = [b, a];
+  }
+
+  const topA = { x: a.x, y: a.y - heightPx };
+  const topB = { x: b.x, y: b.y - heightPx };
+
+  return [topA, topB, b, a];
+}
+
+function getWorldEdgeEndpoints(state, x, y, edge, elevation) {
+  const corners = getNamedCellCorners(state, x, y, elevation);
+
+  switch (String(edge ?? "").toLowerCase()) {
+    case "ne":
+      return [corners.top, corners.right];
+    case "se":
+      return [corners.right, corners.bottom];
+    case "sw":
+      return [corners.left, corners.bottom];
+    case "nw":
+      return [corners.top, corners.left];
+    default:
+      return null;
+  }
+}
+
+function getNamedCellCorners(state, x, y, elevation) {
+  const ordered = orderDiamondPoints(getCellProjectedCorners(state, x, y, elevation));
+
+  return {
+    top: ordered[0],
+    right: ordered[1],
+    bottom: ordered[2],
+    left: ordered[3]
+  };
+}
+
+function getCellProjectedCorners(state, x, y, elevation) {
+  return [
+    projectScene(state, x, y, elevation, 1),
+    projectScene(state, x + 1, y, elevation, 1),
+    projectScene(state, x + 1, y + 1, elevation, 1),
+    projectScene(state, x, y + 1, elevation, 1)
+  ];
+}
+
+function orderDiamondPoints(points) {
+  const sortedByY = [...points].sort((a, b) => {
+    if (a.y !== b.y) return a.y - b.y;
+    return a.x - b.x;
+  });
+
+  const top = sortedByY[0];
+  const bottom = sortedByY[sortedByY.length - 1];
+  const middle = sortedByY.slice(1, -1).sort((a, b) => a.x - b.x);
+
+  return [top, middle[1], bottom, middle[0]];
+}
+
+function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight) {
+  const id = `structure-${layerName}-clip-${clipId += 1}`;
   const clip = svgEl("clipPath");
   clip.setAttribute("id", id);
   clip.setAttribute("clipPathUnits", "userSpaceOnUse");
-  clip.appendChild(makePolygon(clipPoints, "structure-face-clip", "#fff"));
+  clip.appendChild(makePolygon(points, `structure-${layerName}-clip`, "#fff"));
   parentGroup.appendChild(clip);
 
   const group = svgEl("g");
@@ -380,15 +356,15 @@ function appendProjectedFaceImage(parentGroup, clipPoints, imagePoints, imagePat
   const image = svgEl("image");
   image.setAttribute("x", "0");
   image.setAttribute("y", "0");
-  image.setAttribute("width", "32");
-  image.setAttribute("height", "64");
+  image.setAttribute("width", String(sourceWidth));
+  image.setAttribute("height", String(sourceHeight));
   image.setAttribute("preserveAspectRatio", "none");
   image.setAttribute("href", imagePath);
   image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
 
-  const topStart = imagePoints[0];
-  const topEnd = imagePoints[1];
-  const bottomStart = imagePoints[3];
+  const topStart = points[0];
+  const topEnd = points[1];
+  const bottomStart = points[3];
 
   const ux = topEnd.x - topStart.x;
   const uy = topEnd.y - topStart.y;
@@ -397,72 +373,43 @@ function appendProjectedFaceImage(parentGroup, clipPoints, imagePoints, imagePat
 
   image.setAttribute(
     "transform",
-    `matrix(${ux / 32} ${uy / 32} ${vx / 64} ${vy / 64} ${topStart.x} ${topStart.y})`
+    `matrix(${ux / sourceWidth} ${uy / sourceWidth} ${vx / sourceHeight} ${vy / sourceHeight} ${topStart.x} ${topStart.y})`
   );
 
   group.appendChild(image);
   parentGroup.appendChild(group);
 }
 
-function appendRoofImage(parentGroup, points, imagePath, textureRotation = 0) {
-  const id = `structure-roof-clip-${clipId += 1}`;
-  const clip = svgEl("clipPath");
-  clip.setAttribute("id", id);
-  clip.setAttribute("clipPathUnits", "userSpaceOnUse");
-  clip.appendChild(makePolygon(points, "structure-roof-clip", "#fff"));
-  parentGroup.appendChild(clip);
-
-  const group = svgEl("g");
-  group.setAttribute("clip-path", `url(#${id})`);
-
-  const image = svgEl("image");
-  const size = 32;
-  image.setAttribute("x", "0");
-  image.setAttribute("y", "0");
-  image.setAttribute("width", String(size));
-  image.setAttribute("height", String(size));
-  image.setAttribute("preserveAspectRatio", "none");
-  image.setAttribute("href", imagePath);
-  image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
-
-  const topLeft = points[3];
-  const topAxisEnd = points[0];
-  const sideAxisEnd = points[2];
-
-  const ux = topAxisEnd.x - topLeft.x;
-  const uy = topAxisEnd.y - topLeft.y;
-  const vx = sideAxisEnd.x - topLeft.x;
-  const vy = sideAxisEnd.y - topLeft.y;
-
-  const baseA = ux / size;
-  const baseB = uy / size;
-  const baseC = vx / size;
-  const baseD = vy / size;
-
-  const rot = normalizeRotation(textureRotation);
-  const radians = (rot * Math.PI) / 2;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  const center = size / 2;
-
-  const rotE = center - (cos * center) + (sin * center);
-  const rotF = center - (sin * center) - (cos * center);
-
-  const a = (baseA * cos) + (baseC * sin);
-  const b = (baseB * cos) + (baseD * sin);
-  const c = (baseA * -sin) + (baseC * cos);
-  const d = (baseB * -sin) + (baseD * cos);
-  const e = (baseA * rotE) + (baseC * rotF) + topLeft.x;
-  const f = (baseB * rotE) + (baseD * rotF) + topLeft.y;
-
-  image.setAttribute("transform", `matrix(${a} ${b} ${c} ${d} ${e} ${f})`);
-
-  group.appendChild(image);
-  parentGroup.appendChild(group);
+function edgeSortBias(edge) {
+  switch (String(edge ?? "").toLowerCase()) {
+    case "sw":
+      return 0.16;
+    case "se":
+      return 0.17;
+    case "nw":
+      return 0.08;
+    case "ne":
+      return 0.09;
+    default:
+      return 0.1;
+  }
 }
 
-function normalizeRotation(rotation = 0) {
-  const value = Number(rotation ?? 0);
-  if (!Number.isFinite(value)) return 0;
-  return ((Math.round(value) % 4) + 4) % 4;
+function averagePoint(points) {
+  const total = points.reduce(
+    (acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }),
+    { x: 0, y: 0 }
+  );
+
+  return {
+    x: total.x / points.length,
+    y: total.y / points.length
+  };
+}
+
+function getMidpoint(a, b) {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2
+  };
 }

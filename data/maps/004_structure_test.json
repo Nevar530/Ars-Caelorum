@@ -26,73 +26,87 @@
   },
   "structures": [
     {
-      "id": "structure_test_left",
-      "x": 5,
-      "y": 7,
-      "w": 1,
-      "h": 1,
+      "id": "structure_room_3x1_test",
+      "cells": [
+        {
+          "x": 5,
+          "y": 7
+        },
+        {
+          "x": 6,
+          "y": 7
+        },
+        {
+          "x": 7,
+          "y": 7
+        }
+      ],
       "heightPx": 64,
       "blocksMove": true,
       "blocksLOS": true,
-      "faceSprites": {
-        "sw": "wall_001.png",
-        "se": "wall_001.png",
-        "ne": "wall_001.png",
-        "nw": "wall_001.png"
-      },
       "roof": "roof_001.png",
-      "interiorSprites": {
-        "sw": "wall_001.png",
-        "se": "wall_001.png",
-        "ne": "wall_001.png",
-        "nw": "wall_001.png"
-      }
-    },
-    {
-      "id": "structure_test_middle_door",
-      "x": 6,
-      "y": 7,
-      "w": 1,
-      "h": 1,
-      "heightPx": 64,
-      "blocksMove": true,
-      "blocksLOS": true,
-      "faceSprites": {
-        "sw": "door_001.png",
-        "se": "wall_001.png",
-        "ne": "wall_001.png",
-        "nw": "wall_001.png"
-      },
-      "roof": "roof_001.png",
-      "interiorSprites": {
-        "sw": "wall_001.png",
-        "se": "wall_001.png",
-        "ne": "wall_001.png",
-        "nw": "wall_001.png"
-      }
-    },
-    {
-      "id": "structure_test_right",
-      "x": 7,
-      "y": 7,
-      "w": 1,
-      "h": 1,
-      "heightPx": 64,
-      "blocksMove": true,
-      "blocksLOS": true,
-      "faceSprites": {
-        "sw": "wall_001.png",
-        "se": "wall_001.png",
-        "ne": "wall_001.png",
-        "nw": "wall_001.png"
-      },
-      "roof": "roof_001.png",
-      "interiorSprites": {
-        "sw": "wall_001.png",
-        "se": "wall_001.png",
-        "ne": "wall_001.png",
-        "nw": "wall_001.png"
-      }
+      "floor": null,
+      "debug": true,
+      "edges": [
+        {
+          "x": 5,
+          "y": 7,
+          "edge": "sw",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 6,
+          "y": 7,
+          "edge": "sw",
+          "type": "door",
+          "spriteId": "door_001.png",
+          "blocksMove": false,
+          "blocksLOS": false
+        },
+        {
+          "x": 7,
+          "y": 7,
+          "edge": "sw",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 5,
+          "y": 7,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 6,
+          "y": 7,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 7,
+          "y": 7,
+          "edge": "ne",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 5,
+          "y": 7,
+          "edge": "nw",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        },
+        {
+          "x": 7,
+          "y": 7,
+          "edge": "se",
+          "type": "wall",
+          "spriteId": "wall_001.png"
+        }
+      ]
     }
   ],
   "startState": {
