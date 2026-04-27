@@ -1,17 +1,13 @@
 // src/render/renderStructures.js
 //
-// Structure Render V3.1
-// Structures are authored as cells + world-edge parts + roof.
-// Render anchoring deliberately matches terrain/unit projection truth:
-// project the cell's top diamond point, then build the iso diamond with fixed
-// screen offsets. Do NOT project x+1/y+1 corners for structure anchoring; the
-// rest of the engine does not use that as the visual tile lock.
+// Structure Render V3
+// Board truth: structure cells + real world edge parts + separate roof.
+// No prefab boxes. No left/right face swapping. Rotation only changes projection.
 
 import { RENDER_CONFIG } from "../config.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { projectScene, getTopdownCellSize, getSceneSortKey } from "./projection.js";
 import { getTerrainDepth } from "./renderSceneMath.js";
-import { getScreenSideForWorldFace, rotateWorldFace } from "./renderCompass.js";
 import {
   getMapStructures,
   getStructureCells,
@@ -26,6 +22,8 @@ const ROOF_COLOR = "rgb(120,68,86)";
 const FLOOR_COLOR = "rgba(42,38,50,0.62)";
 const DEBUG_CELL_COLOR = "rgba(255, 221, 80, 0.16)";
 const DEBUG_EDGE_COLOR = "rgba(255, 221, 80, 0.78)";
+const TRANSPARENT_EDGE_TYPES = new Set(["door", "window", "open"]);
+
 
 export function getStructureSceneItems(state) {
   const list = getMapStructures(state?.map);
@@ -86,14 +84,16 @@ function makeTopItems(state, structure) {
 }
 
 function makeFloorItems(state, structure) {
-  // Interior floors are opt-in until roof/cutaway rules are implemented.
+  // Floors/interior fills are intentionally opt-in. Drawing a translucent
+  // fallback floor under normal roofed structures was bleeding over wall faces
+  // in the global sort and made the structure look transparent.
   if (!structure.floorSprite && structure.showInteriorFloor !== true) return [];
 
   const items = [];
 
   for (const cell of getStructureCells(structure)) {
-    const g = cellGeometry(state, cell.x, cell.y, structure.elevation, 0);
-    const points = [g.base.top, g.base.right, g.base.bottom, g.base.left];
+    const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
+    const screenY = Math.max(...points.map((point) => point.y));
 
     items.push({
       kind: "structure_floor",
@@ -101,12 +101,7 @@ function makeFloorItems(state, structure) {
       cell,
       points,
       imagePath: structure.floorSprite,
-      sortDepth: getTerrainDepth({
-        size: 1,
-        screenY: g.base.screenY,
-        leftFaceHeight: structure.elevation,
-        rightFaceHeight: structure.elevation
-      }) - 0.25,
+      sortDepth: screenY - 0.25,
       sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation) - 0.25,
       render(parent) {
         drawFloor(this, parent);
@@ -123,15 +118,7 @@ function makeEdgeItems(state, structure) {
   for (const edgePart of getStructureEdgeParts(structure)) {
     if (!edgePart?.sprite && edgePart?.type === "open") continue;
 
-    const screenSide = getScreenSideForWorldFace(state.rotation, edgePart.edge);
-
-    // Normal closed-roof view draws only camera-facing perimeter planes.
-    // Hidden/back planes stay as rule data. Door openings get an explicit
-    // backing from the opposite wall so transparent door pixels reveal a real
-    // room surface instead of the ground.
-    if (screenSide !== "left" && screenSide !== "right") continue;
-
-    const points = getFacePointsForWorldEdge(
+    const points = getEdgePlanePoints(
       state,
       edgePart.x,
       edgePart.y,
@@ -142,26 +129,19 @@ function makeEdgeItems(state, structure) {
 
     if (!points) continue;
 
-    const g = cellGeometry(state, edgePart.x, edgePart.y, structure.elevation, structure.heightPx);
-    const doorwayBacking = edgePart.type === "door"
-      ? resolveDoorwayBacking(state, structure, edgePart)
-      : null;
+    const screenY = Math.max(...points.map((point) => point.y));
+    const midpoint = getMidpoint(points[2], points[3]);
 
     items.push({
       kind: "structure_edge",
       structureId: structure.id,
       edgePart,
-      screenSide,
       points,
       imagePath: edgePart.sprite,
-      doorwayBacking,
-      sortDepth: getTerrainDepth({
-        size: 1,
-        screenY: g.base.screenY,
-        leftFaceHeight: structure.elevation,
-        rightFaceHeight: structure.elevation
-      }) + (screenSide === "left" ? 0.16 : 0.17),
-      sortKey: getSceneSortKey(state, edgePart.x, edgePart.y, structure.elevation) + (screenSide === "left" ? 0.16 : 0.17),
+      sortDepth: screenY + 0.18,
+      sortKey:
+        getSceneSortKey(state, midpoint.worldX ?? edgePart.x, midpoint.worldY ?? edgePart.y, structure.elevation) +
+        edgeSortBias(edgePart.edge),
       render(parent) {
         drawEdge(this, parent);
       }
@@ -177,21 +157,21 @@ function makeRoofItems(state, structure) {
   if (!structure.roofSprite) return items;
 
   for (const cell of getStructureCells(structure)) {
-    const g = cellGeometry(state, cell.x, cell.y, structure.elevation, structure.heightPx);
+    const floorPoints = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
+    const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, structure.heightPx);
+    const floorScreenY = Math.max(...floorPoints.map((point) => point.y));
 
     items.push({
       kind: "structure_roof",
       structureId: structure.id,
       cell,
-      points: g.roof,
+      points,
       imagePath: structure.roofSprite,
       textureRotation: state.rotation,
-      sortDepth: getTerrainDepth({
-        size: 1,
-        screenY: g.base.screenY,
-        leftFaceHeight: structure.elevation,
-        rightFaceHeight: structure.elevation
-      }) + 0.42,
+      // Roofs are a separate cover layer. Sort them after their walls so they
+      // read as closed rooms until a future cutaway/inside-unit state hides
+      // them. This fixes the "no roofs" symptom from the first rewrite pass.
+      sortDepth: floorScreenY + structure.heightPx + 0.42,
       sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation + structure.heightLevels) + 0.3,
       render(parent) {
         drawRoof(this, parent);
@@ -206,8 +186,7 @@ function makeDebugItems(state, structure) {
   const items = [];
 
   for (const cell of getStructureCells(structure)) {
-    const g = cellGeometry(state, cell.x, cell.y, structure.elevation, 0);
-    const points = [g.base.top, g.base.right, g.base.bottom, g.base.left];
+    const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
     const center = averagePoint(points);
 
     items.push({
@@ -252,29 +231,14 @@ function drawEdge(item, parent) {
   group.dataset.structureId = item.structureId;
   group.dataset.structurePart = "edge";
   group.dataset.edge = item.edgePart?.edge ?? "";
-  group.dataset.screenSide = item.screenSide ?? "";
   group.dataset.edgeType = item.edgePart?.type ?? "";
 
-  const isDoor = item.edgePart?.type === "door";
+  const transparentOpening = isTransparentOpeningEdge(item.edgePart);
 
-  // Doors must preserve transparent pixels from door_*.png. A fallback polygon
-  // behind the image fills the doorway aperture and makes the door look solid.
-  if (!isDoor || !item.imagePath) {
+  if (!transparentOpening || !item.imagePath) {
     const fallback = makePolygon(item.points, "structure-edge-face", EDGE_FALLBACK_COLOR);
     fallback.setAttribute("stroke", "none");
     group.appendChild(fallback);
-  }
-
-  if (item.doorwayBacking?.imagePath && item.doorwayBacking?.points) {
-    appendProjectedImage(
-      group,
-      item.points,
-      item.doorwayBacking.imagePath,
-      "doorway-backing",
-      32,
-      64,
-      item.doorwayBacking.points
-    );
   }
 
   if (item.imagePath) {
@@ -288,6 +252,11 @@ function drawEdge(item, parent) {
   group.appendChild(outline);
 
   parent.appendChild(group);
+}
+
+function isTransparentOpeningEdge(edgePart) {
+  const type = String(edgePart?.type ?? "").trim().toLowerCase();
+  return TRANSPARENT_EDGE_TYPES.has(type);
 }
 
 function drawRoof(item, parent) {
@@ -312,114 +281,71 @@ function drawRoof(item, parent) {
   parent.appendChild(group);
 }
 
-function cellGeometry(state, x, y, elevation, risePx = 0) {
-  const p = projectScene(state, x, y, elevation, 1);
-  const halfW = RENDER_CONFIG.isoTileWidth / 2;
-  const halfH = RENDER_CONFIG.isoTileHeight / 2;
-
-  // This matches renderTerrainTile() and projectTileCenter().
-  // It is the lock point that kept units/mechs stable after rotation.
-  const base = {
-    screenY: p.y,
-    top: { x: p.x, y: p.y },
-    right: { x: p.x + halfW, y: p.y + halfH },
-    bottom: { x: p.x, y: p.y + (halfH * 2) },
-    left: { x: p.x - halfW, y: p.y + halfH }
-  };
-
-  const roof = {
-    top: { x: base.top.x, y: base.top.y - risePx },
-    right: { x: base.right.x, y: base.right.y - risePx },
-    bottom: { x: base.bottom.x, y: base.bottom.y - risePx },
-    left: { x: base.left.x, y: base.left.y - risePx }
-  };
-
-  return {
-    base,
-    roof: [roof.top, roof.right, roof.bottom, roof.left],
-    screenFaces: {
-      nw: [roof.top, roof.left, base.left, base.top],
-      ne: [roof.top, roof.right, base.right, base.top],
-      sw: [roof.left, roof.bottom, base.bottom, base.left],
-      se: [roof.right, roof.bottom, base.bottom, base.right]
-    },
-    leftFace: [roof.left, roof.bottom, base.bottom, base.left],
-    rightFace: [roof.right, roof.bottom, base.bottom, base.right]
-  };
+function getCellRoofOrFloorPoints(state, x, y, elevation, risePx = 0) {
+  return getWorldOrderedCellCorners(state, x, y, elevation)
+    .map((point) => ({ x: point.x, y: point.y - risePx }));
 }
 
-function getFacePointsForWorldEdge(state, x, y, worldEdge, elevation, heightPx) {
-  const screenEdge = getScreenEdgeForWorldFace(state.rotation, worldEdge);
-  if (!screenEdge) return null;
+function getEdgePlanePoints(state, x, y, edge, elevation, heightPx) {
+  const endpoints = getWorldEdgeEndpoints(state, x, y, edge, elevation);
+  if (!endpoints) return null;
 
-  const g = cellGeometry(state, x, y, elevation, heightPx);
-  return g.screenFaces?.[screenEdge] ?? null;
-}
+  let [a, b] = endpoints;
 
-function getScreenEdgeForWorldFace(rotation, worldFace) {
-  const normalizedWorldFace = String(worldFace ?? "").toLowerCase();
-
-  for (const screenEdge of ["ne", "se", "sw", "nw"]) {
-    if (rotateWorldFace(screenEdge, rotation) === normalizedWorldFace) {
-      return screenEdge;
-    }
+  // Texture readability is screen-oriented, while edge placement is still
+  // world-oriented. Swapping endpoint order here does not move the wall; it
+  // only prevents the same wall art from being mirrored when camera rotation
+  // puts the edge on the opposite screen side.
+  if (a.x > b.x) {
+    [a, b] = [b, a];
   }
 
-  return null;
+  const topA = { x: a.x, y: a.y - heightPx };
+  const topB = { x: b.x, y: b.y - heightPx };
+
+  return [topA, topB, b, a];
 }
 
-function resolveDoorwayBacking(state, structure, doorEdgePart) {
-  const opposite = getOppositeWorldFace(doorEdgePart.edge);
-  if (!opposite) return null;
+function getWorldEdgeEndpoints(state, x, y, edge, elevation) {
+  const corners = getWorldNamedCellCorners(state, x, y, elevation);
 
-  const backingEdge = getStructureEdgeParts(structure).find((edgePart) => (
-    edgePart &&
-    Number(edgePart.x) === Number(doorEdgePart.x) &&
-    Number(edgePart.y) === Number(doorEdgePart.y) &&
-    String(edgePart.edge).toLowerCase() === opposite &&
-    edgePart.sprite
-  ));
-
-  if (!backingEdge?.sprite) return null;
-
-  const points = getFacePointsForWorldEdge(
-    state,
-    backingEdge.x,
-    backingEdge.y,
-    backingEdge.edge,
-    structure.elevation,
-    structure.heightPx
-  );
-
-  if (!points) return null;
-
-  return {
-    imagePath: backingEdge.sprite,
-    points
-  };
-}
-
-function getOppositeWorldFace(worldFace) {
-  switch (String(worldFace ?? "").toLowerCase()) {
+  switch (String(edge ?? "").toLowerCase()) {
     case "ne":
-      return "sw";
+      return [corners.nw, corners.ne];
     case "se":
-      return "nw";
+      return [corners.ne, corners.se];
     case "sw":
-      return "ne";
+      return [corners.sw, corners.se];
     case "nw":
-      return "se";
+      return [corners.nw, corners.sw];
     default:
       return null;
   }
 }
 
-function appendProjectedImage(parentGroup, clipPoints, imagePath, layerName, sourceWidth, sourceHeight, imagePoints = clipPoints) {
+function getWorldOrderedCellCorners(state, x, y, elevation) {
+  const corners = getWorldNamedCellCorners(state, x, y, elevation);
+  return [corners.nw, corners.ne, corners.se, corners.sw];
+}
+
+function getWorldNamedCellCorners(state, x, y, elevation) {
+  // These names are WORLD corner names. Do not reclassify them by screen
+  // top/right/bottom/left after projection. Reclassification was the rotation
+  // bug: it made authored edges slide to whichever face was currently visible.
+  return {
+    nw: projectScene(state, x, y, elevation, 1),
+    ne: projectScene(state, x + 1, y, elevation, 1),
+    se: projectScene(state, x + 1, y + 1, elevation, 1),
+    sw: projectScene(state, x, y + 1, elevation, 1)
+  };
+}
+
+function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight) {
   const id = `structure-${layerName}-clip-${clipId += 1}`;
   const clip = svgEl("clipPath");
   clip.setAttribute("id", id);
   clip.setAttribute("clipPathUnits", "userSpaceOnUse");
-  clip.appendChild(makePolygon(clipPoints, `structure-${layerName}-clip`, "#fff"));
+  clip.appendChild(makePolygon(points, `structure-${layerName}-clip`, "#fff"));
   parentGroup.appendChild(clip);
 
   const group = svgEl("g");
@@ -435,39 +361,37 @@ function appendProjectedImage(parentGroup, clipPoints, imagePath, layerName, sou
   image.setAttribute("href", imagePath);
   image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
 
-  const basis = getStableImageBasis(imagePoints);
-  const ux = basis.topEnd.x - basis.topStart.x;
-  const uy = basis.topEnd.y - basis.topStart.y;
-  const vx = basis.bottomStart.x - basis.topStart.x;
-  const vy = basis.bottomStart.y - basis.topStart.y;
+  const topStart = points[0];
+  const topEnd = points[1];
+  const bottomStart = points[3];
+
+  const ux = topEnd.x - topStart.x;
+  const uy = topEnd.y - topStart.y;
+  const vx = bottomStart.x - topStart.x;
+  const vy = bottomStart.y - topStart.y;
 
   image.setAttribute(
     "transform",
-    `matrix(${ux / sourceWidth} ${uy / sourceWidth} ${vx / sourceHeight} ${vy / sourceHeight} ${basis.topStart.x} ${basis.topStart.y})`
+    `matrix(${ux / sourceWidth} ${uy / sourceWidth} ${vx / sourceHeight} ${vy / sourceHeight} ${topStart.x} ${topStart.y})`
   );
 
   group.appendChild(image);
   parentGroup.appendChild(group);
 }
 
-function getStableImageBasis(points) {
-  // Keep wall art handedness stable. The old right-face path used a top edge
-  // that ran right-to-left, which mirrored text/details. Pick the screen-left
-  // top endpoint as the source image origin and its matching bottom endpoint
-  // as the vertical axis.
-  if (points[0].x <= points[1].x) {
-    return {
-      topStart: points[0],
-      topEnd: points[1],
-      bottomStart: points[3]
-    };
+function edgeSortBias(edge) {
+  switch (String(edge ?? "").toLowerCase()) {
+    case "sw":
+      return 0.16;
+    case "se":
+      return 0.17;
+    case "nw":
+      return 0.08;
+    case "ne":
+      return 0.09;
+    default:
+      return 0.1;
   }
-
-  return {
-    topStart: points[1],
-    topEnd: points[0],
-    bottomStart: points[2]
-  };
 }
 
 function averagePoint(points) {
@@ -479,5 +403,12 @@ function averagePoint(points) {
   return {
     x: total.x / points.length,
     y: total.y / points.length
+  };
+}
+
+function getMidpoint(a, b) {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2
   };
 }
