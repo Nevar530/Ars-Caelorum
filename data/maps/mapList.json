@@ -20,6 +20,11 @@
       "id": "003_test",
       "name": "003 Test Map",
       "path": "./data/maps/003_test.json"
+    },
+    {
+      "id": "004_structure_test",
+      "name": "004 Structure Test",
+      "path": "./data/maps/004_structure_test.json"
     }
   ]
 }
