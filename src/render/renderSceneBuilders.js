@@ -10,6 +10,7 @@ import {
 } from "../map.js";
 import { renderTerrainTile } from "./renderTerrain.js";
 import { getUnitRenderSceneItems } from "./renderUnits.js";
+export { buildStructureSceneItems } from "./renderStructures.js";
 import { projectScene } from "./projection.js";
 import { getTerrainDepth, getUnitRenderContext, UNIT_SORT_EPSILON } from "./renderSceneMath.js";
 import { getBoardUnits } from "../actors/actorResolver.js";

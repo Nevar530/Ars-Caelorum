@@ -25,7 +25,7 @@ import {
   updateCameraFraming
 } from "./projection.js";
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
-import { buildTerrainSceneItems, buildUnitSceneItems } from "./renderSceneBuilders.js";
+import { buildTerrainSceneItems, buildStructureSceneItems, buildUnitSceneItems } from "./renderSceneBuilders.js";
 import { buildTileOverlayStyleMap } from "./renderTileStyles.js";
 import { compareSceneItems } from "./renderSceneMath.js";
 
@@ -54,9 +54,10 @@ export function renderIso(state, refs) {
 
   const tileOverlayStyleMap = buildTileOverlayStyleMap(state, reachableMap);
   const { terrainSceneItems, overlayTileItems } = buildTerrainSceneItems(state, reachableMap, tileOverlayStyleMap);
+  const structureSceneItems = buildStructureSceneItems(state);
   const { unitSceneItems, unitStatusTagItems } = buildUnitSceneItems(state);
 
-  const mainSceneItems = [...terrainSceneItems, ...unitSceneItems];
+  const mainSceneItems = [...terrainSceneItems, ...structureSceneItems, ...unitSceneItems];
   mainSceneItems.sort(compareSceneItems);
 
   for (const item of mainSceneItems) {

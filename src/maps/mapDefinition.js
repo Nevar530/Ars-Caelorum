@@ -28,6 +28,11 @@ export function attachMapMetadata(map, metadata = {}) {
       writable: true,
       configurable: true
     },
+    structures: {
+      value: structuredClone(metadata.structures ?? map.structures ?? []),
+      writable: true,
+      configurable: true
+    },
     terrainTypes: {
       value: Array.isArray(metadata.terrainTypes)
         ? [...metadata.terrainTypes]
@@ -136,6 +141,7 @@ export function normalizeMapDefinition(definition) {
       height: definition.height,
       spawns: definition.spawns,
       startState: definition.startState,
+      structures: definition.structures,
       terrainTypes: definition.terrainTypes
     });
   }
@@ -155,6 +161,7 @@ export function cloneMapDefinition(sourceMap = null) {
       height: sourceMap.height,
       spawns: sourceMap.spawns,
       startState: sourceMap.startState,
+      structures: sourceMap.structures,
       terrainTypes: sourceMap.terrainTypes
     });
   }
@@ -231,7 +238,8 @@ export function createInitialMap() {
     width: MAP_CONFIG.width,
     height: MAP_CONFIG.height,
     spawns: { player: [], enemy: [] },
-    startState: { deployments: [] }
+    startState: { deployments: [] },
+    structures: []
   });
 
   return refreshAllTileSummaries(map);
