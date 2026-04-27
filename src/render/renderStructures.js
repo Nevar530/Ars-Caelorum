@@ -19,7 +19,7 @@ let clipId = 0;
 
 const FACE_COLOR = "rgba(80,74,84,0.72)";
 const ROOF_COLOR = "rgba(120,68,86,0.82)";
-const DOOR_PATTERN = /(^|[_-])door([_-]|\.|$)/i;
+const DOOR_PATTERN = /(^|[\\/_-])door([_-]|\.|$)/i;
 
 export function getStructureSceneItems(state) {
   const list = getMapStructures(state?.map);
@@ -233,7 +233,11 @@ function getOppositeWorldFace(worldFace) {
 }
 
 function looksLikeDoorSprite(imagePath) {
-  return DOOR_PATTERN.test(String(imagePath ?? "").trim());
+  const value = String(imagePath ?? "").trim().toLowerCase();
+  if (!value) return false;
+
+  const filename = value.split(/[\\/]/).pop() ?? value;
+  return DOOR_PATTERN.test(filename) || DOOR_PATTERN.test(value);
 }
 
 function drawTop(item, parent) {
