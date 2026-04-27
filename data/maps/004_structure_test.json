@@ -4471,7 +4471,13 @@
       "blocksLOS": true,
       "leftFace": "wall_001.png",
       "rightFace": "door_001.png",
-      "roof": "roof_001.png"
+      "roof": "roof_001.png",
+      "faceSprites": {
+        "ne": "wall_001.png",
+        "se": "door_001.png",
+        "sw": "wall_001.png",
+        "nw": "wall_001.png"
+      }
     },
     {
       "id": "structure_test_02",
@@ -4484,7 +4490,13 @@
       "blocksLOS": true,
       "leftFace": "door_001.png",
       "rightFace": "wall_001.png",
-      "roof": "roof_001.png"
+      "roof": "roof_001.png",
+      "faceSprites": {
+        "ne": "wall_001.png",
+        "se": "wall_001.png",
+        "sw": "door_001.png",
+        "nw": "wall_001.png"
+      }
     },
     {
       "id": "structure_test_03",
@@ -4497,7 +4509,13 @@
       "blocksLOS": true,
       "leftFace": "wall_001.png",
       "rightFace": "wall_001.png",
-      "roof": "roof_001.png"
+      "roof": "roof_001.png",
+      "faceSprites": {
+        "ne": "wall_001.png",
+        "se": "wall_001.png",
+        "sw": "wall_001.png",
+        "nw": "wall_001.png"
+      }
     },
     {
       "id": "structure_test_04",
@@ -4510,7 +4528,13 @@
       "blocksLOS": true,
       "leftFace": "wall_001.png",
       "rightFace": "wall_001.png",
-      "roof": "roof_001.png"
+      "roof": "roof_001.png",
+      "faceSprites": {
+        "ne": "wall_001.png",
+        "se": "wall_001.png",
+        "sw": "wall_001.png",
+        "nw": "wall_001.png"
+      }
     }
   ]
 }

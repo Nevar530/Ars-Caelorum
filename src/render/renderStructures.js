@@ -3,12 +3,18 @@
 // Structure V1 renderer.
 // This pass is visual-only: structures are read from map.structures and drawn as
 // projected flat asset pieces. Movement/LOS authority comes in a later pass.
+//
+// V1.1 locks three render contracts:
+// - transparent source pixels remain transparent; no fallback color is drawn behind valid images
+// - face art is compass/world-face aware, matching terrain face behavior
+// - each visible face/roof is its own scene item so basic front/behind sorting can work
 
 import { RENDER_CONFIG } from "../config.js";
 import { getTile, getTileRenderElevation } from "../map.js";
 import { svgEl, makePolygon } from "../utils.js";
 import { projectScene, getSceneSortKey, getTopdownCellSize } from "./projection.js";
 import { getTerrainDepth } from "./renderSceneMath.js";
+import { getScreenSideForWorldFace, getVisibleWorldFaces, normalizeWorldFace } from "./renderCompass.js";
 
 const STRUCTURE_ART_ROOT = "./art/structures/";
 const DEFAULT_FACE_WIDTH = 32;
@@ -33,23 +39,56 @@ export function buildStructureSceneItems(state) {
     const elevation = getTileRenderElevation(tile);
     const projected = projectScene(state, normalized.x, normalized.y, elevation, 1);
 
-    items.push({
-      kind: "structure",
-      sourceKind: "structure",
-      id: normalized.id,
-      x: normalized.x,
-      y: normalized.y,
-      elevation,
-      screenX: projected.x,
-      screenY: projected.y,
-      heightPx: normalized.heightPx,
+    if (state.ui?.viewMode === "top") {
+      items.push(makeTopdownStructureItem(state, normalized, projected, elevation));
+      continue;
+    }
+
+    const geometry = buildIsoStructureGeometry(projected.x, projected.y, normalized.heightPx);
+    const visibleFaces = getVisibleWorldFaces(state.rotation).visible;
+
+    for (const worldFace of visibleFaces) {
+      const screenSide = getScreenSideForWorldFace(state.rotation, worldFace);
+      const points = screenSide === "left"
+        ? [geometry.roof.left, geometry.roof.bottom, geometry.base.bottom, geometry.base.left]
+        : [geometry.roof.right, geometry.roof.bottom, geometry.base.bottom, geometry.base.right];
+
+      items.push(makeIsoStructurePieceItem({
+        state,
+        structure: normalized,
+        projected,
+        elevation,
+        points,
+        piece: "face",
+        worldFace,
+        screenSide,
+        imagePath: getStructureFaceSprite(normalized, worldFace),
+        fallbackColor: screenSide === "left" ? "rgba(92, 83, 90, 0.95)" : "rgba(105, 95, 92, 0.95)",
+        className: `structure-${screenSide}-face structure-face-${worldFace}`,
+        depthBias: screenSide === "left" ? 0.12 : 0.18,
+        render(parent) {
+          renderIsoStructureFace(this, parent);
+        }
+      }));
+    }
+
+    items.push(makeIsoStructurePieceItem({
+      state,
       structure: normalized,
-      sortDepth: getStructureDepth(state, normalized, projected, elevation),
-      sortKey: getSceneSortKey(state, normalized.x, normalized.y, elevation) + 0.5,
+      projected,
+      elevation,
+      points: [geometry.roof.top, geometry.roof.right, geometry.roof.bottom, geometry.roof.left],
+      piece: "roof",
+      worldFace: "top",
+      screenSide: "top",
+      imagePath: normalized.roof,
+      fallbackColor: "rgba(121, 68, 76, 0.96)",
+      className: "structure-roof",
+      depthBias: 0.3,
       render(parent) {
-        renderStructure(state, this, parent);
+        renderIsoStructureRoof(this, parent);
       }
-    });
+    }));
   }
 
   return items;
@@ -62,6 +101,8 @@ function normalizeStructure(raw) {
   const y = Number(raw.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
 
+  const faceSprites = normalizeFaceSprites(raw);
+
   return {
     id: String(raw.id ?? `structure_${x}_${y}`),
     x,
@@ -69,10 +110,35 @@ function normalizeStructure(raw) {
     w: Math.max(1, Number(raw.w ?? 1) || 1),
     h: Math.max(1, Number(raw.h ?? 1) || 1),
     heightPx: Math.max(1, Number(raw.heightPx ?? DEFAULT_FACE_HEIGHT) || DEFAULT_FACE_HEIGHT),
-    leftFace: normalizeAssetPath(raw.leftFace),
-    rightFace: normalizeAssetPath(raw.rightFace),
+    face: normalizeAssetPath(raw.face),
+    faceSprites,
     roof: normalizeAssetPath(raw.roof)
   };
+}
+
+function normalizeFaceSprites(raw) {
+  const source = raw.faceSprites && typeof raw.faceSprites === "object"
+    ? raw.faceSprites
+    : raw.faces && typeof raw.faces === "object"
+      ? raw.faces
+      : {};
+
+  const faces = {};
+  for (const key of ["ne", "se", "sw", "nw"]) {
+    faces[key] = normalizeAssetPath(source[key]);
+  }
+
+  // Legacy compatibility from the V1 test map:
+  // rotation 0 screen-left == sw, screen-right == se.
+  if (!faces.sw && raw.leftFace) faces.sw = normalizeAssetPath(raw.leftFace);
+  if (!faces.se && raw.rightFace) faces.se = normalizeAssetPath(raw.rightFace);
+
+  const fallback = normalizeAssetPath(raw.face ?? raw.wall ?? raw.leftFace ?? raw.rightFace);
+  for (const key of ["ne", "se", "sw", "nw"]) {
+    if (!faces[key]) faces[key] = fallback;
+  }
+
+  return faces;
 }
 
 function normalizeAssetPath(value) {
@@ -82,30 +148,86 @@ function normalizeAssetPath(value) {
   return `${STRUCTURE_ART_ROOT}${text}`;
 }
 
-function getStructureDepth(state, structure, projected, elevation) {
-  if (state.ui?.viewMode === "top") {
-    return projected.y + getTopdownCellSize(state);
-  }
+function getStructureFaceSprite(structure, worldFace) {
+  const face = normalizeWorldFace(worldFace);
+  return face ? structure.faceSprites?.[face] ?? structure.face ?? null : null;
+}
 
-  return getTerrainDepth({
+function makeTopdownStructureItem(state, structure, projected, elevation) {
+  return {
+    kind: "structure",
+    sourceKind: "structure",
+    piece: "topdown",
+    id: `${structure.id}:topdown`,
+    x: structure.x,
+    y: structure.y,
+    elevation,
+    screenX: projected.x,
+    screenY: projected.y,
+    structure,
+    sortDepth: projected.y + getTopdownCellSize(state),
+    sortKey: getSceneSortKey(state, structure.x, structure.y, elevation) + 0.5,
+    render(parent) {
+      renderTopStructure(state, this, parent);
+    }
+  };
+}
+
+function makeIsoStructurePieceItem({
+  state,
+  structure,
+  projected,
+  elevation,
+  points,
+  piece,
+  worldFace,
+  screenSide,
+  imagePath,
+  fallbackColor,
+  className,
+  depthBias,
+  render
+}) {
+  return {
+    kind: "structure_piece",
+    sourceKind: "structure",
+    piece,
+    worldFace,
+    screenSide,
+    id: `${structure.id}:${piece}:${worldFace}`,
+    x: structure.x,
+    y: structure.y,
+    elevation,
+    screenX: projected.x,
+    screenY: projected.y,
+    heightPx: structure.heightPx,
+    structure,
+    points,
+    imagePath,
+    fallbackColor,
+    className,
+    sortDepth: getStructurePieceDepth(state, structure, projected, elevation, piece, screenSide),
+    sortKey: getSceneSortKey(state, structure.x, structure.y, elevation) + depthBias,
+    render
+  };
+}
+
+function getStructurePieceDepth(state, structure, projected, elevation, piece, screenSide) {
+  const baseDepth = getTerrainDepth({
     size: 1,
     screenY: projected.y,
     leftFaceHeight: elevation,
     rightFaceHeight: elevation
-  }) + structure.heightPx;
-}
+  });
 
-function renderStructure(state, item, parent) {
-  if (state.ui?.viewMode === "top") {
-    renderTopStructure(state, item, parent);
-    return;
+  if (piece === "roof") {
+    return baseDepth + structure.heightPx + 0.3;
   }
 
-  renderIsoStructure(item, parent);
+  return baseDepth + structure.heightPx + (screenSide === "right" ? 0.18 : 0.12);
 }
 
-function renderIsoStructure(item, parent) {
-  const { screenX, screenY, heightPx, structure } = item;
+function buildIsoStructureGeometry(screenX, screenY, heightPx) {
   const halfW = RENDER_CONFIG.isoTileWidth / 2;
   const halfH = RENDER_CONFIG.isoTileHeight / 2;
 
@@ -123,43 +245,51 @@ function renderIsoStructure(item, parent) {
     left: { x: base.left.x, y: base.left.y - heightPx }
   };
 
-  const group = svgEl("g");
-  group.setAttribute("class", "structure structure-v1");
-  group.dataset.structureId = structure.id;
-  group.dataset.x = String(structure.x);
-  group.dataset.y = String(structure.y);
-  group.setAttribute("pointer-events", "none");
+  return { base, roof };
+}
+
+function renderIsoStructureFace(item, parent) {
+  const group = makeStructureGroup(item);
 
   drawStructureFace({
     parentGroup: group,
-    points: [roof.left, roof.bottom, base.bottom, base.left],
-    imagePath: structure.leftFace,
-    fallbackColor: "rgba(92, 83, 90, 0.95)",
-    className: "structure-left-face",
+    points: item.points,
+    imagePath: item.imagePath,
+    fallbackColor: item.fallbackColor,
+    className: item.className,
     sourceWidth: DEFAULT_FACE_WIDTH,
     sourceHeight: DEFAULT_FACE_HEIGHT
   });
 
-  drawStructureFace({
-    parentGroup: group,
-    points: [roof.right, roof.bottom, base.bottom, base.right],
-    imagePath: structure.rightFace,
-    fallbackColor: "rgba(105, 95, 92, 0.95)",
-    className: "structure-right-face",
-    sourceWidth: DEFAULT_FACE_WIDTH,
-    sourceHeight: DEFAULT_FACE_HEIGHT
-  });
+  parent.appendChild(group);
+}
+
+function renderIsoStructureRoof(item, parent) {
+  const group = makeStructureGroup(item);
 
   drawStructureTop({
     parentGroup: group,
-    points: [roof.top, roof.right, roof.bottom, roof.left],
-    imagePath: structure.roof,
-    fallbackColor: "rgba(121, 68, 76, 0.96)",
-    className: "structure-roof",
+    points: item.points,
+    imagePath: item.imagePath,
+    fallbackColor: item.fallbackColor,
+    className: item.className,
     sourceSize: DEFAULT_ROOF_SIZE
   });
 
   parent.appendChild(group);
+}
+
+function makeStructureGroup(item) {
+  const group = svgEl("g");
+  group.setAttribute("class", `structure structure-v1 ${item.className}`);
+  group.dataset.structureId = item.structure.id;
+  group.dataset.structurePiece = item.piece;
+  group.dataset.worldFace = item.worldFace;
+  group.dataset.screenSide = item.screenSide;
+  group.dataset.x = String(item.structure.x);
+  group.dataset.y = String(item.structure.y);
+  group.setAttribute("pointer-events", "none");
+  return group;
 }
 
 function drawStructureFace({
@@ -171,9 +301,11 @@ function drawStructureFace({
   sourceWidth,
   sourceHeight
 }) {
-  const fallback = makePolygon(points, `${className} structure-face`, fallbackColor);
-  fallback.setAttribute("stroke", "none");
-  parentGroup.appendChild(fallback);
+  if (!imagePath) {
+    const fallback = makePolygon(points, `${className} structure-face`, fallbackColor);
+    fallback.setAttribute("stroke", "none");
+    parentGroup.appendChild(fallback);
+  }
 
   if (imagePath) {
     const clipId = `structure-face-clip-${structureClipId += 1}`;
@@ -227,9 +359,11 @@ function drawStructureTop({
   className,
   sourceSize
 }) {
-  const fallback = makePolygon(points, `${className} structure-top`, fallbackColor);
-  fallback.setAttribute("stroke", "none");
-  parentGroup.appendChild(fallback);
+  if (!imagePath) {
+    const fallback = makePolygon(points, `${className} structure-top`, fallbackColor);
+    fallback.setAttribute("stroke", "none");
+    parentGroup.appendChild(fallback);
+  }
 
   if (imagePath) {
     const clipId = `structure-roof-clip-${structureClipId += 1}`;
