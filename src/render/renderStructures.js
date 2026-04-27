@@ -11,7 +11,7 @@ import { RENDER_CONFIG } from "../config.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
 import { projectScene, getTopdownCellSize, getSceneSortKey } from "./projection.js";
 import { getTerrainDepth } from "./renderSceneMath.js";
-import { getScreenSideForWorldFace } from "./renderCompass.js";
+import { getScreenSideForWorldFace, rotateWorldFace } from "./renderCompass.js";
 import {
   getMapStructures,
   getStructureCells,
@@ -125,13 +125,27 @@ function makeEdgeItems(state, structure) {
 
     const screenSide = getScreenSideForWorldFace(state.rotation, edgePart.edge);
 
-    // Closed roofed structures only draw the camera-facing wall planes.
-    // Hidden/back edges stay in data for future cutaway/interior/LOS work, but
-    // they should not render as extra walls poking through the roof.
+    // Normal closed-roof view draws only camera-facing perimeter planes.
+    // Hidden/back planes stay as rule data. Door openings get an explicit
+    // backing from the opposite wall so transparent door pixels reveal a real
+    // room surface instead of the ground.
     if (screenSide !== "left" && screenSide !== "right") continue;
 
+    const points = getFacePointsForWorldEdge(
+      state,
+      edgePart.x,
+      edgePart.y,
+      edgePart.edge,
+      structure.elevation,
+      structure.heightPx
+    );
+
+    if (!points) continue;
+
     const g = cellGeometry(state, edgePart.x, edgePart.y, structure.elevation, structure.heightPx);
-    const points = screenSide === "left" ? g.leftFace : g.rightFace;
+    const doorwayBacking = edgePart.type === "door"
+      ? resolveDoorwayBacking(state, structure, edgePart)
+      : null;
 
     items.push({
       kind: "structure_edge",
@@ -140,6 +154,7 @@ function makeEdgeItems(state, structure) {
       screenSide,
       points,
       imagePath: edgePart.sprite,
+      doorwayBacking,
       sortDepth: getTerrainDepth({
         size: 1,
         screenY: g.base.screenY,
@@ -250,6 +265,18 @@ function drawEdge(item, parent) {
     group.appendChild(fallback);
   }
 
+  if (item.doorwayBacking?.imagePath && item.doorwayBacking?.points) {
+    appendProjectedImage(
+      group,
+      item.points,
+      item.doorwayBacking.imagePath,
+      "doorway-backing",
+      32,
+      64,
+      item.doorwayBacking.points
+    );
+  }
+
   if (item.imagePath) {
     appendProjectedImage(group, item.points, item.imagePath, "edge", 32, 64);
   }
@@ -310,17 +337,89 @@ function cellGeometry(state, x, y, elevation, risePx = 0) {
   return {
     base,
     roof: [roof.top, roof.right, roof.bottom, roof.left],
+    screenFaces: {
+      nw: [roof.top, roof.left, base.left, base.top],
+      ne: [roof.top, roof.right, base.right, base.top],
+      sw: [roof.left, roof.bottom, base.bottom, base.left],
+      se: [roof.right, roof.bottom, base.bottom, base.right]
+    },
     leftFace: [roof.left, roof.bottom, base.bottom, base.left],
     rightFace: [roof.right, roof.bottom, base.bottom, base.right]
   };
 }
 
-function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight) {
+function getFacePointsForWorldEdge(state, x, y, worldEdge, elevation, heightPx) {
+  const screenEdge = getScreenEdgeForWorldFace(state.rotation, worldEdge);
+  if (!screenEdge) return null;
+
+  const g = cellGeometry(state, x, y, elevation, heightPx);
+  return g.screenFaces?.[screenEdge] ?? null;
+}
+
+function getScreenEdgeForWorldFace(rotation, worldFace) {
+  const normalizedWorldFace = String(worldFace ?? "").toLowerCase();
+
+  for (const screenEdge of ["ne", "se", "sw", "nw"]) {
+    if (rotateWorldFace(screenEdge, rotation) === normalizedWorldFace) {
+      return screenEdge;
+    }
+  }
+
+  return null;
+}
+
+function resolveDoorwayBacking(state, structure, doorEdgePart) {
+  const opposite = getOppositeWorldFace(doorEdgePart.edge);
+  if (!opposite) return null;
+
+  const backingEdge = getStructureEdgeParts(structure).find((edgePart) => (
+    edgePart &&
+    Number(edgePart.x) === Number(doorEdgePart.x) &&
+    Number(edgePart.y) === Number(doorEdgePart.y) &&
+    String(edgePart.edge).toLowerCase() === opposite &&
+    edgePart.sprite
+  ));
+
+  if (!backingEdge?.sprite) return null;
+
+  const points = getFacePointsForWorldEdge(
+    state,
+    backingEdge.x,
+    backingEdge.y,
+    backingEdge.edge,
+    structure.elevation,
+    structure.heightPx
+  );
+
+  if (!points) return null;
+
+  return {
+    imagePath: backingEdge.sprite,
+    points
+  };
+}
+
+function getOppositeWorldFace(worldFace) {
+  switch (String(worldFace ?? "").toLowerCase()) {
+    case "ne":
+      return "sw";
+    case "se":
+      return "nw";
+    case "sw":
+      return "ne";
+    case "nw":
+      return "se";
+    default:
+      return null;
+  }
+}
+
+function appendProjectedImage(parentGroup, clipPoints, imagePath, layerName, sourceWidth, sourceHeight, imagePoints = clipPoints) {
   const id = `structure-${layerName}-clip-${clipId += 1}`;
   const clip = svgEl("clipPath");
   clip.setAttribute("id", id);
   clip.setAttribute("clipPathUnits", "userSpaceOnUse");
-  clip.appendChild(makePolygon(points, `structure-${layerName}-clip`, "#fff"));
+  clip.appendChild(makePolygon(clipPoints, `structure-${layerName}-clip`, "#fff"));
   parentGroup.appendChild(clip);
 
   const group = svgEl("g");
@@ -336,22 +435,39 @@ function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceW
   image.setAttribute("href", imagePath);
   image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
 
-  const topStart = points[0];
-  const topEnd = points[1];
-  const bottomStart = points[3];
-
-  const ux = topEnd.x - topStart.x;
-  const uy = topEnd.y - topStart.y;
-  const vx = bottomStart.x - topStart.x;
-  const vy = bottomStart.y - topStart.y;
+  const basis = getStableImageBasis(imagePoints);
+  const ux = basis.topEnd.x - basis.topStart.x;
+  const uy = basis.topEnd.y - basis.topStart.y;
+  const vx = basis.bottomStart.x - basis.topStart.x;
+  const vy = basis.bottomStart.y - basis.topStart.y;
 
   image.setAttribute(
     "transform",
-    `matrix(${ux / sourceWidth} ${uy / sourceWidth} ${vx / sourceHeight} ${vy / sourceHeight} ${topStart.x} ${topStart.y})`
+    `matrix(${ux / sourceWidth} ${uy / sourceWidth} ${vx / sourceHeight} ${vy / sourceHeight} ${basis.topStart.x} ${basis.topStart.y})`
   );
 
   group.appendChild(image);
   parentGroup.appendChild(group);
+}
+
+function getStableImageBasis(points) {
+  // Keep wall art handedness stable. The old right-face path used a top edge
+  // that ran right-to-left, which mirrored text/details. Pick the screen-left
+  // top endpoint as the source image origin and its matching bottom endpoint
+  // as the vertical axis.
+  if (points[0].x <= points[1].x) {
+    return {
+      topStart: points[0],
+      topEnd: points[1],
+      bottomStart: points[3]
+    };
+  }
+
+  return {
+    topStart: points[1],
+    topEnd: points[0],
+    bottomStart: points[2]
+  };
 }
 
 function averagePoint(points) {
