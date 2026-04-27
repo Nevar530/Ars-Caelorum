@@ -26,7 +26,7 @@
   },
   "structures": [
     {
-      "id": "structure_test_00",
+      "id": "structure_test_left",
       "x": 5,
       "y": 7,
       "w": 1,
@@ -49,7 +49,7 @@
       }
     },
     {
-      "id": "structure_test_01",
+      "id": "structure_test_middle_door",
       "x": 6,
       "y": 7,
       "w": 1,
@@ -72,7 +72,7 @@
       }
     },
     {
-      "id": "structure_test_02",
+      "id": "structure_test_right",
       "x": 7,
       "y": 7,
       "w": 1,
