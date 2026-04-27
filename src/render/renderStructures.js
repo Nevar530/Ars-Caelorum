@@ -270,7 +270,7 @@ function drawRoof(item, parent) {
   group.appendChild(fallback);
 
   if (item.imagePath) {
-    appendProjectedImage(group, item.points, item.imagePath, "roof", 32, 32);
+    appendProjectedRoofImage(group, item.points, item.imagePath, item.textureRotation);
   }
 
   const outline = makePolygon(item.points, "structure-roof-outline", "none");
@@ -360,6 +360,71 @@ function getOppositeWorldFace(worldFace) {
     default:
       return null;
   }
+}
+
+
+function appendProjectedRoofImage(parentGroup, points, imagePath, textureRotation = 0) {
+  const id = `structure-roof-clip-${clipId += 1}`;
+  const clip = svgEl("clipPath");
+  clip.setAttribute("id", id);
+  clip.setAttribute("clipPathUnits", "userSpaceOnUse");
+  clip.appendChild(makePolygon(points, "structure-roof-clip", "#fff"));
+  parentGroup.appendChild(clip);
+
+  const group = svgEl("g");
+  group.dataset.structureImageLayer = "roof";
+  group.setAttribute("clip-path", `url(#${id})`);
+
+  const image = svgEl("image");
+  const size = 32;
+  image.setAttribute("x", "0");
+  image.setAttribute("y", "0");
+  image.setAttribute("width", String(size));
+  image.setAttribute("height", String(size));
+  image.setAttribute("preserveAspectRatio", "none");
+  image.setAttribute("href", imagePath);
+  image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
+
+  const topLeft = points[3];
+  const topAxisEnd = points[0];
+  const sideAxisEnd = points[2];
+
+  const ux = topAxisEnd.x - topLeft.x;
+  const uy = topAxisEnd.y - topLeft.y;
+  const vx = sideAxisEnd.x - topLeft.x;
+  const vy = sideAxisEnd.y - topLeft.y;
+
+  const baseA = ux / size;
+  const baseB = uy / size;
+  const baseC = vx / size;
+  const baseD = vy / size;
+
+  const rot = normalizeTextureRotation(textureRotation);
+  const radians = (rot * Math.PI) / 2;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const center = size / 2;
+
+  const rotE = center - (cos * center) + (sin * center);
+  const rotF = center - (sin * center) - (cos * center);
+
+  const a = (baseA * cos) + (baseC * sin);
+  const b = (baseB * cos) + (baseD * sin);
+  const c = (baseA * -sin) + (baseC * cos);
+  const d = (baseB * -sin) + (baseD * cos);
+  const e = (baseA * rotE) + (baseC * rotF) + topLeft.x;
+  const f = (baseB * rotE) + (baseD * rotF) + topLeft.y;
+
+  image.setAttribute("transform", `matrix(${a} ${b} ${c} ${d} ${e} ${f})`);
+
+  group.appendChild(image);
+  parentGroup.appendChild(group);
+}
+
+function normalizeTextureRotation(rotation = 0) {
+  const value = Number(rotation ?? 0);
+  if (!Number.isFinite(value)) return 0;
+  return ((Math.round(value) % 4) + 4) % 4;
 }
 
 function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight) {
