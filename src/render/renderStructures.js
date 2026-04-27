@@ -1,5 +1,5 @@
 // src/render/renderStructures.js
-// Structure Render V1.3: compass-locked faces plus optional interior backing.
+// Structure Render V2.1: compass-locked faces plus doorway interior projection.
 
 import { RENDER_CONFIG } from "../config.js";
 import { svgEl, makePolygon } from "../utils.js";
@@ -16,6 +16,7 @@ import {
 let clipId = 0;
 const FACE_COLOR = "rgba(80,74,84,0.72)";
 const ROOF_COLOR = "rgba(120,68,86,0.82)";
+const DOOR_PATTERN = /(^|[_-])door([_-]|\.)/i;
 
 export function getStructureSceneItems(state) {
   const list = getMapStructures(state?.map);
@@ -62,6 +63,7 @@ function makeFaceItem(state, s, screenSide, worldFace, imagePath, interiorImageP
     points,
     imagePath,
     interiorImagePath,
+    interiorProjection: getInteriorProjection(state, s, screenSide, worldFace, imagePath, interiorImagePath),
     sortDepth: depth + 0.36,
     sortKey: getSceneSortKey(state, s.x, s.y, s.elevation) + (screenSide === "left" ? 0.1 : 0.2),
     render(parent) { drawFace(this, parent); }
@@ -124,6 +126,46 @@ function geometry(state, s) {
   };
 }
 
+function getInteriorProjection(state, s, screenSide, worldFace, imagePath, interiorImagePath) {
+  if (!interiorImagePath) return null;
+  if (!looksLikeDoorSprite(imagePath)) return null;
+
+  const inward = getInteriorOffsetForWorldFace(worldFace);
+  if (!inward) return null;
+
+  const shifted = {
+    ...s,
+    x: s.x + inward.x,
+    y: s.y + inward.y
+  };
+  const g = geometry(state, shifted);
+
+  return {
+    imagePath: interiorImagePath,
+    points: screenSide === "left" ? g.rightFace : g.leftFace
+  };
+}
+
+function looksLikeDoorSprite(imagePath) {
+  const value = String(imagePath ?? "").trim();
+  return DOOR_PATTERN.test(value);
+}
+
+function getInteriorOffsetForWorldFace(worldFace) {
+  switch (String(worldFace ?? "").toLowerCase()) {
+    case "sw":
+      return { x: 1, y: 0 };
+    case "se":
+      return { x: 0, y: 1 };
+    case "ne":
+      return { x: -1, y: 0 };
+    case "nw":
+      return { x: 0, y: -1 };
+    default:
+      return null;
+  }
+}
+
 function drawTop(item, parent) {
   const rect = svgEl("rect");
   rect.setAttribute("x", String(item.x));
@@ -146,8 +188,15 @@ function drawFace(item, parent) {
   const fallback = makePolygon(item.points, "structure-face", FACE_COLOR);
   fallback.setAttribute("stroke", "none");
   group.appendChild(fallback);
-  if (item.interiorImagePath) appendFaceImage(group, item.points, item.interiorImagePath, "interior");
-  if (item.imagePath) appendFaceImage(group, item.points, item.imagePath, "exterior");
+
+  if (item.interiorProjection?.imagePath) {
+    appendProjectedFaceImage(group, item.points, item.interiorProjection.points, item.interiorProjection.imagePath, "interior");
+  }
+
+  if (item.imagePath) {
+    appendProjectedFaceImage(group, item.points, item.points, item.imagePath, "exterior");
+  }
+
   const outline = makePolygon(item.points, "structure-face-outline", "none");
   outline.setAttribute("stroke", "rgba(20,18,24,0.82)");
   outline.setAttribute("stroke-width", "1.2");
@@ -173,12 +222,12 @@ function drawRoof(item, parent) {
   parent.appendChild(group);
 }
 
-function appendFaceImage(parentGroup, points, imagePath, layerName = "face") {
+function appendProjectedFaceImage(parentGroup, clipPoints, imagePoints, imagePath, layerName = "face") {
   const id = `structure-face-clip-${clipId += 1}`;
   const clip = svgEl("clipPath");
   clip.setAttribute("id", id);
   clip.setAttribute("clipPathUnits", "userSpaceOnUse");
-  clip.appendChild(makePolygon(points, "structure-face-clip", "#fff"));
+  clip.appendChild(makePolygon(clipPoints, "structure-face-clip", "#fff"));
   parentGroup.appendChild(clip);
 
   const group = svgEl("g");
@@ -193,9 +242,9 @@ function appendFaceImage(parentGroup, points, imagePath, layerName = "face") {
   image.setAttribute("href", imagePath);
   image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
 
-  const topStart = points[0];
-  const topEnd = points[1];
-  const bottomStart = points[3];
+  const topStart = imagePoints[0];
+  const topEnd = imagePoints[1];
+  const bottomStart = imagePoints[3];
   const ux = topEnd.x - topStart.x;
   const uy = topEnd.y - topStart.y;
   const vx = bottomStart.x - topStart.x;
