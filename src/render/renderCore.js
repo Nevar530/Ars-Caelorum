@@ -54,7 +54,7 @@ export function renderIso(state, refs) {
 
   const tileOverlayStyleMap = buildTileOverlayStyleMap(state, reachableMap);
   const { terrainSceneItems, overlayTileItems } = buildTerrainSceneItems(state, reachableMap, tileOverlayStyleMap);
-  const structureSceneItems = buildStructureSceneItems(state);
+  const { structureSceneItems } = buildStructureSceneItems(state);
   const { unitSceneItems, unitStatusTagItems } = buildUnitSceneItems(state);
 
   const mainSceneItems = [...terrainSceneItems, ...structureSceneItems, ...unitSceneItems];

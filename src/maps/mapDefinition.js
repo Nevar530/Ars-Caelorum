@@ -136,12 +136,12 @@ export function normalizeMapDefinition(definition) {
   if (Array.isArray(definition)) {
     return attachMapMetadata(refreshAllTileSummaries(definition), {
       id: definition.id,
+      structures: definition.structures,
       name: definition.name,
       width: definition.width,
       height: definition.height,
       spawns: definition.spawns,
       startState: definition.startState,
-      structures: definition.structures,
       terrainTypes: definition.terrainTypes
     });
   }
@@ -155,13 +155,13 @@ export function cloneMapDefinition(sourceMap = null) {
   if (Array.isArray(sourceMap)) {
     const clonedRows = structuredClone(sourceMap);
     return attachMapMetadata(clonedRows, {
+      structures: sourceMap.structures,
       id: sourceMap.id,
       name: sourceMap.name,
       width: sourceMap.width,
       height: sourceMap.height,
       spawns: sourceMap.spawns,
       startState: sourceMap.startState,
-      structures: sourceMap.structures,
       terrainTypes: sourceMap.terrainTypes
     });
   }
@@ -238,8 +238,7 @@ export function createInitialMap() {
     width: MAP_CONFIG.width,
     height: MAP_CONFIG.height,
     spawns: { player: [], enemy: [] },
-    startState: { deployments: [] },
-    structures: []
+    startState: { deployments: [] }
   });
 
   return refreshAllTileSummaries(map);
