@@ -1,7 +1,7 @@
 // src/render/renderMapEdges.js
-// Map Edge Rain Curtain V1.
-// Visual-only hologram/rain curtain along the visible front edges of the map.
-// No gameplay authority, no terrain mutation, no structure coupling.
+// Map Edge Rain Curtain V1.1.
+// Visual-only hologram/rain curtain along the visible front map edges.
+// Each strip is skewed to the iso tile-edge width instead of drawn as a screen-space billboard.
 
 import { RENDER_CONFIG } from "../config.js";
 import {
@@ -10,12 +10,11 @@ import {
   getTile,
   getTileRenderElevation
 } from "../map.js";
-import { svgEl } from "../utils.js";
+import { svgEl, makePolygon } from "../utils.js";
 import { projectScene } from "./projection.js";
 
 const EDGE_CONFIG = Object.freeze({
   sprite: "art/menu/edge.png",
-  stripWidthPx: 8,
   minHeightPx: 36,
   maxHeightPx: 104,
   opacity: 0.92,
@@ -39,21 +38,25 @@ export function getMapEdgeSceneItems(state) {
 
   for (const side of visibleSides) {
     side.segments.forEach((segment, index) => {
-      const midpoint = lerpPoint(segment.start, segment.end, deterministicT(side.name, index));
-      const stripHeight = getStripHeight(side.name, index);
-      const stripWidth = getStripWidth(side.name, index);
+      const heightPx = getStripHeight(side.name, index);
+      const opacity = getStripOpacity(side.name, index);
+      const bottomStart = {
+        x: segment.start.x,
+        y: segment.start.y + heightPx
+      };
+      const bottomEnd = {
+        x: segment.end.x,
+        y: segment.end.y + heightPx
+      };
 
       items.push({
         kind: "map_edge_rain",
         side: side.name,
-        x: midpoint.x,
-        y: midpoint.y,
-        width: stripWidth,
-        height: stripHeight,
-        opacity: getStripOpacity(side.name, index),
+        points: [segment.start, segment.end, bottomEnd, bottomStart],
         imagePath: EDGE_CONFIG.sprite,
-        sortDepth: midpoint.y + 0.05,
-        sortKey: (midpoint.y * 1000) + midpoint.x - 500000,
+        opacity,
+        sortDepth: Math.max(segment.start.y, segment.end.y) + 0.05,
+        sortKey: (((segment.start.y + segment.end.y) / 2) * 1000) + ((segment.start.x + segment.end.x) / 2) - 500000,
         render(parent) {
           drawRainStrip(this, parent);
         }
@@ -73,37 +76,37 @@ function buildBoundarySideGroups(state, width, height) {
   ];
 
   for (let x = 0; x < width; x += 1) {
-    const northCorners = getTileTopCorners(state, x, 0);
-    if (northCorners) {
+    const north = getTileTopCorners(state, x, 0);
+    if (north) {
       sides[0].segments.push({
-        start: northCorners.top,
-        end: northCorners.right
+        start: north.top,
+        end: north.right
       });
     }
 
-    const southCorners = getTileTopCorners(state, x, height - 1);
-    if (southCorners) {
+    const south = getTileTopCorners(state, x, height - 1);
+    if (south) {
       sides[1].segments.push({
-        start: southCorners.left,
-        end: southCorners.bottom
+        start: south.left,
+        end: south.bottom
       });
     }
   }
 
   for (let y = 0; y < height; y += 1) {
-    const westCorners = getTileTopCorners(state, 0, y);
-    if (westCorners) {
+    const west = getTileTopCorners(state, 0, y);
+    if (west) {
       sides[2].segments.push({
-        start: westCorners.top,
-        end: westCorners.left
+        start: west.top,
+        end: west.left
       });
     }
 
-    const eastCorners = getTileTopCorners(state, width - 1, y);
-    if (eastCorners) {
+    const east = getTileTopCorners(state, width - 1, y);
+    if (east) {
       sides[3].segments.push({
-        start: eastCorners.right,
-        end: eastCorners.bottom
+        start: east.right,
+        end: east.bottom
       });
     }
   }
@@ -140,26 +143,50 @@ function drawRainStrip(item, parent) {
   group.setAttribute("opacity", String(item.opacity));
   group.setAttribute("pointer-events", "none");
 
-  const image = svgEl("image");
-  image.setAttribute("href", item.imagePath);
-  image.setAttributeNS("http://www.w3.org/1999/xlink", "href", item.imagePath);
-  image.setAttribute("x", String(item.x - (item.width / 2)));
-  image.setAttribute("y", String(item.y));
-  image.setAttribute("width", String(item.width));
-  image.setAttribute("height", String(item.height));
-  image.setAttribute("preserveAspectRatio", "none");
-  image.setAttribute("pointer-events", "none");
-  group.appendChild(image);
+  appendSkewedEdgeImage(group, item.points, item.imagePath);
 
   parent.appendChild(group);
 }
 
-function deterministicT(sideName, index) {
-  const seed = sideSeed(sideName) + (index * 17);
-  const value = Math.sin(seed * 12.9898) * 43758.5453;
-  const frac = value - Math.floor(value);
-  return 0.24 + (frac * 0.52);
+function appendSkewedEdgeImage(parentGroup, points, imagePath) {
+  const id = `map-edge-rain-clip-${clipId += 1}`;
+  const clip = svgEl("clipPath");
+  clip.setAttribute("id", id);
+  clip.setAttribute("clipPathUnits", "userSpaceOnUse");
+  clip.appendChild(makePolygon(points, "map-edge-rain-clip", "#fff"));
+  parentGroup.appendChild(clip);
+
+  const textureGroup = svgEl("g");
+  textureGroup.setAttribute("clip-path", `url(#${id})`);
+
+  const image = svgEl("image");
+  image.setAttribute("x", "0");
+  image.setAttribute("y", "0");
+  image.setAttribute("width", "32");
+  image.setAttribute("height", "64");
+  image.setAttribute("preserveAspectRatio", "none");
+  image.setAttribute("href", imagePath);
+  image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
+
+  const topStart = points[0];
+  const topEnd = points[1];
+  const bottomStart = points[3];
+
+  const ux = topEnd.x - topStart.x;
+  const uy = topEnd.y - topStart.y;
+  const vx = bottomStart.x - topStart.x;
+  const vy = bottomStart.y - topStart.y;
+
+  image.setAttribute(
+    "transform",
+    `matrix(${ux / 32} ${uy / 32} ${vx / 64} ${vy / 64} ${topStart.x} ${topStart.y})`
+  );
+
+  textureGroup.appendChild(image);
+  parentGroup.appendChild(textureGroup);
 }
+
+let clipId = 0;
 
 function getStripHeight(sideName, index) {
   const seed = sideSeed(sideName) + (index * 31);
@@ -167,12 +194,6 @@ function getStripHeight(sideName, index) {
   const jag = Math.sin(seed * 7.117) * 0.5 + 0.5;
   const blend = (wave * 0.7) + (jag * 0.3);
   return Math.round(EDGE_CONFIG.minHeightPx + ((EDGE_CONFIG.maxHeightPx - EDGE_CONFIG.minHeightPx) * blend));
-}
-
-function getStripWidth(sideName, index) {
-  const seed = sideSeed(sideName) + (index * 13);
-  const pulse = Math.sin(seed * 2.413) * 0.5 + 0.5;
-  return Math.round(EDGE_CONFIG.stripWidthPx * (0.7 + (pulse * 0.65)));
 }
 
 function getStripOpacity(sideName, index) {
@@ -189,11 +210,4 @@ function sideSeed(sideName) {
     case "east": return 53;
     default: return 7;
   }
-}
-
-function lerpPoint(a, b, t) {
-  return {
-    x: a.x + ((b.x - a.x) * t),
-    y: a.y + ((b.y - a.y) * t)
-  };
 }
