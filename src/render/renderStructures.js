@@ -85,10 +85,11 @@ function makeTopItems(state, structure) {
 }
 
 function makeFloorItems(state, structure) {
-  // Floors/interior fills are intentionally opt-in. Drawing a translucent
-  // fallback floor under normal roofed structures was bleeding over wall faces
-  // in the global sort and made the structure look transparent.
-  if (!structure.floorSprite && structure.showInteriorFloor !== true) return [];
+  // Floors/interior fills are normally opt-in. If a board pilot is inside the
+  // structure, the roof cuts away and the floor becomes visible so interiors
+  // are readable without turning floor art into gameplay authority.
+  const revealInterior = shouldRevealStructureInterior(state, structure);
+  if (!structure.floorSprite && structure.showInteriorFloor !== true && !revealInterior) return [];
 
   const items = [];
 
@@ -156,6 +157,7 @@ function makeRoofItems(state, structure) {
   const items = [];
 
   if (!structure.roofSprite) return items;
+  if (shouldRevealStructureInterior(state, structure)) return items;
 
   for (const cell of getStructureCells(structure)) {
     const floorPoints = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
@@ -169,9 +171,8 @@ function makeRoofItems(state, structure) {
       points,
       imagePath: structure.roofSprite,
       textureRotation: state.rotation,
-      // Roofs are a separate cover layer. Sort them after their walls so they
-      // read as closed rooms until a future cutaway/inside-unit state hides
-      // them. This fixes the "no roofs" symptom from the first rewrite pass.
+      // Roofs sort after their walls so closed rooms read correctly. When a
+      // pilot occupies an interior cell, this function returns no roof items.
       sortDepth: floorScreenY + structure.heightPx + 0.42,
       sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation + structure.heightLevels) + 0.3,
       render(parent) {
@@ -181,6 +182,22 @@ function makeRoofItems(state, structure) {
   }
 
   return items;
+}
+
+function shouldRevealStructureInterior(state, structure) {
+  const keys = structure?.cellKeys instanceof Set
+    ? structure.cellKeys
+    : new Set(getStructureCells(structure).map((cell) => String(Number(cell.x)) + "," + String(Number(cell.y))));
+
+  if (!keys.size) return false;
+
+  const units = Array.isArray(state?.units) ? state.units : [];
+
+  return units.some((unit) => {
+    if (!unit || unit.unitType !== "pilot" || unit.embarked === true) return false;
+    const key = String(Number(unit.x)) + "," + String(Number(unit.y));
+    return keys.has(key);
+  });
 }
 
 function makeDebugItems(state, structure) {
