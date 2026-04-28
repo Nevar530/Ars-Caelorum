@@ -1,0 +1,38 @@
+{
+  "id": "005_warehouse_district_mission",
+  "name": "005 Warehouse District Mission",
+  "mapId": "005_warehouse_district",
+  "mapPath": "./data/maps/005_warehouse_district.json",
+  "briefing": {
+    "title": "005 Warehouse District",
+    "text": "Interior room/cutaway receipt map loaded through mission runtime. This proves the mission layer can use the warehouse map without breaking rooms, roofs, wall fade, or indoor pilot combat.",
+    "objectives": ["Enter the warehouse.", "Confirm room-based roof cutaway.", "Defeat all enemy pilots."]
+  },
+  "objectives": [
+    { "id": "defeat_enemies", "type": "defeat_all", "targetTeam": "enemy", "label": "Defeat all enemy pilots" }
+  ],
+  "dialogue": {
+    "intro": {
+      "lines": [
+        { "speakerId": "biggs", "name": "Biggs", "text": "Warehouse lights are dead. Someone wanted this place quiet." },
+        { "speakerId": "mara", "name": "Mara", "text": "Quiet just means they expect us to listen before we bleed." },
+        { "speakerId": "system", "name": "Mission Control", "text": "Dialogue HUD mode active. Advance with Enter or Space." }
+      ]
+    },
+    "victory": {
+      "lines": [
+        { "speakerId": "mara", "name": "Mara", "text": "Warehouse secure. Whatever they were hiding, they left tracks." },
+        { "speakerId": "biggs", "name": "Biggs", "text": "Then we follow them." }
+      ]
+    },
+    "defeat": {
+      "lines": [
+        { "speakerId": "mara", "name": "Mara", "text": "We lost the room. Pull back before the building eats the rest of us." }
+      ]
+    }
+  },
+  "results": {
+    "victory": { "title": "Victory", "text": "Warehouse secured. Return to mission select or title." },
+    "defeat": { "title": "Defeat", "text": "Warehouse operation failed. Return to mission select or title." }
+  }
+}

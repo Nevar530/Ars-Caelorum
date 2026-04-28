@@ -1,0 +1,35 @@
+{
+  "defaultMissionId": "000_test_mission",
+  "missions": [
+    {
+      "id": "000_test_mission",
+      "name": "000 Test Mission",
+      "path": "./data/missions/000_test_mission.json"
+    },
+    {
+      "id": "001_embarked_test_mission",
+      "name": "001 Embarked Test Mission",
+      "path": "./data/missions/001_embarked_test_mission.json"
+    },
+    {
+      "id": "002_pilot_deployment_mission",
+      "name": "002 Pilot Deployment Mission",
+      "path": "./data/missions/002_pilot_deployment_mission.json"
+    },
+    {
+      "id": "003_mech_deployment_mission",
+      "name": "003 Mech Deployment Mission",
+      "path": "./data/missions/003_mech_deployment_mission.json"
+    },
+    {
+      "id": "004_structure_test_mission",
+      "name": "004 Structure Test Mission",
+      "path": "./data/missions/004_structure_test_mission.json"
+    },
+    {
+      "id": "005_warehouse_district_mission",
+      "name": "005 Warehouse District Mission",
+      "path": "./data/missions/005_warehouse_district_mission.json"
+    }
+  ]
+}

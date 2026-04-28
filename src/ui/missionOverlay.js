@@ -1,8 +1,11 @@
+import { getMissionResultCopy } from "../mission/missionState.js";
+
 export function renderMissionOverlay(state, refs) {
   const overlay = refs?.combatOverlay;
   if (!overlay) return;
 
   const missionResult = state?.mission?.result ?? null;
+  const dialogueActive = Boolean(state?.ui?.dialogue?.active);
   const splashVisible = Boolean(state?.turn?.splashVisible);
   const splashText = String(state?.turn?.splashText ?? "").trim();
   const splashKind = state?.turn?.splashKind ?? null;
@@ -10,18 +13,15 @@ export function renderMissionOverlay(state, refs) {
   overlay.innerHTML = "";
   overlay.classList.remove("is-visible", "is-clickthrough", "is-splash-visible");
 
-  if (missionResult) {
-    const title = missionResult === "victory" ? "Victory" : "Defeat";
-    const text = missionResult === "victory"
-      ? "Mission complete. Return to the title screen to choose another mission."
-      : "Mission failed. Return to the title screen to try again.";
+  if (missionResult && !dialogueActive) {
+    const copy = getMissionResultCopy(state, missionResult);
 
     overlay.classList.add("is-visible");
 
     overlay.innerHTML = `
       <div class="combat-overlay-card" role="dialog" aria-modal="true" aria-label="Mission Result">
-        <div class="combat-overlay-title">${title}</div>
-        <div class="combat-overlay-text">${text}</div>
+        <div class="combat-overlay-title">${escapeHtml(copy.title)}</div>
+        <div class="combat-overlay-text">${escapeHtml(copy.text)}</div>
         <button
           type="button"
           class="combat-start-button"
@@ -34,7 +34,7 @@ export function renderMissionOverlay(state, refs) {
     return;
   }
 
-  if (splashVisible && splashText) {
+  if (splashVisible && splashText && !dialogueActive) {
     const splash = getSplashParts(splashText, splashKind);
     overlay.classList.add("is-visible", "is-clickthrough", "is-splash-visible");
     overlay.innerHTML = `

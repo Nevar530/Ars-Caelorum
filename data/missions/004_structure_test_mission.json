@@ -1,0 +1,23 @@
+{
+  "id": "004_structure_test_mission",
+  "name": "004 Structure Test Mission",
+  "mapId": "004_structure_test",
+  "mapPath": "./data/maps/004_structure_test.json",
+  "briefing": {
+    "title": "004 Structure Test Mission",
+    "text": "Structure edge-height movement and LOS receipt map loaded through mission runtime.",
+    "objectives": ["Confirm walls block movement and LOS.", "Confirm openings allow movement and LOS.", "Defeat all enemy pilots."]
+  },
+  "objectives": [
+    { "id": "defeat_enemies", "type": "defeat_all", "targetTeam": "enemy", "label": "Defeat all enemy pilots" }
+  ],
+  "dialogue": {
+    "intro": { "lines": [ { "speakerId": "system", "name": "Mission Control", "text": "Structure edge-height test. Walls and doors should behave from map data, not map-name hardcoding." } ] },
+    "victory": { "lines": [ { "speakerId": "system", "name": "Mission Control", "text": "Victory. Structure mission wrapper passed." } ] },
+    "defeat": { "lines": [ { "speakerId": "system", "name": "Mission Control", "text": "Defeat. Structure mission result path resolved." } ] }
+  },
+  "results": {
+    "victory": { "title": "Victory", "text": "Structure test complete." },
+    "defeat": { "title": "Defeat", "text": "Structure test failed." }
+  }
+}

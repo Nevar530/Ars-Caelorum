@@ -6,6 +6,7 @@ import { getSelectedAbilityMenuItems, getSelectedAttackMenuItems, getSelectedIte
 import { getLineOfSightResult } from "../los.js";
 import { getActiveActor, getActiveBody, getEmbarkedPilotForMech } from "../actors/actorResolver.js";
 import { getDeploymentAvailableRoster, getDeploymentPlacedUnitAt, getDeploymentPlacementCount, getDeploymentReady, isDeploymentActive, isDeploymentMenuFocused } from "../deployment/deploymentState.js";
+import { getCurrentDialogueLine } from "../mission/missionState.js";
 
 /* =========================
    INPUT
@@ -58,6 +59,9 @@ export function bindHudInput(state, refs, actions) {
       case "restart-mission":
         actions.resetMap();
         break;
+      case "advance-dialogue":
+        actions.advanceDialogue?.();
+        break;
       case "menu-select":
         actions.selectMenuAction(button.dataset.menuAction);
         break;
@@ -70,9 +74,52 @@ export function bindHudInput(state, refs, actions) {
 ========================= */
 
 export function renderHud(state, refs) {
+  if (state?.ui?.dialogue?.active) {
+    renderDialogueHud(state, refs);
+    return;
+  }
+
   refs.hudLeft.innerHTML = renderActivePanel(state);
   refs.hudCenter.innerHTML = renderCenterPanel(state);
   refs.hudRight.innerHTML = renderContextPanel(state);
+}
+
+function renderDialogueHud(state, refs) {
+  const line = getCurrentDialogueLine(state);
+  const dialogue = state?.ui?.dialogue ?? {};
+  const lines = Array.isArray(dialogue.lines) ? dialogue.lines : [];
+  const index = Math.max(0, Number(dialogue.index ?? 0));
+  const name = line?.name || "Unknown";
+  const initial = name.trim().charAt(0).toUpperCase() || "?";
+  const portrait = line?.portrait
+    ? '<img src="' + escapeHtml(line.portrait) + '" alt="' + escapeHtml(name) + ' portrait" />'
+    : escapeHtml(initial);
+
+  refs.hudLeft.innerHTML = [
+    '<div class="hud-section-title">Dialogue</div>',
+    '<div class="hud-dialogue-portrait-wrap">',
+    '<div class="hud-dialogue-portrait">' + portrait + '</div>',
+    '<div>',
+    '<div class="hud-dialogue-name">' + escapeHtml(name) + '</div>',
+    '<div class="hud-dialogue-sub">' + escapeHtml(dialogue.key || "mission") + '</div>',
+    '</div>',
+    '</div>'
+  ].join('');
+
+  refs.hudCenter.innerHTML = [
+    '<div class="hud-section-title">Transmission</div>',
+    '<div class="hud-dialogue-text">' + escapeHtml(line?.text || "") + '</div>',
+    '<div class="hud-dialogue-progress">Line ' + Math.min(index + 1, lines.length) + ' / ' + lines.length + '</div>'
+  ].join('');
+
+  refs.hudRight.innerHTML = [
+    '<div class="hud-section-title">Advance</div>',
+    '<div class="hud-mode-box">',
+    '<div class="hud-mode-title">Press Enter</div>',
+    '<div class="hud-mode-text">Advance dialogue with Enter or Space</div>',
+    '</div>',
+    '<button class="hud-command-button compact" data-hud-action="advance-dialogue">Continue</button>'
+  ].join('');
 }
 
 /* =========================
@@ -588,4 +635,14 @@ function renderDeploymentPanel(state) {
       <div class="hud-mode-text">${available.length} remaining</div>
     </div>
   `;
+}
+
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }

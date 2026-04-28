@@ -8,7 +8,7 @@ import {
   setUnitFacing
 } from "./src/mechs.js";
 import { bindInput, snapFocusToActiveUnit as snapFocusHelper } from "./src/input.js";
-import { loadGameData, loadMapDefinitionByPath } from "./src/dataLoader.js";
+import { loadGameData, loadMapDefinitionByPath, loadMissionDefinitionByPath } from "./src/dataLoader.js";
 import { bindHudInput } from "./src/ui/hud.js";
 import { clearCombatTextMarkers } from "./src/combat/combatTextOverlay.js";
 import { initializeDevMenu } from "./dev/devMenu.js";
@@ -19,8 +19,9 @@ import { createMovementController } from "./src/controllers/movementController.j
 import { createCombatController } from "./src/controllers/combatController.js";
 import { createCpuTurnController } from "./src/ai/cpuTurnController.js";
 import { isCommandMenuItemDisabled } from "./src/action.js";
-import { getMissionMaps } from "./src/ui/frontScreen.js";
+import { getMissionEntries } from "./src/ui/frontScreen.js";
 import { confirmDeploymentPlacement, getDeploymentReady, isDeploymentActive, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "./src/deployment/deploymentState.js";
+import { advanceMissionDialogue } from "./src/mission/missionState.js";
 
 const refs = {
   frontScreen: document.getElementById("frontScreen"),
@@ -32,6 +33,13 @@ const refs = {
   missionDescription: document.getElementById("missionDescription"),
   missionBackButton: document.getElementById("missionBackButton"),
   missionStartButton: document.getElementById("missionStartButton"),
+  missionBriefingScreen: document.getElementById("missionBriefingScreen"),
+  briefingTitle: document.getElementById("briefingTitle"),
+  briefingMap: document.getElementById("briefingMap"),
+  briefingText: document.getElementById("briefingText"),
+  briefingObjectives: document.getElementById("briefingObjectives"),
+  briefingBackButton: document.getElementById("briefingBackButton"),
+  briefingStartButton: document.getElementById("briefingStartButton"),
   main: document.getElementById("mainRoot"),
   editor: document.getElementById("editor"),
   board: document.getElementById("board"),
@@ -153,14 +161,59 @@ async function init() {
   });
 
   refs.missionList?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-front-screen-map-id]");
+    const button = event.target.closest("[data-front-screen-mission-id]");
     if (!button) return;
-    actions.selectMissionMap(button.dataset.frontScreenMapId);
+    actions.selectMission(button.dataset.frontScreenMissionId);
   });
 
   refs.missionStartButton?.addEventListener("click", () => {
+    actions.openSelectedMissionBriefing();
+  });
+
+  refs.briefingBackButton?.addEventListener("click", () => {
+    actions.openMissionSelect();
+  });
+
+  refs.briefingStartButton?.addEventListener("click", () => {
     actions.startSelectedMission();
   });
+
+
+  function getSelectedMissionEntry() {
+    const missions = getMissionEntries(state);
+    if (!missions.length) return null;
+
+    const selectedMissionId = state.ui.shell.selectedMissionId ?? state.ui.shell.selectedMapId ?? null;
+    return missions.find((entry) => entry?.id === selectedMissionId) ?? missions[0] ?? null;
+  }
+
+  async function loadMissionForEntry(entry) {
+    if (!entry) return null;
+
+    if (entry.sourceType === "map-fallback") {
+      return {
+        id: entry.id,
+        name: entry.name || entry.id,
+        mapId: entry.mapId || entry.id,
+        mapPath: entry.mapPath || entry.path,
+        briefing: {
+          title: entry.name || entry.id,
+          text: "Fallback mission wrapper generated from map catalog data.",
+          objectives: ["Defeat all enemy pilots."]
+        },
+        objectives: [
+          { id: "defeat_enemies", type: "defeat_all", targetTeam: "enemy", label: "Defeat all enemy pilots" }
+        ],
+        results: {
+          victory: { title: "Victory", text: "Mission complete." },
+          defeat: { title: "Defeat", text: "Mission failed." }
+        }
+      };
+    }
+
+    if (!entry.path) return null;
+    return loadMissionDefinitionByPath(entry.path);
+  }
 
   const actions = {
     render: gameController.render,
@@ -195,30 +248,45 @@ async function init() {
       actions.openMissionSelect();
     },
 
-    selectMissionMap(mapId) {
-      if (!mapId) return;
-      state.ui.shell.selectedMapId = mapId;
+    selectMission(missionId) {
+      if (!missionId) return;
+      state.ui.shell.selectedMissionId = missionId;
+      state.ui.shell.selectedMapId = missionId;
+      gameController.render();
+    },
+
+    async openSelectedMissionBriefing() {
+      const missionEntry = getSelectedMissionEntry();
+      if (!missionEntry) return;
+
+      const missionDefinition = await loadMissionForEntry(missionEntry);
+      state.ui.shell.briefingMission = missionEntry;
+      state.ui.shell.briefingDefinition = missionDefinition;
+      state.ui.shell.screen = "mission-briefing";
       gameController.render();
     },
 
     async startSelectedMission() {
-      const maps = Array.isArray(state.content?.mapCatalog?.maps) ? state.content.mapCatalog.maps : [];
-      const selectedMapId = state.ui.shell.selectedMapId ?? state.content?.mapCatalog?.defaultMapId ?? null;
-      const selectedEntry = maps.find((entry) => entry?.id === selectedMapId) ?? null;
-      if (!selectedEntry?.path) return;
+      const missionEntry = state.ui.shell.briefingMission ?? getSelectedMissionEntry();
+      if (!missionEntry) return;
 
-      const mapDefinition = await loadMapDefinitionByPath(selectedEntry.path);
+      const missionDefinition = state.ui.shell.briefingDefinition ?? await loadMissionForEntry(missionEntry);
+      const mapPath = missionDefinition?.mapPath ?? missionEntry.mapPath ?? missionEntry.path;
+      if (!mapPath) return;
+
+      const mapDefinition = await loadMapDefinitionByPath(mapPath);
       state.ui.shell.screen = "game";
-      gameController.loadMapAndUnits(mapDefinition);
+      gameController.loadMapAndUnits(mapDefinition, missionDefinition);
     },
 
     moveMissionSelection(delta) {
-      const maps = getMissionMaps(state);
-      if (!maps.length) return;
+      const missions = getMissionEntries(state);
+      if (!missions.length) return;
 
-      const currentIndex = Math.max(0, maps.findIndex((entry) => entry?.id === state.ui.shell.selectedMapId));
-      const nextIndex = (currentIndex + delta + maps.length) % maps.length;
-      actions.selectMissionMap(maps[nextIndex].id);
+      const selectedMissionId = state.ui.shell.selectedMissionId ?? state.ui.shell.selectedMapId ?? null;
+      const currentIndex = Math.max(0, missions.findIndex((entry) => entry?.id === selectedMissionId));
+      const nextIndex = (currentIndex + delta + missions.length) % missions.length;
+      actions.selectMission(missions[nextIndex].id);
     },
     
     setEditorMode() {
@@ -327,7 +395,16 @@ async function init() {
 
     },
 
+    advanceDialogue() {
+      if (advanceMissionDialogue(state)) {
+        gameController.render();
+        return;
+      }
+      gameController.render();
+    },
+
     startCombat() {
+      if (state.ui.dialogue?.active) return;
       if (isDeploymentActive(state) && !getDeploymentReady(state)) {
         return;
       }

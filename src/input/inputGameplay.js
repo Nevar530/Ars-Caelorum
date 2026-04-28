@@ -24,11 +24,19 @@ export function bindGameplayInput(state, refs, actions) {
       return;
     }
 
-    if (state?.mission?.result) {
+    const key = event.key.toLowerCase();
+
+    if (state?.ui?.dialogue?.active) {
+      if (key === "enter" || key === " " || key === "spacebar") {
+        actions.advanceDialogue?.();
+        event.preventDefault();
+      }
       return;
     }
 
-    const key = event.key.toLowerCase();
+    if (state?.mission?.result) {
+      return;
+    }
 
     if (handleHelpKeys(event, actions)) {
       event.preventDefault();
@@ -433,6 +441,18 @@ function handleShellKeys(event, state, actions) {
 
     if (key === "escape" || key === "backspace") {
       actions.showTitleScreen?.();
+      return true;
+    }
+
+    if (key === "enter" || key === " ") {
+      actions.openSelectedMissionBriefing?.();
+      return true;
+    }
+  }
+
+  if (screen === "mission-briefing") {
+    if (key === "escape" || key === "backspace") {
+      actions.openMissionSelect?.();
       return true;
     }
 

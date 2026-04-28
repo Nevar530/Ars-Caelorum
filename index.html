@@ -21,7 +21,7 @@
       <section id="missionSelectScreen" class="front-screen-view is-hidden" aria-label="Mission select screen">
         <div class="front-screen-panel front-screen-panel-select">
           <div class="front-screen-kicker">MISSION SELECT</div>
-          <h2 class="front-screen-subtitle">Choose a mission map</h2>
+          <h2 class="front-screen-subtitle">Choose a mission</h2>
           <div class="front-screen-select-layout">
             <div id="missionList" class="front-screen-list" aria-label="Mission list"></div>
             <div class="front-screen-sidecard">
@@ -31,6 +31,21 @@
                 <button id="missionStartButton" type="button" class="front-screen-primary">Start Mission</button>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="missionBriefingScreen" class="front-screen-view is-hidden" aria-label="Mission briefing screen">
+        <div class="front-screen-panel front-screen-panel-select front-screen-panel-briefing">
+          <div class="front-screen-kicker">MISSION BRIEFING</div>
+          <h2 id="briefingTitle" class="front-screen-subtitle">Mission Briefing</h2>
+          <div id="briefingMap" class="front-screen-card-text front-screen-briefing-map">MAP: unknown</div>
+          <div id="briefingText" class="front-screen-briefing-text"></div>
+          <div class="front-screen-card-title front-screen-briefing-objective-title">Objectives</div>
+          <ul id="briefingObjectives" class="front-screen-objective-list"></ul>
+          <div class="front-screen-actions front-screen-actions-bottom">
+            <button id="briefingBackButton" type="button">Back</button>
+            <button id="briefingStartButton" type="button" class="front-screen-primary">Launch Mission</button>
           </div>
         </div>
       </section>

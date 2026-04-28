@@ -3,7 +3,7 @@ import {
   clearCombatTextMarkers,
   renderCombatTextOverlay
 } from "../combat/combatTextOverlay.js";
-import { clearMissionResult } from "../mission/missionState.js";
+import { clearDialogueState, clearMissionResult, setActiveMissionDefinition, startMissionDialogue } from "../mission/missionState.js";
 import { renderMissionOverlay } from "../ui/missionOverlay.js";
 import { renderFrontScreen } from "../ui/frontScreen.js";
 import { renderHud } from "../ui/hud.js";
@@ -85,6 +85,7 @@ export function createGameController({
     hideSplash();
     clearCombatTextMarkers(state);
     clearMissionResult(state);
+    clearDialogueState(state);
 
     state.turn.activeUnitId = null;
     state.turn.activeActorId = null;
@@ -101,12 +102,13 @@ export function createGameController({
     setPreviewSelectionFromFirstUnit();
   }
 
-  function loadMapAndUnits(mapDefinition = null) {
+  function loadMapAndUnits(mapDefinition = null, missionDefinition = null) {
     const sourceMap = mapDefinition ?? state.mission?.sourceMap ?? state.content?.defaultMap ?? null;
     state.map = resetMap(sourceMap);
     const isDeploymentMap = state.map?.startState?.startMode === "deployment";
     state.units = instantiateTestUnits(state.content, state.map, { includePlayerDeployments: !isDeploymentMap });
     state.mission.sourceMap = cloneMapDefinition(sourceMap);
+    setActiveMissionDefinition(state, missionDefinition ?? state.mission?.definition ?? null);
 
     state.rotation = 0;
     state.camera.angle = 0;
@@ -121,7 +123,10 @@ export function createGameController({
       resetDeploymentState(state);
     }
 
-    logDev("Map reset and test units reloaded.");
+    startMissionDialogue(state, "intro");
+
+    const label = missionDefinition?.id ? ": " + missionDefinition.id : "";
+    logDev("Mission runtime loaded map" + label + ".");
     render();
   }
 
@@ -129,6 +134,7 @@ export function createGameController({
     clearTransientUi();
     hideSplash();
     clearMissionResult(state);
+    clearDialogueState(state);
     state.ui.shell.screen = "title";
     resetDeploymentState(state);
     render();
@@ -145,6 +151,7 @@ export function createGameController({
     state.turn.activeActorId = null;
     state.turn.activeBodyId = null;
     state.mission.result = result;
+    startMissionDialogue(state, result);
     logDev(result === "victory" ? "Mission ended: Victory." : "Mission ended: Defeat.");
     render();
   }

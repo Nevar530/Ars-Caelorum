@@ -7,7 +7,7 @@ export function createState({
   units = null,
   mechs = [],
   rotation = 0,
-  content = { mechs: [], weapons: [], sigils: [], attacks: [], pilots: [], pilotAbilities: [], mechAbilities: [], pilotItems: [], mechItems: [], spawnPoints: [], mapCatalog: null, defaultMap: null }
+  content = { mechs: [], weapons: [], sigils: [], attacks: [], pilots: [], pilotAbilities: [], mechAbilities: [], pilotItems: [], mechItems: [], spawnPoints: [], mapCatalog: null, missionCatalog: null, defaultMap: null }
 }) {
   const runtimeUnits = Array.isArray(units)
     ? units
@@ -62,6 +62,7 @@ export function createState({
 
     mission: {
       sourceMap: map ? structuredClone(map) : null,
+      definition: null,
       result: null
     },
 
@@ -107,7 +108,15 @@ export function createState({
       shell: {
         screen: "title",
         selectedMapId: content?.mapCatalog?.defaultMapId ?? "000_test",
+        selectedMissionId: content?.missionCatalog?.defaultMissionId ?? content?.mapCatalog?.defaultMapId ?? "000_test",
         titleMenuIndex: 0
+      },
+
+      dialogue: {
+        active: false,
+        key: null,
+        index: 0,
+        lines: []
       }
     },
 

@@ -1,0 +1,24 @@
+{
+  "id": "003_mech_deployment_mission",
+  "name": "003 Mech Deployment Mission",
+  "mapId": "003_test",
+  "mapPath": "./data/maps/003_test.json",
+  "briefing": {
+    "title": "003 Mech Deployment Mission",
+    "text": "Mech deployment receipt map loaded through mission runtime. 3x3 mech footprint validation should remain intact.",
+    "objectives": ["Deploy the mech roster.", "Defeat all enemy pilots."]
+  },
+  "objectives": [
+    { "id": "deploy", "type": "deployment", "label": "Deploy player mechs" },
+    { "id": "defeat_enemies", "type": "defeat_all", "targetTeam": "enemy", "label": "Defeat all enemy pilots" }
+  ],
+  "dialogue": {
+    "intro": { "lines": [ { "speakerId": "system", "name": "Mission Control", "text": "Mech deployment online. Footprint validation should still use real occupancy rules." } ] },
+    "victory": { "lines": [ { "speakerId": "system", "name": "Mission Control", "text": "Victory. Mech deployment survived the mission wrapper." } ] },
+    "defeat": { "lines": [ { "speakerId": "system", "name": "Mission Control", "text": "Defeat. Mech deployment mission ended correctly." } ] }
+  },
+  "results": {
+    "victory": { "title": "Victory", "text": "Mech deployment test complete." },
+    "defeat": { "title": "Defeat", "text": "Mech deployment test failed." }
+  }
+}

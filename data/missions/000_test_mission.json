@@ -1,0 +1,35 @@
+{
+  "id": "000_test_mission",
+  "name": "000 Test Mission",
+  "mapId": "000_test",
+  "mapPath": "./data/maps/000_test.json",
+  "briefing": {
+    "title": "000 Test Mission",
+    "text": "Baseline authored-start mission wrapper. This proves the new mission runtime can load an existing map through mission.json instead of loading the map directly.",
+    "objectives": ["Defeat all enemy pilots."]
+  },
+  "objectives": [
+    { "id": "defeat_enemies", "type": "defeat_all", "targetTeam": "enemy", "label": "Defeat all enemy pilots" }
+  ],
+  "dialogue": {
+    "intro": {
+      "lines": [
+        { "speakerId": "system", "name": "Mission Control", "text": "Mission runtime online. Existing authored map loaded through mission data." }
+      ]
+    },
+    "victory": {
+      "lines": [
+        { "speakerId": "system", "name": "Mission Control", "text": "Victory confirmed. Mission result dialogue hook is working." }
+      ]
+    },
+    "defeat": {
+      "lines": [
+        { "speakerId": "system", "name": "Mission Control", "text": "Defeat confirmed. Mission result dialogue hook is working." }
+      ]
+    }
+  },
+  "results": {
+    "victory": { "title": "Victory", "text": "Mission complete." },
+    "defeat": { "title": "Defeat", "text": "Mission failed." }
+  }
+}

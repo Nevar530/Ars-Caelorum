@@ -1,0 +1,24 @@
+{
+  "id": "002_pilot_deployment_mission",
+  "name": "002 Pilot Deployment Mission",
+  "mapId": "002_test",
+  "mapPath": "./data/maps/002_test.json",
+  "briefing": {
+    "title": "002 Pilot Deployment Mission",
+    "text": "Pilot deployment receipt map loaded through mission runtime. Deployment should still gate Begin Mission.",
+    "objectives": ["Deploy the pilot roster.", "Defeat all enemy pilots."]
+  },
+  "objectives": [
+    { "id": "deploy", "type": "deployment", "label": "Deploy player pilots" },
+    { "id": "defeat_enemies", "type": "defeat_all", "targetTeam": "enemy", "label": "Defeat all enemy pilots" }
+  ],
+  "dialogue": {
+    "intro": { "lines": [ { "speakerId": "system", "name": "Mission Control", "text": "Choose deployment cells, then begin combat. This is still the same deployment system." } ] },
+    "victory": { "lines": [ { "speakerId": "system", "name": "Mission Control", "text": "Victory. Pilot deployment survived the mission wrapper." } ] },
+    "defeat": { "lines": [ { "speakerId": "system", "name": "Mission Control", "text": "Defeat. Pilot deployment mission ended correctly." } ] }
+  },
+  "results": {
+    "victory": { "title": "Victory", "text": "Pilot deployment test complete." },
+    "defeat": { "title": "Defeat", "text": "Pilot deployment test failed." }
+  }
+}

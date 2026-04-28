@@ -1,0 +1,23 @@
+{
+  "id": "001_embarked_test_mission",
+  "name": "001 Embarked Test Mission",
+  "mapId": "001_test",
+  "mapPath": "./data/maps/001_test.json",
+  "briefing": {
+    "title": "001 Embarked Test Mission",
+    "text": "Authored embarked-start receipt map loaded through mission runtime.",
+    "objectives": ["Defeat all enemy pilots."]
+  },
+  "objectives": [
+    { "id": "defeat_enemies", "type": "defeat_all", "targetTeam": "enemy", "label": "Defeat all enemy pilots" }
+  ],
+  "dialogue": {
+    "intro": { "lines": [ { "speakerId": "system", "name": "Mission Control", "text": "Embarked start test. Pilot and mech authority should remain unchanged." } ] },
+    "victory": { "lines": [ { "speakerId": "system", "name": "Mission Control", "text": "Victory. Embarked mission wrapper passed." } ] },
+    "defeat": { "lines": [ { "speakerId": "system", "name": "Mission Control", "text": "Defeat. Runtime result path still resolved." } ] }
+  },
+  "results": {
+    "victory": { "title": "Victory", "text": "Embarked test complete." },
+    "defeat": { "title": "Defeat", "text": "Embarked test failed." }
+  }
+}
