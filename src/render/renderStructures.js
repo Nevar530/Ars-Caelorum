@@ -112,7 +112,11 @@ function getMovePreviewPilotPositions(state) {
   const path = Array.isArray(state?.ui?.previewPath) ? state.ui.previewPath : [];
   if (path.length === 0) return [];
 
-  return path.map((step) => ({ x: Number(step.x), y: Number(step.y) }));
+  // Cutaway should follow the tile the player is previewing, not every
+  // waypoint in the path. Using the full path made roof reveal feel like a
+  // path-shaped strip instead of a room/zone reveal.
+  const destination = path[path.length - 1];
+  return [{ x: Number(destination?.x), y: Number(destination?.y) }];
 }
 
 function doesCutawayAffectCell(cutaway, cell) {
@@ -125,8 +129,14 @@ function doesCutawayAffectCell(cutaway, cell) {
 function getCutawayEdgeOpacity(state, structure, edgePart, cutaway) {
   if (!cutaway?.active) return 1;
   if (!isLowerScreenEdge(state, edgePart?.edge)) return 1;
-  if (Number(edgePart?.edgeHeight ?? 0) <= 0) return 1;
-  if (isTransparentOpeningEdge(edgePart)) return 1;
+
+  // Fade visible lower/front structure art in the 3x3 chunk around the pilot
+  // or move-preview destination. Doors can be height 0 but still need to fade
+  // so the unit and destination tile stay readable. Pure open edges with no
+  // sprite have nothing to fade.
+  const hasVisibleArt = Boolean(edgePart?.sprite);
+  const hasBarrierHeight = Number(edgePart?.edgeHeight ?? 0) > 0;
+  if (!hasVisibleArt && !hasBarrierHeight) return 1;
 
   const positions = Array.isArray(cutaway.positions) ? cutaway.positions : [];
   if (!positions.some((pos) => isEdgeNearPosition(edgePart, pos))) return 1;
