@@ -1,425 +1,460 @@
 # Ars Caelorum
 
-**Launch Game:** [Open Ars Caelorum](https://nevar530.github.io/Ars-Caelorum/)
+**Live Build:** https://nevar530.github.io/Ars-Caelorum/
 
-Ars Caelorum is a browser-based tactical mech game built in HTML, CSS, and JavaScript.
+**Ars Caelorum** is an in-browser tactical RPG / tactics-engine prototype built with HTML, CSS, JavaScript, and SVG-based 2:1 isometric rendering.
 
-It now has a real playable shell:
-
-**Title -> Mission Select -> Map Load -> Deployment or Authored Start -> Combat -> Mission End -> Return**
-
-This repo is no longer just proving combat. It now has a usable game flow, authored map loading, deployment starts, authored starts, baseline CPU turns, and readable round/phase transition receipts.
+The project is inspired by tactical RPGs, mech combat games, and board-game-style systems. The core design goal is a deterministic, readable battlefield where pilots and mechs operate in the same rules space, maps are authored as data, and combat logic comes from board truth rather than visual tricks.
 
 ---
 
-## Current Status
+## Current State
 
-### Working Now
-- [x] title screen
-- [x] mission select screen
-- [x] keyboard-first shell navigation
-- [x] map catalog loading from `data/maps/mapList.json`
-- [x] alphabetical mission listing
-- [x] authored map loading from mission select
-- [x] shared mech/pilot battlefield
-- [x] 3x3 mech occupancy
-- [x] 1x1 pilot occupancy
-- [x] pilot-only initiative
-- [x] actor/body separation
-- [x] embark / disembark
-- [x] occupied mech damage cascade
-- [x] disabled occupied mech behavior
-- [x] move + brace + attack + ability + item + end turn command buckets
-- [x] combat loop
-- [x] item / ability runtime path V1
-- [x] authored start-state support
-- [x] pilot deployment V1
-- [x] mech deployment V1
-- [x] authored CPU enemies
-- [x] baseline CPU move + attack turns
-- [x] center-screen round / phase splash
-- [x] mission result / restart / return flow
-- [x] live dev menu
-- [x] live map editor
-- [x] JSON-backed map workflow
-- [x] loadout / inventory scaffolding
-- [x] weapon lookup trending loadout-first
+Ars Caelorum is no longer just a combat test harness.
 
-### Not Done Yet
-- [ ] stronger AI behavior and better movement readability
-- [ ] structures as real board authority
-- [ ] scenario / objective layer
-- [ ] broader ability / item expansion
-- [ ] full equipment / frame authority
-- [ ] persistent menus tied to real systems
-- [ ] save / campaign layer
-- [ ] final art / music / sound polish
+The current game flow is:
+
+```txt
+TITLE
+-> MISSION SELECT
+-> MAP LOAD
+-> DEPLOYMENT / AUTHORED START
+-> COMBAT
+-> MISSION END
+-> RETURN TO TITLE
+```
+
+The project currently supports:
+
+- Real title screen
+- Mission select screen
+- Catalog-backed map loading from `data/maps/mapList.json`
+- Keyboard-first shell navigation
+- Authored map start states
+- Deployment-capable maps
+- Pilot and mech deployment V1
+- Shared pilot/mech battlefield
+- Pilot-only initiative
+- Mechs as controlled bodies
+- Embark / disembark
+- Occupied mech damage cascade
+- Disabled occupied mech behavior
+- Move / brace / attack / ability / item / end turn command buckets
+- Item / ability runtime path V1
+- Baseline CPU movement and attacks
+- Mission result / return flow
+- Round / phase splash receipts
+- Live dev menu
+- Live map editor
+- JSON-backed map workflow
+- Structure foundation V1
 
 ---
 
-## Code Truth
+## Core Design Truths
 
-These are locked design rules now.
+These rules are locked unless deliberately redesigned:
 
-- [x] Pilots are the only initiative actors
-- [x] Mechs are controlled bodies, not initiative owners
-- [x] Occupancy is authority
-- [x] Enter Mech / Exit Mech remain core contextual verbs
-- [x] Move / Brace / Attack / Ability / Item / End Turn remain the command buckets
-- [x] Weapons are not generic abilities
-- [x] Items and abilities should share the same broad action pipeline where possible
-- [x] Disabled occupied mechs do not get normal mech actions
-- [x] Disabled occupied mechs must still keep **Exit Mech** available
-- [x] Start-state and deployment are authored map data, not fallback hacks
-- [x] Map catalog is mission-list authority
-- [x] Authored starts and deployment starts are both valid map-driven truths
-- [x] Round / phase UI should come from real turn state
-- [x] CPU behavior should build on the same rules the player uses
+1. Pilots are the only initiative actors.
+2. Mechs are controlled bodies, not initiative owners.
+3. Occupancy is authority.
+4. Enter Mech / Exit Mech are core contextual actions.
+5. Weapons are not generic abilities.
+6. Items and abilities share the same broad runtime action path where possible.
+7. Start state and deployment are authored map data, not fallback hacks.
+8. Mission select is catalog-driven.
+9. CPU uses real gameplay rules, not cheat rules.
+10. Code is truth.
 
 ---
 
-## Gameplay State
+## Structure System V1
 
-### Battlefield / Combat
-- [x] shared mech/pilot battlefield
-- [x] move phase + action phase structure
-- [x] height-aware movement
-- [x] height-aware LOS
-- [x] targeting and hit resolution
-- [x] shield/core damage handling
-- [x] combat text feedback
+Structures are now real board authority, not decorative art.
 
-### Pilot / Mech Interaction
-- [x] pilots act on foot
-- [x] embarked pilots control mech bodies
-- [x] Enter Mech during action phase
-- [x] Exit Mech during action phase
-- [x] embarked pilots leave board occupancy
-- [x] embarked pilots are not targetable
-- [x] empty mechs remain real board objects
+The structure system moved away from blocked tile thinking.
 
-### Disabled Occupied Mech Truth
-- [x] no normal move
-- [x] no normal attack
-- [x] no normal brace
-- [x] no normal mech abilities
-- [x] Exit Mech remains available when valid
-- [x] occupied damage cascade remains:
+### Rejected Model
 
-```text
-Mech Shield -> Mech Core -> Pilot Shield -> Pilot Core
+```txt
+wall tile = blocked tile
+```
+
+This caused problems because walls consumed floor space and made tight interiors hard to use.
+
+### Current Model
+
+```txt
+tile height = terrain / floor elevation
+edgeHeight = wall / door / barrier height
+```
+
+That means:
+
+- Tiles decide standing.
+- Edges decide crossing and sight.
+- Structure cells can be walkable interior floor.
+- Structure edges act as walls, doors, openings, windows, barriers, or other edge features.
+- Movement checks edge height when crossing between tiles.
+- LOS checks edge height when sight crosses a structure edge.
+- Doors/openings are represented by `edgeHeight: 0`.
+- Walls are represented by positive `edgeHeight` values.
+- Type and sprite are art/editor labels, not gameplay authority.
+
+Do not reintroduce structure `blocksMove` or `blocksLOS` as rule authority.
+
+The clean rule is:
+
+```txt
+movement and LOS derive structure behavior from authored edgeHeight
 ```
 
 ---
 
-## Shell / Mission Flow
+## Room / Roof Cutaway System
 
-### Current Shell Path
-```text
-Title -> Mission Select -> Map Load -> Deployment/Start -> Combat -> Mission End -> Return
-```
+Structures can now support authored interior rooms.
 
-### Start Modes That Now Exist
+Current structure room behavior:
 
-#### 1. Authored Start
-Units begin where the map/startState says they begin.
+- Structure cells may have `roomId`.
+- Roof cutaway reacts to actual pilot position.
+- Roof cutaway reacts to legal move-preview destination before movement is committed.
+- Roof cutaway can be room-based.
+- Older/no-room structures can fall back to whole-structure cutaway.
+- Lower/front wall and visible door art can fade around the active/preview pilot readability zone.
 
-Good for:
-- fixed test maps
-- tutorials
-- story setups
-- ambushes
-- embarked starts
-
-#### 2. Deployment Start
-The map provides legal deployment cells and the player places valid units before combat begins.
-
-Good for:
-- player-controlled pre-combat setup
-- testing roster filtering
-- validating placement rules cleanly through authored map data
-
-Important:
-These are both correct. They should stay as two clean map-driven start truths, not get collapsed into one messy exception system.
+Roof and wall fade are render readability systems only. They do not affect movement, LOS, hit chance, or combat truth.
 
 ---
 
-## Current Test Maps
+## Current Receipt Maps
+
+These maps should stay useful as regression receipts.
 
 ### `000_test`
-- authored on-foot start receipt
-- stable pilot reference map
+
+- Authored pilot-start reference map
 
 ### `001_test`
-- authored embarked mech start receipt
-- stable embarked reference map
+
+- Authored embarked mech-start reference map
 
 ### `002_test`
-- pilot deployment V1 receipt
-- player deploys pilots against authored CPU enemies
+
+- Pilot deployment V1 reference map
 
 ### `003_test`
-- mech deployment V1 receipt
-- player deploys mechs using footprint-aware placement rules
 
-These maps are the current receipts for shell truth.
+- Mech deployment V1 reference map
 
----
+### `004_structure_test`
 
-## CPU / AI Baseline
+- Structure edge-height movement / LOS receipt map
+- Two pilots for testing LOS and combat through structure edges
+- Wall edges use `edgeHeight: 2`
+- Door/open edge uses `edgeHeight: 0`
+- Proves wall edges block movement and LOS
+- Proves door/open edges allow crossing and sight
 
-The repo now has real CPU turns.
+### `005_warehouse_district`
 
-### Working Now
-- [x] CPU move phase turns
-- [x] CPU action phase turns
-- [x] legal move destination planning
-- [x] legal attack selection
-- [x] attack scoring by basic tactical value
-- [x] simple range-aware movement preference
-- [x] real turn-controller kickoff
-
-### Still Needs Work
-- [ ] smoother tile-to-tile movement presentation
-- [ ] stronger range discipline
-- [ ] better target priority
-- [ ] objective awareness
-- [ ] mech / pilot role handling
-- [ ] structure-aware behavior
+- Interior structure / room cutaway receipt map
+- Large warehouse structure
+- Exterior and interior walls as authored edges
+- Front/back access points as `edgeHeight: 0`
+- Multiple rooms and hallway through authored `roomId` cells
+- Room-based roof cutaway
+- Lower/front wall and door fade for pilot readability
+- Two on-foot pilots with sidearms for indoor combat tests
 
 ---
 
-## Round / Phase Readability
+## What Is Done
 
-The game now presents round and phase changes in the center of the screen.
+### Core / Engine
 
-### Working Now
-- [x] round / phase truth comes from the real turn controller
-- [x] center-screen phase splash exists
-- [x] splash shows round + phase
-- [x] move phase and action phase transitions are readable in live play
+- Shared pilot/mech battlefield
+- Occupancy truth
+- Pilot-only initiative
+- Actor/body separation
+- Embark/disembark
+- Occupied damage cascade
+- Disabled occupied mech behavior
+- Stable combat loop
+- Command buckets
+- First item/ability runtime path
 
-This is a readability layer on top of real game state, not a fake UI timer.
+### Shell / Flow
 
----
+- Title screen
+- Mission select screen
+- Keyboard shell navigation
+- Map catalog-backed mission list
+- Authored map loading from selected catalog entry
+- Mission end return path
+- Center-screen round/phase splash
 
-## Dev Tools / Authoring
+### Map / Authoring
 
-- [x] live dev menu
-- [x] live runtime inspection
-- [x] live map editor
-- [x] brush painting for map authoring
-- [x] spawn placement authoring
-- [x] deployment cell authoring
-- [x] map resize
-- [x] import / export
-- [x] validation / status feedback
+- Map metadata preservation through clone/reset/load
+- Map-authored spawns
+- Map-authored `startState.deployments`
+- Deployment-capable map schema
+- Editor export of runtime-usable map JSON
+- Working add-to-catalog test loop
 
-### Current Map Workflow
-1. Build or edit a map in the editor
-2. Export JSON
-3. Place the map in `data/maps/`
-4. Add the map to `data/maps/mapList.json`
-5. Launch through mission select
-6. Test in runtime
+### Deployment V1
 
----
+- Deployment start mode
+- Deployment cells in map data
+- Pilot deployment
+- Mech deployment
+- Authored enemies remain authored
+- Player placement count gate
+- Begin Mission handoff
 
-## Data / Content Direction
+### AI Baseline
 
-### Runtime Data
-- `data/mechs.json`
-- `data/pilots.json`
-- `data/weapons.json`
-- `data/attacks.json`
-- `data/sigils.json`
-- `data/maps/mapList.json`
-- `data/maps/*.json`
-- `data/terrain/terrain.json`
-- `data/terrain/terrainList.json`
+- CPU move phase participation
+- CPU action phase participation
+- Legal move destination planning
+- Legal attack selection
+- Simple range-aware movement preference
 
-### Current Terrain Presets
-- Grass
-- Rock
-- Sand
-- Water
-- Asphalt
-- Concrete
+### Structure Foundation V1
 
-### Current Movement Classes
-- Clear
-- Difficult
-- Impassable
-- Hazard
-
-### Direction Locked In
-- weapons = equipped combat content
-- abilities = granted non-weapon actions
-- items = consumable actions
-- frames should later determine move baseline + slot layout + allowed equipment types
-- final mech state should eventually come from:
-  - frame
-  - equipped parts
-  - pilot pairing
-  - runtime damage state
+- Authored structure cells
+- Authored structure edges
+- `edgeHeight` as structure gameplay authority
+- Edge-based walls/doors instead of blocked full tiles
+- Movement checks structure edge height
+- LOS checks structure edge height
+- Door/opening `edgeHeight: 0`
+- Wall `edgeHeight: 2` on current structure receipts
+- Walkable interior structure cells
+- Pilot-enterable buildings
+- Preserved `roomId` through structure normalization
+- Roof cutaway from current pilot position
+- Roof cutaway from legal move-preview destination
+- Room-based roof cutaway in warehouse test map
+- Lower/front wall and visible door fade for readability
 
 ---
 
-## Repo Structure
+## Current Active Layer
 
-### Gameplay Runtime
-- `src/controllers/` — game, turn flow, shell/runtime control
-- `src/combat/` — hit, damage, combat text
-- `src/targeting/` — range, fire arc, targeting logic
-- `src/scale/` — occupancy and mech/pilot footprint math
-- `src/maps/` — map schema, runtime, mutations, spawns
-- `src/render/` — terrain, units, overlays, LOS, projection, scene building
-- `src/actors/` — actor/body resolution helpers
-- `src/vehicles/` — embark / disembark rules and actions
-- `src/ui/` — shell and overlay UI
+The project is currently in:
 
-### Dev / Editor
-- `dev/devMenu.js`
-- `dev/devMenuModules/`
-- `dev/mapEditor/`
+```txt
+STRUCTURE AUTHORING / VALIDATION + POST-STRUCTURE CLEANUP
+```
+
+The structure rules work. The next major job is making the map editor author the same data shape that the hand-authored receipt maps currently prove.
 
 ---
 
-## What Changed Recently
+## Next Required Work
 
-### Game Shell Pass
-- [x] title screen added
-- [x] mission select added
-- [x] catalog-backed mission loading added
-- [x] boot no longer leaks units under the title screen
+### 1. Cleanup / Contract Lock
 
-### Deployment Pass
-- [x] pilot deployment V1 works
-- [x] mech deployment V1 works
-- [x] deployment cells are authored in map data
-- [x] Begin Mission gates on required placement count
+- Update docs/comments to match current repo truth
+- Keep one clear authority path for:
+  - mission list
+  - map load
+  - startState
+  - deployment
+  - unit instantiation
+  - mission result
+  - CPU turn kickoff
+  - structure edgeHeight
+  - roomId / roof cutaway
+- Remove stale assumptions where safe
 
-### CPU Baseline Pass
-- [x] CPU moves during its turns
-- [x] CPU attacks during its turns
-- [x] CPU can seek legal attack positions
-- [x] CPU can try to respect preferred weapon distance
+### 2. Structure Editor Tools
 
-### Phase Readability Pass
-- [x] center-screen round / phase splash added
-- [x] transitions now read clearly in live play
+- Edge paint / edge select mode
+- Raise/lower selected `edgeHeight` with keys
+- Wall / door / window / opening presets
+- Structure cell paint mode
+- RoomId / zoneId paint mode
+- Roof/cell room assignment tools
+- Debug overlay for edgeHeight and roomId
+- Preserve structure cells/edges/roomId/roof data through import/export
 
----
+### 3. Structure Validation Tools
 
-## On Deck
+Add warnings for:
 
-### 1. Cleanup Tail / Contract Lock
-Goal: freeze current shell/start/deployment/AI truths so later work builds on bedrock.
+- Visible wall art with `edgeHeight: 0`
+- Visible door art with positive `edgeHeight` when not intended
+- `edgeHeight > 0` with no visible structure art
+- Roofed structure cells missing `roomId`
+- Roof/room mismatch
+- Room with no entrance/opening
+- Interior cells disconnected from access points
+- Deployment/spawn cells blocked by structure geometry
+- Overlapping or duplicate edge definitions
 
-- [ ] update docs/comments to match code truth
-- [ ] remove stale wording and stale assumptions where safe
-- [ ] keep one clear authority path for:
-  - [ ] mission list
-  - [ ] map load
-  - [ ] startState
-  - [ ] deployment
-  - [ ] unit instantiation
-  - [ ] mission result
-  - [ ] CPU turn kickoff
+### 4. AI Growth
 
-### 2. Structure Authority
-Goal: make the board matter more than open terrain.
+- Better movement readability
+- Stronger range discipline
+- Target priority and threat value
+- Objective awareness
+- Mech / pilot role handling
+- Structure-aware behavior
+- Room/interior pathing
+- Doorway awareness
+- LOS-aware indoor positioning
 
-- [ ] walls
-- [ ] doors
-- [ ] interior cells
-- [ ] access points
-- [ ] movement / LOS / objective interaction on the same board
+### 5. Scenario / Mission Layer
 
-### 3. AI System Growth
-Goal: make AI feel intentional instead of merely functional.
+- Scenario definitions
+- Objective scripting hooks
+- Mission-specific win/loss rules
+- Escort / survive / reach exit / kill-all style mission truth
+- Interior objectives such as secure room, reach terminal, extract pilot
 
-- [ ] smoother movement readability
-- [ ] stronger range discipline
-- [ ] target priority
-- [ ] objective awareness
-- [ ] mech / pilot role handling
-- [ ] structure-aware behavior
+### 6. Abilities / Items Expansion
 
-### 4. Scenario / Mission Layer
-Goal: move beyond raw map/startState truth into authored mission behavior.
+- More abilities
+- More items
+- Targeted effects
+- Buffs / debuffs
+- Movement utility
+- Support actions
+- Mission-specific content grants later
 
-- [ ] scenario definitions
-- [ ] objective scripting hooks
-- [ ] mission-specific rules and win/loss truth
-- [ ] escort / survive / reach exit / kill-all mission support
+### 7. Equipment / Frame Authority
 
-### 5. Abilities / Items Expansion
-- [ ] more abilities
-- [ ] more items
-- [ ] targeted effects
-- [ ] buffs / debuffs
-- [ ] movement utility
-- [ ] support actions
-- [ ] faction/test content
-- [ ] mission-specific grants later
+Frames should determine:
 
-### 6. Equipment / Frame Authority
-- [ ] move speed baseline to frames
-- [ ] slot layout to frames
-- [ ] allowed equipment types to frames
-- [ ] weapons as fully equipped combat content
-- [ ] shield/core modules as equipment authority
+- Speed / move baseline
+- Slot layout
+- Allowed equipment types
 
-### 7. Menus / Persistent UX
-- [ ] controls/help polish
-- [ ] inventory menu when inventory authority is real
-- [ ] journal/log when mission state is real
-- [ ] save/load entry points when persistence exists
+Equipment should determine:
 
-### 8. Save / Campaign Layer
-- [ ] save/load runtime state
-- [ ] scenario persistence
-- [ ] campaign progression
+- Weapons
+- Shield modules
+- Core modules
+- Utility/system modules
+
+### 8. Menus / Persistence
+
+- Controls/help menu polish
+- Mission/objective panel
+- Inventory menu
+- Journal/log
+- Save/load entry points
+- Campaign persistence later
 
 ### 9. Art / Music / Sound
-- [ ] expanded sprite work
-- [ ] terrain sprite rendering
-- [ ] animation
-- [ ] VFX
-- [ ] UI polish
-- [ ] sound effects
-- [ ] music / ambience
+
+Presentation comes after the rules shell is stable enough to deserve it.
 
 ---
 
-## Short Status
+## Important Future Notes
 
-**Playable shell:** yes
-**Shared mech/pilot battlefield:** yes
-**Pilot-only initiative:** yes
-**Embark/disembark:** yes
-**Authored starts:** yes
-**Pilot deployment:** yes
-**Mech deployment:** yes
-**CPU turns:** yes
-**Mission loop shell:** yes
-**Scenario layer:** not yet
-**Structures:** not yet
-**Equipment/frame authority:** planned
-**Persistence:** planned
-**Final presentation pass:** later
+### Mech Interiors
+
+Normal building interiors should default to pilot-scale spaces.
+
+Mech entry should be authored as a special case only:
+
+- hangars
+- freight doors
+- breached walls
+- loading docks
+- mech garages
+
+A mech should only enter if the map intentionally supports:
+
+- 3x3 footprint space
+- wide enough access
+- ceiling/roof readability
+- clear art support
+
+Do not turn normal buildings into a general door-width simulator.
+
+### Windows / Half Walls
+
+`edgeHeight: 1` may later become:
+
+- low barrier
+- half wall
+- window-height object
+- cover source
+- partial LOS feature
+
+This is not fully locked yet.
 
 ---
 
-## End State Goal
+## Biggest Current Risks
 
-A deterministic, readable tactics game where:
-- pilots and mechs operate on one battlefield
-- maps are authored and launched through the real shell
-- starts can be authored or deployment-based depending on map truth
-- CPU units follow the same gameplay rules as the player
-- structures, terrain, and objectives make the board matter
-- weapons / abilities / items move toward clean content authority
-- menus and persistence sit on top of real systems
-- art and polish sit on top of stable rules instead of forcing rewrites
+1. Map validity
+2. Structure data consistency
+3. Editor tools lagging behind runtime structure truth
+4. AI not yet structure-aware
+5. Rendering/cutaway edge cases under rotation
+6. Scenario layer still thin
+
+---
+
+## Build Order
+
+Current practical build order:
+
+```txt
+1. Cleanup / doc lock
+2. Structure editor tools
+3. Structure validation tools
+4. AI growth and tuning, including structure awareness
+5. Scenario / mission layer
+6. Abilities / items expansion
+7. Equipment / frame authority
+8. Menus / persistent UX
+9. Save / campaign layer
+10. Art / music / sound
+```
+
+---
+
+## Development Philosophy
+
+- Board truth first.
+- Systems before polish.
+- Simple before clever.
+- Small, testable passes.
+- No hidden fallback spawn logic.
+- No duplicated rule authority.
+- No map-name hardcoding.
+- Rendering should reflect board truth, not create it.
+- Editor-authored data should be the same data runtime uses.
+- Code remains truth.
+
+---
+
+## Final Current Verdict
+
+Ars Caelorum currently has:
+
+- A real game shell
+- Real catalog-backed map loading
+- Real authored start-state authority
+- Real deployment V1
+- Real CPU participation
+- Real mission-end flow
+- Readable round/phase receipts
+- A working editor-to-runtime test loop
+- Real structure edge-height movement blocking
+- Real structure edge-height LOS blocking
+- Pilot-enterable interiors
+- Room-based roof cutaway
+- Lower/front wall and door fade for readability
+- Structure receipt maps proving the foundation
+
+The project is now proving not only open-field combat, but indoor/outdoor tactical board authority.
