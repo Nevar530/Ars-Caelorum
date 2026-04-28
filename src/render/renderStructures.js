@@ -13,8 +13,10 @@ import {
   getMapStructures,
   getStructureCells,
   getStructureEdgeParts,
+  makeCellKey,
   normalizeStructureForMap
 } from "../structures/structureRules.js";
+import { getActiveBody, getBoardUnits } from "../actors/actorResolver.js";
 
 let clipId = 0;
 
@@ -39,9 +41,11 @@ export function getStructureSceneItems(state) {
       continue;
     }
 
-    items.push(...makeFloorItems(state, structure));
+    const cutaway = getStructureCutaway(state, structure);
+
+    items.push(...makeFloorItems(state, structure, cutaway));
     items.push(...makeEdgeItems(state, structure));
-    items.push(...makeRoofItems(state, structure));
+    items.push(...makeRoofItems(state, structure, cutaway));
 
     if (structure.debug) {
       items.push(...makeDebugItems(state, structure));
@@ -49,6 +53,48 @@ export function getStructureSceneItems(state) {
   }
 
   return items.filter(Boolean);
+}
+
+
+function getStructureCutaway(state, structure) {
+  const cellKeys = structure?.cellKeys instanceof Set
+    ? structure.cellKeys
+    : new Set(getStructureCells(structure).map((cell) => makeCellKey(cell.x, cell.y)));
+
+  if (cellKeys.size === 0) return { active: false };
+
+  for (const pos of getPilotCutawayPositions(state)) {
+    if (cellKeys.has(makeCellKey(pos.x, pos.y))) {
+      return { active: true };
+    }
+  }
+
+  return { active: false };
+}
+
+function getPilotCutawayPositions(state) {
+  const positions = [];
+
+  for (const unit of getBoardUnits(state)) {
+    if (!unit || unit.unitType !== "pilot") continue;
+    positions.push({ x: Number(unit.x), y: Number(unit.y) });
+  }
+
+  positions.push(...getMovePreviewPilotPositions(state));
+
+  return positions.filter((pos) => Number.isFinite(pos.x) && Number.isFinite(pos.y));
+}
+
+function getMovePreviewPilotPositions(state) {
+  if (state?.ui?.mode !== "move") return [];
+
+  const activeBody = getActiveBody(state);
+  if (!activeBody || activeBody.unitType !== "pilot") return [];
+
+  const path = Array.isArray(state?.ui?.previewPath) ? state.ui.previewPath : [];
+  if (path.length === 0) return [];
+
+  return path.map((step) => ({ x: Number(step.x), y: Number(step.y) }));
 }
 
 function makeTopItems(state, structure) {
@@ -84,12 +130,12 @@ function makeTopItems(state, structure) {
   return items;
 }
 
-function makeFloorItems(state, structure) {
-  // Floors/interior fills are normally opt-in. If a board pilot is inside the
-  // structure, the roof cuts away and the floor becomes visible so interiors
-  // are readable without turning floor art into gameplay authority.
-  const revealInterior = shouldRevealStructureInterior(state, structure);
-  if (!structure.floorSprite && structure.showInteriorFloor !== true && !revealInterior) return [];
+function makeFloorItems(state, structure, cutaway = null) {
+  // Floors/interior fills are intentionally opt-in while the roof is closed.
+  // When a pilot is inside, or previews a reachable move inside, draw the
+  // fallback floor so the cutaway has readable walkable space before confirm.
+  const shouldShowCutawayFloor = cutaway?.active === true;
+  if (!structure.floorSprite && structure.showInteriorFloor !== true && !shouldShowCutawayFloor) return [];
 
   const items = [];
 
@@ -153,11 +199,11 @@ function makeEdgeItems(state, structure) {
   return items;
 }
 
-function makeRoofItems(state, structure) {
+function makeRoofItems(state, structure, cutaway = null) {
   const items = [];
 
   if (!structure.roofSprite) return items;
-  if (shouldRevealStructureInterior(state, structure)) return items;
+  if (cutaway?.active === true) return items;
 
   for (const cell of getStructureCells(structure)) {
     const floorPoints = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
@@ -171,8 +217,9 @@ function makeRoofItems(state, structure) {
       points,
       imagePath: structure.roofSprite,
       textureRotation: state.rotation,
-      // Roofs sort after their walls so closed rooms read correctly. When a
-      // pilot occupies an interior cell, this function returns no roof items.
+      // Roofs are a separate cover layer. Sort them after their walls so they
+      // read as closed rooms until a future cutaway/inside-unit state hides
+      // them. This fixes the "no roofs" symptom from the first rewrite pass.
       sortDepth: floorScreenY + structure.heightPx + 0.42,
       sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation + structure.heightLevels) + 0.3,
       render(parent) {
@@ -182,22 +229,6 @@ function makeRoofItems(state, structure) {
   }
 
   return items;
-}
-
-function shouldRevealStructureInterior(state, structure) {
-  const keys = structure?.cellKeys instanceof Set
-    ? structure.cellKeys
-    : new Set(getStructureCells(structure).map((cell) => String(Number(cell.x)) + "," + String(Number(cell.y))));
-
-  if (!keys.size) return false;
-
-  const units = Array.isArray(state?.units) ? state.units : [];
-
-  return units.some((unit) => {
-    if (!unit || unit.unitType !== "pilot" || unit.embarked === true) return false;
-    const key = String(Number(unit.x)) + "," + String(Number(unit.y));
-    return keys.has(key);
-  });
 }
 
 function makeDebugItems(state, structure) {
