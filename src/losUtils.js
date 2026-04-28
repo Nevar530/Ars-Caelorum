@@ -1,6 +1,7 @@
 // src/losUtils.js
 
 import { getTile, getTileEffectiveElevation } from "./map.js";
+import { getEdgeLosBlockBetween } from "./structures/structureRules.js";
 
 const HEIGHT_PROFILES = {
   mech: {
@@ -30,16 +31,35 @@ export function getHeightsForScale(tile, scale = "mech") {
   };
 }
 
-export function traceRay(z1, z2, sampledTiles, state) {
-  const totalSteps = sampledTiles.length;
+export function traceRay(z1, z2, lineTiles, state) {
+  const tiles = Array.isArray(lineTiles) ? lineTiles : [];
+  const lastIndex = tiles.length - 1;
 
-  for (let i = 0; i < totalSteps; i++) {
-    const pos = sampledTiles[i];
+  for (let i = 1; i <= lastIndex; i += 1) {
+    const prev = tiles[i - 1];
+    const pos = tiles[i];
 
-    // Sample the ray at the CENTER of each crossed tile step.
-    const t = (i + 1) / (totalSteps + 1);
-    const rayHeight = z1 + (z2 - z1) * t;
+    const edgeT = i / Math.max(1, lastIndex);
+    const edgeRayHeight = z1 + (z2 - z1) * edgeT;
+    const edgeBlock = getEdgeLosBlockBetween(state.map, prev.x, prev.y, pos.x, pos.y, edgeRayHeight);
 
+    if (edgeBlock.blocked) {
+      return {
+        blocked: true,
+        blockingTile: edgeBlock.blockingTile,
+        reason: "edge_blocked",
+        terrainHeight: edgeBlock.edgeHeight,
+        edge: edgeBlock.edge,
+        rayHeight: edgeRayHeight,
+        stopHeight: edgeRayHeight
+      };
+    }
+
+    // Origin/destination tile bodies are ignored, but their crossed edges are not.
+    if (i === lastIndex) continue;
+
+    const tileT = (i + 0.5) / Math.max(1, lastIndex);
+    const rayHeight = z1 + (z2 - z1) * tileT;
     const tile = getTile(state.map, pos.x, pos.y);
 
     if (!tile) {

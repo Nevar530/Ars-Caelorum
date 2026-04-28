@@ -102,21 +102,19 @@ function getLosResultInternal(state, fromX, fromY, toX, toY, options = {}) {
     return buildSameTileResult(line);
   }
 
-  // Ignore origin and destination tiles completely.
-  // Only crossed tiles matter for blocking.
-  const sampledTiles = line.slice(1, -1);
-
+  // Terrain ignores origin/destination tile bodies, but edge crossings along
+  // the whole line matter. Thin structure walls block by edge height.
   const chestTrace = traceRay(
     attackerHeights.fire,
     targetHeights.chest,
-    sampledTiles,
+    line,
     state
   );
 
   const headTrace = traceRay(
     attackerHeights.fire,
     targetHeights.head,
-    sampledTiles,
+    line,
     state
   );
 

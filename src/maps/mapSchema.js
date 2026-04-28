@@ -38,6 +38,7 @@ export function createBlankMapDefinition({ id = 'new_map', name = 'New Map', wid
       deploymentCells: [],
       deployments: []
     },
+    structures: [],
     tiles
   };
 }

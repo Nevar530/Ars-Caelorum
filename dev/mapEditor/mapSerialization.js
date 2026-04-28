@@ -33,6 +33,7 @@ export function buildMapDefinitionFromRuntimeMap(map) {
     terrainTypes: Array.isArray(map?.terrainTypes) ? [...map.terrainTypes] : ['grass', 'rock', 'sand', 'water', 'asphalt', 'concrete'],
     spawns: structuredClone(map?.spawns ?? { player: [null, null, null, null], enemy: [null, null, null, null] }),
     startState: structuredClone(map?.startState ?? { deployments: [] }),
+    structures: structuredClone(map?.structures ?? []),
     tiles
   };
 }

@@ -8,6 +8,7 @@ import {
 } from "./map.js";
 import { getUnitById } from "./mechs.js";
 import { getActiveBody } from "./actors/actorResolver.js";
+import { isEdgeMovementBlockedBetween } from "./structures/structureRules.js";
 import { canUnitOccupyCells } from "./scale/occupancy.js";
 import {
   getResolutionBoardSize,
@@ -136,6 +137,33 @@ function areOccupiedCellsStandable(state, unit) {
   return true;
 }
 
+function getUnitStepHeight(unit) {
+  return Number(unit?.stepHeight ?? 1);
+}
+
+function canCrossStructureEdgesForMove(state, fromUnit, toUnit) {
+  const fromCells = getUnitOccupiedCells(fromUnit);
+  const toCells = getUnitOccupiedCells(toUnit);
+  const dx = Number(toUnit.x ?? 0) - Number(fromUnit.x ?? 0);
+  const dy = Number(toUnit.y ?? 0) - Number(fromUnit.y ?? 0);
+
+  if (dx === 0 && dy === 0) return true;
+  if (Math.abs(dx) + Math.abs(dy) !== 1) return true;
+
+  const stepHeight = getUnitStepHeight(toUnit);
+
+  for (const from of fromCells) {
+    const to = { x: from.x + dx, y: from.y + dy };
+    if (!toCells.some((cell) => cell.x === to.x && cell.y === to.y)) continue;
+
+    if (isEdgeMovementBlockedBetween(state.map, from.x, from.y, to.x, to.y, stepHeight)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function canUnitOccupyOrigin(state, unit, x, y) {
   const previewUnit = makePreviewUnit(unit, x, y);
 
@@ -164,6 +192,10 @@ function canTraverseBetweenOrigins(state, unit, fromX, fromY, toX, toY) {
   }
 
   if (Math.abs(toElevation - fromElevation) > 1) {
+    return false;
+  }
+
+  if (!canCrossStructureEdgesForMove(state, fromUnit, toUnit)) {
     return false;
   }
 
@@ -267,6 +299,10 @@ export function getTileMoveCost(state, fromX, fromY, toX, toY, _resolution = "ba
   }
 
   if (Math.abs(toElevation - fromElevation) > 1) {
+    return Infinity;
+  }
+
+  if (!canCrossStructureEdgesForMove(state, fromUnit, toUnit)) {
     return Infinity;
   }
 
