@@ -95,8 +95,6 @@
         }
       ],
       "heightPx": 64,
-      "blocksMove": true,
-      "blocksLOS": true,
       "roof": "roof_001.png",
       "floor": null,
       "debug": false,
@@ -107,8 +105,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 2
         },
         {
           "x": 3,
@@ -116,8 +113,7 @@
           "edge": "sw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 2
         },
         {
           "x": 4,
@@ -125,8 +121,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 2
         },
         {
           "x": 4,
@@ -134,8 +129,7 @@
           "edge": "sw",
           "type": "door",
           "spriteId": "door_001.png",
-          "blocksMove": false,
-          "blocksLOS": false
+          "edgeHeight": 0
         },
         {
           "x": 5,
@@ -143,8 +137,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 2
         },
         {
           "x": 5,
@@ -152,8 +145,7 @@
           "edge": "sw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 2
         },
         {
           "x": 6,
@@ -161,8 +153,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 2
         },
         {
           "x": 6,
@@ -170,8 +161,7 @@
           "edge": "sw",
           "type": "door",
           "spriteId": "door_001.png",
-          "blocksMove": false,
-          "blocksLOS": false
+          "edgeHeight": 0
         },
         {
           "x": 7,
@@ -179,8 +169,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 2
         },
         {
           "x": 7,
@@ -188,8 +177,7 @@
           "edge": "sw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 2
         },
         {
           "x": 3,
@@ -197,8 +185,7 @@
           "edge": "nw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 2
         },
         {
           "x": 7,
@@ -206,8 +193,7 @@
           "edge": "se",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 2
         },
         {
           "x": 3,
@@ -215,8 +201,7 @@
           "edge": "nw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 2
         },
         {
           "x": 7,
@@ -224,8 +209,7 @@
           "edge": "se",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 2
         }
       ]
     },
@@ -266,8 +250,6 @@
         }
       ],
       "heightPx": 64,
-      "blocksMove": true,
-      "blocksLOS": true,
       "roof": "roof_001.png",
       "floor": null,
       "debug": false,
@@ -278,8 +260,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 10,
@@ -287,8 +268,7 @@
           "edge": "sw",
           "type": "door",
           "spriteId": "door_001.png",
-          "blocksMove": false,
-          "blocksLOS": false
+          "edgeHeight": 0
         },
         {
           "x": 11,
@@ -296,8 +276,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 11,
@@ -305,8 +284,7 @@
           "edge": "sw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 10,
@@ -314,8 +292,7 @@
           "edge": "nw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 11,
@@ -323,8 +300,7 @@
           "edge": "se",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 10,
@@ -332,8 +308,7 @@
           "edge": "nw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 11,
@@ -341,8 +316,7 @@
           "edge": "se",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 10,
@@ -350,8 +324,7 @@
           "edge": "nw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 11,
@@ -359,8 +332,7 @@
           "edge": "se",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 10,
@@ -368,8 +340,7 @@
           "edge": "nw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 11,
@@ -377,8 +348,7 @@
           "edge": "se",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         }
       ]
     },
@@ -423,8 +393,6 @@
         }
       ],
       "heightPx": 64,
-      "blocksMove": true,
-      "blocksLOS": true,
       "roof": "roof_001.png",
       "floor": null,
       "debug": false,
@@ -435,8 +403,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 4,
@@ -444,8 +411,7 @@
           "edge": "sw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 5,
@@ -453,8 +419,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 5,
@@ -462,8 +427,7 @@
           "edge": "sw",
           "type": "door",
           "spriteId": "door_001.png",
-          "blocksMove": false,
-          "blocksLOS": false
+          "edgeHeight": 0
         },
         {
           "x": 6,
@@ -471,8 +435,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 6,
@@ -480,8 +443,7 @@
           "edge": "sw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 4,
@@ -489,8 +451,7 @@
           "edge": "nw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 6,
@@ -498,8 +459,7 @@
           "edge": "se",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 4,
@@ -507,8 +467,7 @@
           "edge": "nw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 6,
@@ -516,8 +475,7 @@
           "edge": "se",
           "type": "door",
           "spriteId": "door_001.png",
-          "blocksMove": false,
-          "blocksLOS": false
+          "edgeHeight": 0
         },
         {
           "x": 4,
@@ -525,8 +483,7 @@
           "edge": "nw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 6,
@@ -534,8 +491,7 @@
           "edge": "se",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         }
       ]
     },
@@ -572,8 +528,6 @@
         }
       ],
       "heightPx": 64,
-      "blocksMove": true,
-      "blocksLOS": true,
       "roof": "roof_001.png",
       "floor": null,
       "debug": false,
@@ -583,77 +537,88 @@
           "y": 9,
           "edge": "ne",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 11,
           "y": 9,
           "edge": "ne",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 12,
           "y": 9,
           "edge": "ne",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 10,
           "y": 9,
           "edge": "nw",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 12,
           "y": 9,
           "edge": "se",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 11,
           "y": 9,
           "edge": "sw",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 12,
           "y": 9,
           "edge": "sw",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 10,
           "y": 10,
           "edge": "ne",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 10,
           "y": 10,
           "edge": "se",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 10,
           "y": 10,
           "edge": "nw",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 10,
           "y": 11,
           "edge": "nw",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 10,
@@ -661,43 +626,47 @@
           "edge": "sw",
           "type": "door",
           "spriteId": "door_001.png",
-          "blocksMove": false,
-          "blocksLOS": false
+          "edgeHeight": 0
         },
         {
           "x": 11,
           "y": 11,
           "edge": "sw",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 12,
           "y": 11,
           "edge": "sw",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 12,
           "y": 11,
           "edge": "se",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 11,
           "y": 11,
           "edge": "ne",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         },
         {
           "x": 12,
           "y": 11,
           "edge": "ne",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 6
         }
       ]
     },
@@ -710,8 +679,6 @@
         }
       ],
       "heightPx": 64,
-      "blocksMove": true,
-      "blocksLOS": true,
       "roof": "roof_001.png",
       "floor": null,
       "debug": false,
@@ -722,8 +689,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 14,
@@ -731,8 +697,7 @@
           "edge": "sw",
           "type": "door",
           "spriteId": "door_001.png",
-          "blocksMove": false,
-          "blocksLOS": false
+          "edgeHeight": 0
         },
         {
           "x": 14,
@@ -740,8 +705,7 @@
           "edge": "nw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 14,
@@ -749,8 +713,7 @@
           "edge": "se",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         }
       ]
     },
@@ -771,8 +734,6 @@
         }
       ],
       "heightPx": 64,
-      "blocksMove": true,
-      "blocksLOS": true,
       "roof": "roof_001.png",
       "floor": null,
       "debug": false,
@@ -783,8 +744,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 14,
@@ -792,8 +752,7 @@
           "edge": "sw",
           "type": "door",
           "spriteId": "door_001.png",
-          "blocksMove": false,
-          "blocksLOS": false
+          "edgeHeight": 0
         },
         {
           "x": 15,
@@ -801,8 +760,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 15,
@@ -810,8 +768,7 @@
           "edge": "sw",
           "type": "door",
           "spriteId": "door_001.png",
-          "blocksMove": false,
-          "blocksLOS": false
+          "edgeHeight": 0
         },
         {
           "x": 16,
@@ -819,8 +776,7 @@
           "edge": "ne",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 16,
@@ -828,8 +784,7 @@
           "edge": "sw",
           "type": "door",
           "spriteId": "door_001.png",
-          "blocksMove": false,
-          "blocksLOS": false
+          "edgeHeight": 0
         },
         {
           "x": 14,
@@ -837,8 +792,7 @@
           "edge": "nw",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         },
         {
           "x": 16,
@@ -846,8 +800,7 @@
           "edge": "se",
           "type": "wall",
           "spriteId": "wall_001.png",
-          "blocksMove": true,
-          "blocksLOS": true
+          "edgeHeight": 6
         }
       ]
     }

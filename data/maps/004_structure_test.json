@@ -16,17 +16,18 @@
       {
         "x": 5,
         "y": 10
-      },
-      {
-        "x": 2,
-        "y": 10
       }
     ],
-    "enemy": []
+    "enemy": [
+      {
+        "x": 5,
+        "y": 4
+      }
+    ]
   },
   "structures": [
     {
-      "id": "structure_room_3x1_test",
+      "id": "structure_edge_height_test_room",
       "cells": [
         {
           "x": 5,
@@ -42,18 +43,18 @@
         }
       ],
       "heightPx": 64,
-      "blocksMove": true,
-      "blocksLOS": true,
       "roof": "roof_001.png",
       "floor": null,
-      "debug": false,
+      "debug": true,
+      "showInteriorFloor": false,
       "edges": [
         {
           "x": 5,
           "y": 7,
           "edge": "sw",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 2
         },
         {
           "x": 6,
@@ -61,56 +62,61 @@
           "edge": "sw",
           "type": "door",
           "spriteId": "door_001.png",
-          "blocksMove": false,
-          "blocksLOS": false
+          "edgeHeight": 0
         },
         {
           "x": 7,
           "y": 7,
           "edge": "sw",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 2
         },
         {
           "x": 5,
           "y": 7,
           "edge": "ne",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 2
         },
         {
           "x": 6,
           "y": 7,
           "edge": "ne",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 2
         },
         {
           "x": 7,
           "y": 7,
           "edge": "ne",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 2
         },
         {
           "x": 5,
           "y": 7,
           "edge": "nw",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 2
         },
         {
           "x": 7,
           "y": 7,
           "edge": "se",
           "type": "wall",
-          "spriteId": "wall_001.png"
+          "spriteId": "wall_001.png",
+          "edgeHeight": 2
         }
-      ],
-      "showInteriorFloor": false
+      ]
     }
   ],
   "startState": {
+    "startMode": "authored",
     "deployments": [
       {
         "pilotDefinitionId": "pilot_biggs",
@@ -121,15 +127,12 @@
         "startEmbarked": false
       },
       {
-        "pilotDefinitionId": "pilot_jerri",
-        "pilotInstanceId": "player-pilot-2",
-        "pilotSpawnId": "player_2",
-        "mechDefinitionId": "mech_b",
-        "mechInstanceId": "player-mech-2",
-        "mechSpawnId": "player_2",
-        "team": "player",
-        "controlType": "PC",
-        "startEmbarked": true
+        "pilotDefinitionId": "pilot_wedge",
+        "pilotInstanceId": "enemy-pilot-1",
+        "pilotSpawnId": "enemy_1",
+        "team": "enemy",
+        "controlType": "CPU",
+        "startEmbarked": false
       }
     ]
   },

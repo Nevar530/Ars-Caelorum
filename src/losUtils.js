@@ -48,10 +48,11 @@ export function traceRay(z1, z2, lineTiles, state) {
         blocked: true,
         blockingTile: edgeBlock.blockingTile,
         reason: "edge_blocked",
-        terrainHeight: edgeBlock.edgeHeight,
+        terrainHeight: edgeBlock.terrainHeight ?? edgeBlock.edgeHeight,
+        edgeHeight: edgeBlock.edgeHeight,
         edge: edgeBlock.edge,
         rayHeight: edgeRayHeight,
-        stopHeight: edgeRayHeight
+        stopHeight: edgeBlock.stopHeight ?? edgeRayHeight
       };
     }
 

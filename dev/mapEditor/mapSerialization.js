@@ -33,9 +33,34 @@ export function buildMapDefinitionFromRuntimeMap(map) {
     terrainTypes: Array.isArray(map?.terrainTypes) ? [...map.terrainTypes] : ['grass', 'rock', 'sand', 'water', 'asphalt', 'concrete'],
     spawns: structuredClone(map?.spawns ?? { player: [null, null, null, null], enemy: [null, null, null, null] }),
     startState: structuredClone(map?.startState ?? { deployments: [] }),
-    structures: structuredClone(map?.structures ?? []),
+    structures: sanitizeStructuresForExport(map?.structures ?? []),
     tiles
   };
+}
+
+function sanitizeStructuresForExport(structures) {
+  if (!Array.isArray(structures)) return [];
+
+  return structures.map((structure) => {
+    const clean = structuredClone(structure ?? {});
+
+    // Movement/LOS must come from edgeHeight. These legacy booleans caused
+    // split authority between type, blocking flags, and height.
+    delete clean.blocksMove;
+    delete clean.blocksLOS;
+
+    if (Array.isArray(clean.edges)) {
+      clean.edges = clean.edges.map((edge) => {
+        const cleanEdge = structuredClone(edge ?? {});
+        delete cleanEdge.blocksMove;
+        delete cleanEdge.blocksLOS;
+        cleanEdge.edgeHeight = Math.max(0, Number(cleanEdge.edgeHeight ?? cleanEdge.height ?? cleanEdge.heightLevels ?? 0));
+        return cleanEdge;
+      });
+    }
+
+    return clean;
+  });
 }
 
 export function serializeMapDefinition(mapDefinition) {

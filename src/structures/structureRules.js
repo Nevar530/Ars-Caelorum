@@ -1,10 +1,10 @@
 // src/structures/structureRules.js
 //
 // Structure authority helpers.
-// Structures are board geometry first:
-// - cells define interior/roof footprint
-// - edge parts define walls/doors/windows/etc. on real world tile edges
-// - rendering/projection may rotate, but map truth never rotates
+// Board truth stays simple:
+// - tiles own terrain/floor height
+// - structure edges own barrier height
+// - edge type/sprite are editor/art labels, not gameplay authority
 
 import { RENDER_CONFIG } from "../config.js";
 import { getTile, getTileRenderElevation } from "../map.js";
@@ -41,7 +41,7 @@ export function normalizeStructureForMap(state, raw) {
 
   const elevation = Number(raw?.elevation ?? getTileRenderElevation(tile) ?? 0);
   const heightPx = Math.max(1, Number(raw?.heightPx ?? DEFAULT_STRUCTURE_HEIGHT_PX));
-  const heightLevels = heightPx / RENDER_CONFIG.elevationStepPx;
+  const heightLevels = Number(raw?.heightLevels ?? (heightPx / RENDER_CONFIG.elevationStepPx));
   const id = String(raw?.id ?? `structure_${firstCell.x}_${firstCell.y}`);
 
   return {
@@ -50,12 +50,10 @@ export function normalizeStructureForMap(state, raw) {
     y: firstCell.y,
     cells,
     cellKeys: new Set(cells.map((cell) => makeCellKey(cell.x, cell.y))),
-    edgeParts: normalizeStructureEdges(raw, cells, heightLevels),
+    edgeParts: normalizeStructureEdges(raw, cells),
     elevation,
     heightPx,
     heightLevels,
-    blocksMove: raw?.blocksMove === true,
-    blocksLOS: raw?.blocksLOS === true,
     drawFallbackFaces: raw?.drawFallbackFaces === true,
     roofSprite: resolveStructureSpritePath(raw?.roof ?? raw?.roofSprite),
     floorSprite: resolveStructureSpritePath(raw?.floor ?? raw?.floorSprite ?? raw?.interiorFloor),
@@ -81,12 +79,14 @@ export function getStructuresAtTile(map, x, y) {
   });
 }
 
-export function isStructureMoveBlockedAt(map, x, y) {
-  return getStructuresAtTile(map, x, y).some((structure) => structure?.blocksMove === true);
+// Compatibility wrappers retained so older callers do not fail. Structure cells
+// no longer block standing; authored edge heights block crossing and sight.
+export function isStructureMoveBlockedAt(_map, _x, _y) {
+  return false;
 }
 
-export function isStructureLosBlockedAt(map, x, y) {
-  return getStructuresAtTile(map, x, y).some((structure) => structure?.blocksLOS === true);
+export function isStructureLosBlockedAt(_map, _x, _y) {
+  return false;
 }
 
 export function getEdgeHeightBetween(map, fromX, fromY, toX, toY) {
@@ -111,20 +111,25 @@ export function getEdgeLosBlockBetween(map, fromX, fromY, toX, toY, rayHeight) {
   const edges = getEdgesBetweenCells(fromX, fromY, toX, toY);
 
   for (const edgeRef of edges) {
-    const height = getAuthoredEdgeHeight(map, edgeRef.x, edgeRef.y, edgeRef.edge);
-    if (height <= 0) continue;
+    const edgeHeight = getAuthoredEdgeHeight(map, edgeRef.x, edgeRef.y, edgeRef.edge);
+    if (edgeHeight <= 0) continue;
 
-    if (height >= rayHeight) {
+    const baseHeight = getEdgeBaseElevation(map, edgeRef.x, edgeRef.y);
+    const stopHeight = baseHeight + edgeHeight;
+
+    if (stopHeight >= rayHeight) {
       return {
         blocked: true,
         blockingTile: { x: edgeRef.x, y: edgeRef.y },
         edge: edgeRef.edge,
-        edgeHeight: height
+        edgeHeight,
+        terrainHeight: stopHeight,
+        stopHeight
       };
     }
   }
 
-  return { blocked: false, blockingTile: null, edge: null, edgeHeight: 0 };
+  return { blocked: false, blockingTile: null, edge: null, edgeHeight: 0, terrainHeight: 0, stopHeight: 0 };
 }
 
 export function getEdgesBetweenCells(fromX, fromY, toX, toY) {
@@ -166,6 +171,11 @@ export function makeEdgeKey(x, y, edge) {
   return `${Number(x)},${Number(y)},${String(edge ?? "").toLowerCase()}`;
 }
 
+function getEdgeBaseElevation(map, x, y) {
+  const tile = getTile(map, Number(x), Number(y));
+  return Number(getTileRenderElevation(tile) ?? 0);
+}
+
 function getAuthoredEdgeHeight(map, x, y, edge) {
   const worldEdge = normalizeWorldFace(edge);
   if (!worldEdge) return 0;
@@ -173,10 +183,7 @@ function getAuthoredEdgeHeight(map, x, y, edge) {
   let maxHeight = 0;
 
   for (const raw of getMapStructures(map)) {
-    const cells = normalizeStructureCells(raw);
-    const heightPx = Math.max(1, Number(raw?.heightPx ?? DEFAULT_STRUCTURE_HEIGHT_PX));
-    const defaultHeightLevels = Number(raw?.heightLevels ?? (heightPx / RENDER_CONFIG.elevationStepPx));
-    const edgeParts = normalizeStructureEdges(raw, cells, defaultHeightLevels);
+    const edgeParts = normalizeStructureEdges(raw, normalizeStructureCells(raw));
 
     for (const part of edgeParts) {
       if (Number(part.x) !== Number(x) || Number(part.y) !== Number(y) || part.edge !== worldEdge) continue;
@@ -215,58 +222,47 @@ function normalizeStructureCells(raw) {
   return cells;
 }
 
-function normalizeStructureEdges(raw, cells, defaultHeightLevels = 0) {
+function normalizeStructureEdges(raw, cells) {
   const authored = [];
 
   if (Array.isArray(raw?.edges)) {
     for (const edge of raw.edges) {
-      const normalized = normalizeEdgePart(edge, defaultHeightLevels);
+      const normalized = normalizeEdgePart(edge);
       if (normalized) authored.push(normalized);
     }
   } else if (raw?.edges && typeof raw.edges === "object") {
     for (const [key, value] of Object.entries(raw.edges)) {
-      const fromKey = normalizeEdgeFromKey(key, value, defaultHeightLevels);
+      const fromKey = normalizeEdgeFromKey(key, value);
       if (fromKey) authored.push(fromKey);
     }
   }
 
   if (authored.length > 0) return authored;
 
-  return normalizeLegacyFaceSprites(raw, cells, defaultHeightLevels);
+  return normalizeLegacyFaceSprites(raw, cells);
 }
 
-function normalizeEdgePart(edge, defaultHeightLevels = 0) {
+function normalizeEdgePart(edge) {
   const x = Number(edge?.x ?? edge?.tileX);
   const y = Number(edge?.y ?? edge?.tileY);
   const worldEdge = normalizeWorldFace(edge?.edge ?? edge?.face ?? edge?.side);
   if (!Number.isFinite(x) || !Number.isFinite(y) || !worldEdge) return null;
 
   const type = normalizeEdgeType(edge?.type ?? edge?.kind);
-  const spriteId =
-    edge?.spriteId ??
-    edge?.sprite ??
-    edge?.image ??
-    edge?.faceSprite ??
-    inferSpriteForType(type);
-
-  const blocksMove = edge?.blocksMove ?? (type === STRUCTURE_EDGE_TYPES.WALL || type === STRUCTURE_EDGE_TYPES.WINDOW);
-  const blocksLOS = edge?.blocksLOS ?? (type === STRUCTURE_EDGE_TYPES.WALL);
-  const authoredHeight = edge?.edgeHeight ?? edge?.heightLevels ?? edge?.height ?? edge?.losHeight;
-  const edgeHeight = normalizeEdgeHeight(authoredHeight, defaultHeightLevels, blocksMove, blocksLOS);
+  const spriteId = edge?.spriteId ?? edge?.sprite ?? edge?.image ?? edge?.faceSprite ?? inferSpriteForType(type);
+  const edgeHeight = normalizeEdgeHeight(edge?.edgeHeight ?? edge?.height ?? edge?.heightLevels);
 
   return {
     x,
     y,
     edge: worldEdge,
     type,
-    blocksMove,
-    blocksLOS,
     edgeHeight,
     sprite: resolveStructureSpritePath(spriteId)
   };
 }
 
-function normalizeEdgeFromKey(key, value, defaultHeightLevels = 0) {
+function normalizeEdgeFromKey(key, value) {
   const parts = String(key ?? "").split(/[,:|]/).map((part) => part.trim()).filter(Boolean);
   if (parts.length < 3) return null;
 
@@ -280,10 +276,10 @@ function normalizeEdgeFromKey(key, value, defaultHeightLevels = 0) {
     x,
     y,
     edge
-  }, defaultHeightLevels);
+  });
 }
 
-function normalizeLegacyFaceSprites(raw, cells, defaultHeightLevels = 0) {
+function normalizeLegacyFaceSprites(raw, cells) {
   const src = raw?.faceSprites && typeof raw.faceSprites === "object"
     ? raw.faceSprites
     : raw?.faces && typeof raw.faces === "object"
@@ -307,16 +303,15 @@ function normalizeLegacyFaceSprites(raw, cells, defaultHeightLevels = 0) {
     for (const edge of ["ne", "se", "sw", "nw"]) {
       const spriteId = faceSprites[edge];
       if (!spriteId) continue;
-      const isDoor = looksLikeDoorSprite(spriteId);
 
       edgeParts.push({
         x: cell.x,
         y: cell.y,
         edge,
-        type: isDoor ? STRUCTURE_EDGE_TYPES.DOOR : STRUCTURE_EDGE_TYPES.WALL,
-        blocksMove: !isDoor,
-        blocksLOS: !isDoor,
-        edgeHeight: isDoor ? 0 : defaultHeightLevels,
+        type: looksLikeDoorSprite(spriteId) ? STRUCTURE_EDGE_TYPES.DOOR : STRUCTURE_EDGE_TYPES.WALL,
+        // Legacy sprite faces are art-only unless a map author gives the edge
+        // an explicit height. Gameplay is not inferred from sprite/type.
+        edgeHeight: 0,
         sprite: resolveStructureSpritePath(spriteId)
       });
     }
@@ -333,11 +328,9 @@ function normalizeEdgeType(type) {
   return STRUCTURE_EDGE_TYPES.WALL;
 }
 
-function normalizeEdgeHeight(value, defaultHeightLevels, blocksMove, blocksLOS) {
+function normalizeEdgeHeight(value) {
   const explicit = Number(value);
-  if (Number.isFinite(explicit)) return Math.max(0, explicit);
-  if (blocksMove === true || blocksLOS === true) return Math.max(0, Number(defaultHeightLevels ?? 0));
-  return 0;
+  return Number.isFinite(explicit) ? Math.max(0, explicit) : 0;
 }
 
 function inferSpriteForType(type) {
