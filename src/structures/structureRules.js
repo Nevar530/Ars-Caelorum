@@ -50,6 +50,7 @@ export function normalizeStructureForMap(state, raw) {
     y: firstCell.y,
     cells,
     cellKeys: new Set(cells.map((cell) => makeCellKey(cell.x, cell.y))),
+    roomIds: new Set(cells.map((cell) => cell.roomId).filter(Boolean)),
     edgeParts: normalizeStructureEdges(raw, cells),
     elevation,
     heightPx,
@@ -198,11 +199,17 @@ function getAuthoredEdgeHeight(map, x, y, edge) {
 function normalizeStructureCells(raw) {
   if (Array.isArray(raw?.cells)) {
     return raw.cells
-      .map((cell) => ({
-        x: Number(cell?.x ?? cell?.tileX),
-        y: Number(cell?.y ?? cell?.tileY),
-        roomId: normalizeRoomId(cell?.roomId ?? cell?.room ?? cell?.zoneId ?? cell?.zone)
-      }))
+      .map((cell) => {
+        const normalized = {
+          x: Number(cell?.x ?? cell?.tileX),
+          y: Number(cell?.y ?? cell?.tileY)
+        };
+
+        const roomId = String(cell?.roomId ?? cell?.room ?? cell?.zoneId ?? cell?.zone ?? "").trim();
+        if (roomId) normalized.roomId = roomId;
+
+        return normalized;
+      })
       .filter((cell) => Number.isFinite(cell.x) && Number.isFinite(cell.y));
   }
 
@@ -221,11 +228,6 @@ function normalizeStructureCells(raw) {
   }
 
   return cells;
-}
-
-function normalizeRoomId(value) {
-  const text = String(value ?? "").trim();
-  return text || null;
 }
 
 function normalizeStructureEdges(raw, cells) {

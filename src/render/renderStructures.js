@@ -13,10 +13,8 @@ import {
   getMapStructures,
   getStructureCells,
   getStructureEdgeParts,
-  makeCellKey,
   normalizeStructureForMap
 } from "../structures/structureRules.js";
-import { getActiveBody, getBoardUnits } from "../actors/actorResolver.js";
 
 let clipId = 0;
 
@@ -41,11 +39,9 @@ export function getStructureSceneItems(state) {
       continue;
     }
 
-    const cutaway = getStructureCutaway(state, structure);
-
-    items.push(...makeFloorItems(state, structure, cutaway));
-    items.push(...makeEdgeItems(state, structure, cutaway));
-    items.push(...makeRoofItems(state, structure, cutaway));
+    items.push(...makeFloorItems(state, structure));
+    items.push(...makeEdgeItems(state, structure));
+    items.push(...makeRoofItems(state, structure));
 
     if (structure.debug) {
       items.push(...makeDebugItems(state, structure));
@@ -53,111 +49,6 @@ export function getStructureSceneItems(state) {
   }
 
   return items.filter(Boolean);
-}
-
-
-function getStructureCutaway(state, structure) {
-  const cells = getStructureCells(structure);
-  const cellsByKey = new Map(cells.map((cell) => [makeCellKey(cell.x, cell.y), cell]));
-
-  if (cellsByKey.size === 0) {
-    return { active: false, roomIds: new Set(), wholeStructure: false, positions: [] };
-  }
-
-  const roomIds = new Set();
-  const positions = [];
-  let wholeStructure = false;
-
-  for (const pos of getPilotCutawayPositions(state)) {
-    const cell = cellsByKey.get(makeCellKey(pos.x, pos.y));
-    if (!cell) continue;
-
-    positions.push(pos);
-
-    if (cell.roomId) {
-      roomIds.add(cell.roomId);
-    } else {
-      // Backward-compatible fallback for old maps without room/zone authoring.
-      wholeStructure = true;
-    }
-  }
-
-  return {
-    active: wholeStructure || roomIds.size > 0,
-    roomIds,
-    wholeStructure,
-    positions
-  };
-}
-
-function getPilotCutawayPositions(state) {
-  const positions = [];
-
-  for (const unit of getBoardUnits(state)) {
-    if (!unit || unit.unitType !== "pilot") continue;
-    positions.push({ x: Number(unit.x), y: Number(unit.y) });
-  }
-
-  positions.push(...getMovePreviewPilotPositions(state));
-
-  return positions.filter((pos) => Number.isFinite(pos.x) && Number.isFinite(pos.y));
-}
-
-function getMovePreviewPilotPositions(state) {
-  if (state?.ui?.mode !== "move") return [];
-
-  const activeBody = getActiveBody(state);
-  if (!activeBody || activeBody.unitType !== "pilot") return [];
-
-  const path = Array.isArray(state?.ui?.previewPath) ? state.ui.previewPath : [];
-  if (path.length === 0) return [];
-
-  // Cutaway should follow the tile the player is previewing, not every
-  // waypoint in the path. Using the full path made roof reveal feel like a
-  // path-shaped strip instead of a room/zone reveal.
-  const destination = path[path.length - 1];
-  return [{ x: Number(destination?.x), y: Number(destination?.y) }];
-}
-
-function doesCutawayAffectCell(cutaway, cell) {
-  if (!cutaway?.active) return false;
-  if (cutaway.wholeStructure === true) return true;
-  const roomId = cell?.roomId ?? null;
-  return Boolean(roomId && cutaway.roomIds instanceof Set && cutaway.roomIds.has(roomId));
-}
-
-function getCutawayEdgeOpacity(state, structure, edgePart, cutaway) {
-  if (!cutaway?.active) return 1;
-  if (!isLowerScreenEdge(state, edgePart?.edge)) return 1;
-
-  // Fade visible lower/front structure art in the 3x3 chunk around the pilot
-  // or move-preview destination. Doors can be height 0 but still need to fade
-  // so the unit and destination tile stay readable. Pure open edges with no
-  // sprite have nothing to fade.
-  const hasVisibleArt = Boolean(edgePart?.sprite);
-  const hasBarrierHeight = Number(edgePart?.edgeHeight ?? 0) > 0;
-  if (!hasVisibleArt && !hasBarrierHeight) return 1;
-
-  const positions = Array.isArray(cutaway.positions) ? cutaway.positions : [];
-  if (!positions.some((pos) => isEdgeNearPosition(edgePart, pos))) return 1;
-
-  return 0.2;
-}
-
-function isLowerScreenEdge(state, worldFace) {
-  const screenEdge = getScreenEdgeForWorldFace(state?.rotation, worldFace);
-  return screenEdge === "bottomLeft" || screenEdge === "bottomRight";
-}
-
-function isEdgeNearPosition(edgePart, pos) {
-  const ex = Number(edgePart?.x);
-  const ey = Number(edgePart?.y);
-  const px = Number(pos?.x);
-  const py = Number(pos?.y);
-
-  if (![ex, ey, px, py].every(Number.isFinite)) return false;
-
-  return Math.abs(ex - px) <= 1 && Math.abs(ey - py) <= 1;
 }
 
 function makeTopItems(state, structure) {
@@ -193,18 +84,16 @@ function makeTopItems(state, structure) {
   return items;
 }
 
-function makeFloorItems(state, structure, cutaway = null) {
-  // Floors/interior fills are intentionally opt-in while the roof is closed.
-  // When a pilot is inside, or previews a reachable move inside, draw the
-  // fallback floor so the cutaway has readable walkable space before confirm.
-  const shouldShowCutawayFloor = cutaway?.active === true;
-  if (!structure.floorSprite && structure.showInteriorFloor !== true && !shouldShowCutawayFloor) return [];
+function makeFloorItems(state, structure) {
+  // Floors/interior fills are normally opt-in. If a room is revealed, the
+  // floor remains visible under that room's roof cutaway. This is render-only;
+  // movement/LOS still come from map edge height truth.
+  const revealInfo = getStructureRevealInfo(state, structure);
+  if (!structure.floorSprite && structure.showInteriorFloor !== true && !revealInfo.revealsAny) return [];
 
   const items = [];
 
   for (const cell of getStructureCells(structure)) {
-    if (shouldShowCutawayFloor && !doesCutawayAffectCell(cutaway, cell) && structure.showInteriorFloor !== true) continue;
-
     const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
     const screenY = Math.max(...points.map((point) => point.y));
 
@@ -225,8 +114,9 @@ function makeFloorItems(state, structure, cutaway = null) {
   return items;
 }
 
-function makeEdgeItems(state, structure, cutaway = null) {
+function makeEdgeItems(state, structure) {
   const items = [];
+  const fadeInfo = getStructureFadeInfo(state, structure);
 
   for (const edgePart of getStructureEdgeParts(structure)) {
     if (!edgePart?.sprite && edgePart?.type === "open") continue;
@@ -251,7 +141,7 @@ function makeEdgeItems(state, structure, cutaway = null) {
       edgePart,
       points,
       imagePath: edgePart.sprite,
-      opacity: getCutawayEdgeOpacity(state, structure, edgePart, cutaway),
+      opacity: shouldFadeEdgeForInteriorView(state, fadeInfo, edgePart) ? 0.2 : 1,
       sortDepth: screenY + 0.18,
       sortKey:
         getSceneSortKey(state, midpoint.worldX ?? edgePart.x, midpoint.worldY ?? edgePart.y, structure.elevation) +
@@ -265,13 +155,16 @@ function makeEdgeItems(state, structure, cutaway = null) {
   return items;
 }
 
-function makeRoofItems(state, structure, cutaway = null) {
+function makeRoofItems(state, structure) {
   const items = [];
 
   if (!structure.roofSprite) return items;
 
+  const revealInfo = getStructureRevealInfo(state, structure);
+  if (revealInfo.revealWholeStructure) return items;
+
   for (const cell of getStructureCells(structure)) {
-    if (doesCutawayAffectCell(cutaway, cell)) continue;
+    if (isCellRoofRevealed(cell, revealInfo)) continue;
 
     const floorPoints = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
     const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, structure.heightPx);
@@ -284,9 +177,6 @@ function makeRoofItems(state, structure, cutaway = null) {
       points,
       imagePath: structure.roofSprite,
       textureRotation: state.rotation,
-      // Roofs are a separate cover layer. Sort them after their walls so they
-      // read as closed rooms until a future cutaway/inside-unit state hides
-      // them. This fixes the "no roofs" symptom from the first rewrite pass.
       sortDepth: floorScreenY + structure.heightPx + 0.42,
       sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation + structure.heightLevels) + 0.3,
       render(parent) {
@@ -296,6 +186,157 @@ function makeRoofItems(state, structure, cutaway = null) {
   }
 
   return items;
+}
+
+function getStructureRevealInfo(state, structure) {
+  const cellByKey = makeStructureCellLookup(structure);
+  const revealedRoomIds = new Set();
+  let revealsAny = false;
+  let revealWholeStructure = false;
+
+  for (const pos of getInteriorRevealPositions(state, structure, { includeAllPilots: true })) {
+    const cell = cellByKey.get(makeCellKey(pos.x, pos.y));
+    if (!cell) continue;
+
+    revealsAny = true;
+
+    if (cell.roomId) {
+      revealedRoomIds.add(String(cell.roomId));
+    } else {
+      // Older maps do not have room zones. Preserve their previous behavior:
+      // any pilot inside hides the full roof.
+      revealWholeStructure = true;
+    }
+  }
+
+  return {
+    revealsAny,
+    revealWholeStructure,
+    revealedRoomIds
+  };
+}
+
+function getStructureFadeInfo(state, structure) {
+  const positions = getInteriorRevealPositions(state, structure, { includeAllPilots: false });
+  const fadeCells = new Set();
+
+  for (const pos of positions) {
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        const x = Number(pos.x) + dx;
+        const y = Number(pos.y) + dy;
+        if (structure.cellKeys?.has(makeCellKey(x, y))) fadeCells.add(makeCellKey(x, y));
+      }
+    }
+  }
+
+  return { fadeCells };
+}
+
+function getInteriorRevealPositions(state, structure, options = {}) {
+  const includeAllPilots = options.includeAllPilots === true;
+  const positions = [];
+  const cells = structure?.cellKeys instanceof Set
+    ? structure.cellKeys
+    : new Set(getStructureCells(structure).map((cell) => makeCellKey(cell.x, cell.y)));
+
+  if (!cells.size) return positions;
+
+  const units = Array.isArray(state?.units) ? state.units : [];
+
+  if (includeAllPilots) {
+    for (const unit of units) {
+      if (!unit || unit.unitType !== "pilot" || unit.embarked === true) continue;
+      const pos = { x: Number(unit.x), y: Number(unit.y) };
+      if (cells.has(makeCellKey(pos.x, pos.y))) positions.push(pos);
+    }
+  } else {
+    const active = getActiveRenderPilot(state);
+    if (active) {
+      const pos = { x: Number(active.x), y: Number(active.y) };
+      if (cells.has(makeCellKey(pos.x, pos.y))) positions.push(pos);
+    }
+  }
+
+  const preview = getMovePreviewDestination(state);
+  if (preview && cells.has(makeCellKey(preview.x, preview.y))) positions.push(preview);
+
+  return dedupePositions(positions);
+}
+
+function getActiveRenderPilot(state) {
+  const units = Array.isArray(state?.units) ? state.units : [];
+  const ids = [
+    state?.ui?.preMove?.unitId,
+    state?.turn?.activeBodyId,
+    state?.turn?.activeUnitId,
+    state?.selection?.unitId
+  ].filter(Boolean);
+
+  for (const id of ids) {
+    const unit = units.find((entry) => entry?.instanceId === id || entry?.id === id);
+    if (unit?.unitType === "pilot" && unit.embarked !== true) return unit;
+  }
+
+  return null;
+}
+
+function getMovePreviewDestination(state) {
+  if (state?.ui?.mode !== "move") return null;
+
+  const path = Array.isArray(state?.ui?.previewPath) ? state.ui.previewPath : [];
+  const last = path.length ? path[path.length - 1] : null;
+  if (last && Number.isFinite(Number(last.x)) && Number.isFinite(Number(last.y))) {
+    return { x: Number(last.x), y: Number(last.y) };
+  }
+
+  return null;
+}
+
+function isCellRoofRevealed(cell, revealInfo) {
+  if (!revealInfo?.revealsAny) return false;
+  if (revealInfo.revealWholeStructure) return true;
+  if (!cell?.roomId) return false;
+  return revealInfo.revealedRoomIds.has(String(cell.roomId));
+}
+
+function shouldFadeEdgeForInteriorView(state, fadeInfo, edgePart) {
+  if (!edgePart?.sprite) return false;
+  if (!fadeInfo?.fadeCells?.size) return false;
+  if (!isLowerScreenWorldEdge(state, edgePart.edge)) return false;
+  return fadeInfo.fadeCells.has(makeCellKey(edgePart.x, edgePart.y));
+}
+
+function isLowerScreenWorldEdge(state, worldFace) {
+  const face = String(worldFace ?? "").toLowerCase();
+  return face === getWorldFaceForScreenSide(state.rotation, "left") ||
+    face === getWorldFaceForScreenSide(state.rotation, "right");
+}
+
+function makeStructureCellLookup(structure) {
+  const lookup = new Map();
+  for (const cell of getStructureCells(structure)) {
+    lookup.set(makeCellKey(cell.x, cell.y), cell);
+  }
+  return lookup;
+}
+
+function makeCellKey(x, y) {
+  return String(Number(x)) + "," + String(Number(y));
+}
+
+function dedupePositions(positions) {
+  const seen = new Set();
+  const result = [];
+
+  for (const pos of positions) {
+    const key = makeCellKey(pos.x, pos.y);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(pos);
+  }
+
+  return result;
 }
 
 function makeDebugItems(state, structure) {
@@ -344,11 +385,11 @@ function drawFloor(item, parent) {
 
 function drawEdge(item, parent) {
   const group = svgEl("g");
-  if (Number.isFinite(Number(item.opacity)) && Number(item.opacity) < 1) {
-    group.setAttribute("opacity", String(item.opacity));
-  }
   group.dataset.structureId = item.structureId;
   group.dataset.structurePart = "edge";
+  if (Number(item.opacity ?? 1) < 1) {
+    group.setAttribute("opacity", String(item.opacity));
+  }
   group.dataset.edge = item.edgePart?.edge ?? "";
   group.dataset.edgeType = item.edgePart?.type ?? "";
 
