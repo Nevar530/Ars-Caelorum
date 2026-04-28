@@ -55,363 +55,453 @@
       "cells": [
         {
           "x": 5,
-          "y": 4
+          "y": 4,
+          "roomId": "office_west"
         },
         {
           "x": 6,
-          "y": 4
+          "y": 4,
+          "roomId": "office_west"
         },
         {
           "x": 7,
-          "y": 4
+          "y": 4,
+          "roomId": "office_west"
         },
         {
           "x": 8,
-          "y": 4
+          "y": 4,
+          "roomId": "office_west"
         },
         {
           "x": 9,
-          "y": 4
+          "y": 4,
+          "roomId": "hallway"
         },
         {
           "x": 10,
-          "y": 4
+          "y": 4,
+          "roomId": "hallway"
         },
         {
           "x": 11,
-          "y": 4
+          "y": 4,
+          "roomId": "office_east"
         },
         {
           "x": 12,
-          "y": 4
+          "y": 4,
+          "roomId": "office_east"
         },
         {
           "x": 13,
-          "y": 4
+          "y": 4,
+          "roomId": "office_east"
         },
         {
           "x": 14,
-          "y": 4
+          "y": 4,
+          "roomId": "office_east"
         },
         {
           "x": 5,
-          "y": 5
+          "y": 5,
+          "roomId": "office_west"
         },
         {
           "x": 6,
-          "y": 5
+          "y": 5,
+          "roomId": "office_west"
         },
         {
           "x": 7,
-          "y": 5
+          "y": 5,
+          "roomId": "office_west"
         },
         {
           "x": 8,
-          "y": 5
+          "y": 5,
+          "roomId": "office_west"
         },
         {
           "x": 9,
-          "y": 5
+          "y": 5,
+          "roomId": "hallway"
         },
         {
           "x": 10,
-          "y": 5
+          "y": 5,
+          "roomId": "hallway"
         },
         {
           "x": 11,
-          "y": 5
+          "y": 5,
+          "roomId": "office_east"
         },
         {
           "x": 12,
-          "y": 5
+          "y": 5,
+          "roomId": "office_east"
         },
         {
           "x": 13,
-          "y": 5
+          "y": 5,
+          "roomId": "office_east"
         },
         {
           "x": 14,
-          "y": 5
+          "y": 5,
+          "roomId": "office_east"
         },
         {
           "x": 5,
-          "y": 6
+          "y": 6,
+          "roomId": "office_west"
         },
         {
           "x": 6,
-          "y": 6
+          "y": 6,
+          "roomId": "office_west"
         },
         {
           "x": 7,
-          "y": 6
+          "y": 6,
+          "roomId": "office_west"
         },
         {
           "x": 8,
-          "y": 6
+          "y": 6,
+          "roomId": "office_west"
         },
         {
           "x": 9,
-          "y": 6
+          "y": 6,
+          "roomId": "hallway"
         },
         {
           "x": 10,
-          "y": 6
+          "y": 6,
+          "roomId": "hallway"
         },
         {
           "x": 11,
-          "y": 6
+          "y": 6,
+          "roomId": "office_east"
         },
         {
           "x": 12,
-          "y": 6
+          "y": 6,
+          "roomId": "office_east"
         },
         {
           "x": 13,
-          "y": 6
+          "y": 6,
+          "roomId": "office_east"
         },
         {
           "x": 14,
-          "y": 6
+          "y": 6,
+          "roomId": "office_east"
         },
         {
           "x": 5,
-          "y": 7
+          "y": 7,
+          "roomId": "storage_west"
         },
         {
           "x": 6,
-          "y": 7
+          "y": 7,
+          "roomId": "storage_west"
         },
         {
           "x": 7,
-          "y": 7
+          "y": 7,
+          "roomId": "storage_west"
         },
         {
           "x": 8,
-          "y": 7
+          "y": 7,
+          "roomId": "storage_west"
         },
         {
           "x": 9,
-          "y": 7
+          "y": 7,
+          "roomId": "hallway"
         },
         {
           "x": 10,
-          "y": 7
+          "y": 7,
+          "roomId": "hallway"
         },
         {
           "x": 11,
-          "y": 7
+          "y": 7,
+          "roomId": "storage_east"
         },
         {
           "x": 12,
-          "y": 7
+          "y": 7,
+          "roomId": "storage_east"
         },
         {
           "x": 13,
-          "y": 7
+          "y": 7,
+          "roomId": "storage_east"
         },
         {
           "x": 14,
-          "y": 7
+          "y": 7,
+          "roomId": "storage_east"
         },
         {
           "x": 5,
-          "y": 8
+          "y": 8,
+          "roomId": "storage_west"
         },
         {
           "x": 6,
-          "y": 8
+          "y": 8,
+          "roomId": "storage_west"
         },
         {
           "x": 7,
-          "y": 8
+          "y": 8,
+          "roomId": "storage_west"
         },
         {
           "x": 8,
-          "y": 8
+          "y": 8,
+          "roomId": "storage_west"
         },
         {
           "x": 9,
-          "y": 8
+          "y": 8,
+          "roomId": "hallway"
         },
         {
           "x": 10,
-          "y": 8
+          "y": 8,
+          "roomId": "hallway"
         },
         {
           "x": 11,
-          "y": 8
+          "y": 8,
+          "roomId": "storage_east"
         },
         {
           "x": 12,
-          "y": 8
+          "y": 8,
+          "roomId": "storage_east"
         },
         {
           "x": 13,
-          "y": 8
+          "y": 8,
+          "roomId": "storage_east"
         },
         {
           "x": 14,
-          "y": 8
+          "y": 8,
+          "roomId": "storage_east"
         },
         {
           "x": 5,
-          "y": 9
+          "y": 9,
+          "roomId": "storage_west"
         },
         {
           "x": 6,
-          "y": 9
+          "y": 9,
+          "roomId": "storage_west"
         },
         {
           "x": 7,
-          "y": 9
+          "y": 9,
+          "roomId": "storage_west"
         },
         {
           "x": 8,
-          "y": 9
+          "y": 9,
+          "roomId": "storage_west"
         },
         {
           "x": 9,
-          "y": 9
+          "y": 9,
+          "roomId": "hallway"
         },
         {
           "x": 10,
-          "y": 9
+          "y": 9,
+          "roomId": "hallway"
         },
         {
           "x": 11,
-          "y": 9
+          "y": 9,
+          "roomId": "storage_east"
         },
         {
           "x": 12,
-          "y": 9
+          "y": 9,
+          "roomId": "storage_east"
         },
         {
           "x": 13,
-          "y": 9
+          "y": 9,
+          "roomId": "storage_east"
         },
         {
           "x": 14,
-          "y": 9
+          "y": 9,
+          "roomId": "storage_east"
         },
         {
           "x": 5,
-          "y": 10
+          "y": 10,
+          "roomId": "storage_west"
         },
         {
           "x": 6,
-          "y": 10
+          "y": 10,
+          "roomId": "storage_west"
         },
         {
           "x": 7,
-          "y": 10
+          "y": 10,
+          "roomId": "storage_west"
         },
         {
           "x": 8,
-          "y": 10
+          "y": 10,
+          "roomId": "storage_west"
         },
         {
           "x": 9,
-          "y": 10
+          "y": 10,
+          "roomId": "hallway"
         },
         {
           "x": 10,
-          "y": 10
+          "y": 10,
+          "roomId": "hallway"
         },
         {
           "x": 11,
-          "y": 10
+          "y": 10,
+          "roomId": "storage_east"
         },
         {
           "x": 12,
-          "y": 10
+          "y": 10,
+          "roomId": "storage_east"
         },
         {
           "x": 13,
-          "y": 10
+          "y": 10,
+          "roomId": "storage_east"
         },
         {
           "x": 14,
-          "y": 10
+          "y": 10,
+          "roomId": "storage_east"
         },
         {
           "x": 5,
-          "y": 11
+          "y": 11,
+          "roomId": "storage_west"
         },
         {
           "x": 6,
-          "y": 11
+          "y": 11,
+          "roomId": "storage_west"
         },
         {
           "x": 7,
-          "y": 11
+          "y": 11,
+          "roomId": "storage_west"
         },
         {
           "x": 8,
-          "y": 11
+          "y": 11,
+          "roomId": "storage_west"
         },
         {
           "x": 9,
-          "y": 11
+          "y": 11,
+          "roomId": "hallway"
         },
         {
           "x": 10,
-          "y": 11
+          "y": 11,
+          "roomId": "hallway"
         },
         {
           "x": 11,
-          "y": 11
+          "y": 11,
+          "roomId": "storage_east"
         },
         {
           "x": 12,
-          "y": 11
+          "y": 11,
+          "roomId": "storage_east"
         },
         {
           "x": 13,
-          "y": 11
+          "y": 11,
+          "roomId": "storage_east"
         },
         {
           "x": 14,
-          "y": 11
+          "y": 11,
+          "roomId": "storage_east"
         },
         {
           "x": 5,
-          "y": 12
+          "y": 12,
+          "roomId": "storage_west"
         },
         {
           "x": 6,
-          "y": 12
+          "y": 12,
+          "roomId": "storage_west"
         },
         {
           "x": 7,
-          "y": 12
+          "y": 12,
+          "roomId": "storage_west"
         },
         {
           "x": 8,
-          "y": 12
+          "y": 12,
+          "roomId": "storage_west"
         },
         {
           "x": 9,
-          "y": 12
+          "y": 12,
+          "roomId": "hallway"
         },
         {
           "x": 10,
-          "y": 12
+          "y": 12,
+          "roomId": "hallway"
         },
         {
           "x": 11,
-          "y": 12
+          "y": 12,
+          "roomId": "storage_east"
         },
         {
           "x": 12,
-          "y": 12
+          "y": 12,
+          "roomId": "storage_east"
         },
         {
           "x": 13,
-          "y": 12
+          "y": 12,
+          "roomId": "storage_east"
         },
         {
           "x": 14,
-          "y": 12
+          "y": 12,
+          "roomId": "storage_east"
         }
       ],
       "heightPx": 64,
@@ -1011,6 +1101,28 @@
           "type": "wall",
           "spriteId": "wall_001.png",
           "edgeHeight": 2
+        }
+      ],
+      "rooms": [
+        {
+          "id": "hallway",
+          "name": "Central Hallway"
+        },
+        {
+          "id": "office_west",
+          "name": "West Office"
+        },
+        {
+          "id": "office_east",
+          "name": "East Office"
+        },
+        {
+          "id": "storage_west",
+          "name": "West Storage"
+        },
+        {
+          "id": "storage_east",
+          "name": "East Storage"
         }
       ]
     }

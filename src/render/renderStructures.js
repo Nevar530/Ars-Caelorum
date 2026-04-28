@@ -44,7 +44,7 @@ export function getStructureSceneItems(state) {
     const cutaway = getStructureCutaway(state, structure);
 
     items.push(...makeFloorItems(state, structure, cutaway));
-    items.push(...makeEdgeItems(state, structure));
+    items.push(...makeEdgeItems(state, structure, cutaway));
     items.push(...makeRoofItems(state, structure, cutaway));
 
     if (structure.debug) {
@@ -57,19 +57,37 @@ export function getStructureSceneItems(state) {
 
 
 function getStructureCutaway(state, structure) {
-  const cellKeys = structure?.cellKeys instanceof Set
-    ? structure.cellKeys
-    : new Set(getStructureCells(structure).map((cell) => makeCellKey(cell.x, cell.y)));
+  const cells = getStructureCells(structure);
+  const cellsByKey = new Map(cells.map((cell) => [makeCellKey(cell.x, cell.y), cell]));
 
-  if (cellKeys.size === 0) return { active: false };
+  if (cellsByKey.size === 0) {
+    return { active: false, roomIds: new Set(), wholeStructure: false, positions: [] };
+  }
+
+  const roomIds = new Set();
+  const positions = [];
+  let wholeStructure = false;
 
   for (const pos of getPilotCutawayPositions(state)) {
-    if (cellKeys.has(makeCellKey(pos.x, pos.y))) {
-      return { active: true };
+    const cell = cellsByKey.get(makeCellKey(pos.x, pos.y));
+    if (!cell) continue;
+
+    positions.push(pos);
+
+    if (cell.roomId) {
+      roomIds.add(cell.roomId);
+    } else {
+      // Backward-compatible fallback for old maps without room/zone authoring.
+      wholeStructure = true;
     }
   }
 
-  return { active: false };
+  return {
+    active: wholeStructure || roomIds.size > 0,
+    roomIds,
+    wholeStructure,
+    positions
+  };
 }
 
 function getPilotCutawayPositions(state) {
@@ -95,6 +113,41 @@ function getMovePreviewPilotPositions(state) {
   if (path.length === 0) return [];
 
   return path.map((step) => ({ x: Number(step.x), y: Number(step.y) }));
+}
+
+function doesCutawayAffectCell(cutaway, cell) {
+  if (!cutaway?.active) return false;
+  if (cutaway.wholeStructure === true) return true;
+  const roomId = cell?.roomId ?? null;
+  return Boolean(roomId && cutaway.roomIds instanceof Set && cutaway.roomIds.has(roomId));
+}
+
+function getCutawayEdgeOpacity(state, structure, edgePart, cutaway) {
+  if (!cutaway?.active) return 1;
+  if (!isLowerScreenEdge(state, edgePart?.edge)) return 1;
+  if (Number(edgePart?.edgeHeight ?? 0) <= 0) return 1;
+  if (isTransparentOpeningEdge(edgePart)) return 1;
+
+  const positions = Array.isArray(cutaway.positions) ? cutaway.positions : [];
+  if (!positions.some((pos) => isEdgeNearPosition(edgePart, pos))) return 1;
+
+  return 0.2;
+}
+
+function isLowerScreenEdge(state, worldFace) {
+  const screenEdge = getScreenEdgeForWorldFace(state?.rotation, worldFace);
+  return screenEdge === "bottomLeft" || screenEdge === "bottomRight";
+}
+
+function isEdgeNearPosition(edgePart, pos) {
+  const ex = Number(edgePart?.x);
+  const ey = Number(edgePart?.y);
+  const px = Number(pos?.x);
+  const py = Number(pos?.y);
+
+  if (![ex, ey, px, py].every(Number.isFinite)) return false;
+
+  return Math.abs(ex - px) <= 1 && Math.abs(ey - py) <= 1;
 }
 
 function makeTopItems(state, structure) {
@@ -140,6 +193,8 @@ function makeFloorItems(state, structure, cutaway = null) {
   const items = [];
 
   for (const cell of getStructureCells(structure)) {
+    if (shouldShowCutawayFloor && !doesCutawayAffectCell(cutaway, cell) && structure.showInteriorFloor !== true) continue;
+
     const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
     const screenY = Math.max(...points.map((point) => point.y));
 
@@ -160,7 +215,7 @@ function makeFloorItems(state, structure, cutaway = null) {
   return items;
 }
 
-function makeEdgeItems(state, structure) {
+function makeEdgeItems(state, structure, cutaway = null) {
   const items = [];
 
   for (const edgePart of getStructureEdgeParts(structure)) {
@@ -186,6 +241,7 @@ function makeEdgeItems(state, structure) {
       edgePart,
       points,
       imagePath: edgePart.sprite,
+      opacity: getCutawayEdgeOpacity(state, structure, edgePart, cutaway),
       sortDepth: screenY + 0.18,
       sortKey:
         getSceneSortKey(state, midpoint.worldX ?? edgePart.x, midpoint.worldY ?? edgePart.y, structure.elevation) +
@@ -203,9 +259,10 @@ function makeRoofItems(state, structure, cutaway = null) {
   const items = [];
 
   if (!structure.roofSprite) return items;
-  if (cutaway?.active === true) return items;
 
   for (const cell of getStructureCells(structure)) {
+    if (doesCutawayAffectCell(cutaway, cell)) continue;
+
     const floorPoints = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
     const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, structure.heightPx);
     const floorScreenY = Math.max(...floorPoints.map((point) => point.y));
@@ -277,6 +334,9 @@ function drawFloor(item, parent) {
 
 function drawEdge(item, parent) {
   const group = svgEl("g");
+  if (Number.isFinite(Number(item.opacity)) && Number(item.opacity) < 1) {
+    group.setAttribute("opacity", String(item.opacity));
+  }
   group.dataset.structureId = item.structureId;
   group.dataset.structurePart = "edge";
   group.dataset.edge = item.edgePart?.edge ?? "";

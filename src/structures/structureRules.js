@@ -200,7 +200,8 @@ function normalizeStructureCells(raw) {
     return raw.cells
       .map((cell) => ({
         x: Number(cell?.x ?? cell?.tileX),
-        y: Number(cell?.y ?? cell?.tileY)
+        y: Number(cell?.y ?? cell?.tileY),
+        roomId: normalizeRoomId(cell?.roomId ?? cell?.room ?? cell?.zoneId ?? cell?.zone)
       }))
       .filter((cell) => Number.isFinite(cell.x) && Number.isFinite(cell.y));
   }
@@ -220,6 +221,11 @@ function normalizeStructureCells(raw) {
   }
 
   return cells;
+}
+
+function normalizeRoomId(value) {
+  const text = String(value ?? "").trim();
+  return text || null;
 }
 
 function normalizeStructureEdges(raw, cells) {
