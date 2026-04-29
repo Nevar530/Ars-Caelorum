@@ -1969,3 +1969,90 @@ button:disabled {
   fill: #ffd6e7;
   font-size: 8px;
 }
+
+/* =========================================
+   MISSION BUILDER — NEW / LOAD LANDING V1
+========================================= */
+
+.builder-landing {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 18px;
+  padding: 28px;
+  overflow: auto;
+}
+
+.builder-landing-hero {
+  max-width: 820px;
+}
+
+.builder-landing-hero h3 {
+  margin: 6px 0 8px;
+  color: #f5f7ff;
+  font-size: 32px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+}
+
+.builder-landing-hero p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.builder-start-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 14px;
+  max-width: 960px;
+}
+
+.builder-start-card {
+  min-height: 116px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+  color: #f5f7ff;
+  text-align: left;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.22);
+}
+
+.builder-start-card:hover:not(:disabled) {
+  border-color: rgba(240, 176, 0, 0.5);
+  background: rgba(240, 176, 0, 0.11);
+}
+
+.builder-start-card span {
+  display: block;
+  color: #fff4cc;
+  font-size: 16px;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+}
+
+.builder-start-card small {
+  display: block;
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.builder-start-card.is-disabled,
+.builder-start-card:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.builder-landing-context {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 320px));
+  gap: 12px;
+  align-content: start;
+  max-width: 720px;
+}

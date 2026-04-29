@@ -5,9 +5,12 @@
 
 import {
   createBuilderState,
+  isBuilderWorkspaceCurrentMap,
+  prepareBuilderLaunch,
   pushBuilderLog,
   setBuilderOpen,
   setBuilderTab,
+  setBuilderWorkspaceMode,
   syncBuilderRuntimeMap,
   toggleBuilderOverlay
 } from "./builderState.js";
@@ -19,6 +22,7 @@ import {
 } from "./builderSelection.js";
 import { createBuilderShell, renderBuilderShell } from "./ui/builderShell.js";
 import {
+  clearWysiwygWorkspace,
   pickWorkspaceEdgeFromEvent,
   pickWorkspaceTileFromEvent,
   renderWysiwygWorkspace
@@ -100,7 +104,7 @@ class MissionBuilder {
   }
 
   handlePointerMove(event) {
-    if (!this.builderState.isOpen) return;
+    if (!this.builderState.isOpen || !isBuilderWorkspaceCurrentMap(this.builderState)) return;
 
     const picked = pickWorkspaceTileFromEvent({
       event,
@@ -136,6 +140,10 @@ class MissionBuilder {
   }
 
   handleWorkspaceClick(event) {
+    if (!isBuilderWorkspaceCurrentMap(this.builderState)) {
+      return;
+    }
+
     const picked = event.shiftKey
       ? pickWorkspaceEdgeFromEvent({ event, appState: this.appState, board: this.refs.board })
       : pickWorkspaceTileFromEvent({ event, appState: this.appState, board: this.refs.board });
@@ -166,6 +174,30 @@ class MissionBuilder {
       return;
     }
 
+    if (action === "use-current-map") {
+      setBuilderWorkspaceMode(this.builderState, "current-map", this.appState);
+      this.render();
+      return;
+    }
+
+    if (action === "new-mission") {
+      pushBuilderLog(this.builderState, "New Mission Package flow is staged next; no package mutation in this pass.");
+      this.render();
+      return;
+    }
+
+    if (action === "new-map") {
+      pushBuilderLog(this.builderState, "New Map flow is staged next: id, size, base terrain, base height.");
+      this.render();
+      return;
+    }
+
+    if (action === "load-existing") {
+      pushBuilderLog(this.builderState, "Load Existing flow is staged next; catalog/file picker is not active yet.");
+      this.render();
+      return;
+    }
+
     if (action === "close") {
       this.toggle(false);
       return;
@@ -192,14 +224,22 @@ class MissionBuilder {
   toggle(force = null) {
     const nextOpen = typeof force === "boolean" ? force : !this.builderState.isOpen;
     setBuilderOpen(this.builderState, nextOpen);
-    pushBuilderLog(this.builderState, `Mission Builder ${nextOpen ? "opened" : "closed"}.`);
+
+    if (nextOpen) {
+      prepareBuilderLaunch(this.builderState, this.appState);
+    } else {
+      pushBuilderLog(this.builderState, "Mission Builder closed.");
+    }
+
     this.render();
   }
 
   render() {
     if (!this.refs) return;
 
-    syncBuilderRuntimeMap(this.builderState, this.appState);
+    if (isBuilderWorkspaceCurrentMap(this.builderState)) {
+      syncBuilderRuntimeMap(this.builderState, this.appState);
+    }
 
     renderBuilderShell({
       builderState: this.builderState,
@@ -207,7 +247,7 @@ class MissionBuilder {
       appState: this.appState
     });
 
-    if (this.builderState.isOpen) {
+    if (this.builderState.isOpen && isBuilderWorkspaceCurrentMap(this.builderState)) {
       renderWysiwygWorkspace({
         appState: this.appState,
         builderState: this.builderState,
@@ -218,7 +258,10 @@ class MissionBuilder {
           readout: this.refs.readout
         }
       });
+      return;
     }
+
+    clearWysiwygWorkspace(this.refs);
   }
 }
 

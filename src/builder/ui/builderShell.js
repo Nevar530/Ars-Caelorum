@@ -3,7 +3,14 @@
 // Fullscreen Mission Builder shell.
 // This is a new system shell, not the old dev menu DOM moved into a larger box.
 
-import { BUILDER_TABS, getBuilderSelectionSummary, getBuilderTab } from "../builderState.js";
+import {
+  BUILDER_TABS,
+  canUseCurrentRuntimeMap,
+  getBuilderSelectionSummary,
+  getBuilderTab,
+  isBuilderWorkspaceCurrentMap
+} from "../builderState.js";
+import { getMapSummary } from "../builderAdapters.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 
 export function createBuilderShell() {
@@ -51,6 +58,7 @@ export function createBuilderShell() {
           </div>
 
           <div class="builder-workspace" data-builder-workspace>
+            <div class="builder-landing" data-builder-landing></div>
             <svg data-builder-board viewBox="0 0 1400 900" aria-label="Mission Builder live engine preview">
               <g data-builder-world-scene></g>
               <g data-builder-world-ui></g>
@@ -67,7 +75,7 @@ export function createBuilderShell() {
 
       <footer class="builder-bottombar">
         <div data-builder-hints>` + "`" + ` closes · Shift-click edge · Read-only foundation</div>
-        <div data-builder-selection-summary>Runtime Map · Hover none</div>
+        <div data-builder-selection-summary>Builder Menu · New / Load · Hover none</div>
         <div data-builder-validation>0 errors · 0 warnings</div>
         <div data-builder-log></div>
       </footer>
@@ -85,6 +93,7 @@ export function createBuilderShell() {
     tabTitle: root.querySelector("[data-builder-tab-title]"),
     workspaceNote: root.querySelector("[data-builder-workspace-note]"),
     overlayToggles: root.querySelector("[data-builder-overlay-toggles]"),
+    landing: root.querySelector("[data-builder-landing]"),
     board: root.querySelector("[data-builder-board]"),
     worldScene: root.querySelector("[data-builder-world-scene]"),
     worldUi: root.querySelector("[data-builder-world-ui]"),
@@ -107,6 +116,7 @@ export function renderBuilderShell({ builderState, refs, appState }) {
   renderTabs({ builderState, refs });
   renderTabHeader({ builderState, refs });
   renderOverlayToggles({ builderState, refs });
+  renderWorkspaceMode({ builderState, refs, appState });
   renderInspector({ builderState, refs, appState });
   renderSelectionSummary({ builderState, refs });
   renderValidation({ builderState, refs });
@@ -123,10 +133,10 @@ function renderTabs({ builderState, refs }) {
 function renderTabHeader({ builderState, refs }) {
   const tab = getBuilderTab(builderState.activeTab);
   refs.tabKicker.textContent = tab.id.toUpperCase();
-  refs.tabTitle.textContent = tab.label;
+  refs.tabTitle.textContent = isBuilderWorkspaceCurrentMap(builderState) ? tab.label : "New / Load";
 
   const notes = {
-    project: "Mission package summary. This pass confirms the new builder shell and engine preview.",
+    project: "Start a new package, load existing mission data, or open current runtime map only when a mission is active.",
     map: "Map metadata and future map-level tools live here.",
     terrain: "Terrain/elevation authoring will connect through builder adapters after the workspace core is stable.",
     structures: "Structure cells, edges, edgeHeight, roomId, and roof/cutaway tools come here next.",
@@ -147,6 +157,11 @@ function renderTabHeader({ builderState, refs }) {
 function renderOverlayToggles({ builderState, refs }) {
   if (!refs.overlayToggles) return;
 
+  if (!isBuilderWorkspaceCurrentMap(builderState)) {
+    refs.overlayToggles.innerHTML = "";
+    return;
+  }
+
   const overlays = [
     ["structureEdges", "Edges"],
     ["rooms", "Rooms"],
@@ -161,7 +176,85 @@ function renderOverlayToggles({ builderState, refs }) {
   }).join("");
 }
 
+function renderWorkspaceMode({ builderState, refs, appState }) {
+  const currentMode = isBuilderWorkspaceCurrentMap(builderState);
+
+  refs.board.style.display = currentMode ? "block" : "none";
+  refs.readout.style.display = currentMode ? "block" : "none";
+  refs.landing.style.display = currentMode ? "none" : "grid";
+
+  if (currentMode) {
+    refs.landing.innerHTML = "";
+    return;
+  }
+
+  const canUseCurrent = canUseCurrentRuntimeMap(appState);
+  const shellScreen = appState?.ui?.shell?.screen ?? "unknown";
+  const mapSummary = getMapSummary(appState);
+
+  refs.landing.innerHTML = `
+    <section class="builder-landing-hero">
+      <div class="builder-section-kicker">MISSION BUILDER</div>
+      <h3>New / Load</h3>
+      <p>Choose what the builder should author. Opening from the title or menu does not pull in the current runtime map. Opening from an active mission opens the current map for read-only inspection.</p>
+    </section>
+
+    <section class="builder-start-grid">
+      <button type="button" class="builder-start-card" data-builder-action="new-mission">
+        <span>New Mission Package</span>
+        <small>Create mission metadata, map reference, objectives, results, and export package.</small>
+      </button>
+      <button type="button" class="builder-start-card" data-builder-action="new-map">
+        <span>New Blank Map</span>
+        <small>Next flow: pick size, base terrain fill, and base elevation.</small>
+      </button>
+      <button type="button" class="builder-start-card" data-builder-action="load-existing">
+        <span>Load Existing</span>
+        <small>Next flow: load a mission/map package from catalog or imported JSON.</small>
+      </button>
+      <button type="button" class="builder-start-card${canUseCurrent ? "" : " is-disabled"}" data-builder-action="use-current-map"${canUseCurrent ? "" : " disabled"}>
+        <span>Use Current Loaded Map</span>
+        <small>${canUseCurrent ? "Inspect the active mission map." : "Only available while a mission map is active."}</small>
+      </button>
+    </section>
+
+    <section class="builder-landing-context">
+      <div class="builder-inspector-card">
+        <div class="builder-field-label">Current App Screen</div>
+        <div class="builder-field-value">${escapeHtml(shellScreen)}</div>
+      </div>
+      <div class="builder-inspector-card">
+        <div class="builder-field-label">Runtime Map Available</div>
+        <div class="builder-field-value">${escapeHtml(mapSummary.name)} · ${mapSummary.width}×${mapSummary.height}</div>
+      </div>
+      <div class="builder-inspector-note">Builder actions are staged placeholders in this pass. No map or mission data is mutated.</div>
+    </section>
+  `;
+}
+
 function renderInspector({ builderState, refs, appState }) {
+  if (!isBuilderWorkspaceCurrentMap(builderState)) {
+    const shellScreen = appState?.ui?.shell?.screen ?? "unknown";
+    refs.inspector.innerHTML = `
+      <div class="builder-inspector-card">
+        <div class="builder-field-label">Selected</div>
+        <div class="builder-field-value">New / Load</div>
+      </div>
+      <div class="builder-inspector-card">
+        <div class="builder-field-label">Builder Mode</div>
+        <div class="builder-field-value">Menu / Package Start</div>
+      </div>
+      <div class="builder-inspector-card">
+        <div class="builder-field-label">Current App Screen</div>
+        <div class="builder-field-value">${escapeHtml(shellScreen)}</div>
+      </div>
+      <div class="builder-inspector-note">
+        Opening the builder from title/menu starts here. It does not auto-load the runtime map. New/Load flows are intentionally staged before authoring mutation is unlocked.
+      </div>
+    `;
+    return;
+  }
+
   const selected = builderState.selected ?? {};
   const map = appState?.map ?? null;
   const mission = appState?.mission?.definition ?? null;

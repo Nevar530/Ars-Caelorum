@@ -31,6 +31,13 @@ import {
 
 const PICK_MAX_DISTANCE_PX = 44;
 
+export function clearWysiwygWorkspace(workspaceRefs) {
+  if (workspaceRefs?.worldScene) workspaceRefs.worldScene.innerHTML = "";
+  if (workspaceRefs?.worldUi) workspaceRefs.worldUi.innerHTML = "";
+  if (workspaceRefs?.readout) workspaceRefs.readout.innerHTML = "";
+}
+
+
 export function renderWysiwygWorkspace({ appState, builderState, workspaceRefs }) {
   if (!appState || !workspaceRefs?.board || !workspaceRefs?.worldScene || !workspaceRefs?.worldUi) {
     return;

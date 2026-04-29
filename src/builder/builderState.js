@@ -24,11 +24,12 @@ export function createBuilderState() {
   return {
     isOpen: false,
     activeTab: "project",
+    workspaceMode: "landing",
     dirty: false,
     selected: {
-      type: "map",
-      id: "runtime-map",
-      label: "Runtime Map"
+      type: "builder-menu",
+      id: "new-load",
+      label: "New / Load"
     },
     hover: null,
     overlays: {
@@ -38,7 +39,7 @@ export function createBuilderState() {
       deployment: true,
       tileHeights: false
     },
-    status: "READ ONLY",
+    status: "BUILDER MENU",
     runtimeMapId: null,
     validation: {
       errors: [],
@@ -46,17 +47,71 @@ export function createBuilderState() {
       info: [
         {
           code: "BUILDER_READ_ONLY_FOUNDATION",
-          message: "Mission Builder is in read-only foundation mode. Selection, overlays, and inspection are active; map mutation is locked."
+          message: "Mission Builder is in read-only foundation mode. Selection, overlays, and inspection are active only when a current loaded map is being inspected."
         }
       ]
     },
     log: [
-      "Mission Builder read-only foundation ready.",
-      "Click a tile to inspect runtime map truth.",
-      "Shift-click selects the nearest tile edge.",
-      "Overlay buttons are builder-only read layers."
+      "Mission Builder menu ready.",
+      "Choose New/Load from the builder menu, or open from an active map to inspect current runtime truth.",
+      "Builder remains read-only until authoring adapters are deliberately unlocked."
     ]
   };
+}
+
+export function canUseCurrentRuntimeMap(appState) {
+  return appState?.ui?.shell?.screen === "game" && Boolean(appState?.map);
+}
+
+export function prepareBuilderLaunch(builderState, appState) {
+  if (!builderState) return;
+
+  if (canUseCurrentRuntimeMap(appState)) {
+    builderState.workspaceMode = "current-map";
+    builderState.status = "READ ONLY";
+    builderState.activeTab = "map";
+    syncBuilderRuntimeMap(builderState, appState);
+    pushBuilderLog(builderState, "Opened current loaded map in read-only builder workspace.");
+    return;
+  }
+
+  builderState.workspaceMode = "landing";
+  builderState.status = "BUILDER MENU";
+  builderState.activeTab = "project";
+  builderState.hover = null;
+  builderState.selected = {
+    type: "builder-menu",
+    id: "new-load",
+    label: "New / Load"
+  };
+  pushBuilderLog(builderState, "Opened builder New / Load menu.");
+}
+
+export function setBuilderWorkspaceMode(builderState, mode, appState = null) {
+  if (!builderState) return;
+
+  if (mode === "current-map" && canUseCurrentRuntimeMap(appState)) {
+    builderState.workspaceMode = "current-map";
+    builderState.status = "READ ONLY";
+    builderState.activeTab = "map";
+    syncBuilderRuntimeMap(builderState, appState);
+    pushBuilderLog(builderState, "Using current loaded map for read-only inspection.");
+    return;
+  }
+
+  builderState.workspaceMode = "landing";
+  builderState.status = "BUILDER MENU";
+  builderState.activeTab = "project";
+  builderState.hover = null;
+  builderState.selected = {
+    type: "builder-menu",
+    id: "new-load",
+    label: "New / Load"
+  };
+}
+
+export function isBuilderWorkspaceCurrentMap(builderState) {
+  return builderState?.workspaceMode === "current-map";
 }
 
 export function getBuilderTab(tabId) {
@@ -107,8 +162,9 @@ export function syncBuilderRuntimeMap(builderState, appState) {
 export function getBuilderSelectionSummary(builderState) {
   const selected = builderState?.selected;
   const hover = builderState?.hover;
-  const selectedLabel = selected?.label ?? "Runtime Map";
+  const selectedLabel = selected?.label ?? "New / Load";
   const hoverLabel = hover?.type === "tile" ? `Hover ${hover.x}, ${hover.y}` : "Hover none";
+  const modeLabel = builderState?.workspaceMode === "current-map" ? "Current Map" : "Builder Menu";
 
-  return `${selectedLabel} · ${hoverLabel}`;
+  return `${modeLabel} · ${selectedLabel} · ${hoverLabel}`;
 }
