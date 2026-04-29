@@ -87,7 +87,15 @@ class MissionBuilder {
     }
 
     if (!this.builderState.isOpen) return;
-    if (isTextEntryEvent(event, this.refs?.root)) return;
+
+    if (isTextEntryEvent(event, this.refs?.root)) {
+      // Builder owns the overlay while open, but text fields must still type normally.
+      // Stop the game/runtime keyboard handlers from stealing WASD/arrow keys, but
+      // do not preventDefault so the browser can enter characters/change fields.
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      return;
+    }
 
     if (this.handleWorkspaceNavigationKey(event)) {
       event.preventDefault();
