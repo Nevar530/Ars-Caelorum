@@ -1,16 +1,72 @@
 // src/builder/builderExport.js
 //
-// Builder-owned export helpers.
-// These produce data that matches the current map JSON contract the engine already loads.
-// They do not mutate runtime state and do not change engine behavior.
+// Mission Builder export helpers.
+// Builder export must create files that match the current game loader contract:
+// - data/maps/[map_id].json
+// - data/missions/[mission_id].json
+// - data/maps/mapList.json
+// - data/missions/missionList.json
+// - package_manifest.json
 
-import {
-  getMapHeight,
-  getMapWidth,
-  getTile
-} from "../map.js";
+import { getMapHeight, getMapWidth, getTile } from "../map.js";
 
-export function buildBuilderMapDefinition(map) {
+const DEFAULT_TERRAIN_TYPES = ["grass", "rock", "sand", "water", "asphalt", "concrete"];
+
+export function exportBuilderMissionPackage({ builderState, appState } = {}) {
+  const map = builderState?.authoring?.map ?? null;
+  if (!map) {
+    return {
+      ok: false,
+      message: "No builder-owned map is active. Create a New Blank Map before exporting."
+    };
+  }
+
+  const mapDefinition = buildMapDefinitionForExport(map);
+  const missionDefinition = buildMissionDefinitionForExport(mapDefinition, builderState?.authoring?.mission);
+  const mapList = buildUpdatedMapList(appState?.content?.mapCatalog, mapDefinition);
+  const missionList = buildUpdatedMissionList(appState?.content?.missionCatalog, missionDefinition);
+  const manifest = buildPackageManifest({ mapDefinition, missionDefinition, mapList, missionList });
+
+  const files = [
+    {
+      filename: `${mapDefinition.id}.json`,
+      repoPath: `data/maps/${mapDefinition.id}.json`,
+      data: mapDefinition
+    },
+    {
+      filename: `${missionDefinition.id}.json`,
+      repoPath: `data/missions/${missionDefinition.id}.json`,
+      data: missionDefinition
+    },
+    {
+      filename: "mapList.json",
+      repoPath: "data/maps/mapList.json",
+      data: mapList
+    },
+    {
+      filename: "missionList.json",
+      repoPath: "data/missions/missionList.json",
+      data: missionList
+    },
+    {
+      filename: `${missionDefinition.id}_package_manifest.json`,
+      repoPath: "package_manifest.json",
+      data: manifest
+    }
+  ];
+
+  downloadJsonFiles(files);
+
+  builderState.dirty = false;
+
+  return {
+    ok: true,
+    message: `Exported mission package ${missionDefinition.id} with ${files.length} files.`,
+    files
+  };
+}
+
+export function buildMapDefinitionForExport(map) {
   const width = getMapWidth(map);
   const height = getMapHeight(map);
   const tiles = [];
@@ -28,61 +84,177 @@ export function buildBuilderMapDefinition(map) {
         terrainSpriteId: tile.terrainSpriteId ?? null,
         movementClass: tile.movementClass ?? "clear",
         spawnId: tile.spawnId ?? null,
-        detail: cloneJsonSafe(tile.detail ?? null)
+        detail: cloneJson(tile.detail ?? null)
       });
     }
   }
 
   return {
-    id: map?.id ?? "exported_map",
-    name: map?.name ?? "Exported Map",
+    id: sanitizeId(map?.id ?? "new_map", "new_map"),
+    name: sanitizeName(map?.name ?? "New Map", "New Map"),
     width,
     height,
-    terrainTypes: Array.isArray(map?.terrainTypes)
-      ? [...map.terrainTypes]
-      : ["grass", "rock", "sand", "water", "asphalt", "concrete"],
-    spawns: cloneJsonSafe(map?.spawns ?? { player: [], enemy: [] }),
-    startState: cloneJsonSafe(map?.startState ?? { deployments: [], deploymentCells: [] }),
+    terrainTypes: normalizeTerrainTypes(map?.terrainTypes, tiles),
+    spawns: cloneJson(map?.spawns ?? { player: [], enemy: [] }),
+    startState: normalizeStartState(map?.startState),
     structures: sanitizeStructuresForExport(map?.structures ?? []),
     tiles
   };
 }
 
-export function buildBuilderMapListPatch(mapDefinition) {
-  const id = mapDefinition?.id ?? "exported_map";
-  const name = mapDefinition?.name ?? id;
+export function buildMissionDefinitionForExport(mapDefinition, mission = null) {
+  const missionId = sanitizeId(mission?.id ?? `${mapDefinition.id}_mission`, `${mapDefinition.id}_mission`);
+  const missionName = sanitizeName(mission?.name ?? `${mapDefinition.name} Mission`, `${mapDefinition.name} Mission`);
 
   return {
-    instructions: "Add this entry to data/maps/mapList.json maps[]. Keep commas valid in the final JSON file.",
-    entry: {
-      id,
-      name,
-      path: `./data/maps/${id}.json`
+    id: missionId,
+    name: missionName,
+    mapId: mapDefinition.id,
+    mapPath: `./data/maps/${mapDefinition.id}.json`,
+    briefing: {
+      title: missionName,
+      text: mission?.briefing?.text ?? "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.",
+      objectives: mission?.briefing?.objectives ?? ["Defeat all enemy pilots."]
+    },
+    objectives: mission?.objectives ?? [
+      {
+        id: "defeat_enemies",
+        type: "defeat_all",
+        targetTeam: "enemy",
+        label: "Defeat all enemy pilots"
+      }
+    ],
+    dialogue: mission?.dialogue ?? {
+      intro: {
+        lines: [
+          {
+            speakerId: "system",
+            name: "Mission Control",
+            text: "Mission package loaded through builder export."
+          }
+        ]
+      },
+      victory: {
+        lines: [
+          {
+            speakerId: "system",
+            name: "Mission Control",
+            text: "Victory confirmed."
+          }
+        ]
+      },
+      defeat: {
+        lines: [
+          {
+            speakerId: "system",
+            name: "Mission Control",
+            text: "Mission failed."
+          }
+        ]
+      }
+    },
+    results: mission?.results ?? {
+      victory: { title: "Victory", text: "Mission complete." },
+      defeat: { title: "Defeat", text: "Mission failed." }
     }
   };
 }
 
-export function exportBuilderMapFiles(map) {
-  if (!map) {
-    return {
-      ok: false,
-      message: "No map is available to export. Create a blank map or open a current map first."
-    };
-  }
-
-  const mapDefinition = buildBuilderMapDefinition(map);
-  const catalogPatch = buildBuilderMapListPatch(mapDefinition);
-  const mapFileName = `${mapDefinition.id}.json`;
-  const patchFileName = `${mapDefinition.id}_mapList_entry.json`;
-
-  downloadJsonFile(mapFileName, mapDefinition);
-  window.setTimeout(() => downloadJsonFile(patchFileName, catalogPatch), 75);
+export function buildUpdatedMapList(existingCatalog, mapDefinition) {
+  const catalog = cloneJson(existingCatalog ?? {});
+  const maps = Array.isArray(catalog.maps) ? catalog.maps : [];
+  const entry = {
+    id: mapDefinition.id,
+    name: mapDefinition.name,
+    path: `./data/maps/${mapDefinition.id}.json`
+  };
 
   return {
-    ok: true,
-    mapDefinition,
-    files: [mapFileName, patchFileName],
-    message: `Exported ${mapFileName} and ${patchFileName}.`
+    defaultMapId: catalog.defaultMapId ?? maps[0]?.id ?? mapDefinition.id,
+    maps: upsertCatalogEntry(maps, entry)
+  };
+}
+
+export function buildUpdatedMissionList(existingCatalog, missionDefinition) {
+  const catalog = cloneJson(existingCatalog ?? {});
+  const missions = Array.isArray(catalog.missions) ? catalog.missions : [];
+  const entry = {
+    id: missionDefinition.id,
+    name: missionDefinition.name,
+    path: `./data/missions/${missionDefinition.id}.json`
+  };
+
+  return {
+    defaultMissionId: catalog.defaultMissionId ?? missions[0]?.id ?? missionDefinition.id,
+    missions: upsertCatalogEntry(missions, entry)
+  };
+}
+
+function buildPackageManifest({ mapDefinition, missionDefinition, mapList, missionList }) {
+  return {
+    packageType: "ars-caelorum-mission-package",
+    packageVersion: 1,
+    source: "Mission Builder",
+    generatedAt: new Date().toISOString(),
+    missionId: missionDefinition.id,
+    mapId: mapDefinition.id,
+    files: [
+      `data/maps/${mapDefinition.id}.json`,
+      `data/missions/${missionDefinition.id}.json`,
+      "data/maps/mapList.json",
+      "data/missions/missionList.json"
+    ],
+    catalog: {
+      mapListUpdated: Boolean(mapList?.maps?.some((entry) => entry?.id === mapDefinition.id)),
+      missionListUpdated: Boolean(missionList?.missions?.some((entry) => entry?.id === missionDefinition.id))
+    },
+    notes: [
+      "Copy the map file into data/maps/.",
+      "Copy the mission file into data/missions/.",
+      "Replace data/maps/mapList.json with the exported mapList.json, or manually add the new map entry.",
+      "Replace data/missions/missionList.json with the exported missionList.json, or manually add the new mission entry.",
+      "Mission Select uses missionList.json. The mission file points at the exported map file."
+    ]
+  };
+}
+
+function upsertCatalogEntry(entries, newEntry) {
+  const cleanEntries = Array.isArray(entries) ? entries.filter(Boolean).map((entry) => ({ ...entry })) : [];
+  const index = cleanEntries.findIndex((entry) => entry?.id === newEntry.id);
+
+  if (index >= 0) {
+    cleanEntries[index] = { ...cleanEntries[index], ...newEntry };
+    return cleanEntries;
+  }
+
+  return [...cleanEntries, newEntry];
+}
+
+function normalizeTerrainTypes(values, tiles) {
+  const set = new Set();
+  const base = Array.isArray(values) && values.length ? values : DEFAULT_TERRAIN_TYPES;
+
+  for (const value of base) {
+    const clean = sanitizeId(value, null);
+    if (clean) set.add(clean);
+  }
+
+  for (const tile of tiles) {
+    const clean = sanitizeId(tile?.terrainTypeId, null);
+    if (clean) set.add(clean);
+  }
+
+  return [...set];
+}
+
+function normalizeStartState(startState) {
+  const clean = cloneJson(startState ?? {});
+
+  return {
+    ...clean,
+    startMode: clean.startMode ?? "authored",
+    deployments: Array.isArray(clean.deployments) ? clean.deployments : [],
+    deploymentCells: Array.isArray(clean.deploymentCells) ? clean.deploymentCells : []
   };
 }
 
@@ -90,15 +262,13 @@ function sanitizeStructuresForExport(structures) {
   if (!Array.isArray(structures)) return [];
 
   return structures.map((structure) => {
-    const clean = cloneJsonSafe(structure ?? {});
-
-    // Runtime structure truth must come from edgeHeight, not legacy blocking booleans.
+    const clean = cloneJson(structure ?? {});
     delete clean.blocksMove;
     delete clean.blocksLOS;
 
     if (Array.isArray(clean.edges)) {
       clean.edges = clean.edges.map((edge) => {
-        const cleanEdge = cloneJsonSafe(edge ?? {});
+        const cleanEdge = cloneJson(edge ?? {});
         delete cleanEdge.blocksMove;
         delete cleanEdge.blocksLOS;
         cleanEdge.edgeHeight = Math.max(0, Number(cleanEdge.edgeHeight ?? cleanEdge.height ?? cleanEdge.heightLevels ?? 0));
@@ -110,8 +280,14 @@ function sanitizeStructuresForExport(structures) {
   });
 }
 
-function downloadJsonFile(filename, value) {
-  const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
+function downloadJsonFiles(files) {
+  files.forEach((file, index) => {
+    window.setTimeout(() => downloadJson(file.filename, file.data), index * 120);
+  });
+}
+
+function downloadJson(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -119,10 +295,24 @@ function downloadJsonFile(filename, value) {
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  window.setTimeout(() => URL.revokeObjectURL(url), 500);
 }
 
-function cloneJsonSafe(value) {
-  if (typeof structuredClone === "function") return structuredClone(value);
+function cloneJson(value) {
+  if (value == null) return value;
   return JSON.parse(JSON.stringify(value));
+}
+
+function sanitizeId(value, fallback) {
+  const clean = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return clean || fallback;
+}
+
+function sanitizeName(value, fallback) {
+  const clean = String(value ?? "").trim();
+  return clean || fallback;
 }
