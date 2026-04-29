@@ -142,11 +142,41 @@ function hideStructureRoofsForBuilderPreview(previewState) {
 }
 
 function cloneForPreview(appState) {
-  if (typeof structuredClone === "function") {
-    return structuredClone(appState);
-  }
+  const clone = typeof structuredClone === "function"
+    ? structuredClone(appState)
+    : JSON.parse(JSON.stringify(appState));
 
-  return JSON.parse(JSON.stringify(appState));
+  preservePreviewMapMetadata(clone, appState);
+  return clone;
+}
+
+function preservePreviewMapMetadata(previewState, sourceState) {
+  const sourceMap = sourceState?.map;
+  const previewMap = previewState?.map;
+  if (!sourceMap || !previewMap || sourceMap === previewMap) return;
+
+  const metadataKeys = [
+    "id",
+    "name",
+    "width",
+    "height",
+    "terrainTypes",
+    "spawns",
+    "startState",
+    "structures"
+  ];
+
+  for (const key of metadataKeys) {
+    if (Object.prototype.hasOwnProperty.call(sourceMap, key)) {
+      previewMap[key] = clonePreviewValue(sourceMap[key]);
+    }
+  }
+}
+
+function clonePreviewValue(value) {
+  if (value == null || typeof value !== "object") return value;
+  if (typeof structuredClone === "function") return structuredClone(value);
+  return JSON.parse(JSON.stringify(value));
 }
 
 function getSvgPointFromEvent(board, event) {
