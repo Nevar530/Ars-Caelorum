@@ -31,6 +31,13 @@ export function createBuilderState() {
       label: "Runtime Map"
     },
     hover: null,
+    overlays: {
+      structureEdges: false,
+      rooms: false,
+      spawns: true,
+      deployment: true,
+      tileHeights: false
+    },
     status: "READY",
     validation: {
       errors: [],
@@ -45,7 +52,8 @@ export function createBuilderState() {
     log: [
       "Mission Builder workspace core ready.",
       "Click a tile to inspect runtime map truth.",
-      "Shift-click selects the nearest tile edge."
+      "Shift-click selects the nearest tile edge.",
+      "Overlay buttons are builder-only read layers."
     ]
   };
 }
@@ -66,4 +74,10 @@ export function setBuilderTab(builderState, tabId) {
 export function pushBuilderLog(builderState, message) {
   if (!message) return;
   builderState.log = [String(message), ...(builderState.log ?? [])].slice(0, 12);
+}
+
+export function toggleBuilderOverlay(builderState, overlayId) {
+  if (!builderState?.overlays || !(overlayId in builderState.overlays)) return false;
+  builderState.overlays[overlayId] = !builderState.overlays[overlayId];
+  return builderState.overlays[overlayId];
 }

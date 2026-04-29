@@ -42,8 +42,11 @@ export function createBuilderShell() {
               <div class="builder-section-kicker" data-builder-tab-kicker>PROJECT</div>
               <h2 data-builder-tab-title>Project</h2>
             </div>
-            <div class="builder-workspace-note" data-builder-workspace-note>
-              WYSIWYG engine-backed workspace. Deep authoring tools come after shell/workspace/adapters are stable.
+            <div class="builder-workspace-side">
+              <div class="builder-workspace-note" data-builder-workspace-note>
+                WYSIWYG engine-backed workspace. Deep authoring tools come after shell/workspace/adapters are stable.
+              </div>
+              <div class="builder-overlay-toggles" data-builder-overlay-toggles></div>
             </div>
           </div>
 
@@ -80,6 +83,7 @@ export function createBuilderShell() {
     tabKicker: root.querySelector("[data-builder-tab-kicker]"),
     tabTitle: root.querySelector("[data-builder-tab-title]"),
     workspaceNote: root.querySelector("[data-builder-workspace-note]"),
+    overlayToggles: root.querySelector("[data-builder-overlay-toggles]"),
     board: root.querySelector("[data-builder-board]"),
     worldScene: root.querySelector("[data-builder-world-scene]"),
     worldUi: root.querySelector("[data-builder-world-ui]"),
@@ -100,6 +104,7 @@ export function renderBuilderShell({ builderState, refs, appState }) {
 
   renderTabs({ builderState, refs });
   renderTabHeader({ builderState, refs });
+  renderOverlayToggles({ builderState, refs });
   renderInspector({ builderState, refs, appState });
   renderValidation({ builderState, refs });
   renderLog({ builderState, refs });
@@ -134,6 +139,23 @@ function renderTabHeader({ builderState, refs }) {
   };
 
   refs.workspaceNote.textContent = notes[tab.id] ?? "Mission Builder workspace.";
+}
+
+function renderOverlayToggles({ builderState, refs }) {
+  if (!refs.overlayToggles) return;
+
+  const overlays = [
+    ["structureEdges", "Edges"],
+    ["rooms", "Rooms"],
+    ["spawns", "Spawns"],
+    ["deployment", "Deploy"],
+    ["tileHeights", "Heights"]
+  ];
+
+  refs.overlayToggles.innerHTML = overlays.map(([id, label]) => {
+    const active = builderState.overlays?.[id] ? " is-active" : "";
+    return '<button type="button" class="builder-overlay-toggle' + active + '" data-builder-action="toggle-overlay:' + id + '">' + label + '</button>';
+  }).join("");
 }
 
 function renderInspector({ builderState, refs, appState }) {

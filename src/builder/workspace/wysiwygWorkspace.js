@@ -1,9 +1,8 @@
 // src/builder/workspace/wysiwygWorkspace.js
 //
 // Engine-backed WYSIWYG workspace preview and picking helpers.
-// This is the first builder adapter layer: it renders the current runtime map
-// using the same projection/render modules as the game scene, then overlays
-// builder-owned hover/selection markers without mutating runtime truth.
+// This builder layer renders current runtime truth, then adds builder-owned
+// read overlays. It does not mutate engine/map state.
 
 import { RENDER_CONFIG } from "../../config.js";
 import { renderIso } from "../../render.js";
@@ -19,12 +18,16 @@ import {
   getTileRenderElevation
 } from "../../map.js";
 import {
-  getMapStructures,
-  getStructureCells,
-  getStructureEdgeParts,
-  getStructuresAtTile,
-  makeCellKey
-} from "../../structures/structureRules.js";
+  formatDeploymentCell,
+  formatEdges,
+  formatStructureCells,
+  getDeploymentCellTruth,
+  getMapSummary,
+  getSpawnTruth,
+  getStructureCellTruth,
+  getStructureEdgeTruth,
+  getTileTruth
+} from "../builderAdapters.js";
 
 const PICK_MAX_DISTANCE_PX = 44;
 
@@ -181,6 +184,13 @@ function renderBuilderWorkspaceOverlays({ previewState, appState, builderState, 
   const overlays = [];
   const hover = builderState?.hover;
   const selected = builderState?.selected;
+  const overlayState = builderState?.overlays ?? {};
+
+  if (overlayState.deployment) overlays.push(renderDeploymentOverlays(previewState, appState));
+  if (overlayState.spawns) overlays.push(renderSpawnOverlays(previewState, appState));
+  if (overlayState.rooms) overlays.push(renderRoomOverlays(previewState, appState));
+  if (overlayState.structureEdges) overlays.push(renderStructureEdgeOverlays(previewState, appState));
+  if (overlayState.tileHeights) overlays.push(renderTileHeightOverlays(previewState, appState));
 
   if (hover?.type === "tile") {
     overlays.push(renderTileMarker(previewState, hover.x, hover.y, "hover"));
@@ -198,11 +208,101 @@ function renderBuilderWorkspaceOverlays({ previewState, appState, builderState, 
   ui.insertAdjacentHTML("beforeend", `<g class="builder-workspace-overlays">${overlays.filter(Boolean).join("")}</g>`);
 }
 
+function renderDeploymentOverlays(previewState, appState) {
+  const cells = getDeploymentCellTruth(appState?.map);
+  if (!cells.length) return "";
+
+  return cells.map((cell) => {
+    const points = getTilePolygonPoints(previewState, cell.x, cell.y);
+    if (points.length !== 4) return "";
+    const label = cell.unitType ?? cell.type ?? "deploy";
+    return `
+      <polygon class="builder-overlay-deployment" points="${formatPointString(points)}" pointer-events="none" />
+      ${renderTileText(previewState, cell.x, cell.y, label, "builder-overlay-label builder-overlay-label-deploy")}
+    `;
+  }).join("");
+}
+
+function renderSpawnOverlays(previewState, appState) {
+  const spawns = getSpawnTruth(appState?.map);
+  if (!spawns.length) return "";
+
+  return spawns.map((spawn) => {
+    const center = getTileCenter(previewState, spawn.x, spawn.y);
+    if (!center) return "";
+    const label = spawn.team ? spawn.team.slice(0, 1).toUpperCase() : "S";
+    return `
+      <circle class="builder-overlay-spawn" cx="${round(center.x)}" cy="${round(center.y)}" r="12" pointer-events="none" />
+      <text class="builder-overlay-spawn-text" x="${round(center.x)}" y="${round(center.y + 4)}" text-anchor="middle" pointer-events="none">${escapeHtml(label)}</text>
+    `;
+  }).join("");
+}
+
+function renderRoomOverlays(previewState, appState) {
+  const cells = getStructureCellTruth(appState?.map);
+  if (!cells.length) return "";
+
+  return cells.map((cell) => {
+    const points = getTilePolygonPoints(previewState, cell.x, cell.y);
+    if (points.length !== 4) return "";
+    const label = cell.roomId ?? cell.structureId ?? "cell";
+    return `
+      <polygon class="builder-overlay-room" points="${formatPointString(points)}" pointer-events="none" />
+      ${renderTileText(previewState, cell.x, cell.y, label, "builder-overlay-label builder-overlay-label-room")}
+    `;
+  }).join("");
+}
+
+function renderStructureEdgeOverlays(previewState, appState) {
+  const edges = getStructureEdgeTruth(appState?.map);
+  if (!edges.length) return "";
+
+  return edges.map((edge) => {
+    const segment = getTileEdgeSegments(previewState, edge.x, edge.y)
+      .find((candidate) => candidate.id === String(edge.edge ?? "").toLowerCase());
+    if (!segment) return "";
+
+    const height = Number(edge.edgeHeight ?? 0);
+    const cls = height > 0 ? "builder-overlay-structure-edge is-blocking" : "builder-overlay-structure-edge is-open";
+    const mx = (segment.a.x + segment.b.x) / 2;
+    const my = (segment.a.y + segment.b.y) / 2;
+    const label = `${edge.type ?? "edge"}:${height}`;
+
+    return `
+      <line class="${cls}" x1="${round(segment.a.x)}" y1="${round(segment.a.y)}" x2="${round(segment.b.x)}" y2="${round(segment.b.y)}" pointer-events="none" />
+      <text class="builder-overlay-edge-label" x="${round(mx)}" y="${round(my - 3)}" text-anchor="middle" pointer-events="none">${escapeHtml(label)}</text>
+    `;
+  }).join("");
+}
+
+function renderTileHeightOverlays(previewState, appState) {
+  const map = appState?.map;
+  const width = getMapWidth(map);
+  const height = getMapHeight(map);
+  const labels = [];
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const tile = getTile(map, x, y);
+      if (!tile) continue;
+      labels.push(renderTileText(previewState, x, y, `h${tile.elevation ?? 0}`, "builder-overlay-label builder-overlay-label-height"));
+    }
+  }
+
+  return labels.join("");
+}
+
+function renderTileText(previewState, x, y, label, className) {
+  const center = getTileCenter(previewState, x, y);
+  if (!center) return "";
+  return `<text class="${className}" x="${round(center.x)}" y="${round(center.y + 4)}" text-anchor="middle" pointer-events="none">${escapeHtml(label)}</text>`;
+}
+
 function renderTileMarker(previewState, x, y, tone) {
   const points = getTilePolygonPoints(previewState, x, y);
   if (points.length !== 4) return "";
 
-  const pointString = points.map((point) => `${round(point.x)},${round(point.y)}`).join(" ");
+  const pointString = formatPointString(points);
   const stroke = tone === "hover" ? "#f2d16b" : "#67e8f9";
   const fill = tone === "hover" ? "rgba(242,209,107,0.16)" : "rgba(103,232,249,0.20)";
   const width = tone === "hover" ? 2 : 3;
@@ -225,6 +325,14 @@ function getTilePolygonPoints(previewState, x, y) {
   if (!diamond) return [];
 
   return [diamond.top, diamond.right, diamond.bottom, diamond.left];
+}
+
+function getTileCenter(previewState, x, y) {
+  const points = getTilePolygonPoints(previewState, x, y);
+  if (points.length !== 4) return null;
+  const xSum = points.reduce((sum, point) => sum + point.x, 0);
+  const ySum = points.reduce((sum, point) => sum + point.y, 0);
+  return { x: xSum / points.length, y: ySum / points.length };
 }
 
 function getTileScreenDiamond(previewState, x, y) {
@@ -316,45 +424,29 @@ function renderWorkspaceReadout({ appState, builderState, workspaceRefs }) {
   const readout = workspaceRefs.readout;
   if (!readout) return;
 
-  const map = appState?.map ?? null;
-  const mapId = map?.id ?? "runtime-map";
-  const mapName = map?.name ?? mapId;
-  const width = getMapWidth(map);
-  const height = getMapHeight(map);
-  const structures = Array.isArray(map?.structures) ? map.structures.length : 0;
-  const deploymentCells = Array.isArray(map?.startState?.deploymentCells)
-    ? map.startState.deploymentCells.length
-    : 0;
+  const summary = getMapSummary(appState);
   const selected = builderState?.selected;
 
   readout.innerHTML = `
     <div class="builder-readout-kicker">ENGINE PREVIEW</div>
-    <div class="builder-readout-title">${escapeHtml(mapName)}</div>
+    <div class="builder-readout-title">${escapeHtml(summary.name)}</div>
     <div class="builder-readout-grid">
-      <span>Map ID</span><strong>${escapeHtml(mapId)}</strong>
-      <span>Size</span><strong>${width} × ${height}</strong>
-      <span>Structures</span><strong>${structures}</strong>
-      <span>Deployment Cells</span><strong>${deploymentCells}</strong>
+      <span>Map ID</span><strong>${escapeHtml(summary.id)}</strong>
+      <span>Size</span><strong>${summary.width} × ${summary.height}</strong>
+      <span>Structures</span><strong>${summary.structureCount}</strong>
+      <span>Deployment Cells</span><strong>${summary.deploymentCellCount}</strong>
+      <span>Spawns</span><strong>${summary.spawnCount}</strong>
       <span>Selected</span><strong>${escapeHtml(selected?.label ?? "Map")}</strong>
     </div>
-    <div class="builder-readout-help">Click a tile to inspect it. Shift-click selects the nearest tile edge.</div>
+    <div class="builder-readout-help">Click a tile to inspect it. Shift-click selects the nearest tile edge. Overlay buttons are builder-only read layers.</div>
   `;
 }
 
 export function buildTileInspectorHtml(appState, selection) {
   if (!appState || selection?.type !== "tile" && selection?.type !== "edge") return "";
 
-  const x = Number(selection.x);
-  const y = Number(selection.y);
-  const map = appState.map;
-  const tile = getTile(map, x, y);
-  if (!tile) return `<div class="builder-inspector-note">No tile found at ${x}, ${y}.</div>`;
-
-  const structureCells = getStructureCellsAt(map, x, y);
-  const authoredEdges = getAuthoredEdgesAt(map, x, y);
-  const spawn = getSpawnAt(map, x, y);
-  const deploymentCell = getDeploymentCellAt(map, x, y);
-  const unit = getUnitAt(appState, x, y);
+  const truth = getTileTruth(appState, selection.x, selection.y);
+  if (!truth) return `<div class="builder-inspector-note">No tile found at ${selection.x}, ${selection.y}.</div>`;
 
   const edgeNote = selection.type === "edge"
     ? `<div class="builder-inspector-card is-emphasis"><div class="builder-field-label">Selected Edge</div><div class="builder-field-value">${escapeHtml(selection.edge?.toUpperCase?.() ?? selection.edge)}</div></div>`
@@ -364,100 +456,46 @@ export function buildTileInspectorHtml(appState, selection) {
     ${edgeNote}
     <div class="builder-inspector-card">
       <div class="builder-field-label">Coordinates</div>
-      <div class="builder-field-value">${x}, ${y}</div>
+      <div class="builder-field-value">${truth.x}, ${truth.y}</div>
     </div>
     <div class="builder-inspector-card">
       <div class="builder-field-label">Terrain</div>
-      <div class="builder-field-value">${escapeHtml(tile.terrainTypeId ?? tile.type ?? "unknown")}</div>
+      <div class="builder-field-value">${escapeHtml(truth.terrainTypeId)}</div>
     </div>
     <div class="builder-inspector-card">
       <div class="builder-field-label">Elevation</div>
-      <div class="builder-field-value">${escapeHtml(tile.elevation ?? 0)}</div>
+      <div class="builder-field-value">${escapeHtml(truth.elevation)}</div>
     </div>
     <div class="builder-inspector-card">
       <div class="builder-field-label">Movement Class</div>
-      <div class="builder-field-value">${escapeHtml(tile.movementClass ?? "clear")}</div>
+      <div class="builder-field-value">${escapeHtml(truth.movementClass)}</div>
     </div>
     <div class="builder-inspector-card">
       <div class="builder-field-label">Structure Cell</div>
-      <div class="builder-field-value">${structureCells.length ? escapeHtml(formatStructureCells(structureCells)) : "None"}</div>
+      <div class="builder-field-value">${truth.structureCells.length ? escapeHtml(formatStructureCells(truth.structureCells)) : "None"}</div>
     </div>
     <div class="builder-inspector-card">
       <div class="builder-field-label">Authored Edges</div>
-      <div class="builder-field-value">${authoredEdges.length ? escapeHtml(formatEdges(authoredEdges)) : "None"}</div>
+      <div class="builder-field-value">${truth.authoredEdges.length ? escapeHtml(formatEdges(truth.authoredEdges)) : "None"}</div>
     </div>
     <div class="builder-inspector-card">
       <div class="builder-field-label">Spawn</div>
-      <div class="builder-field-value">${spawn ? escapeHtml(spawn) : "None"}</div>
+      <div class="builder-field-value">${truth.spawn ? escapeHtml(truth.spawn.id) : "None"}</div>
     </div>
     <div class="builder-inspector-card">
       <div class="builder-field-label">Deployment</div>
-      <div class="builder-field-value">${deploymentCell ? escapeHtml(formatDeploymentCell(deploymentCell)) : "None"}</div>
+      <div class="builder-field-value">${truth.deploymentCell ? escapeHtml(formatDeploymentCell(truth.deploymentCell)) : "None"}</div>
     </div>
     <div class="builder-inspector-card">
       <div class="builder-field-label">Runtime Unit</div>
-      <div class="builder-field-value">${unit ? escapeHtml(unit.name ?? unit.instanceId ?? unit.id) : "None"}</div>
+      <div class="builder-field-value">${truth.unit ? escapeHtml(truth.unit.name ?? truth.unit.instanceId ?? truth.unit.id) : "None"}</div>
     </div>
-    <div class="builder-inspector-note">Read-only inspection. Edits stay locked until the adapter layer is in place.</div>
+    <div class="builder-inspector-note">Read-only inspection through builder adapters. Edits stay locked until mutation adapters are in place.</div>
   `;
 }
 
-function getStructureCellsAt(map, x, y) {
-  const key = makeCellKey(x, y);
-  return getStructuresAtTile(map, x, y).flatMap((structure) => {
-    const id = structure?.id ?? "structure";
-    return getStructureCells(structure)
-      .filter((cell) => makeCellKey(cell.x, cell.y) === key)
-      .map((cell) => ({ ...cell, structureId: id }));
-  });
-}
-
-function getAuthoredEdgesAt(map, x, y) {
-  return getMapStructures(map).flatMap((structure) => {
-    const id = structure?.id ?? "structure";
-    return getStructureEdgeParts(structure)
-      .filter((edge) => Number(edge.x) === Number(x) && Number(edge.y) === Number(y))
-      .map((edge) => ({ ...edge, structureId: id }));
-  });
-}
-
-function getSpawnAt(map, x, y) {
-  const spawns = map?.spawns && typeof map.spawns === "object" ? map.spawns : {};
-  for (const [team, points] of Object.entries(spawns)) {
-    if (!Array.isArray(points)) continue;
-    const index = points.findIndex((point) => Number(point?.x) === Number(x) && Number(point?.y) === Number(y));
-    if (index >= 0) return `${team}_${index + 1}`;
-  }
-
-  const tile = getTile(map, x, y);
-  return tile?.spawnId ?? null;
-}
-
-function getDeploymentCellAt(map, x, y) {
-  const cells = Array.isArray(map?.startState?.deploymentCells) ? map.startState.deploymentCells : [];
-  return cells.find((cell) => Number(cell?.x) === Number(x) && Number(cell?.y) === Number(y)) ?? null;
-}
-
-function getUnitAt(appState, x, y) {
-  const units = Array.isArray(appState?.units) ? appState.units : [];
-  return units.find((unit) => Number(unit?.x) === Number(x) && Number(unit?.y) === Number(y)) ?? null;
-}
-
-function formatStructureCells(cells) {
-  return cells.map((cell) => {
-    const room = cell.roomId ? ` / room ${cell.roomId}` : "";
-    return `${cell.structureId}${room}`;
-  }).join("; ");
-}
-
-function formatEdges(edges) {
-  return edges.map((edge) => `${edge.edge}:${edge.edgeHeight ?? 0} ${edge.type ?? "wall"}`).join("; ");
-}
-
-function formatDeploymentCell(cell) {
-  const unitType = cell.unitType ?? "pilot";
-  const controlType = cell.controlType ?? "PC";
-  return `${unitType} / ${controlType}`;
+function formatPointString(points) {
+  return points.map((point) => `${round(point.x)},${round(point.y)}`).join(" ");
 }
 
 function round(value) {

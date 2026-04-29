@@ -7,7 +7,8 @@ import {
   createBuilderState,
   pushBuilderLog,
   setBuilderOpen,
-  setBuilderTab
+  setBuilderTab,
+  toggleBuilderOverlay
 } from "./builderState.js";
 import {
   createEdgeSelection,
@@ -156,6 +157,14 @@ class MissionBuilder {
   }
 
   handleAction(action) {
+    if (action && typeof action === "string" && action.startsWith("toggle-overlay:")) {
+      const overlayId = action.split(":")[1];
+      const enabled = toggleBuilderOverlay(this.builderState, overlayId);
+      pushBuilderLog(this.builderState, overlayId + " overlay " + (enabled ? "shown" : "hidden") + ".");
+      this.render();
+      return;
+    }
+
     if (action === "close") {
       this.toggle(false);
       return;

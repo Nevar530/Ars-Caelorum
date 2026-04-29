@@ -1859,3 +1859,105 @@ button:disabled {
 .builder-workspace-overlays line {
   filter: drop-shadow(0 0 6px rgba(103, 232, 249, 0.35));
 }
+
+/* =========================================
+   MISSION BUILDER — ADAPTER READ OVERLAYS V1
+========================================= */
+
+.builder-workspace-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.builder-overlay-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.builder-overlay-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--muted);
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.builder-overlay-toggle.is-active {
+  border-color: rgba(103, 232, 249, 0.58);
+  background: rgba(103, 232, 249, 0.14);
+  color: #dffbff;
+}
+
+.builder-overlay-deployment {
+  fill: rgba(103, 232, 249, 0.12);
+  stroke: rgba(103, 232, 249, 0.72);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.builder-overlay-room {
+  fill: rgba(240, 176, 0, 0.08);
+  stroke: rgba(240, 176, 0, 0.42);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.builder-overlay-spawn {
+  fill: rgba(255, 122, 182, 0.24);
+  stroke: rgba(255, 122, 182, 0.9);
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.builder-overlay-spawn-text,
+.builder-overlay-label,
+.builder-overlay-edge-label {
+  font-family: inherit;
+  font-weight: 950;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.75);
+  stroke-width: 3px;
+  vector-effect: non-scaling-stroke;
+}
+
+.builder-overlay-spawn-text {
+  fill: #ffe5f1;
+  font-size: 11px;
+}
+
+.builder-overlay-label {
+  fill: #f5f7ff;
+  font-size: 9px;
+}
+
+.builder-overlay-label-room { fill: #ffe8aa; }
+.builder-overlay-label-deploy { fill: #dffbff; }
+.builder-overlay-label-height { fill: #ffffff; }
+
+.builder-overlay-structure-edge {
+  stroke-width: 4;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.builder-overlay-structure-edge.is-blocking {
+  stroke: rgba(255, 122, 182, 0.95);
+}
+
+.builder-overlay-structure-edge.is-open {
+  stroke: rgba(121, 255, 184, 0.86);
+  stroke-dasharray: 5 4;
+}
+
+.builder-overlay-edge-label {
+  fill: #ffd6e7;
+  font-size: 8px;
+}
