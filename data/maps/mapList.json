@@ -30,6 +30,11 @@
       "id": "005_warehouse_district",
       "name": "005 Warehouse District",
       "path": "./data/maps/005_warehouse_district.json"
-    }
+    },
+    {
+    "id": "006_new_map",
+    "name": "New Map",
+    "path": "./data/maps/006_new_map.json"
+  }
   ]
 }
