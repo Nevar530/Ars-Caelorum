@@ -20,6 +20,7 @@ import { createBlankBuilderMap, readBlankMapForm } from "./builderMapFactory.js"
 import {
   createEdgeSelection,
   createTileSelection,
+  moveBuilderTileSelection,
   setBuilderHover,
   setBuilderSelection
 } from "./builderSelection.js";
@@ -77,12 +78,45 @@ class MissionBuilder {
   }
 
   handleKeyDown(event) {
-    if (event.key !== "`") return;
+    if (event.key === "`") {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      this.toggle();
+      return;
+    }
 
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation?.();
-    this.toggle();
+    if (!this.builderState.isOpen) return;
+    if (isTextEntryTarget(event.target)) return;
+
+    if (this.handleWorkspaceNavigationKey(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+    }
+  }
+
+  handleWorkspaceNavigationKey(event) {
+    if (!isBuilderWorkspaceMap(this.builderState)) return false;
+
+    const key = event.key.toLowerCase();
+    let direction = null;
+
+    if (key === "arrowup" || key === "w") direction = "up";
+    else if (key === "arrowdown" || key === "s") direction = "down";
+    else if (key === "arrowleft" || key === "a") direction = "left";
+    else if (key === "arrowright" || key === "d") direction = "right";
+    else return false;
+
+    const workspaceAppState = getBuilderWorkspaceAppState(this.builderState, this.appState);
+    const moved = moveBuilderTileSelection(this.builderState, workspaceAppState, direction);
+
+    if (moved) {
+      pushBuilderLog(this.builderState, `Cursor moved to tile ${moved.x}, ${moved.y}.`);
+      this.render();
+    }
+
+    return true;
   }
 
   handleClick(event) {
@@ -285,6 +319,11 @@ class MissionBuilder {
 
     clearWysiwygWorkspace(this.refs);
   }
+}
+
+function isTextEntryTarget(target) {
+  const tagName = String(target?.tagName ?? "").toLowerCase();
+  return tagName === "input" || tagName === "textarea" || tagName === "select" || Boolean(target?.isContentEditable);
 }
 
 const missionBuilder = new MissionBuilder();

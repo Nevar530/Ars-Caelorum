@@ -77,7 +77,7 @@ export function createBuilderShell() {
       </div>
 
       <footer class="builder-bottombar">
-        <div data-builder-hints>` + "`" + ` closes · Shift-click edge · New map foundation</div>
+        <div data-builder-hints>` + "`" + ` closes · WASD/Arrows move builder cursor · Shift-click edge</div>
         <div data-builder-selection-summary>Builder Menu · New / Load · Hover none</div>
         <div data-builder-validation>0 errors · 0 warnings</div>
         <div data-builder-log></div>

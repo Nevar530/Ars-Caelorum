@@ -43,7 +43,7 @@ export function renderWysiwygWorkspace({ appState, builderState, workspaceRefs }
     return;
   }
 
-  const previewState = buildPreviewState(appState, { workspaceRefs });
+  const previewState = buildPreviewState(appState, { workspaceRefs, builderState });
   renderIso(previewState, workspaceRefs);
   renderBuilderWorkspaceOverlays({ previewState, appState, builderState, workspaceRefs });
   renderWorkspaceReadout({ appState, builderState, workspaceRefs });
@@ -75,6 +75,8 @@ export function pickWorkspaceEdgeFromEvent({ event, appState, board }) {
 
 function buildPreviewState(appState, options = {}) {
   const previewState = cloneForPreview(appState);
+  const builderFocus = getBuilderFocusTile(options.builderState);
+
   previewState.ui.viewMode = "iso";
   previewState.ui.mode = "idle";
   previewState.ui.previewPath = [];
@@ -83,6 +85,18 @@ function buildPreviewState(appState, options = {}) {
   previewState.ui.commandMenu.open = false;
   previewState.selection.action = null;
   previewState.selection.targetTile = null;
+
+  if (builderFocus) {
+    previewState.focus = {
+      ...(previewState.focus ?? {}),
+      x: builderFocus.x,
+      y: builderFocus.y,
+      scale: previewState.focus?.scale ?? "base"
+    };
+    if (previewState.selection) previewState.selection.unitId = null;
+    if (previewState.turn) previewState.turn.activeUnitId = null;
+  }
+
   previewState.camera.zoomMode = "map";
   previewState.camera.zoomLevel = "map";
   previewState.camera.zoomScale = "map";
@@ -94,6 +108,18 @@ function buildPreviewState(appState, options = {}) {
   }
 
   return previewState;
+}
+
+function getBuilderFocusTile(builderState) {
+  const selected = builderState?.selected ?? null;
+  if ((selected?.type === "tile" || selected?.type === "edge") && Number.isFinite(Number(selected.x)) && Number.isFinite(Number(selected.y))) {
+    return {
+      x: Number(selected.x),
+      y: Number(selected.y)
+    };
+  }
+
+  return null;
 }
 
 function cloneForPreview(appState) {
