@@ -30,21 +30,22 @@ export function createBuilderState() {
       id: "runtime-map",
       label: "Runtime Map"
     },
+    hover: null,
     status: "READY",
     validation: {
       errors: [],
       warnings: [],
       info: [
         {
-          code: "BUILDER_PHASE_1",
-          message: "Fullscreen Mission Builder shell is active. Deep authoring tools are not wired yet."
+          code: "BUILDER_WORKSPACE_CORE_V1",
+          message: "Fullscreen Mission Builder shell has read-only WYSIWYG selection and inspection. Editing remains locked."
         }
       ]
     },
     log: [
-      "Mission Builder shell ready.",
-      "Legacy dev menu is not the owner of this workspace.",
-      "Current pass uses engine render/projection truth for the live preview."
+      "Mission Builder workspace core ready.",
+      "Click a tile to inspect runtime map truth.",
+      "Shift-click selects the nearest tile edge."
     ]
   };
 }

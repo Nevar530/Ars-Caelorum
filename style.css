@@ -1832,3 +1832,30 @@ button:disabled {
   text-align: right;
   color: #dfe8ef;
 }
+
+/* =========================================
+   MISSION BUILDER — WORKSPACE CORE V1
+========================================= */
+
+.builder-workspace svg[data-builder-board] {
+  cursor: crosshair;
+}
+
+.builder-readout-help {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.builder-inspector-card.is-emphasis {
+  border-color: rgba(255, 122, 182, 0.55);
+  background: rgba(255, 122, 182, 0.11);
+}
+
+.builder-workspace-overlays polygon,
+.builder-workspace-overlays line {
+  filter: drop-shadow(0 0 6px rgba(103, 232, 249, 0.35));
+}

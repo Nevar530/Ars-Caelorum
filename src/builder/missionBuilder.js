@@ -9,8 +9,18 @@ import {
   setBuilderOpen,
   setBuilderTab
 } from "./builderState.js";
+import {
+  createEdgeSelection,
+  createTileSelection,
+  setBuilderHover,
+  setBuilderSelection
+} from "./builderSelection.js";
 import { createBuilderShell, renderBuilderShell } from "./ui/builderShell.js";
-import { renderWysiwygWorkspace } from "./workspace/wysiwygWorkspace.js";
+import {
+  pickWorkspaceEdgeFromEvent,
+  pickWorkspaceTileFromEvent,
+  renderWysiwygWorkspace
+} from "./workspace/wysiwygWorkspace.js";
 
 class MissionBuilder {
   constructor() {
@@ -23,6 +33,8 @@ class MissionBuilder {
 
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleClick = this.handleClick.bind(this);
+    this.handlePointerMove = this.handlePointerMove.bind(this);
+    this.handlePointerLeave = this.handlePointerLeave.bind(this);
   }
 
   init({ state, render, refs }) {
@@ -37,6 +49,8 @@ class MissionBuilder {
 
     window.addEventListener("keydown", this.handleKeyDown, { capture: true });
     this.refs.root.addEventListener("click", this.handleClick);
+    this.refs.board.addEventListener("pointermove", this.handlePointerMove);
+    this.refs.board.addEventListener("pointerleave", this.handlePointerLeave);
 
     this.initialized = true;
     this.render();
@@ -46,6 +60,8 @@ class MissionBuilder {
   destroy() {
     window.removeEventListener("keydown", this.handleKeyDown, { capture: true });
     this.refs?.root?.removeEventListener("click", this.handleClick);
+    this.refs?.board?.removeEventListener("pointermove", this.handlePointerMove);
+    this.refs?.board?.removeEventListener("pointerleave", this.handlePointerLeave);
     this.refs?.root?.remove();
     this.refs = null;
     this.initialized = false;
@@ -72,7 +88,71 @@ class MissionBuilder {
       setBuilderTab(this.builderState, tabButton.dataset.builderTab);
       pushBuilderLog(this.builderState, `Opened ${tabButton.textContent.trim()} tab.`);
       this.render();
+      return;
     }
+
+    const board = event.target.closest("[data-builder-board]");
+    if (board) {
+      this.handleWorkspaceClick(event);
+    }
+  }
+
+  handlePointerMove(event) {
+    if (!this.builderState.isOpen) return;
+
+    const picked = pickWorkspaceTileFromEvent({
+      event,
+      appState: this.appState,
+      board: this.refs.board
+    });
+
+    if (!picked) {
+      if (this.builderState.hover) {
+        setBuilderHover(this.builderState, null);
+        this.render();
+      }
+      return;
+    }
+
+    const current = this.builderState.hover;
+    if (current?.type === "tile" && current.x === picked.x && current.y === picked.y) return;
+
+    setBuilderHover(this.builderState, {
+      type: "tile",
+      id: `${picked.x},${picked.y}`,
+      label: `Tile ${picked.x}, ${picked.y}`,
+      x: picked.x,
+      y: picked.y
+    });
+    this.render();
+  }
+
+  handlePointerLeave() {
+    if (!this.builderState.hover) return;
+    setBuilderHover(this.builderState, null);
+    this.render();
+  }
+
+  handleWorkspaceClick(event) {
+    const picked = event.shiftKey
+      ? pickWorkspaceEdgeFromEvent({ event, appState: this.appState, board: this.refs.board })
+      : pickWorkspaceTileFromEvent({ event, appState: this.appState, board: this.refs.board });
+
+    if (!picked) {
+      pushBuilderLog(this.builderState, "No map tile under pointer.");
+      this.render();
+      return;
+    }
+
+    if (event.shiftKey) {
+      setBuilderSelection(this.builderState, createEdgeSelection(this.appState, picked.x, picked.y, picked.edge));
+      pushBuilderLog(this.builderState, `Selected edge ${picked.edge.toUpperCase()} at ${picked.x}, ${picked.y}.`);
+    } else {
+      setBuilderSelection(this.builderState, createTileSelection(this.appState, picked.x, picked.y));
+      pushBuilderLog(this.builderState, `Selected tile ${picked.x}, ${picked.y}.`);
+    }
+
+    this.render();
   }
 
   handleAction(action) {
@@ -82,7 +162,7 @@ class MissionBuilder {
     }
 
     if (action === "validate") {
-      pushBuilderLog(this.builderState, "Validation model placeholder active. Real validators come after adapters.");
+      pushBuilderLog(this.builderState, "Validation placeholder active. Real validators come after adapter wiring.");
       this.render();
       return;
     }
@@ -118,6 +198,7 @@ class MissionBuilder {
     if (this.builderState.isOpen) {
       renderWysiwygWorkspace({
         appState: this.appState,
+        builderState: this.builderState,
         workspaceRefs: {
           board: this.refs.board,
           worldScene: this.refs.worldScene,

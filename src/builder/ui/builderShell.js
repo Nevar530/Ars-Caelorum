@@ -4,6 +4,7 @@
 // This is a new system shell, not the old dev menu DOM moved into a larger box.
 
 import { BUILDER_TABS, getBuilderTab } from "../builderState.js";
+import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 
 export function createBuilderShell() {
   const root = document.createElement("section");
@@ -139,12 +140,14 @@ function renderInspector({ builderState, refs, appState }) {
   const selected = builderState.selected ?? {};
   const map = appState?.map ?? null;
   const mission = appState?.mission?.definition ?? null;
+  const selectedTruth = buildTileInspectorHtml(appState, selected);
 
   refs.inspector.innerHTML = `
     <div class="builder-inspector-card">
       <div class="builder-field-label">Selected</div>
       <div class="builder-field-value">${escapeHtml(selected.label ?? selected.type ?? "None")}</div>
     </div>
+    ${selectedTruth}
     <div class="builder-inspector-card">
       <div class="builder-field-label">Current Runtime Map</div>
       <div class="builder-field-value">${escapeHtml(map?.name ?? map?.id ?? "unknown")}</div>
@@ -154,7 +157,7 @@ function renderInspector({ builderState, refs, appState }) {
       <div class="builder-field-value">${escapeHtml(mission?.name ?? mission?.id ?? "No active mission definition")}</div>
     </div>
     <div class="builder-inspector-note">
-      Inspector edits are intentionally disabled in this first system pass. Next step is the adapter layer, so edits flow through verified engine/data hooks instead of old menu internals.
+      Inspector edits are intentionally disabled in this workspace-core pass. This is read-only truth inspection before map mutation/adapters are allowed.
     </div>
   `;
 }
