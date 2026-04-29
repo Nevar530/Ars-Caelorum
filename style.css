@@ -2153,3 +2153,54 @@ button:disabled {
   margin-top: 9px;
   padding: 9px;
 }
+
+/* =========================================
+   MISSION BUILDER — STRUCTURE EDGE AUTHORING V1
+========================================= */
+
+.builder-section-label {
+  display: block;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.builder-structure-art-preview {
+  display: grid;
+  gap: 6px;
+  margin-top: 9px;
+  padding: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(3, 7, 12, 0.46);
+}
+
+.builder-structure-art-preview span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.builder-structure-art-preview img {
+  max-width: 100%;
+  max-height: 96px;
+  object-fit: contain;
+  image-rendering: auto;
+  justify-self: center;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.builder-structure-art-preview strong {
+  color: #eaf2fb;
+  font-size: 11px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.builder-structure-art-preview.is-empty {
+  border-style: dashed;
+  opacity: 0.82;
+}

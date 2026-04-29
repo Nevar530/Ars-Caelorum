@@ -1,17 +1,36 @@
 // src/builder/builderStructures.js
 //
-// Builder-owned structure cell / room authoring helpers.
+// Builder-owned structure cell / room / edge authoring helpers.
 // Structures stay on current engine track spec:
 // - cells define structure/room footprint
 // - roof is structure-level art truth
-// - edges/edgeHeight come in the next structure pass
+// - edges + edgeHeight define wall/door/opening crossing/LOS truth
 
-import { getMapHeight, getMapWidth, getTile } from "../map.js";
+import { getMapHeight, getMapWidth } from "../map.js";
 import { getCenteredBrushCells } from "./builderTerrain.js";
 
 const DEFAULT_ROOF_SPRITES = ["roof_001.png"];
+const DEFAULT_EDGE_SPRITES = ["wall_001.png", "door_001.png"];
 const BRUSH_SIZE_MIN = 1;
 const BRUSH_SIZE_MAX = 9;
+
+const EDGE_TYPE_DEFAULTS = {
+  wall: {
+    type: "wall",
+    spriteId: "wall_001.png",
+    edgeHeight: 2
+  },
+  door: {
+    type: "door",
+    spriteId: "door_001.png",
+    edgeHeight: 0
+  },
+  opening: {
+    type: "open",
+    spriteId: "",
+    edgeHeight: 0
+  }
+};
 
 export function ensureStructureToolSettings(builderState, appState = null) {
   if (!builderState) return null;
@@ -29,10 +48,18 @@ export function ensureStructureToolSettings(builderState, appState = null) {
   tool.erase = Boolean(tool.erase);
   tool.showRoofs = tool.showRoofs !== false;
 
+  const cleanEdgeType = normalizeEdgeType(tool.edgeType ?? "wall");
+  tool.edgeType = cleanEdgeType;
+  const defaults = getStructureEdgeTypeDefaults(cleanEdgeType);
+  tool.edgeSpriteId = sanitizeSprite(tool.edgeSpriteId, defaults.spriteId);
+  tool.edgeHeight = clampWholeNumber(tool.edgeHeight, defaults.edgeHeight, 0, 99);
+  tool.edgeEyedropper = Boolean(tool.edgeEyedropper);
+  tool.edgeErase = Boolean(tool.edgeErase);
+
   return tool;
 }
 
-export function updateStructureToolFromFields(builderState, root, appState = null) {
+export function updateStructureToolFromFields(builderState, root, appState = null, options = {}) {
   const tool = ensureStructureToolSettings(builderState, appState);
   if (!tool || !root) return tool;
 
@@ -40,11 +67,34 @@ export function updateStructureToolFromFields(builderState, root, appState = nul
   const roomId = root.querySelector('[data-builder-field="structure-room-id"]')?.value;
   const roofSprite = root.querySelector('[data-builder-field="structure-roof-sprite"]')?.value;
   const brushSize = root.querySelector('[data-builder-field="structure-brush-size"]')?.value;
+  const edgeType = root.querySelector('[data-builder-field="structure-edge-type"]')?.value;
+  const edgeSpriteId = root.querySelector('[data-builder-field="structure-edge-sprite"]')?.value;
+  const edgeHeight = root.querySelector('[data-builder-field="structure-edge-height"]')?.value;
 
   if (structureId !== undefined) tool.structureId = sanitizeId(structureId, tool.structureId ?? "structure_01");
   if (roomId !== undefined) tool.roomId = sanitizeId(roomId, tool.roomId ?? "room_01");
   if (roofSprite !== undefined) tool.roofSprite = sanitizeSprite(roofSprite, tool.roofSprite ?? "roof_001.png");
   if (brushSize !== undefined) tool.brushSize = clampWholeNumber(brushSize, tool.brushSize ?? 1, BRUSH_SIZE_MIN, BRUSH_SIZE_MAX);
+
+  if (edgeType !== undefined) {
+    const nextType = normalizeEdgeType(edgeType);
+    const previousType = tool.edgeType;
+    tool.edgeType = nextType;
+
+    const defaults = getStructureEdgeTypeDefaults(nextType);
+    if (options.changedField === "structure-edge-type" && nextType !== previousType) {
+      tool.edgeSpriteId = defaults.spriteId;
+      tool.edgeHeight = defaults.edgeHeight;
+    }
+  }
+
+  if (edgeSpriteId !== undefined && options.changedField !== "structure-edge-type") {
+    tool.edgeSpriteId = sanitizeSprite(edgeSpriteId, tool.edgeSpriteId ?? getStructureEdgeTypeDefaults(tool.edgeType).spriteId);
+  }
+
+  if (edgeHeight !== undefined && options.changedField !== "structure-edge-type") {
+    tool.edgeHeight = clampWholeNumber(edgeHeight, tool.edgeHeight ?? getStructureEdgeTypeDefaults(tool.edgeType).edgeHeight, 0, 99);
+  }
 
   return ensureStructureToolSettings(builderState, appState);
 }
@@ -59,7 +109,11 @@ export function setStructureEyedropper(builderState, enabled = true) {
   const tool = ensureStructureToolSettings(builderState);
   if (!tool) return null;
   tool.eyedropper = Boolean(enabled);
-  if (tool.eyedropper) tool.erase = false;
+  if (tool.eyedropper) {
+    tool.erase = false;
+    tool.edgeEyedropper = false;
+    tool.edgeErase = false;
+  }
   return tool;
 }
 
@@ -71,12 +125,48 @@ export function setStructureEraseMode(builderState, enabled = true) {
   const tool = ensureStructureToolSettings(builderState);
   if (!tool) return null;
   tool.erase = Boolean(enabled);
-  if (tool.erase) tool.eyedropper = false;
+  if (tool.erase) {
+    tool.eyedropper = false;
+    tool.edgeEyedropper = false;
+    tool.edgeErase = false;
+  }
   return tool;
 }
 
 export function isStructureEraseModeActive(builderState) {
   return Boolean(builderState?.structureTool?.erase);
+}
+
+export function setStructureEdgeEyedropper(builderState, enabled = true) {
+  const tool = ensureStructureToolSettings(builderState);
+  if (!tool) return null;
+  tool.edgeEyedropper = Boolean(enabled);
+  if (tool.edgeEyedropper) {
+    tool.eyedropper = false;
+    tool.erase = false;
+    tool.edgeErase = false;
+  }
+  return tool;
+}
+
+export function isStructureEdgeEyedropperActive(builderState) {
+  return Boolean(builderState?.structureTool?.edgeEyedropper);
+}
+
+export function setStructureEdgeEraseMode(builderState, enabled = true) {
+  const tool = ensureStructureToolSettings(builderState);
+  if (!tool) return null;
+  tool.edgeErase = Boolean(enabled);
+  if (tool.edgeErase) {
+    tool.eyedropper = false;
+    tool.erase = false;
+    tool.edgeEyedropper = false;
+  }
+  return tool;
+}
+
+export function isStructureEdgeEraseModeActive(builderState) {
+  return Boolean(builderState?.structureTool?.edgeErase);
 }
 
 export function toggleStructureRoofVisibility(builderState) {
@@ -88,6 +178,15 @@ export function toggleStructureRoofVisibility(builderState) {
 
 export function areStructureRoofsVisible(builderState) {
   return builderState?.structureTool?.showRoofs !== false;
+}
+
+export function getStructureEdgeTypeOptions() {
+  return Object.keys(EDGE_TYPE_DEFAULTS);
+}
+
+export function getStructureEdgeTypeDefaults(edgeType) {
+  const type = normalizeEdgeType(edgeType);
+  return { ...(EDGE_TYPE_DEFAULTS[type] ?? EDGE_TYPE_DEFAULTS.wall) };
 }
 
 export function getBuilderRoofSpriteOptions(appState, builderState = null) {
@@ -105,6 +204,30 @@ export function getBuilderRoofSpriteOptions(appState, builderState = null) {
   return ids;
 }
 
+export function getBuilderStructureEdgeSpriteOptions(appState, builderState = null) {
+  const ids = [];
+  for (const id of DEFAULT_EDGE_SPRITES) addUnique(ids, id);
+
+  const maps = [builderState?.authoring?.map, appState?.map].filter(Boolean);
+  for (const map of maps) {
+    for (const structure of Array.isArray(map?.structures) ? map.structures : []) {
+      for (const edge of Array.isArray(structure?.edges) ? structure.edges : []) {
+        addUnique(ids, edge?.spriteId ?? edge?.sprite ?? edge?.image ?? edge?.faceSprite);
+      }
+    }
+  }
+
+  return ids;
+}
+
+export function getStructureSpritePreviewPath(spriteId) {
+  const clean = sanitizeSprite(spriteId, "");
+  if (!clean) return "";
+  if (/^(https?:|data:|\/)/i.test(clean)) return clean;
+  if (clean.includes("/")) return clean;
+  return `art/structures/${clean}`;
+}
+
 export function sampleStructureToolAtTile(builderState, appState, x, y) {
   const map = getEditableBuilderMap(builderState);
   if (!map) return { ok: false, message: "Structure eyedropper is only available on builder-owned maps." };
@@ -114,18 +237,48 @@ export function sampleStructureToolAtTile(builderState, appState, x, y) {
 
   const current = ensureStructureToolSettings(builderState, appState);
   builderState.structureTool = {
+    ...current,
     structureId: sanitizeId(hit.structure?.id, current?.structureId ?? "structure_01"),
     roomId: sanitizeId(hit.cell?.roomId, current?.roomId ?? "room_01"),
     roofSprite: sanitizeSprite(hit.structure?.roof ?? hit.structure?.roofSprite, current?.roofSprite ?? "roof_001.png"),
     brushSize: clampWholeNumber(current?.brushSize, 1, BRUSH_SIZE_MIN, BRUSH_SIZE_MAX),
     eyedropper: false,
     erase: false,
+    edgeEyedropper: false,
+    edgeErase: false,
     showRoofs: current?.showRoofs !== false
   };
 
   return {
     ok: true,
     message: `Sampled ${builderState.structureTool.structureId} / ${builderState.structureTool.roomId} from tile ${x}, ${y}.`
+  };
+}
+
+export function sampleStructureEdgeToolAtEdge(builderState, appState, x, y, edge) {
+  const map = getEditableBuilderMap(builderState);
+  if (!map) return { ok: false, message: "Structure edge eyedropper is only available on builder-owned maps." };
+
+  const hit = findStructureEdgeAt(map, Number(x), Number(y), edge);
+  if (!hit) return { ok: false, message: `No authored structure edge at ${x}, ${y} ${String(edge ?? "").toUpperCase()}.` };
+
+  const current = ensureStructureToolSettings(builderState, appState);
+  const type = normalizeEdgeType(hit.edgePart?.type ?? "wall");
+  builderState.structureTool = {
+    ...current,
+    structureId: sanitizeId(hit.structure?.id, current?.structureId ?? "structure_01"),
+    edgeType: type,
+    edgeSpriteId: sanitizeSprite(hit.edgePart?.spriteId ?? hit.edgePart?.sprite ?? hit.edgePart?.image ?? "", getStructureEdgeTypeDefaults(type).spriteId),
+    edgeHeight: clampWholeNumber(hit.edgePart?.edgeHeight, getStructureEdgeTypeDefaults(type).edgeHeight, 0, 99),
+    eyedropper: false,
+    erase: false,
+    edgeEyedropper: false,
+    edgeErase: false
+  };
+
+  return {
+    ok: true,
+    message: `Sampled ${builderState.structureTool.edgeType}:${builderState.structureTool.edgeHeight} from ${x}, ${y} ${String(edge ?? "").toUpperCase()}.`
   };
 }
 
@@ -185,6 +338,66 @@ export function applyStructureToolAtTile(builderState, appState, x, y) {
   };
 }
 
+export function applyStructureEdgeToolAtEdge(builderState, appState, x, y, edge) {
+  const map = getEditableBuilderMap(builderState);
+  if (!map) {
+    return { ok: false, message: "Structure edge editing is only available on builder-owned maps." };
+  }
+
+  const tool = ensureStructureToolSettings(builderState, appState);
+  const tileX = Number(x);
+  const tileY = Number(y);
+  const worldEdge = normalizeWorldEdge(edge);
+  if (!Number.isFinite(tileX) || !Number.isFinite(tileY) || !worldEdge) {
+    return { ok: false, message: "No valid selected structure edge." };
+  }
+
+  if (tool.edgeErase) {
+    const removed = eraseStructureEdges(map, tileX, tileY, worldEdge);
+    builderState.dirty = removed > 0 || builderState.dirty;
+    return {
+      ok: true,
+      message: removed > 0
+        ? `Erased ${removed} structure edge${removed === 1 ? "" : "s"} at ${tileX}, ${tileY} ${worldEdge.toUpperCase()}.`
+        : `No structure edge to erase at ${tileX}, ${tileY} ${worldEdge.toUpperCase()}.`
+    };
+  }
+
+  const structure = findStructureById(map, tool.structureId);
+  if (!structure) {
+    return { ok: false, message: `Paint room cells for ${tool.structureId} before adding edges.` };
+  }
+
+  if (!Array.isArray(structure.edges)) structure.edges = [];
+
+  // A world edge should only have one authored structure part. Remove any
+  // existing edge at this tile/side across structures before writing the new one.
+  eraseStructureEdges(map, tileX, tileY, worldEdge);
+
+  const cleanType = normalizeEdgeType(tool.edgeType);
+  const cleanSprite = sanitizeSprite(tool.edgeSpriteId, getStructureEdgeTypeDefaults(cleanType).spriteId);
+  const cleanHeight = clampWholeNumber(tool.edgeHeight, getStructureEdgeTypeDefaults(cleanType).edgeHeight, 0, 99);
+  const edgePart = {
+    x: tileX,
+    y: tileY,
+    edge: worldEdge,
+    type: cleanType,
+    edgeHeight: cleanHeight
+  };
+
+  if (cleanSprite) edgePart.spriteId = cleanSprite;
+
+  structure.edges.push(edgePart);
+  sortStructureEdges(structure);
+  builderState.dirty = true;
+
+  return {
+    ok: true,
+    message: `Painted ${cleanType}:${cleanHeight} edge at ${tileX}, ${tileY} ${worldEdge.toUpperCase()}.`,
+    edge: edgePart
+  };
+}
+
 export function getStructureBrushPreviewCells(builderState, appState, x, y) {
   const map = builderState?.workspaceMode === "builder-map"
     ? builderState?.authoring?.map
@@ -203,7 +416,12 @@ function createDefaultStructureTool(appState, builderState) {
     brushSize: 1,
     eyedropper: false,
     erase: false,
-    showRoofs: true
+    showRoofs: true,
+    edgeType: "wall",
+    edgeSpriteId: EDGE_TYPE_DEFAULTS.wall.spriteId,
+    edgeHeight: EDGE_TYPE_DEFAULTS.wall.edgeHeight,
+    edgeEyedropper: false,
+    edgeErase: false
   };
 }
 
@@ -238,6 +456,11 @@ function ensureStructure(map, structureId, roofSprite) {
   return structure;
 }
 
+function findStructureById(map, structureId) {
+  const id = sanitizeId(structureId, "structure_01");
+  return ensureStructuresArray(map).find((candidate) => sanitizeId(candidate?.id, "") === id) ?? null;
+}
+
 function eraseStructureCells(map, cells) {
   const keys = new Set(cells.map((cell) => makeCellKey(cell.x, cell.y)));
   let removed = 0;
@@ -253,6 +476,20 @@ function eraseStructureCells(map, cells) {
   return removed;
 }
 
+function eraseStructureEdges(map, x, y, edge) {
+  const worldEdge = normalizeWorldEdge(edge);
+  let removed = 0;
+
+  for (const structure of ensureStructuresArray(map)) {
+    if (!Array.isArray(structure.edges)) continue;
+    const before = structure.edges.length;
+    structure.edges = structure.edges.filter((candidate) => !isSameEdge(candidate, x, y, worldEdge));
+    removed += before - structure.edges.length;
+  }
+
+  return removed;
+}
+
 function removeEmptyStructures(map) {
   if (!Array.isArray(map?.structures)) return;
   map.structures = map.structures.filter((structure) => Array.isArray(structure?.cells) && structure.cells.length > 0);
@@ -261,6 +498,11 @@ function removeEmptyStructures(map) {
 function sortStructureCells(structure) {
   if (!Array.isArray(structure?.cells)) return;
   structure.cells.sort((a, b) => Number(a.y) - Number(b.y) || Number(a.x) - Number(b.x));
+}
+
+function sortStructureEdges(structure) {
+  if (!Array.isArray(structure?.edges)) return;
+  structure.edges.sort((a, b) => Number(a.y) - Number(b.y) || Number(a.x) - Number(b.x) || String(a.edge ?? "").localeCompare(String(b.edge ?? "")));
 }
 
 function findStructureCellAt(map, x, y) {
@@ -272,6 +514,26 @@ function findStructureCellAt(map, x, y) {
     }
   }
   return null;
+}
+
+function findStructureEdgeAt(map, x, y, edge) {
+  const worldEdge = normalizeWorldEdge(edge);
+  if (!worldEdge) return null;
+
+  for (const structure of ensureStructuresArray(map)) {
+    for (const edgePart of Array.isArray(structure?.edges) ? structure.edges : []) {
+      if (isSameEdge(edgePart, x, y, worldEdge)) {
+        return { structure, edgePart };
+      }
+    }
+  }
+  return null;
+}
+
+function isSameEdge(edgePart, x, y, edge) {
+  return Number(edgePart?.x) === Number(x) &&
+    Number(edgePart?.y) === Number(y) &&
+    normalizeWorldEdge(edgePart?.edge ?? edgePart?.face ?? edgePart?.side) === normalizeWorldEdge(edge);
 }
 
 function makeCellKey(x, y) {
@@ -301,4 +563,17 @@ function sanitizeId(value, fallback) {
 function sanitizeSprite(value, fallback) {
   const clean = String(value ?? "").trim();
   return clean || fallback;
+}
+
+function normalizeEdgeType(value) {
+  const clean = String(value ?? "wall").trim().toLowerCase();
+  if (clean === "open" || clean === "opening") return "open";
+  if (clean === "door") return "door";
+  if (clean === "wall") return "wall";
+  return "wall";
+}
+
+function normalizeWorldEdge(value) {
+  const clean = String(value ?? "").trim().toLowerCase();
+  return clean === "sw" || clean === "se" || clean === "ne" || clean === "nw" ? clean : null;
 }

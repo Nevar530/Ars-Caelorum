@@ -27,10 +27,16 @@ import {
   updateTerrainToolFromFields
 } from "./builderTerrain.js";
 import {
+  applyStructureEdgeToolAtEdge,
   applyStructureToolAtTile,
+  isStructureEdgeEraseModeActive,
+  isStructureEdgeEyedropperActive,
   isStructureEyedropperActive,
   resetStructureToolToDefaults,
+  sampleStructureEdgeToolAtEdge,
   sampleStructureToolAtTile,
+  setStructureEdgeEraseMode,
+  setStructureEdgeEyedropper,
   setStructureEraseMode,
   setStructureEyedropper,
   toggleStructureRoofVisibility,
@@ -170,9 +176,11 @@ class MissionBuilder {
       return true;
     }
 
-    const result = this.isStructureAuthoringActive()
-      ? this.applyStructureActionAtTile(target.x, target.y)
-      : this.applyTerrainActionAtTile(target.x, target.y);
+    const result = this.isStructureAuthoringActive() && selected?.type === "edge"
+      ? this.applyStructureEdgeActionAtEdge(selected.x, selected.y, selected.edge)
+      : this.isStructureAuthoringActive()
+        ? this.applyStructureActionAtTile(target.x, target.y)
+        : this.applyTerrainActionAtTile(target.x, target.y);
 
     pushBuilderLog(this.builderState, result.message);
     this.render();
@@ -218,7 +226,7 @@ class MissionBuilder {
     }
 
     if (this.builderState.activeTab === "structures") {
-      updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
+      updateStructureToolFromFields(this.builderState, this.refs.root, this.appState, { changedField: event.target.getAttribute("data-builder-field") });
       this.render();
     }
   }
@@ -278,7 +286,12 @@ class MissionBuilder {
 
     if (event.shiftKey) {
       setBuilderSelection(this.builderState, createEdgeSelection(workspaceAppState, picked.x, picked.y, picked.edge));
-      pushBuilderLog(this.builderState, `Selected edge ${picked.edge.toUpperCase()} at ${picked.x}, ${picked.y}.`);
+      if (this.isStructureAuthoringActive()) {
+        const result = this.applyStructureEdgeActionAtEdge(picked.x, picked.y, picked.edge);
+        pushBuilderLog(this.builderState, result.message);
+      } else {
+        pushBuilderLog(this.builderState, `Selected edge ${picked.edge.toUpperCase()} at ${picked.x}, ${picked.y}.`);
+      }
       this.render();
       return;
     }
@@ -320,6 +333,14 @@ class MissionBuilder {
       : applyStructureToolAtTile(this.builderState, this.appState, x, y);
   }
 
+  applyStructureEdgeActionAtEdge(x, y, edge) {
+    updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
+    if (isStructureEdgeEyedropperActive(this.builderState)) {
+      return sampleStructureEdgeToolAtEdge(this.builderState, this.appState, x, y, edge);
+    }
+    return applyStructureEdgeToolAtEdge(this.builderState, this.appState, x, y, edge);
+  }
+
   handleAction(action) {
     if (action === "structure-eyedropper") {
       updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
@@ -334,6 +355,23 @@ class MissionBuilder {
       const nextErase = !this.builderState.structureTool?.erase;
       const tool = setStructureEraseMode(this.builderState, nextErase);
       pushBuilderLog(this.builderState, tool?.erase ? "Structure erase brush armed. Click cells to remove structure cells." : "Structure erase cancelled.");
+      this.render();
+      return;
+    }
+
+    if (action === "structure-edge-eyedropper") {
+      updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
+      const tool = setStructureEdgeEyedropper(this.builderState, !isStructureEdgeEyedropperActive(this.builderState));
+      pushBuilderLog(this.builderState, tool?.edgeEyedropper ? "Structure edge eyedropper armed. Shift-click an edge to sample edge brush settings." : "Structure edge eyedropper cancelled.");
+      this.render();
+      return;
+    }
+
+    if (action === "structure-edge-erase") {
+      updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
+      const nextErase = !this.builderState.structureTool?.edgeErase;
+      const tool = setStructureEdgeEraseMode(this.builderState, nextErase);
+      pushBuilderLog(this.builderState, tool?.edgeErase ? "Structure edge erase armed. Shift-click edges to remove them." : "Structure edge erase cancelled.");
       this.render();
       return;
     }

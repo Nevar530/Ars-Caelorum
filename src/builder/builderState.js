@@ -58,7 +58,12 @@ export function createBuilderState() {
       brushSize: 1,
       eyedropper: false,
       erase: false,
-      showRoofs: true
+      showRoofs: true,
+      edgeType: "wall",
+      edgeSpriteId: "wall_001.png",
+      edgeHeight: 2,
+      edgeEyedropper: false,
+      edgeErase: false
     },
     status: "BUILDER MENU",
     runtimeMapId: null,
@@ -68,7 +73,7 @@ export function createBuilderState() {
       info: [
         {
           code: "BUILDER_AUTHORING_FOUNDATION",
-          message: "Mission Builder can create, terrain-paint, structure-cell paint, and export a builder-owned mission package. Structure edges/spawns/objectives remain staged."
+          message: "Mission Builder can create, terrain-paint, structure-cell/edge paint, and export a builder-owned mission package. Structure edge authoring is active; spawns/objectives remain staged."
         }
       ]
     },

@@ -23,6 +23,12 @@ import {
   areStructureRoofsVisible,
   ensureStructureToolSettings,
   getBuilderRoofSpriteOptions,
+  getBuilderStructureEdgeSpriteOptions,
+  getStructureEdgeTypeDefaults,
+  getStructureEdgeTypeOptions,
+  getStructureSpritePreviewPath,
+  isStructureEdgeEraseModeActive,
+  isStructureEdgeEyedropperActive,
   isStructureEraseModeActive,
   isStructureEyedropperActive
 } from "../builderStructures.js";
@@ -155,7 +161,7 @@ function renderTabHeader({ builderState, refs }) {
     project: "Start a new package, load existing mission data, or open current runtime map only when a mission is active.",
     map: "Map metadata and map-level setup live here. New blank maps are builder-owned and do not mutate the runtime map.",
     terrain: "Terrain owns tile truth: terrain type, tile flags/default movement, texture set, and height/elevation.",
-    structures: "Structure cells/rooms are active for builder-owned maps. Roof visibility is an editor view toggle; edge/wall tools come next.",
+    structures: "Structure cells/rooms are active for builder-owned maps. Roof visibility is an editor view toggle; edge/wall tools are active.",
     spawns: "Spawn and deployment authoring will use existing deployment/startState truth.",
     units: "Mission roster and later loadout restrictions will live here.",
     objectives: "Objective definitions come after mission package core.",
@@ -367,7 +373,7 @@ function renderInspector({ builderState, refs, appState }) {
     ? renderStructureInspectorTools(builderState, appState)
     : "";
   const note = builderState.workspaceMode === "builder-map"
-    ? "Builder-owned map. Terrain tab paints tile truth. Structures tab paints structure cells/rooms. Structure edges remain staged."
+    ? "Builder-owned map. Terrain tab paints tile truth. Structures tab paints structure cells/rooms. Structure edges are authorable with Shift-click."
     : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
 
   refs.inspector.innerHTML = `
@@ -435,9 +441,15 @@ function renderStructureInspectorTools(builderState, appState) {
   const editable = builderState.workspaceMode === "builder-map";
   const roofOptions = buildRoofSpriteOptions(appState, builderState, tool.roofSprite ?? "roof_001.png");
   const brushSizeOptions = buildBrushSizeOptions(tool.brushSize ?? 1);
+  const edgeTypeOptions = buildStructureEdgeTypeOptions(tool.edgeType ?? "wall");
+  const edgeSpriteOptions = buildStructureEdgeSpriteOptions(appState, builderState, tool.edgeSpriteId ?? "wall_001.png");
   const eyedropperActive = isStructureEyedropperActive(builderState) ? " is-active" : "";
   const eraseActive = isStructureEraseModeActive(builderState) ? " is-active" : "";
+  const edgeEyedropperActive = isStructureEdgeEyedropperActive(builderState) ? " is-active" : "";
+  const edgeEraseActive = isStructureEdgeEraseModeActive(builderState) ? " is-active" : "";
   const roofsVisible = areStructureRoofsVisible(builderState);
+  const roofPreview = renderStructureSpritePreview(tool.roofSprite, "Roof Preview");
+  const edgePreview = renderStructureSpritePreview(tool.edgeSpriteId, "Edge Preview");
 
   return '<div class="builder-inspector-card builder-structure-tool-card">' +
       '<div class="builder-field-label">Structure Room Brush</div>' +
@@ -453,19 +465,38 @@ function renderStructureInspectorTools(builderState, appState) {
         '<span>Roof Sprite</span>' +
         '<select data-builder-field="structure-roof-sprite"' + (editable ? '' : ' disabled') + '>' + roofOptions + '</select>' +
       '</label>' +
+      roofPreview +
       '<label class="builder-form-field builder-form-field-compact">' +
         '<span>Brush Size</span>' +
         '<select data-builder-field="structure-brush-size"' + (editable ? '' : ' disabled') + '>' + brushSizeOptions + '</select>' +
       '</label>' +
       '<div class="builder-tool-row">' +
-        '<button type="button" class="builder-tool-button' + eyedropperActive + '" data-builder-action="structure-eyedropper"' + (editable ? '' : ' disabled') + '>Eyedropper</button>' +
+        '<button type="button" class="builder-tool-button' + eyedropperActive + '" data-builder-action="structure-eyedropper"' + (editable ? '' : ' disabled') + '>Cell Eyedropper</button>' +
         '<button type="button" class="builder-tool-button' + eraseActive + '" data-builder-action="structure-erase"' + (editable ? '' : ' disabled') + '>Erase Cells</button>' +
       '</div>' +
       '<div class="builder-tool-row">' +
         '<button type="button" class="builder-tool-button" data-builder-action="reset-structure-brush"' + (editable ? '' : ' disabled') + '>Reset Brush</button>' +
         '<button type="button" class="builder-tool-button' + (roofsVisible ? ' is-active' : '') + '" data-builder-action="toggle-structure-roofs">' + (roofsVisible ? 'Roofs Shown' : 'Roofs Hidden') + '</button>' +
       '</div>' +
-      '<div class="builder-inspector-note">Paint structure cells/rooms first. Roof sprite is structure-level engine truth. Hide roofs only changes the builder preview so wall/edge authoring is easier later.</div>' +
+      '<div class="builder-field-label builder-section-label">Structure Edge Brush</div>' +
+      '<label class="builder-form-field builder-form-field-compact">' +
+        '<span>Edge Type</span>' +
+        '<select data-builder-field="structure-edge-type"' + (editable ? '' : ' disabled') + '>' + edgeTypeOptions + '</select>' +
+      '</label>' +
+      '<label class="builder-form-field builder-form-field-compact">' +
+        '<span>Edge Sprite</span>' +
+        '<select data-builder-field="structure-edge-sprite"' + (editable ? '' : ' disabled') + '>' + edgeSpriteOptions + '</select>' +
+      '</label>' +
+      edgePreview +
+      '<label class="builder-form-field builder-form-field-compact">' +
+        '<span>Edge Height</span>' +
+        '<input type="number" data-builder-field="structure-edge-height" value="' + escapeHtml(tool.edgeHeight ?? getStructureEdgeTypeDefaults(tool.edgeType).edgeHeight) + '" min="0" max="99" step="1"' + (editable ? '' : ' disabled') + '>' +
+      '</label>' +
+      '<div class="builder-tool-row">' +
+        '<button type="button" class="builder-tool-button' + edgeEyedropperActive + '" data-builder-action="structure-edge-eyedropper"' + (editable ? '' : ' disabled') + '>Edge Eyedropper</button>' +
+        '<button type="button" class="builder-tool-button' + edgeEraseActive + '" data-builder-action="structure-edge-erase"' + (editable ? '' : ' disabled') + '>Erase Edge</button>' +
+      '</div>' +
+      '<div class="builder-inspector-note">Paint rooms/cells with normal click. Shift-click an edge to paint the selected wall/door/opening. Edge height is board truth; type/sprite are art/editor labels.</div>' +
     '</div>';
 }
 
@@ -476,6 +507,34 @@ function buildRoofSpriteOptions(appState, builderState, selectedRoof = "roof_001
     const selected = roof === selectedRoof ? " selected" : "";
     return '<option value="' + value + '"' + selected + '>' + value + '</option>';
   }).join("");
+}
+
+function buildStructureEdgeTypeOptions(selectedType = "wall") {
+  return getStructureEdgeTypeOptions().map((type) => {
+    const selected = type === selectedType ? " selected" : "";
+    return '<option value="' + escapeHtml(type) + '"' + selected + '>' + escapeHtml(type) + '</option>';
+  }).join("");
+}
+
+function buildStructureEdgeSpriteOptions(appState, builderState, selectedSprite = "wall_001.png") {
+  const options = getBuilderStructureEdgeSpriteOptions(appState, builderState);
+  const cleanSelected = String(selectedSprite ?? "").trim();
+  const values = cleanSelected && !options.includes(cleanSelected) ? [cleanSelected, ...options] : options;
+  return '<option value=""' + (!cleanSelected ? ' selected' : '') + '>none / opening</option>' + values.map((sprite) => {
+    const value = escapeHtml(sprite);
+    const selected = sprite === cleanSelected ? " selected" : "";
+    return '<option value="' + value + '"' + selected + '>' + value + '</option>';
+  }).join("");
+}
+
+function renderStructureSpritePreview(spriteId, label) {
+  const clean = String(spriteId ?? "").trim();
+  if (!clean) {
+    return '<div class="builder-structure-art-preview is-empty"><span>' + escapeHtml(label) + '</span><strong>No sprite / open edge</strong></div>';
+  }
+
+  const src = escapeHtml(getStructureSpritePreviewPath(clean));
+  return '<div class="builder-structure-art-preview"><span>' + escapeHtml(label) + '</span><img src="' + src + '" alt="' + escapeHtml(clean) + '"><strong>' + escapeHtml(clean) + '</strong></div>';
 }
 
 function buildBrushSizeOptions(selectedSize = 1) {
