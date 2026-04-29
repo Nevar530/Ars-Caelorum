@@ -5,6 +5,7 @@
 // using the same projection/render modules as the game scene, then overlays
 // builder-owned hover/selection markers without mutating runtime truth.
 
+import { RENDER_CONFIG } from "../../config.js";
 import { renderIso } from "../../render.js";
 import {
   ensureCameraState,
@@ -26,7 +27,6 @@ import {
 } from "../../structures/structureRules.js";
 
 const PICK_MAX_DISTANCE_PX = 44;
-const TILE_EDGE_ORDER = ["ne", "se", "sw", "nw"];
 
 export function renderWysiwygWorkspace({ appState, builderState, workspaceRefs }) {
   if (!appState || !workspaceRefs?.board || !workspaceRefs?.worldScene || !workspaceRefs?.worldUi) {
@@ -137,15 +137,8 @@ function pickNearestTile(previewState, svgX, svgY) {
 }
 
 function pickNearestTileEdge(previewState, x, y, point) {
-  const polygon = getTilePolygonPoints(previewState, x, y);
-  if (polygon.length !== 4 || !point) return "ne";
-
-  const edges = [
-    { id: "ne", a: polygon[0], b: polygon[1] },
-    { id: "se", a: polygon[1], b: polygon[2] },
-    { id: "sw", a: polygon[2], b: polygon[3] },
-    { id: "nw", a: polygon[3], b: polygon[0] }
-  ];
+  const edges = getTileEdgeSegments(previewState, x, y);
+  if (!edges.length || !point) return "ne";
 
   let best = edges[0];
   let bestDistance = Infinity;
@@ -218,35 +211,105 @@ function renderTileMarker(previewState, x, y, tone) {
 }
 
 function renderEdgeMarker(previewState, x, y, edge) {
-  const points = getTilePolygonPoints(previewState, x, y);
-  if (points.length !== 4) return "";
+  const segment = getTileEdgeSegments(previewState, x, y)
+    .find((candidate) => candidate.id === String(edge ?? "").toLowerCase());
 
-  const index = TILE_EDGE_ORDER.indexOf(String(edge ?? "").toLowerCase());
-  if (index < 0) return "";
+  if (!segment) return "";
 
-  const edgePairs = [
-    [points[0], points[1]],
-    [points[1], points[2]],
-    [points[2], points[3]],
-    [points[3], points[0]]
-  ];
-  const [a, b] = edgePairs[index];
-
+  const { a, b } = segment;
   return `<line x1="${round(a.x)}" y1="${round(a.y)}" x2="${round(b.x)}" y2="${round(b.y)}" stroke="#ff7ab6" stroke-width="5" stroke-linecap="round" vector-effect="non-scaling-stroke" pointer-events="none" />`;
 }
 
 function getTilePolygonPoints(previewState, x, y) {
-  const tile = getTile(previewState?.map, x, y);
-  if (!tile) return [];
+  const diamond = getTileScreenDiamond(previewState, x, y);
+  if (!diamond) return [];
 
+  return [diamond.top, diamond.right, diamond.bottom, diamond.left];
+}
+
+function getTileScreenDiamond(previewState, x, y) {
+  const tile = getTile(previewState?.map, x, y);
+  if (!tile) return null;
+
+  // Builder-only copy of the terrain/structure screen diamond contract:
+  // project the tile origin once, then build the diamond from fixed iso offsets.
+  // This makes the selection marker match the rendered isometric tile without
+  // changing engine/runtime rendering code.
   const elevation = Number(getTileRenderElevation(tile) ?? 0);
+  const origin = projectIso(previewState, x, y, elevation, 1);
+  const halfW = RENDER_CONFIG.isoTileWidth / 2;
+  const halfH = RENDER_CONFIG.isoTileHeight / 2;
+
+  return {
+    top: { x: origin.x, y: origin.y },
+    right: { x: origin.x + halfW, y: origin.y + halfH },
+    bottom: { x: origin.x, y: origin.y + (halfH * 2) },
+    left: { x: origin.x - halfW, y: origin.y + halfH }
+  };
+}
+
+function getTileEdgeSegments(previewState, x, y) {
+  const diamond = getTileScreenDiamond(previewState, x, y);
+  if (!diamond) return [];
 
   return [
-    projectIso(previewState, x + 0.5, y, elevation, 1),
-    projectIso(previewState, x + 1, y + 0.5, elevation, 1),
-    projectIso(previewState, x + 0.5, y + 1, elevation, 1),
-    projectIso(previewState, x, y + 0.5, elevation, 1)
-  ];
+    { id: getWorldFaceForScreenEdge(previewState.rotation, "topLeft"), a: diamond.top, b: diamond.left },
+    { id: getWorldFaceForScreenEdge(previewState.rotation, "topRight"), a: diamond.top, b: diamond.right },
+    { id: getWorldFaceForScreenEdge(previewState.rotation, "bottomRight"), a: diamond.right, b: diamond.bottom },
+    { id: getWorldFaceForScreenEdge(previewState.rotation, "bottomLeft"), a: diamond.left, b: diamond.bottom }
+  ].filter((edge) => edge.id);
+}
+
+function getWorldFaceForScreenEdge(rotation, screenEdge) {
+  const leftWorldFace = getWorldFaceForScreenSide(rotation, "left");
+  const rightWorldFace = getWorldFaceForScreenSide(rotation, "right");
+  const topRightWorldFace = getOppositeWorldFace(leftWorldFace);
+  const topLeftWorldFace = getOppositeWorldFace(rightWorldFace);
+
+  switch (screenEdge) {
+    case "bottomLeft":
+      return leftWorldFace;
+    case "bottomRight":
+      return rightWorldFace;
+    case "topRight":
+      return topRightWorldFace;
+    case "topLeft":
+      return topLeftWorldFace;
+    default:
+      return null;
+  }
+}
+
+function getWorldFaceForScreenSide(rotation, screenSide) {
+  const index = normalizeRotationIndex(rotation);
+  const side = String(screenSide ?? "").toLowerCase();
+
+  const leftFaces = ["sw", "se", "ne", "nw"];
+  const rightFaces = ["se", "ne", "nw", "sw"];
+
+  if (side === "left") return leftFaces[index];
+  if (side === "right") return rightFaces[index];
+  return null;
+}
+
+function getOppositeWorldFace(worldFace) {
+  switch (String(worldFace ?? "").toLowerCase()) {
+    case "sw":
+      return "ne";
+    case "se":
+      return "nw";
+    case "ne":
+      return "sw";
+    case "nw":
+      return "se";
+    default:
+      return null;
+  }
+}
+
+function normalizeRotationIndex(rotation) {
+  const raw = Math.round(Number(rotation ?? 0));
+  return ((raw % 4) + 4) % 4;
 }
 
 function renderWorkspaceReadout({ appState, builderState, workspaceRefs }) {
