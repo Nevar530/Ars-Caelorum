@@ -52,7 +52,7 @@ export function createBuilderState() {
       info: [
         {
           code: "BUILDER_AUTHORING_FOUNDATION",
-          message: "Mission Builder can create a blank builder-owned map package. Map editing tools remain locked until authoring adapters are deliberately unlocked."
+          message: "Mission Builder can create and export a blank builder-owned map package. Map editing tools remain locked until authoring adapters are deliberately unlocked."
         }
       ]
     },

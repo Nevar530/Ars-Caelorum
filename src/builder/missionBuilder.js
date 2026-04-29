@@ -17,6 +17,7 @@ import {
   toggleBuilderOverlay
 } from "./builderState.js";
 import { createBlankBuilderMap, readBlankMapForm } from "./builderMapFactory.js";
+import { exportBuilderMapFiles } from "./builderExport.js";
 import {
   createEdgeSelection,
   createTileSelection,
@@ -279,7 +280,12 @@ class MissionBuilder {
     }
 
     if (action === "export") {
-      pushBuilderLog(this.builderState, "Export Package is intentionally disabled until package/export adapters are real.");
+      const workspaceAppState = getBuilderWorkspaceAppState(this.builderState, this.appState);
+      const result = exportBuilderMapFiles(workspaceAppState?.map ?? null);
+      pushBuilderLog(this.builderState, result.message);
+      if (result.ok && this.builderState.workspaceMode === "builder-map") {
+        this.builderState.dirty = false;
+      }
       this.render();
     }
   }
