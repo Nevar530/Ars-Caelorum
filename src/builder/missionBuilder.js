@@ -87,7 +87,7 @@ class MissionBuilder {
     }
 
     if (!this.builderState.isOpen) return;
-    if (isTextEntryTarget(event.target)) return;
+    if (isTextEntryEvent(event, this.refs?.root)) return;
 
     if (this.handleWorkspaceNavigationKey(event)) {
       event.preventDefault();
@@ -321,9 +321,27 @@ class MissionBuilder {
   }
 }
 
-function isTextEntryTarget(target) {
-  const tagName = String(target?.tagName ?? "").toLowerCase();
-  return tagName === "input" || tagName === "textarea" || tagName === "select" || Boolean(target?.isContentEditable);
+function isTextEntryEvent(event, root) {
+  if (!event) return false;
+
+  if (isTextEntryElement(event.target)) return true;
+
+  const active = root?.contains?.(document.activeElement) ? document.activeElement : null;
+  if (isTextEntryElement(active)) return true;
+
+  const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+  return path.some((element) => isTextEntryElement(element));
+}
+
+function isTextEntryElement(element) {
+  if (!element || element === window || element === document) return false;
+
+  const tagName = String(element.tagName ?? "").toLowerCase();
+  if (tagName === "input" || tagName === "textarea" || tagName === "select") return true;
+  if (element.isContentEditable) return true;
+
+  const role = String(element.getAttribute?.("role") ?? "").toLowerCase();
+  return role === "textbox" || role === "combobox" || role === "spinbutton";
 }
 
 const missionBuilder = new MissionBuilder();
