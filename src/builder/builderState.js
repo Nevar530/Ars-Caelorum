@@ -45,11 +45,11 @@ export function createBuilderState() {
       tileHeights: false
     },
     terrainTool: {
-      mode: "terrain",
       terrainTypeId: "grass",
       movementClass: "clear",
       height: 0,
-      brushSize: 1
+      brushSize: 1,
+      eyedropper: false
     },
     status: "BUILDER MENU",
     runtimeMapId: null,
@@ -59,7 +59,7 @@ export function createBuilderState() {
       info: [
         {
           code: "BUILDER_AUTHORING_FOUNDATION",
-          message: "Mission Builder can create, terrain-paint, height-paint, and export a builder-owned map package. Structure/spawn/objective tools remain staged."
+          message: "Mission Builder can create, terrain-paint, height-paint, and export a builder-owned map package. Terrain brush applies selected type/height/movement together. Structure/spawn/objective tools remain staged."
         }
       ]
     },

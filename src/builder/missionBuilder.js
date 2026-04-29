@@ -19,9 +19,11 @@ import {
 import { createBlankBuilderMap, readBlankMapForm } from "./builderMapFactory.js";
 import { exportBuilderMissionPackage } from "./builderExport.js";
 import {
-  applyTerrainToolAtSelection,
   applyTerrainToolAtTile,
-  setTerrainToolMode,
+  isTerrainEyedropperActive,
+  resetTerrainToolToDefaults,
+  sampleTerrainToolAtTile,
+  setTerrainEyedropper,
   updateTerrainToolFromFields
 } from "./builderTerrain.js";
 import {
@@ -50,6 +52,7 @@ class MissionBuilder {
 
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleClick = this.handleClick.bind(this);
+    this.handleChange = this.handleChange.bind(this);
     this.handlePointerMove = this.handlePointerMove.bind(this);
     this.handlePointerLeave = this.handlePointerLeave.bind(this);
   }
@@ -66,6 +69,7 @@ class MissionBuilder {
 
     window.addEventListener("keydown", this.handleKeyDown, { capture: true });
     this.refs.root.addEventListener("click", this.handleClick);
+    this.refs.root.addEventListener("change", this.handleChange);
     this.refs.board.addEventListener("pointermove", this.handlePointerMove);
     this.refs.board.addEventListener("pointerleave", this.handlePointerLeave);
 
@@ -77,6 +81,7 @@ class MissionBuilder {
   destroy() {
     window.removeEventListener("keydown", this.handleKeyDown, { capture: true });
     this.refs?.root?.removeEventListener("click", this.handleClick);
+    this.refs?.root?.removeEventListener("change", this.handleChange);
     this.refs?.board?.removeEventListener("pointermove", this.handlePointerMove);
     this.refs?.board?.removeEventListener("pointerleave", this.handlePointerLeave);
     this.refs?.root?.remove();
@@ -155,6 +160,21 @@ class MissionBuilder {
     }
   }
 
+  handleChange(event) {
+    if (!this.builderState.isOpen || this.builderState.activeTab !== "terrain") return;
+    if (!event.target?.closest?.("[data-builder-field]")) return;
+
+    const previousTerrainTypeId = this.builderState.terrainTool?.terrainTypeId;
+    updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
+
+    const changedField = event.target.getAttribute("data-builder-field");
+    if (changedField === "terrain-type" && this.builderState.terrainTool?.terrainTypeId !== previousTerrainTypeId) {
+      pushBuilderLog(this.builderState, `Terrain brush set to ${this.builderState.terrainTool.terrainTypeId}; movement default loaded.`);
+    }
+
+    this.render();
+  }
+
   handlePointerMove(event) {
     if (!this.builderState.isOpen || !isBuilderWorkspaceMap(this.builderState)) return;
 
@@ -219,7 +239,9 @@ class MissionBuilder {
 
     if (this.isTerrainAuthoringActive()) {
       updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
-      const result = applyTerrainToolAtTile(this.builderState, this.appState, picked.x, picked.y);
+      const result = isTerrainEyedropperActive(this.builderState)
+        ? sampleTerrainToolAtTile(this.builderState, this.appState, picked.x, picked.y)
+        : applyTerrainToolAtTile(this.builderState, this.appState, picked.x, picked.y);
       pushBuilderLog(this.builderState, result.message);
     } else {
       pushBuilderLog(this.builderState, `Selected tile ${picked.x}, ${picked.y}.`);
@@ -233,19 +255,17 @@ class MissionBuilder {
   }
 
   handleAction(action) {
-    if (action && typeof action === "string" && action.startsWith("set-terrain-mode:")) {
-      const mode = action.split(":")[1];
-      setTerrainToolMode(this.builderState, mode);
+    if (action === "terrain-eyedropper") {
       updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
-      pushBuilderLog(this.builderState, `Terrain tool set to ${mode === "height" ? "height paint" : "terrain paint"}.`);
+      const tool = setTerrainEyedropper(this.builderState, !isTerrainEyedropperActive(this.builderState));
+      pushBuilderLog(this.builderState, tool?.eyedropper ? "Eyedropper armed. Click a tile to sample terrain brush settings." : "Eyedropper cancelled.");
       this.render();
       return;
     }
 
-    if (action === "apply-terrain-selected") {
-      updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
-      const result = applyTerrainToolAtSelection(this.builderState, this.appState);
-      pushBuilderLog(this.builderState, result.message);
+    if (action === "reset-terrain-brush") {
+      resetTerrainToolToDefaults(this.builderState, this.appState);
+      pushBuilderLog(this.builderState, "Terrain brush reset to default settings.");
       this.render();
       return;
     }

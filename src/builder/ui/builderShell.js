@@ -15,6 +15,7 @@ import {
 import { BUILDER_DEFAULT_TERRAIN_TYPES } from "../builderMapFactory.js";
 import {
   ensureTerrainToolSettings,
+  getBuilderBrushSizeOptions,
   getBuilderMovementClassOptions,
   getBuilderTerrainOptions
 } from "../builderTerrain.js";
@@ -387,38 +388,43 @@ function renderTerrainInspectorTools(builderState, appState) {
   const editable = builderState.workspaceMode === "builder-map";
   const terrainOptions = buildTerrainOptions(appState, builderState, tool.terrainTypeId ?? "grass");
   const movementOptions = buildMovementOptions(tool.movementClass ?? "clear");
-  const terrainActive = tool.mode !== "height" ? " is-active" : "";
-  const heightActive = tool.mode === "height" ? " is-active" : "";
+  const brushSizeOptions = buildBrushSizeOptions(tool.brushSize ?? 1);
+  const eyedropperActive = tool.eyedropper ? " is-active" : "";
 
   return `
     <div class="builder-inspector-card builder-terrain-tool-card">
-      <div class="builder-field-label">Terrain Tool</div>
-      <div class="builder-tool-row">
-        <button type="button" class="builder-tool-button${terrainActive}" data-builder-action="set-terrain-mode:terrain"${editable ? "" : " disabled"}>Terrain</button>
-        <button type="button" class="builder-tool-button${heightActive}" data-builder-action="set-terrain-mode:height"${editable ? "" : " disabled"}>Height</button>
-      </div>
+      <div class="builder-field-label">Terrain Brush</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Terrain Type</span>
         <select data-builder-field="terrain-type"${editable ? "" : " disabled"}>${terrainOptions}</select>
-      </label>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Movement / Tile Flag</span>
-        <select data-builder-field="terrain-movement-class"${editable ? "" : " disabled"}>${movementOptions}</select>
       </label>
       <label class="builder-form-field builder-form-field-compact">
         <span>Height</span>
         <input type="number" data-builder-field="terrain-height" value="${escapeHtml(tool.height ?? 0)}" min="-8" max="16" step="1"${editable ? "" : " disabled"}>
       </label>
       <label class="builder-form-field builder-form-field-compact">
+        <span>Movement</span>
+        <select data-builder-field="terrain-movement-class"${editable ? "" : " disabled"}>${movementOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
         <span>Brush Size</span>
-        <input type="number" data-builder-field="terrain-brush-size" value="${escapeHtml(tool.brushSize ?? 1)}" min="1" max="9" step="2"${editable ? "" : " disabled"}>
+        <select data-builder-field="terrain-brush-size"${editable ? "" : " disabled"}>${brushSizeOptions}</select>
       </label>
       <div class="builder-tool-row">
-        <button type="button" class="builder-tool-button" data-builder-action="apply-terrain-selected"${editable ? "" : " disabled"}>Apply to Selected</button>
+        <button type="button" class="builder-tool-button${eyedropperActive}" data-builder-action="terrain-eyedropper"${editable ? "" : " disabled"}>Eyedropper</button>
+        <button type="button" class="builder-tool-button" data-builder-action="reset-terrain-brush"${editable ? "" : " disabled"}>Reset Brush</button>
       </div>
-      <div class="builder-inspector-note">Click tiles to paint while this Terrain tab is active. Current runtime maps stay read-only.</div>
+      <div class="builder-inspector-note">Select brush settings, then click the map. The centered brush paints terrain type, height, and movement together. Hazards/traps belong in Triggers later.</div>
     </div>
   `;
+}
+
+function buildBrushSizeOptions(selectedSize = 1) {
+  const selectedNumber = Number(selectedSize) || 1;
+  return getBuilderBrushSizeOptions().map((size) => {
+    const selected = size === selectedNumber ? " selected" : "";
+    return `<option value="${size}"${selected}>${size}x${size}</option>`;
+  }).join("");
 }
 
 function renderSelectionSummary({ builderState, refs }) {

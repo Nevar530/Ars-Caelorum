@@ -17,6 +17,7 @@ import {
   getTile,
   getTileRenderElevation
 } from "../../map.js";
+import { getTerrainBrushPreviewCells } from "../builderTerrain.js";
 import {
   formatDeploymentCell,
   formatEdges,
@@ -225,6 +226,10 @@ function renderBuilderWorkspaceOverlays({ previewState, appState, builderState, 
   if (overlayState.structureEdges) overlays.push(renderStructureEdgeOverlays(previewState, appState));
   if (overlayState.tileHeights) overlays.push(renderTileHeightOverlays(previewState, appState));
 
+  if (isTerrainBrushPreviewActive(builderState)) {
+    overlays.push(renderTerrainBrushPreview(previewState, appState, builderState));
+  }
+
   if (hover?.type === "tile") {
     overlays.push(renderTileMarker(previewState, hover.x, hover.y, "hover"));
   }
@@ -241,6 +246,37 @@ function renderBuilderWorkspaceOverlays({ previewState, appState, builderState, 
   ui.insertAdjacentHTML("beforeend", `<g class="builder-workspace-overlays">${overlays.filter(Boolean).join("")}</g>`);
 }
 
+function isTerrainBrushPreviewActive(builderState) {
+  return builderState?.workspaceMode === "builder-map" && builderState?.activeTab === "terrain";
+}
+
+function renderTerrainBrushPreview(previewState, appState, builderState) {
+  const anchor = getTerrainBrushAnchor(builderState);
+  if (!anchor) return "";
+
+  const cells = getTerrainBrushPreviewCells(builderState, appState, anchor.x, anchor.y);
+  if (!cells.length) return "";
+
+  return cells.map((cell) => {
+    const points = getTilePolygonPoints(previewState, cell.x, cell.y);
+    if (points.length !== 4) return "";
+    const isAnchor = cell.x === anchor.x && cell.y === anchor.y;
+    const fill = isAnchor ? "rgba(121,255,184,0.24)" : "rgba(121,255,184,0.12)";
+    const stroke = isAnchor ? "#79ffb8" : "rgba(121,255,184,0.74)";
+    const width = isAnchor ? 3 : 2;
+    return `<polygon points="${formatPointString(points)}" fill="${fill}" stroke="${stroke}" stroke-width="${width}" vector-effect="non-scaling-stroke" pointer-events="none" />`;
+  }).join("");
+}
+
+function getTerrainBrushAnchor(builderState) {
+  const hover = builderState?.hover;
+  if (hover?.type === "tile") return { x: hover.x, y: hover.y };
+
+  const selected = builderState?.selected;
+  if (selected?.type === "tile" || selected?.type === "edge") return { x: selected.x, y: selected.y };
+
+  return null;
+}
 function renderDeploymentOverlays(previewState, appState) {
   const cells = getDeploymentCellTruth(appState?.map);
   if (!cells.length) return "";
