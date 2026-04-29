@@ -153,14 +153,18 @@ export function applyStructureToolAtTile(builderState, appState, x, y) {
     };
   }
 
+  // A tile should not belong to two structure cells at once.
+  // Erase first, then create/find the target structure. If we create the
+  // structure before erasing, the empty new structure can be removed by
+  // removeEmptyStructures(), leaving the painted cells attached to an object
+  // that is no longer in map.structures.
+  eraseStructureCells(map, cells);
+
   const structure = ensureStructure(map, tool.structureId, tool.roofSprite);
   structure.roof = tool.roofSprite;
   if (!Array.isArray(structure.cells)) structure.cells = [];
   if (!Array.isArray(structure.edges)) structure.edges = [];
   if (structure.heightPx == null) structure.heightPx = 64;
-
-  // A tile should not belong to two structure cells at once.
-  eraseStructureCells(map, cells);
 
   for (const cell of cells) {
     structure.cells.push({
