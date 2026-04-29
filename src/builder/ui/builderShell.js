@@ -19,6 +19,13 @@ import {
   getBuilderMovementClassOptions,
   getBuilderTerrainOptions
 } from "../builderTerrain.js";
+import {
+  areStructureRoofsVisible,
+  ensureStructureToolSettings,
+  getBuilderRoofSpriteOptions,
+  isStructureEraseModeActive,
+  isStructureEyedropperActive
+} from "../builderStructures.js";
 import { getMapSummary } from "../builderAdapters.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 
@@ -148,7 +155,7 @@ function renderTabHeader({ builderState, refs }) {
     project: "Start a new package, load existing mission data, or open current runtime map only when a mission is active.",
     map: "Map metadata and map-level setup live here. New blank maps are builder-owned and do not mutate the runtime map.",
     terrain: "Terrain owns tile truth: terrain type, tile flags/default movement, texture set, and height/elevation.",
-    structures: "Structure cells, edges, edgeHeight, roomId, and roof/cutaway tools come after map authoring is stable.",
+    structures: "Structure cells/rooms are active for builder-owned maps. Roof visibility is an editor view toggle; edge/wall tools come next.",
     spawns: "Spawn and deployment authoring will use existing deployment/startState truth.",
     units: "Mission roster and later loadout restrictions will live here.",
     objectives: "Objective definitions come after mission package core.",
@@ -356,8 +363,11 @@ function renderInspector({ builderState, refs, appState }) {
   const terrainTools = builderState.activeTab === "terrain"
     ? renderTerrainInspectorTools(builderState, appState)
     : "";
+  const structureTools = builderState.activeTab === "structures"
+    ? renderStructureInspectorTools(builderState, appState)
+    : "";
   const note = builderState.workspaceMode === "builder-map"
-    ? "Builder-owned map. Terrain tab can paint tile terrain and height. Structures/edges remain separate and staged."
+    ? "Builder-owned map. Terrain tab paints tile truth. Structures tab paints structure cells/rooms. Structure edges remain staged."
     : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
 
   refs.inspector.innerHTML = `
@@ -366,6 +376,7 @@ function renderInspector({ builderState, refs, appState }) {
       <div class="builder-field-value">${escapeHtml(selected.label ?? selected.type ?? "None")}</div>
     </div>
     ${terrainTools}
+    ${structureTools}
     ${selectedTruth}
     <div class="builder-inspector-card">
       <div class="builder-field-label">Map Source</div>
@@ -417,6 +428,54 @@ function renderTerrainInspectorTools(builderState, appState) {
       <div class="builder-inspector-note">Select brush settings, then click the map. The centered brush paints terrain type, height, and movement together. Hazards/traps belong in Triggers later.</div>
     </div>
   `;
+}
+
+function renderStructureInspectorTools(builderState, appState) {
+  const tool = ensureStructureToolSettings(builderState, appState) ?? {};
+  const editable = builderState.workspaceMode === "builder-map";
+  const roofOptions = buildRoofSpriteOptions(appState, builderState, tool.roofSprite ?? "roof_001.png");
+  const brushSizeOptions = buildBrushSizeOptions(tool.brushSize ?? 1);
+  const eyedropperActive = isStructureEyedropperActive(builderState) ? " is-active" : "";
+  const eraseActive = isStructureEraseModeActive(builderState) ? " is-active" : "";
+  const roofsVisible = areStructureRoofsVisible(builderState);
+
+  return '<div class="builder-inspector-card builder-structure-tool-card">' +
+      '<div class="builder-field-label">Structure Room Brush</div>' +
+      '<label class="builder-form-field builder-form-field-compact">' +
+        '<span>Structure ID</span>' +
+        '<input type="text" data-builder-field="structure-id" value="' + escapeHtml(tool.structureId ?? "structure_01") + '" spellcheck="false"' + (editable ? '' : ' disabled') + '>' +
+      '</label>' +
+      '<label class="builder-form-field builder-form-field-compact">' +
+        '<span>Room ID</span>' +
+        '<input type="text" data-builder-field="structure-room-id" value="' + escapeHtml(tool.roomId ?? "room_01") + '" spellcheck="false"' + (editable ? '' : ' disabled') + '>' +
+      '</label>' +
+      '<label class="builder-form-field builder-form-field-compact">' +
+        '<span>Roof Sprite</span>' +
+        '<select data-builder-field="structure-roof-sprite"' + (editable ? '' : ' disabled') + '>' + roofOptions + '</select>' +
+      '</label>' +
+      '<label class="builder-form-field builder-form-field-compact">' +
+        '<span>Brush Size</span>' +
+        '<select data-builder-field="structure-brush-size"' + (editable ? '' : ' disabled') + '>' + brushSizeOptions + '</select>' +
+      '</label>' +
+      '<div class="builder-tool-row">' +
+        '<button type="button" class="builder-tool-button' + eyedropperActive + '" data-builder-action="structure-eyedropper"' + (editable ? '' : ' disabled') + '>Eyedropper</button>' +
+        '<button type="button" class="builder-tool-button' + eraseActive + '" data-builder-action="structure-erase"' + (editable ? '' : ' disabled') + '>Erase Cells</button>' +
+      '</div>' +
+      '<div class="builder-tool-row">' +
+        '<button type="button" class="builder-tool-button" data-builder-action="reset-structure-brush"' + (editable ? '' : ' disabled') + '>Reset Brush</button>' +
+        '<button type="button" class="builder-tool-button' + (roofsVisible ? ' is-active' : '') + '" data-builder-action="toggle-structure-roofs">' + (roofsVisible ? 'Roofs Shown' : 'Roofs Hidden') + '</button>' +
+      '</div>' +
+      '<div class="builder-inspector-note">Paint structure cells/rooms first. Roof sprite is structure-level engine truth. Hide roofs only changes the builder preview so wall/edge authoring is easier later.</div>' +
+    '</div>';
+}
+
+function buildRoofSpriteOptions(appState, builderState, selectedRoof = "roof_001.png") {
+  const options = getBuilderRoofSpriteOptions(appState, builderState);
+  return options.map((roof) => {
+    const value = escapeHtml(roof);
+    const selected = roof === selectedRoof ? " selected" : "";
+    return '<option value="' + value + '"' + selected + '>' + value + '</option>';
+  }).join("");
 }
 
 function buildBrushSizeOptions(selectedSize = 1) {

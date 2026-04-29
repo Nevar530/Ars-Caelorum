@@ -51,6 +51,15 @@ export function createBuilderState() {
       brushSize: 1,
       eyedropper: false
     },
+    structureTool: {
+      structureId: "structure_01",
+      roomId: "room_01",
+      roofSprite: "roof_001.png",
+      brushSize: 1,
+      eyedropper: false,
+      erase: false,
+      showRoofs: true
+    },
     status: "BUILDER MENU",
     runtimeMapId: null,
     validation: {
@@ -59,14 +68,14 @@ export function createBuilderState() {
       info: [
         {
           code: "BUILDER_AUTHORING_FOUNDATION",
-          message: "Mission Builder can create, terrain-paint, height-paint, and export a builder-owned map package. Terrain brush applies selected type/height/movement together. Structure/spawn/objective tools remain staged."
+          message: "Mission Builder can create, terrain-paint, structure-cell paint, and export a builder-owned mission package. Structure edges/spawns/objectives remain staged."
         }
       ]
     },
     log: [
       "Mission Builder menu ready.",
       "Choose New/Load from the builder menu, or open from an active map to inspect current runtime truth.",
-      "Builder can create and terrain-edit a builder-owned map without mutating the engine/runtime map."
+      "Builder can create and terrain/structure-cell edit a builder-owned map without mutating the engine/runtime map."
     ]
   };
 }

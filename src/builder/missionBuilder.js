@@ -27,6 +27,16 @@ import {
   updateTerrainToolFromFields
 } from "./builderTerrain.js";
 import {
+  applyStructureToolAtTile,
+  isStructureEyedropperActive,
+  resetStructureToolToDefaults,
+  sampleStructureToolAtTile,
+  setStructureEraseMode,
+  setStructureEyedropper,
+  toggleStructureRoofVisibility,
+  updateStructureToolFromFields
+} from "./builderStructures.js";
+import {
   createEdgeSelection,
   createTileSelection,
   moveBuilderTileSelection,
@@ -148,7 +158,7 @@ class MissionBuilder {
 
   handleWorkspaceConfirmKey(event) {
     if (event.code !== "Space" && event.key !== " ") return false;
-    if (!this.isTerrainAuthoringActive()) return false;
+    if (!this.isTerrainAuthoringActive() && !this.isStructureAuthoringActive()) return false;
 
     const selected = this.builderState.selected ?? null;
     const hover = this.builderState.hover ?? null;
@@ -160,11 +170,9 @@ class MissionBuilder {
       return true;
     }
 
-    updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
-
-    const result = isTerrainEyedropperActive(this.builderState)
-      ? sampleTerrainToolAtTile(this.builderState, this.appState, target.x, target.y)
-      : applyTerrainToolAtTile(this.builderState, this.appState, target.x, target.y);
+    const result = this.isStructureAuthoringActive()
+      ? this.applyStructureActionAtTile(target.x, target.y)
+      : this.applyTerrainActionAtTile(target.x, target.y);
 
     pushBuilderLog(this.builderState, result.message);
     this.render();
@@ -193,18 +201,26 @@ class MissionBuilder {
   }
 
   handleChange(event) {
-    if (!this.builderState.isOpen || this.builderState.activeTab !== "terrain") return;
+    if (!this.builderState.isOpen) return;
     if (!event.target?.closest?.("[data-builder-field]")) return;
 
-    const previousTerrainTypeId = this.builderState.terrainTool?.terrainTypeId;
-    updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
+    if (this.builderState.activeTab === "terrain") {
+      const previousTerrainTypeId = this.builderState.terrainTool?.terrainTypeId;
+      updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
 
-    const changedField = event.target.getAttribute("data-builder-field");
-    if (changedField === "terrain-type" && this.builderState.terrainTool?.terrainTypeId !== previousTerrainTypeId) {
-      pushBuilderLog(this.builderState, `Terrain brush set to ${this.builderState.terrainTool.terrainTypeId}; movement default loaded.`);
+      const changedField = event.target.getAttribute("data-builder-field");
+      if (changedField === "terrain-type" && this.builderState.terrainTool?.terrainTypeId !== previousTerrainTypeId) {
+        pushBuilderLog(this.builderState, "Terrain brush set to " + this.builderState.terrainTool.terrainTypeId + "; movement default loaded.");
+      }
+
+      this.render();
+      return;
     }
 
-    this.render();
+    if (this.builderState.activeTab === "structures") {
+      updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
+      this.render();
+    }
   }
 
   handlePointerMove(event) {
@@ -270,13 +286,13 @@ class MissionBuilder {
     setBuilderSelection(this.builderState, createTileSelection(workspaceAppState, picked.x, picked.y));
 
     if (this.isTerrainAuthoringActive()) {
-      updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
-      const result = isTerrainEyedropperActive(this.builderState)
-        ? sampleTerrainToolAtTile(this.builderState, this.appState, picked.x, picked.y)
-        : applyTerrainToolAtTile(this.builderState, this.appState, picked.x, picked.y);
+      const result = this.applyTerrainActionAtTile(picked.x, picked.y);
+      pushBuilderLog(this.builderState, result.message);
+    } else if (this.isStructureAuthoringActive()) {
+      const result = this.applyStructureActionAtTile(picked.x, picked.y);
       pushBuilderLog(this.builderState, result.message);
     } else {
-      pushBuilderLog(this.builderState, `Selected tile ${picked.x}, ${picked.y}.`);
+      pushBuilderLog(this.builderState, "Selected tile " + picked.x + ", " + picked.y + ".");
     }
 
     this.render();
@@ -286,7 +302,56 @@ class MissionBuilder {
     return this.builderState.workspaceMode === "builder-map" && this.builderState.activeTab === "terrain";
   }
 
+  isStructureAuthoringActive() {
+    return this.builderState.workspaceMode === "builder-map" && this.builderState.activeTab === "structures";
+  }
+
+  applyTerrainActionAtTile(x, y) {
+    updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
+    return isTerrainEyedropperActive(this.builderState)
+      ? sampleTerrainToolAtTile(this.builderState, this.appState, x, y)
+      : applyTerrainToolAtTile(this.builderState, this.appState, x, y);
+  }
+
+  applyStructureActionAtTile(x, y) {
+    updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
+    return isStructureEyedropperActive(this.builderState)
+      ? sampleStructureToolAtTile(this.builderState, this.appState, x, y)
+      : applyStructureToolAtTile(this.builderState, this.appState, x, y);
+  }
+
   handleAction(action) {
+    if (action === "structure-eyedropper") {
+      updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
+      const tool = setStructureEyedropper(this.builderState, !isStructureEyedropperActive(this.builderState));
+      pushBuilderLog(this.builderState, tool?.eyedropper ? "Structure eyedropper armed. Click a cell to sample structure brush settings." : "Structure eyedropper cancelled.");
+      this.render();
+      return;
+    }
+
+    if (action === "structure-erase") {
+      updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
+      const nextErase = !this.builderState.structureTool?.erase;
+      const tool = setStructureEraseMode(this.builderState, nextErase);
+      pushBuilderLog(this.builderState, tool?.erase ? "Structure erase brush armed. Click cells to remove structure cells." : "Structure erase cancelled.");
+      this.render();
+      return;
+    }
+
+    if (action === "reset-structure-brush") {
+      resetStructureToolToDefaults(this.builderState, this.appState);
+      pushBuilderLog(this.builderState, "Structure brush reset to default settings.");
+      this.render();
+      return;
+    }
+
+    if (action === "toggle-structure-roofs") {
+      const tool = toggleStructureRoofVisibility(this.builderState);
+      pushBuilderLog(this.builderState, tool?.showRoofs === false ? "Structure roofs hidden in builder preview." : "Structure roofs shown in builder preview.");
+      this.render();
+      return;
+    }
+
     if (action === "terrain-eyedropper") {
       updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
       const tool = setTerrainEyedropper(this.builderState, !isTerrainEyedropperActive(this.builderState));

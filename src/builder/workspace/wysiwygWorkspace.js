@@ -19,6 +19,11 @@ import {
 } from "../../map.js";
 import { getTerrainBrushPreviewCells } from "../builderTerrain.js";
 import {
+  areStructureRoofsVisible,
+  getStructureBrushPreviewCells,
+  isStructureEraseModeActive
+} from "../builderStructures.js";
+import {
   formatDeploymentCell,
   formatEdges,
   formatStructureCells,
@@ -76,6 +81,9 @@ export function pickWorkspaceEdgeFromEvent({ event, appState, board }) {
 
 function buildPreviewState(appState, options = {}) {
   const previewState = cloneForPreview(appState);
+  if (options.builderState?.activeTab === "structures" && areStructureRoofsVisible(options.builderState) === false) {
+    hideStructureRoofsForBuilderPreview(previewState);
+  }
   const builderFocus = getBuilderFocusTile(options.builderState);
 
   previewState.ui.viewMode = "iso";
@@ -121,6 +129,16 @@ function getBuilderFocusTile(builderState) {
   }
 
   return null;
+}
+
+function hideStructureRoofsForBuilderPreview(previewState) {
+  const structures = previewState?.map?.structures;
+  if (!Array.isArray(structures)) return;
+
+  for (const structure of structures) {
+    delete structure.roof;
+    delete structure.roofSprite;
+  }
 }
 
 function cloneForPreview(appState) {
@@ -284,6 +302,10 @@ function renderBuilderWorkspaceOverlays({ previewState, appState, builderState, 
     overlays.push(renderTerrainBrushPreview(previewState, appState, builderState));
   }
 
+  if (isStructureBrushPreviewActive(builderState)) {
+    overlays.push(renderStructureBrushPreview(previewState, appState, builderState));
+  }
+
   if (hover?.type === "tile") {
     overlays.push(renderTileMarker(previewState, hover.x, hover.y, "hover"));
   }
@@ -319,6 +341,31 @@ function renderTerrainBrushPreview(previewState, appState, builderState) {
     const stroke = isAnchor ? "#79ffb8" : "rgba(121,255,184,0.74)";
     const width = isAnchor ? 3 : 2;
     return `<polygon points="${formatPointString(points)}" fill="${fill}" stroke="${stroke}" stroke-width="${width}" vector-effect="non-scaling-stroke" pointer-events="none" />`;
+  }).join("");
+}
+
+function isStructureBrushPreviewActive(builderState) {
+  return builderState?.workspaceMode === "builder-map" && builderState?.activeTab === "structures";
+}
+
+function renderStructureBrushPreview(previewState, appState, builderState) {
+  const anchor = getTerrainBrushAnchor(builderState);
+  if (!anchor) return "";
+
+  const cells = getStructureBrushPreviewCells(builderState, appState, anchor.x, anchor.y);
+  if (!cells.length) return "";
+
+  const erase = isStructureEraseModeActive(builderState);
+  return cells.map((cell) => {
+    const points = getTilePolygonPoints(previewState, cell.x, cell.y);
+    if (points.length !== 4) return "";
+    const isAnchor = cell.x === anchor.x && cell.y === anchor.y;
+    const fill = erase
+      ? (isAnchor ? "rgba(255,111,111,0.25)" : "rgba(255,111,111,0.13)")
+      : (isAnchor ? "rgba(170,132,255,0.26)" : "rgba(170,132,255,0.13)");
+    const stroke = erase ? "#ff7a7a" : "#aa84ff";
+    const width = isAnchor ? 3 : 2;
+    return '<polygon points="' + formatPointString(points) + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + width + '" vector-effect="non-scaling-stroke" pointer-events="none" />';
   }).join("");
 }
 
