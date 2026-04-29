@@ -270,13 +270,19 @@ function setTileHeight(tile, height) {
 
 function flattenMapTiles(map) {
   const tiles = [];
-  if (!Array.isArray(map)) return tiles;
 
-  for (const row of map) {
-    if (!Array.isArray(row)) continue;
-    for (const tile of row) {
-      if (tile) tiles.push(tile);
+  if (Array.isArray(map)) {
+    for (const row of map) {
+      if (!Array.isArray(row)) continue;
+      for (const tile of row) {
+        if (tile) tiles.push(tile);
+      }
     }
+    return tiles;
+  }
+
+  if (Array.isArray(map?.tiles)) {
+    return map.tiles.filter(Boolean);
   }
 
   return tiles;

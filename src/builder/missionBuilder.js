@@ -109,6 +109,13 @@ class MissionBuilder {
       return;
     }
 
+    if (this.handleWorkspaceConfirmKey(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      return;
+    }
+
     if (this.handleWorkspaceNavigationKey(event)) {
       event.preventDefault();
       event.stopPropagation();
@@ -136,6 +143,31 @@ class MissionBuilder {
       this.render();
     }
 
+    return true;
+  }
+
+  handleWorkspaceConfirmKey(event) {
+    if (event.code !== "Space" && event.key !== " ") return false;
+    if (!this.isTerrainAuthoringActive()) return false;
+
+    const selected = this.builderState.selected ?? null;
+    const hover = this.builderState.hover ?? null;
+    const target = getTileLikeSelection(selected) ?? getTileLikeSelection(hover);
+
+    if (!target) {
+      pushBuilderLog(this.builderState, "No selected tile to paint. Move the builder cursor or click a tile first.");
+      this.render();
+      return true;
+    }
+
+    updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
+
+    const result = isTerrainEyedropperActive(this.builderState)
+      ? sampleTerrainToolAtTile(this.builderState, this.appState, target.x, target.y)
+      : applyTerrainToolAtTile(this.builderState, this.appState, target.x, target.y);
+
+    pushBuilderLog(this.builderState, result.message);
+    this.render();
     return true;
   }
 
@@ -394,6 +426,14 @@ class MissionBuilder {
 
     clearWysiwygWorkspace(this.refs);
   }
+}
+
+function getTileLikeSelection(selection) {
+  if (!selection || (selection.type !== "tile" && selection.type !== "edge")) return null;
+  const x = Number(selection.x);
+  const y = Number(selection.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { x, y };
 }
 
 function isTextEntryEvent(event, root) {
