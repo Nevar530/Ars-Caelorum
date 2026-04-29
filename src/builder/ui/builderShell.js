@@ -8,8 +8,11 @@ import {
   canUseCurrentRuntimeMap,
   getBuilderSelectionSummary,
   getBuilderTab,
-  isBuilderWorkspaceCurrentMap
+  getBuilderWorkspaceAppState,
+  isBuilderNewMapForm,
+  isBuilderWorkspaceMap
 } from "../builderState.js";
+import { BUILDER_DEFAULT_TERRAIN_TYPES } from "../builderMapFactory.js";
 import { getMapSummary } from "../builderAdapters.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 
@@ -74,7 +77,7 @@ export function createBuilderShell() {
       </div>
 
       <footer class="builder-bottombar">
-        <div data-builder-hints>` + "`" + ` closes · Shift-click edge · Read-only foundation</div>
+        <div data-builder-hints>` + "`" + ` closes · Shift-click edge · New map foundation</div>
         <div data-builder-selection-summary>Builder Menu · New / Load · Hover none</div>
         <div data-builder-validation>0 errors · 0 warnings</div>
         <div data-builder-log></div>
@@ -133,13 +136,13 @@ function renderTabs({ builderState, refs }) {
 function renderTabHeader({ builderState, refs }) {
   const tab = getBuilderTab(builderState.activeTab);
   refs.tabKicker.textContent = tab.id.toUpperCase();
-  refs.tabTitle.textContent = isBuilderWorkspaceCurrentMap(builderState) ? tab.label : "New / Load";
+  refs.tabTitle.textContent = isBuilderWorkspaceMap(builderState) ? tab.label : isBuilderNewMapForm(builderState) ? "New Blank Map" : "New / Load";
 
   const notes = {
     project: "Start a new package, load existing mission data, or open current runtime map only when a mission is active.",
-    map: "Map metadata and future map-level tools live here.",
-    terrain: "Terrain/elevation authoring will connect through builder adapters after the workspace core is stable.",
-    structures: "Structure cells, edges, edgeHeight, roomId, and roof/cutaway tools come here next.",
+    map: "Map metadata and map-level setup live here. New blank maps are builder-owned and do not mutate the runtime map.",
+    terrain: "Terrain/elevation authoring comes after blank map creation and export foundation are stable.",
+    structures: "Structure cells, edges, edgeHeight, roomId, and roof/cutaway tools come after map authoring is stable.",
     spawns: "Spawn and deployment authoring will use existing deployment/startState truth.",
     units: "Mission roster and later loadout restrictions will live here.",
     objectives: "Objective definitions come after mission package core.",
@@ -157,7 +160,7 @@ function renderTabHeader({ builderState, refs }) {
 function renderOverlayToggles({ builderState, refs }) {
   if (!refs.overlayToggles) return;
 
-  if (!isBuilderWorkspaceCurrentMap(builderState)) {
+  if (!isBuilderWorkspaceMap(builderState)) {
     refs.overlayToggles.innerHTML = "";
     return;
   }
@@ -177,22 +180,28 @@ function renderOverlayToggles({ builderState, refs }) {
 }
 
 function renderWorkspaceMode({ builderState, refs, appState }) {
-  const currentMode = isBuilderWorkspaceCurrentMap(builderState);
+  const mapMode = isBuilderWorkspaceMap(builderState);
 
-  refs.board.style.display = currentMode ? "block" : "none";
-  refs.readout.style.display = currentMode ? "block" : "none";
-  refs.landing.style.display = currentMode ? "none" : "grid";
+  refs.board.style.display = mapMode ? "block" : "none";
+  refs.readout.style.display = mapMode ? "block" : "none";
+  refs.landing.style.display = mapMode ? "none" : "grid";
 
-  if (currentMode) {
+  if (mapMode) {
     refs.landing.innerHTML = "";
     return;
   }
 
+  refs.landing.innerHTML = isBuilderNewMapForm(builderState)
+    ? renderNewMapForm(appState)
+    : renderLanding(appState);
+}
+
+function renderLanding(appState) {
   const canUseCurrent = canUseCurrentRuntimeMap(appState);
   const shellScreen = appState?.ui?.shell?.screen ?? "unknown";
   const mapSummary = getMapSummary(appState);
 
-  refs.landing.innerHTML = `
+  return `
     <section class="builder-landing-hero">
       <div class="builder-section-kicker">MISSION BUILDER</div>
       <h3>New / Load</h3>
@@ -206,7 +215,7 @@ function renderWorkspaceMode({ builderState, refs, appState }) {
       </button>
       <button type="button" class="builder-start-card" data-builder-action="new-map">
         <span>New Blank Map</span>
-        <small>Next flow: pick size, base terrain fill, and base elevation.</small>
+        <small>Pick size, base terrain fill, and base elevation.</small>
       </button>
       <button type="button" class="builder-start-card" data-builder-action="load-existing">
         <span>Load Existing</span>
@@ -227,38 +236,110 @@ function renderWorkspaceMode({ builderState, refs, appState }) {
         <div class="builder-field-label">Runtime Map Available</div>
         <div class="builder-field-value">${escapeHtml(mapSummary.name)} · ${mapSummary.width}×${mapSummary.height}</div>
       </div>
-      <div class="builder-inspector-note">Builder actions are staged placeholders in this pass. No map or mission data is mutated.</div>
+      <div class="builder-inspector-note">New Blank Map now creates a builder-owned map. It does not mutate the runtime map.</div>
     </section>
   `;
 }
 
+function renderNewMapForm(appState) {
+  const terrainOptions = buildTerrainOptions(appState);
+
+  return `
+    <section class="builder-landing-hero">
+      <div class="builder-section-kicker">MAP AUTHORING</div>
+      <h3>Create New Blank Map</h3>
+      <p>This creates a builder-owned map workspace. It does not touch the currently loaded runtime mission/map.</p>
+    </section>
+
+    <section class="builder-form-grid">
+      <label class="builder-form-field">
+        <span>Map ID</span>
+        <input type="text" data-builder-field="map-id" value="006_new_map" spellcheck="false">
+      </label>
+      <label class="builder-form-field">
+        <span>Map Name</span>
+        <input type="text" data-builder-field="map-name" value="New Map" spellcheck="false">
+      </label>
+      <label class="builder-form-field">
+        <span>Width</span>
+        <input type="number" data-builder-field="map-width" value="16" min="4" max="96" step="1">
+      </label>
+      <label class="builder-form-field">
+        <span>Height</span>
+        <input type="number" data-builder-field="map-height" value="16" min="4" max="96" step="1">
+      </label>
+      <label class="builder-form-field">
+        <span>Base Terrain</span>
+        <select data-builder-field="base-terrain">${terrainOptions}</select>
+      </label>
+      <label class="builder-form-field">
+        <span>Base Elevation</span>
+        <input type="number" data-builder-field="base-elevation" value="0" min="-8" max="16" step="1">
+      </label>
+    </section>
+
+    <section class="builder-form-actions">
+      <button type="button" class="builder-start-card" data-builder-action="create-blank-map">
+        <span>Create Blank Map</span>
+        <small>Open this map in the WYSIWYG builder workspace.</small>
+      </button>
+      <button type="button" class="builder-start-card" data-builder-action="cancel-new-map">
+        <span>Cancel</span>
+        <small>Return to New / Load without creating anything.</small>
+      </button>
+    </section>
+
+    <section class="builder-landing-context">
+      <div class="builder-inspector-note">Pencil rule: this creates only the simple base map. Terrain brushes, structures, spawns, and export are separate later passes.</div>
+    </section>
+  `;
+}
+
+function buildTerrainOptions(appState) {
+  const terrainTypes = Array.isArray(appState?.map?.terrainTypes) && appState.map.terrainTypes.length
+    ? appState.map.terrainTypes
+    : BUILDER_DEFAULT_TERRAIN_TYPES;
+
+  return terrainTypes.map((id) => {
+    const value = escapeHtml(id);
+    const selected = id === "grass" ? " selected" : "";
+    return `<option value="${value}"${selected}>${value}</option>`;
+  }).join("");
+}
+
 function renderInspector({ builderState, refs, appState }) {
-  if (!isBuilderWorkspaceCurrentMap(builderState)) {
+  if (!isBuilderWorkspaceMap(builderState)) {
     const shellScreen = appState?.ui?.shell?.screen ?? "unknown";
+    const modeLabel = isBuilderNewMapForm(builderState) ? "New Blank Map Setup" : "Menu / Package Start";
     refs.inspector.innerHTML = `
       <div class="builder-inspector-card">
         <div class="builder-field-label">Selected</div>
-        <div class="builder-field-value">New / Load</div>
+        <div class="builder-field-value">${escapeHtml(builderState.selected?.label ?? "New / Load")}</div>
       </div>
       <div class="builder-inspector-card">
         <div class="builder-field-label">Builder Mode</div>
-        <div class="builder-field-value">Menu / Package Start</div>
+        <div class="builder-field-value">${escapeHtml(modeLabel)}</div>
       </div>
       <div class="builder-inspector-card">
         <div class="builder-field-label">Current App Screen</div>
         <div class="builder-field-value">${escapeHtml(shellScreen)}</div>
       </div>
       <div class="builder-inspector-note">
-        Opening the builder from title/menu starts here. It does not auto-load the runtime map. New/Load flows are intentionally staged before authoring mutation is unlocked.
+        New Blank Map creates builder-owned map data. It does not edit the current runtime map and does not export files yet.
       </div>
     `;
     return;
   }
 
+  const workspaceAppState = getBuilderWorkspaceAppState(builderState, appState);
   const selected = builderState.selected ?? {};
-  const map = appState?.map ?? null;
-  const mission = appState?.mission?.definition ?? null;
-  const selectedTruth = buildTileInspectorHtml(appState, selected);
+  const map = workspaceAppState?.map ?? null;
+  const mission = workspaceAppState?.mission?.definition ?? null;
+  const selectedTruth = buildTileInspectorHtml(workspaceAppState, selected);
+  const sourceLabel = builderState.workspaceMode === "builder-map" ? "Builder-Owned Map" : "Current Runtime Map";
+  const note = builderState.workspaceMode === "builder-map"
+    ? "This map is builder-owned. It is not saved/exported yet, and terrain/structure mutation tools are still locked."
+    : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
 
   refs.inspector.innerHTML = `
     <div class="builder-inspector-card">
@@ -267,16 +348,18 @@ function renderInspector({ builderState, refs, appState }) {
     </div>
     ${selectedTruth}
     <div class="builder-inspector-card">
-      <div class="builder-field-label">Current Runtime Map</div>
+      <div class="builder-field-label">Map Source</div>
+      <div class="builder-field-value">${escapeHtml(sourceLabel)}</div>
+    </div>
+    <div class="builder-inspector-card">
+      <div class="builder-field-label">Map</div>
       <div class="builder-field-value">${escapeHtml(map?.name ?? map?.id ?? "unknown")}</div>
     </div>
     <div class="builder-inspector-card">
-      <div class="builder-field-label">Current Mission</div>
+      <div class="builder-field-label">Mission</div>
       <div class="builder-field-value">${escapeHtml(mission?.name ?? mission?.id ?? "No active mission definition")}</div>
     </div>
-    <div class="builder-inspector-note">
-      Inspector edits are intentionally disabled in this workspace-core pass. This is read-only truth inspection before map mutation/adapters are allowed.
-    </div>
+    <div class="builder-inspector-note">${escapeHtml(note)}</div>
   `;
 }
 

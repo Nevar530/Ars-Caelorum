@@ -5,15 +5,18 @@
 
 import {
   createBuilderState,
-  isBuilderWorkspaceCurrentMap,
+  getBuilderWorkspaceAppState,
+  isBuilderWorkspaceMap,
   prepareBuilderLaunch,
   pushBuilderLog,
+  setBuilderAuthoredMap,
   setBuilderOpen,
   setBuilderTab,
   setBuilderWorkspaceMode,
   syncBuilderRuntimeMap,
   toggleBuilderOverlay
 } from "./builderState.js";
+import { createBlankBuilderMap, readBlankMapForm } from "./builderMapFactory.js";
 import {
   createEdgeSelection,
   createTileSelection,
@@ -104,11 +107,12 @@ class MissionBuilder {
   }
 
   handlePointerMove(event) {
-    if (!this.builderState.isOpen || !isBuilderWorkspaceCurrentMap(this.builderState)) return;
+    if (!this.builderState.isOpen || !isBuilderWorkspaceMap(this.builderState)) return;
 
+    const workspaceAppState = getBuilderWorkspaceAppState(this.builderState, this.appState);
     const picked = pickWorkspaceTileFromEvent({
       event,
-      appState: this.appState,
+      appState: workspaceAppState,
       board: this.refs.board
     });
 
@@ -140,13 +144,14 @@ class MissionBuilder {
   }
 
   handleWorkspaceClick(event) {
-    if (!isBuilderWorkspaceCurrentMap(this.builderState)) {
+    if (!isBuilderWorkspaceMap(this.builderState)) {
       return;
     }
 
+    const workspaceAppState = getBuilderWorkspaceAppState(this.builderState, this.appState);
     const picked = event.shiftKey
-      ? pickWorkspaceEdgeFromEvent({ event, appState: this.appState, board: this.refs.board })
-      : pickWorkspaceTileFromEvent({ event, appState: this.appState, board: this.refs.board });
+      ? pickWorkspaceEdgeFromEvent({ event, appState: workspaceAppState, board: this.refs.board })
+      : pickWorkspaceTileFromEvent({ event, appState: workspaceAppState, board: this.refs.board });
 
     if (!picked) {
       pushBuilderLog(this.builderState, "No map tile under pointer.");
@@ -155,10 +160,10 @@ class MissionBuilder {
     }
 
     if (event.shiftKey) {
-      setBuilderSelection(this.builderState, createEdgeSelection(this.appState, picked.x, picked.y, picked.edge));
+      setBuilderSelection(this.builderState, createEdgeSelection(workspaceAppState, picked.x, picked.y, picked.edge));
       pushBuilderLog(this.builderState, `Selected edge ${picked.edge.toUpperCase()} at ${picked.x}, ${picked.y}.`);
     } else {
-      setBuilderSelection(this.builderState, createTileSelection(this.appState, picked.x, picked.y));
+      setBuilderSelection(this.builderState, createTileSelection(workspaceAppState, picked.x, picked.y));
       pushBuilderLog(this.builderState, `Selected tile ${picked.x}, ${picked.y}.`);
     }
 
@@ -181,13 +186,29 @@ class MissionBuilder {
     }
 
     if (action === "new-mission") {
-      pushBuilderLog(this.builderState, "New Mission Package flow is staged next; no package mutation in this pass.");
+      pushBuilderLog(this.builderState, "New Mission Package flow comes after blank-map creation/export foundation.");
       this.render();
       return;
     }
 
     if (action === "new-map") {
-      pushBuilderLog(this.builderState, "New Map flow is staged next: id, size, base terrain, base height.");
+      setBuilderWorkspaceMode(this.builderState, "new-map-form", this.appState);
+      this.render();
+      return;
+    }
+
+    if (action === "cancel-new-map") {
+      setBuilderWorkspaceMode(this.builderState, "landing", this.appState);
+      pushBuilderLog(this.builderState, "Returned to New / Load menu.");
+      this.render();
+      return;
+    }
+
+    if (action === "create-blank-map") {
+      const form = readBlankMapForm(this.refs.root);
+      const terrainTypes = Array.isArray(this.appState?.map?.terrainTypes) ? this.appState.map.terrainTypes : undefined;
+      const map = createBlankBuilderMap({ ...form, terrainTypes });
+      setBuilderAuthoredMap(this.builderState, map, "new-blank-map");
       this.render();
       return;
     }
@@ -204,19 +225,19 @@ class MissionBuilder {
     }
 
     if (action === "validate") {
-      pushBuilderLog(this.builderState, "Validation placeholder active. Real validators come after adapter wiring.");
+      pushBuilderLog(this.builderState, "Validation placeholder active. Real validators come after authoring/export wiring.");
       this.render();
       return;
     }
 
     if (action === "test") {
-      pushBuilderLog(this.builderState, "Test Mission is intentionally disabled until package/adapters are real.");
+      pushBuilderLog(this.builderState, "Test Mission is intentionally disabled until package/export adapters are real.");
       this.render();
       return;
     }
 
     if (action === "export") {
-      pushBuilderLog(this.builderState, "Export Package is intentionally disabled until package/adapters are real.");
+      pushBuilderLog(this.builderState, "Export Package is intentionally disabled until package/export adapters are real.");
       this.render();
     }
   }
@@ -237,7 +258,7 @@ class MissionBuilder {
   render() {
     if (!this.refs) return;
 
-    if (isBuilderWorkspaceCurrentMap(this.builderState)) {
+    if (this.builderState.workspaceMode === "current-map") {
       syncBuilderRuntimeMap(this.builderState, this.appState);
     }
 
@@ -247,9 +268,10 @@ class MissionBuilder {
       appState: this.appState
     });
 
-    if (this.builderState.isOpen && isBuilderWorkspaceCurrentMap(this.builderState)) {
+    if (this.builderState.isOpen && isBuilderWorkspaceMap(this.builderState)) {
+      const workspaceAppState = getBuilderWorkspaceAppState(this.builderState, this.appState);
       renderWysiwygWorkspace({
-        appState: this.appState,
+        appState: workspaceAppState,
         builderState: this.builderState,
         workspaceRefs: {
           board: this.refs.board,

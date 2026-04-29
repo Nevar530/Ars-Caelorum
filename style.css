@@ -2056,3 +2056,53 @@ button:disabled {
   align-content: start;
   max-width: 720px;
 }
+
+/* =========================================
+   MISSION BUILDER — NEW BLANK MAP V1
+========================================= */
+
+.builder-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 360px));
+  gap: 14px;
+  max-width: 860px;
+}
+
+.builder-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.builder-form-field span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.builder-form-field input,
+.builder-form-field select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9px;
+  background: rgba(3, 7, 12, 0.88);
+  color: #f5f7ff;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.builder-form-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 14px;
+  max-width: 700px;
+}
