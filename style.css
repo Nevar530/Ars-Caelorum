@@ -1969,35 +1969,3 @@ button:disabled {
   fill: #ffd6e7;
   font-size: 8px;
 }
-
-/* =========================================
-   MISSION BUILDER — DRAFT ISOLATION V1
-========================================= */
-
-.builder-inspector-card.is-draft {
-  border-color: rgba(121, 255, 184, 0.34);
-  background: rgba(121, 255, 184, 0.055);
-}
-
-.builder-mini-grid {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 5px 10px;
-  margin-top: 9px;
-  font-size: 11px;
-}
-
-.builder-mini-grid span {
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 850;
-}
-
-.builder-mini-grid strong {
-  color: #eaf2fb;
-  text-align: right;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}

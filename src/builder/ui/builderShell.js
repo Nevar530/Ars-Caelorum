@@ -4,7 +4,6 @@
 // This is a new system shell, not the old dev menu DOM moved into a larger box.
 
 import { BUILDER_TABS, getBuilderSelectionSummary, getBuilderTab } from "../builderState.js";
-import { getBuilderDraftSummary } from "../builderDraft.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 
 export function createBuilderShell() {
@@ -166,7 +165,6 @@ function renderInspector({ builderState, refs, appState }) {
   const selected = builderState.selected ?? {};
   const map = appState?.map ?? null;
   const mission = appState?.mission?.definition ?? null;
-  const draft = getBuilderDraftSummary(builderState);
   const selectedTruth = buildTileInspectorHtml(appState, selected);
 
   refs.inspector.innerHTML = `
@@ -175,21 +173,8 @@ function renderInspector({ builderState, refs, appState }) {
       <div class="builder-field-value">${escapeHtml(selected.label ?? selected.type ?? "None")}</div>
     </div>
     ${selectedTruth}
-    <div class="builder-inspector-card is-draft">
-      <div class="builder-field-label">Builder Draft Package</div>
-      <div class="builder-field-value">${escapeHtml(draft.packageId)}</div>
-      <div class="builder-mini-grid">
-        <span>Map</span><strong>${escapeHtml(draft.mapName)}</strong>
-        <span>Mission</span><strong>${escapeHtml(draft.missionName)}</strong>
-        <span>Mutation</span><strong>${draft.mutationLocked ? "Locked" : "Unlocked"}</strong>
-      </div>
-    </div>
     <div class="builder-inspector-card">
-      <div class="builder-field-label">Preview Source</div>
-      <div class="builder-field-value">Builder draft clone</div>
-    </div>
-    <div class="builder-inspector-card">
-      <div class="builder-field-label">Runtime Source</div>
+      <div class="builder-field-label">Current Runtime Map</div>
       <div class="builder-field-value">${escapeHtml(map?.name ?? map?.id ?? "unknown")}</div>
     </div>
     <div class="builder-inspector-card">
@@ -197,7 +182,7 @@ function renderInspector({ builderState, refs, appState }) {
       <div class="builder-field-value">${escapeHtml(mission?.name ?? mission?.id ?? "No active mission definition")}</div>
     </div>
     <div class="builder-inspector-note">
-      Edits are still locked. This pass proves draft isolation: the builder previews a cloned package, not live engine state.
+      Inspector edits are intentionally disabled in this workspace-core pass. This is read-only truth inspection before map mutation/adapters are allowed.
     </div>
   `;
 }
