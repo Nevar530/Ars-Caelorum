@@ -11,7 +11,7 @@ import { bindInput, snapFocusToActiveUnit as snapFocusHelper } from "./src/input
 import { loadGameData, loadMapDefinitionByPath, loadMissionDefinitionByPath } from "./src/dataLoader.js";
 import { bindHudInput } from "./src/ui/hud.js";
 import { clearCombatTextMarkers } from "./src/combat/combatTextOverlay.js";
-import { initializeDevMenu } from "./dev/devMenu.js";
+import { initializeMissionBuilder } from "./src/builder/missionBuilder.js";
 import { logDev, setDevLogSize } from "./dev/devLogger.js";
 import { createGameController } from "./src/controllers/gameController.js";
 import { createTurnController } from "./src/controllers/turnController.js";
@@ -459,7 +459,7 @@ async function init() {
   bindInput(state, refs, actions);
   bindHudInput(state, refs, actions);
 
-  initializeDevMenu({
+  initializeMissionBuilder({
     state,
     render: gameController.render,
     refs
