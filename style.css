@@ -1820,7 +1820,7 @@ button:disabled {
 
 .builder-bottombar {
   display: grid;
-  grid-template-columns: 1fr auto minmax(260px, 0.55fr);
+  grid-template-columns: 0.9fr minmax(220px, 0.9fr) auto minmax(240px, 0.55fr);
   gap: 12px;
   align-items: center;
   padding: 7px 14px;
@@ -1831,6 +1831,14 @@ button:disabled {
 .builder-bottombar > div:last-child {
   text-align: right;
   color: #dfe8ef;
+}
+
+.builder-bottombar [data-builder-selection-summary] {
+  color: #dffbff;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* =========================================

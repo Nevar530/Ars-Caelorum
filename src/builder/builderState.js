@@ -38,19 +38,20 @@ export function createBuilderState() {
       deployment: true,
       tileHeights: false
     },
-    status: "READY",
+    status: "READ ONLY",
+    runtimeMapId: null,
     validation: {
       errors: [],
       warnings: [],
       info: [
         {
-          code: "BUILDER_WORKSPACE_CORE_V1",
-          message: "Fullscreen Mission Builder shell has read-only WYSIWYG selection and inspection. Editing remains locked."
+          code: "BUILDER_READ_ONLY_FOUNDATION",
+          message: "Mission Builder is in read-only foundation mode. Selection, overlays, and inspection are active; map mutation is locked."
         }
       ]
     },
     log: [
-      "Mission Builder workspace core ready.",
+      "Mission Builder read-only foundation ready.",
       "Click a tile to inspect runtime map truth.",
       "Shift-click selects the nearest tile edge.",
       "Overlay buttons are builder-only read layers."
@@ -80,4 +81,34 @@ export function toggleBuilderOverlay(builderState, overlayId) {
   if (!builderState?.overlays || !(overlayId in builderState.overlays)) return false;
   builderState.overlays[overlayId] = !builderState.overlays[overlayId];
   return builderState.overlays[overlayId];
+}
+
+export function syncBuilderRuntimeMap(builderState, appState) {
+  if (!builderState) return false;
+
+  const map = appState?.map ?? null;
+  const nextMapId = map?.id ?? "runtime-map";
+
+  if (builderState.runtimeMapId === nextMapId) return false;
+
+  builderState.runtimeMapId = nextMapId;
+  builderState.hover = null;
+  builderState.selected = {
+    type: "map",
+    id: nextMapId,
+    label: map?.name ?? map?.id ?? "Runtime Map",
+    mapId: nextMapId
+  };
+
+  pushBuilderLog(builderState, `Builder synced to map ${map?.name ?? nextMapId}.`);
+  return true;
+}
+
+export function getBuilderSelectionSummary(builderState) {
+  const selected = builderState?.selected;
+  const hover = builderState?.hover;
+  const selectedLabel = selected?.label ?? "Runtime Map";
+  const hoverLabel = hover?.type === "tile" ? `Hover ${hover.x}, ${hover.y}` : "Hover none";
+
+  return `${selectedLabel} · ${hoverLabel}`;
 }

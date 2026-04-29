@@ -428,7 +428,7 @@ function renderWorkspaceReadout({ appState, builderState, workspaceRefs }) {
   const selected = builderState?.selected;
 
   readout.innerHTML = `
-    <div class="builder-readout-kicker">ENGINE PREVIEW</div>
+    <div class="builder-readout-kicker">ENGINE PREVIEW · READ ONLY</div>
     <div class="builder-readout-title">${escapeHtml(summary.name)}</div>
     <div class="builder-readout-grid">
       <span>Map ID</span><strong>${escapeHtml(summary.id)}</strong>
@@ -438,7 +438,7 @@ function renderWorkspaceReadout({ appState, builderState, workspaceRefs }) {
       <span>Spawns</span><strong>${summary.spawnCount}</strong>
       <span>Selected</span><strong>${escapeHtml(selected?.label ?? "Map")}</strong>
     </div>
-    <div class="builder-readout-help">Click a tile to inspect it. Shift-click selects the nearest tile edge. Overlay buttons are builder-only read layers.</div>
+    <div class="builder-readout-help">Click a tile to inspect it. Shift-click selects the nearest tile edge. This pass is read-only: overlays and inspector cannot mutate map data.</div>
   `;
 }
 
@@ -448,8 +448,14 @@ export function buildTileInspectorHtml(appState, selection) {
   const truth = getTileTruth(appState, selection.x, selection.y);
   if (!truth) return `<div class="builder-inspector-note">No tile found at ${selection.x}, ${selection.y}.</div>`;
 
+  const selectedEdgeId = String(selection.edge ?? "").toLowerCase();
+  const selectedEdgeTruth = selection.type === "edge"
+    ? truth.authoredEdges.find((edge) => String(edge.edge ?? "").toLowerCase() === selectedEdgeId)
+    : null;
+
   const edgeNote = selection.type === "edge"
-    ? `<div class="builder-inspector-card is-emphasis"><div class="builder-field-label">Selected Edge</div><div class="builder-field-value">${escapeHtml(selection.edge?.toUpperCase?.() ?? selection.edge)}</div></div>`
+    ? `<div class="builder-inspector-card is-emphasis"><div class="builder-field-label">Selected Edge</div><div class="builder-field-value">${escapeHtml(selectedEdgeId.toUpperCase())}</div></div>
+       <div class="builder-inspector-card"><div class="builder-field-label">Selected Edge Truth</div><div class="builder-field-value">${selectedEdgeTruth ? escapeHtml(`${selectedEdgeTruth.type ?? "edge"}:${selectedEdgeTruth.edgeHeight ?? 0} / ${selectedEdgeTruth.structureId ?? "structure"}`) : "No authored edge on this side"}</div></div>`
     : "";
 
   return `

@@ -3,7 +3,7 @@
 // Fullscreen Mission Builder shell.
 // This is a new system shell, not the old dev menu DOM moved into a larger box.
 
-import { BUILDER_TABS, getBuilderTab } from "../builderState.js";
+import { BUILDER_TABS, getBuilderSelectionSummary, getBuilderTab } from "../builderState.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 
 export function createBuilderShell() {
@@ -66,7 +66,8 @@ export function createBuilderShell() {
       </div>
 
       <footer class="builder-bottombar">
-        <div data-builder-hints>` + "`" + ` closes · Esc reserved for tool cancel · Builder owns this fullscreen workspace</div>
+        <div data-builder-hints>` + "`" + ` closes · Shift-click edge · Read-only foundation</div>
+        <div data-builder-selection-summary>Runtime Map · Hover none</div>
         <div data-builder-validation>0 errors · 0 warnings</div>
         <div data-builder-log></div>
       </footer>
@@ -89,6 +90,7 @@ export function createBuilderShell() {
     worldUi: root.querySelector("[data-builder-world-ui]"),
     readout: root.querySelector("[data-builder-readout]"),
     inspector: root.querySelector("[data-builder-inspector]"),
+    selectionSummary: root.querySelector("[data-builder-selection-summary]"),
     validation: root.querySelector("[data-builder-validation]"),
     log: root.querySelector("[data-builder-log]")
   };
@@ -106,6 +108,7 @@ export function renderBuilderShell({ builderState, refs, appState }) {
   renderTabHeader({ builderState, refs });
   renderOverlayToggles({ builderState, refs });
   renderInspector({ builderState, refs, appState });
+  renderSelectionSummary({ builderState, refs });
   renderValidation({ builderState, refs });
   renderLog({ builderState, refs });
 }
@@ -182,6 +185,11 @@ function renderInspector({ builderState, refs, appState }) {
       Inspector edits are intentionally disabled in this workspace-core pass. This is read-only truth inspection before map mutation/adapters are allowed.
     </div>
   `;
+}
+
+function renderSelectionSummary({ builderState, refs }) {
+  if (!refs.selectionSummary) return;
+  refs.selectionSummary.textContent = getBuilderSelectionSummary(builderState);
 }
 
 function renderValidation({ builderState, refs }) {

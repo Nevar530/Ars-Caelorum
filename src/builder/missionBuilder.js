@@ -8,6 +8,7 @@ import {
   pushBuilderLog,
   setBuilderOpen,
   setBuilderTab,
+  syncBuilderRuntimeMap,
   toggleBuilderOverlay
 } from "./builderState.js";
 import {
@@ -197,6 +198,8 @@ class MissionBuilder {
 
   render() {
     if (!this.refs) return;
+
+    syncBuilderRuntimeMap(this.builderState, this.appState);
 
     renderBuilderShell({
       builderState: this.builderState,
