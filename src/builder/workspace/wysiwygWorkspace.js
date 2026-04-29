@@ -149,8 +149,10 @@ function pickNearestTile(previewState, svgX, svgY) {
   const map = previewState?.map ?? null;
   const width = getMapWidth(map);
   const height = getMapHeight(map);
+  const point = { x: Number(svgX), y: Number(svgY) };
 
-  let best = null;
+  let bestPolygonHit = null;
+  let bestNearest = null;
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -158,19 +160,71 @@ function pickNearestTile(previewState, svgX, svgY) {
       if (!tile) continue;
 
       const elevation = Number(getTileRenderElevation(tile) ?? 0);
-      const center = projectIso(previewState, x + 0.5, y + 0.5, elevation, 1);
-      const dx = center.x - svgX;
-      const dy = center.y - svgY;
+      const center = getTileCenter(previewState, x, y) ?? projectIso(previewState, x + 0.5, y + 0.5, elevation, 1);
+      const dx = center.x - point.x;
+      const dy = center.y - point.y;
       const distance = Math.sqrt((dx * dx) + (dy * dy));
+      const candidate = { x, y, tile, elevation, distance };
 
-      if (!best || distance < best.distance) {
-        best = { x, y, tile, elevation, distance };
+      const polygon = getTilePolygonPoints(previewState, x, y);
+      if (polygon.length === 4 && isPointInPolygon(point, polygon)) {
+        if (isBetterVisibleTileHit(candidate, bestPolygonHit)) {
+          bestPolygonHit = candidate;
+        }
+      }
+
+      if (!bestNearest || distance < bestNearest.distance) {
+        bestNearest = candidate;
       }
     }
   }
 
-  if (!best || best.distance > PICK_MAX_DISTANCE_PX) return null;
-  return best;
+  if (bestPolygonHit) return bestPolygonHit;
+  if (!bestNearest || bestNearest.distance > PICK_MAX_DISTANCE_PX) return null;
+  return bestNearest;
+}
+
+function isBetterVisibleTileHit(candidate, current) {
+  if (!current) return true;
+
+  // Builder-only WYSIWYG picking should prefer the tile top the cursor is
+  // visibly over. Raised tile diamonds can overlap the flat projection of
+  // nearby ground tiles, so elevation wins before center distance.
+  if (candidate.elevation !== current.elevation) {
+    return candidate.elevation > current.elevation;
+  }
+
+  return candidate.distance < current.distance;
+}
+
+function isPointInPolygon(point, polygon) {
+  const px = Number(point?.x);
+  const py = Number(point?.y);
+  if (!Number.isFinite(px) || !Number.isFinite(py) || !Array.isArray(polygon) || polygon.length < 3) {
+    return false;
+  }
+
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const xi = Number(polygon[i]?.x);
+    const yi = Number(polygon[i]?.y);
+    const xj = Number(polygon[j]?.x);
+    const yj = Number(polygon[j]?.y);
+
+    if (isPointNearSegment({ x: px, y: py }, { x: xi, y: yi }, { x: xj, y: yj }, 0.75)) {
+      return true;
+    }
+
+    const intersects = ((yi > py) !== (yj > py)) &&
+      (px < (((xj - xi) * (py - yi)) / ((yj - yi) || 1e-9)) + xi);
+    if (intersects) inside = !inside;
+  }
+
+  return inside;
+}
+
+function isPointNearSegment(point, a, b, tolerance) {
+  return distancePointToSegment(point, a, b) <= Number(tolerance ?? 0);
 }
 
 function pickNearestTileEdge(previewState, x, y, point) {
