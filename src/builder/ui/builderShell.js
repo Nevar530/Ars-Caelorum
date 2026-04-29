@@ -13,6 +13,11 @@ import {
   isBuilderWorkspaceMap
 } from "../builderState.js";
 import { BUILDER_DEFAULT_TERRAIN_TYPES } from "../builderMapFactory.js";
+import {
+  ensureTerrainToolSettings,
+  getBuilderMovementClassOptions,
+  getBuilderTerrainOptions
+} from "../builderTerrain.js";
 import { getMapSummary } from "../builderAdapters.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 
@@ -141,7 +146,7 @@ function renderTabHeader({ builderState, refs }) {
   const notes = {
     project: "Start a new package, load existing mission data, or open current runtime map only when a mission is active.",
     map: "Map metadata and map-level setup live here. New blank maps are builder-owned and do not mutate the runtime map.",
-    terrain: "Terrain/elevation authoring comes after blank map creation and export foundation are stable.",
+    terrain: "Terrain owns tile truth: terrain type, tile flags/default movement, texture set, and height/elevation.",
     structures: "Structure cells, edges, edgeHeight, roomId, and roof/cutaway tools come after map authoring is stable.",
     spawns: "Spawn and deployment authoring will use existing deployment/startState truth.",
     units: "Mission roster and later loadout restrictions will live here.",
@@ -151,7 +156,7 @@ function renderTabHeader({ builderState, refs }) {
     dialogue: "Dialogue authoring will adapt to current missionState dialogue hooks.",
     results: "Victory/defeat result authoring belongs here.",
     validate: "Validation is part of authoring, not end polish.",
-    export: "Exports complete mission packages, not just map files."
+    export: "Exports a contained mission package zip with repo paths."
   };
 
   refs.workspaceNote.textContent = notes[tab.id] ?? "Mission Builder workspace.";
@@ -295,14 +300,24 @@ function renderNewMapForm(appState) {
   `;
 }
 
-function buildTerrainOptions(appState) {
-  const terrainTypes = Array.isArray(appState?.map?.terrainTypes) && appState.map.terrainTypes.length
-    ? appState.map.terrainTypes
-    : BUILDER_DEFAULT_TERRAIN_TYPES;
+function buildTerrainOptions(appState, builderState = null, selectedId = "grass") {
+  const terrainTypes = getBuilderTerrainOptions(appState, builderState);
+  const fallback = terrainTypes.length
+    ? terrainTypes
+    : BUILDER_DEFAULT_TERRAIN_TYPES.map((id) => ({ id, label: id }));
 
-  return terrainTypes.map((id) => {
-    const value = escapeHtml(id);
-    const selected = id === "grass" ? " selected" : "";
+  return fallback.map((terrain) => {
+    const value = escapeHtml(terrain.id ?? terrain);
+    const label = escapeHtml(terrain.label ?? terrain.id ?? terrain);
+    const selected = (terrain.id ?? terrain) === selectedId ? " selected" : "";
+    return `<option value="${value}"${selected}>${label}</option>`;
+  }).join("");
+}
+
+function buildMovementOptions(selectedClass = "clear") {
+  return getBuilderMovementClassOptions().map((movementClass) => {
+    const value = escapeHtml(movementClass);
+    const selected = movementClass === selectedClass ? " selected" : "";
     return `<option value="${value}"${selected}>${value}</option>`;
   }).join("");
 }
@@ -337,8 +352,11 @@ function renderInspector({ builderState, refs, appState }) {
   const mission = workspaceAppState?.mission?.definition ?? null;
   const selectedTruth = buildTileInspectorHtml(workspaceAppState, selected);
   const sourceLabel = builderState.workspaceMode === "builder-map" ? "Builder-Owned Map" : "Current Runtime Map";
+  const terrainTools = builderState.activeTab === "terrain"
+    ? renderTerrainInspectorTools(builderState, appState)
+    : "";
   const note = builderState.workspaceMode === "builder-map"
-    ? "This map is builder-owned. Export Package will download map, mission, catalog, and manifest JSON. Terrain/structure mutation tools are still locked."
+    ? "Builder-owned map. Terrain tab can paint tile terrain and height. Structures/edges remain separate and staged."
     : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
 
   refs.inspector.innerHTML = `
@@ -346,6 +364,7 @@ function renderInspector({ builderState, refs, appState }) {
       <div class="builder-field-label">Selected</div>
       <div class="builder-field-value">${escapeHtml(selected.label ?? selected.type ?? "None")}</div>
     </div>
+    ${terrainTools}
     ${selectedTruth}
     <div class="builder-inspector-card">
       <div class="builder-field-label">Map Source</div>
@@ -360,6 +379,45 @@ function renderInspector({ builderState, refs, appState }) {
       <div class="builder-field-value">${escapeHtml(mission?.name ?? mission?.id ?? "No active mission definition")}</div>
     </div>
     <div class="builder-inspector-note">${escapeHtml(note)}</div>
+  `;
+}
+
+function renderTerrainInspectorTools(builderState, appState) {
+  const tool = ensureTerrainToolSettings(builderState, appState) ?? {};
+  const editable = builderState.workspaceMode === "builder-map";
+  const terrainOptions = buildTerrainOptions(appState, builderState, tool.terrainTypeId ?? "grass");
+  const movementOptions = buildMovementOptions(tool.movementClass ?? "clear");
+  const terrainActive = tool.mode !== "height" ? " is-active" : "";
+  const heightActive = tool.mode === "height" ? " is-active" : "";
+
+  return `
+    <div class="builder-inspector-card builder-terrain-tool-card">
+      <div class="builder-field-label">Terrain Tool</div>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button${terrainActive}" data-builder-action="set-terrain-mode:terrain"${editable ? "" : " disabled"}>Terrain</button>
+        <button type="button" class="builder-tool-button${heightActive}" data-builder-action="set-terrain-mode:height"${editable ? "" : " disabled"}>Height</button>
+      </div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Terrain Type</span>
+        <select data-builder-field="terrain-type"${editable ? "" : " disabled"}>${terrainOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Movement / Tile Flag</span>
+        <select data-builder-field="terrain-movement-class"${editable ? "" : " disabled"}>${movementOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Height</span>
+        <input type="number" data-builder-field="terrain-height" value="${escapeHtml(tool.height ?? 0)}" min="-8" max="16" step="1"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Brush Size</span>
+        <input type="number" data-builder-field="terrain-brush-size" value="${escapeHtml(tool.brushSize ?? 1)}" min="1" max="9" step="2"${editable ? "" : " disabled"}>
+      </label>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="apply-terrain-selected"${editable ? "" : " disabled"}>Apply to Selected</button>
+      </div>
+      <div class="builder-inspector-note">Click tiles to paint while this Terrain tab is active. Current runtime maps stay read-only.</div>
+    </div>
   `;
 }
 

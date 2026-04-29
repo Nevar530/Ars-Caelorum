@@ -19,6 +19,12 @@ import {
 import { createBlankBuilderMap, readBlankMapForm } from "./builderMapFactory.js";
 import { exportBuilderMissionPackage } from "./builderExport.js";
 import {
+  applyTerrainToolAtSelection,
+  applyTerrainToolAtTile,
+  setTerrainToolMode,
+  updateTerrainToolFromFields
+} from "./builderTerrain.js";
+import {
   createEdgeSelection,
   createTileSelection,
   moveBuilderTileSelection,
@@ -205,15 +211,45 @@ class MissionBuilder {
     if (event.shiftKey) {
       setBuilderSelection(this.builderState, createEdgeSelection(workspaceAppState, picked.x, picked.y, picked.edge));
       pushBuilderLog(this.builderState, `Selected edge ${picked.edge.toUpperCase()} at ${picked.x}, ${picked.y}.`);
+      this.render();
+      return;
+    }
+
+    setBuilderSelection(this.builderState, createTileSelection(workspaceAppState, picked.x, picked.y));
+
+    if (this.isTerrainAuthoringActive()) {
+      updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
+      const result = applyTerrainToolAtTile(this.builderState, this.appState, picked.x, picked.y);
+      pushBuilderLog(this.builderState, result.message);
     } else {
-      setBuilderSelection(this.builderState, createTileSelection(workspaceAppState, picked.x, picked.y));
       pushBuilderLog(this.builderState, `Selected tile ${picked.x}, ${picked.y}.`);
     }
 
     this.render();
   }
 
+  isTerrainAuthoringActive() {
+    return this.builderState.workspaceMode === "builder-map" && this.builderState.activeTab === "terrain";
+  }
+
   handleAction(action) {
+    if (action && typeof action === "string" && action.startsWith("set-terrain-mode:")) {
+      const mode = action.split(":")[1];
+      setTerrainToolMode(this.builderState, mode);
+      updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
+      pushBuilderLog(this.builderState, `Terrain tool set to ${mode === "height" ? "height paint" : "terrain paint"}.`);
+      this.render();
+      return;
+    }
+
+    if (action === "apply-terrain-selected") {
+      updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
+      const result = applyTerrainToolAtSelection(this.builderState, this.appState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
     if (action && typeof action === "string" && action.startsWith("toggle-overlay:")) {
       const overlayId = action.split(":")[1];
       const enabled = toggleBuilderOverlay(this.builderState, overlayId);
@@ -249,8 +285,14 @@ class MissionBuilder {
 
     if (action === "create-blank-map") {
       const form = readBlankMapForm(this.refs.root);
-      const terrainTypes = Array.isArray(this.appState?.map?.terrainTypes) ? this.appState.map.terrainTypes : undefined;
-      const map = createBlankBuilderMap({ ...form, terrainTypes });
+      const terrainTypes = Array.isArray(this.appState?.content?.terrainList)
+        ? this.appState.content.terrainList.map((entry) => entry?.id ?? entry).filter(Boolean)
+        : Array.isArray(this.appState?.map?.terrainTypes) ? this.appState.map.terrainTypes : undefined;
+      const map = createBlankBuilderMap({
+        ...form,
+        terrainTypes,
+        terrainDefinitions: this.appState?.content?.terrainDefinitions ?? {}
+      });
       setBuilderAuthoredMap(this.builderState, map, "new-blank-map");
       this.render();
       return;

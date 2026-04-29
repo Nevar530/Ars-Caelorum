@@ -23,6 +23,7 @@ export function createBlankBuilderMap(options = {}) {
   const height = clampWholeNumber(options.height, 16, 4, 96);
   const elevation = clampWholeNumber(options.elevation, 0, -8, 16);
   const terrainTypeId = sanitizeId(options.terrainTypeId || "grass", "grass");
+  const terrainDefinition = options.terrainDefinitions?.[terrainTypeId] ?? null;
   const id = sanitizeId(options.id || "new_map", "new_map");
   const name = sanitizeName(options.name || titleFromId(id), "New Map");
   const terrainTypes = normalizeTerrainTypes(options.terrainTypes, terrainTypeId);
@@ -34,7 +35,8 @@ export function createBlankBuilderMap(options = {}) {
     for (let x = 0; x < width; x += 1) {
       row.push(createTile(x, y, elevation, {
         terrainTypeId,
-        movementClass: "clear"
+        terrainSpriteId: terrainDefinition?.spriteSetId ?? `${terrainTypeId}_001`,
+        movementClass: terrainDefinition?.movementClass ?? "clear"
       }));
     }
     map.push(row);

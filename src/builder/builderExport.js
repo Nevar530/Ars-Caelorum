@@ -55,13 +55,13 @@ export function exportBuilderMissionPackage({ builderState, appState } = {}) {
     }
   ];
 
-  downloadJsonFiles(files);
+  downloadMissionPackageZip({ missionDefinition, files });
 
   builderState.dirty = false;
 
   return {
     ok: true,
-    message: `Exported mission package ${missionDefinition.id} with ${files.length} files.`,
+    message: `Exported mission package zip ${missionDefinition.id}.zip with ${files.length} repo files.`,
     files
   };
 }
@@ -280,22 +280,116 @@ function sanitizeStructuresForExport(structures) {
   });
 }
 
-function downloadJsonFiles(files) {
-  files.forEach((file, index) => {
-    window.setTimeout(() => downloadJson(file.filename, file.data), index * 120);
-  });
-}
+function downloadMissionPackageZip({ missionDefinition, files }) {
+  const zipEntries = files.map((file) => ({
+    path: file.repoPath || file.filename,
+    text: JSON.stringify(file.data, null, 2)
+  }));
 
-function downloadJson(filename, data) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
+  const zipBlob = buildStoredZip(zipEntries);
+  const url = URL.createObjectURL(zipBlob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = filename;
+  anchor.download = `${missionDefinition.id}.zip`;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+function buildStoredZip(entries) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  for (const entry of entries) {
+    const pathBytes = encoder.encode(String(entry.path).replace(/^\/+/, ""));
+    const dataBytes = encoder.encode(entry.text ?? "");
+    const crc = crc32(dataBytes);
+    const localHeader = makeLocalFileHeader({ pathBytes, dataBytes, crc });
+
+    localParts.push(localHeader, dataBytes);
+    centralParts.push(makeCentralDirectoryHeader({ pathBytes, dataBytes, crc, localHeaderOffset: offset }));
+    offset += localHeader.length + dataBytes.length;
+  }
+
+  const centralOffset = offset;
+  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+  const endRecord = makeEndOfCentralDirectoryRecord({
+    entryCount: entries.length,
+    centralSize,
+    centralOffset
+  });
+
+  return new Blob([...localParts, ...centralParts, endRecord], { type: "application/zip" });
+}
+
+function makeLocalFileHeader({ pathBytes, dataBytes, crc }) {
+  const header = new Uint8Array(30 + pathBytes.length);
+  const view = new DataView(header.buffer);
+  view.setUint32(0, 0x04034b50, true);
+  view.setUint16(4, 20, true);
+  view.setUint16(6, 0, true);
+  view.setUint16(8, 0, true);
+  view.setUint16(10, 0, true);
+  view.setUint16(12, 0, true);
+  view.setUint32(14, crc, true);
+  view.setUint32(18, dataBytes.length, true);
+  view.setUint32(22, dataBytes.length, true);
+  view.setUint16(26, pathBytes.length, true);
+  view.setUint16(28, 0, true);
+  header.set(pathBytes, 30);
+  return header;
+}
+
+function makeCentralDirectoryHeader({ pathBytes, dataBytes, crc, localHeaderOffset }) {
+  const header = new Uint8Array(46 + pathBytes.length);
+  const view = new DataView(header.buffer);
+  view.setUint32(0, 0x02014b50, true);
+  view.setUint16(4, 20, true);
+  view.setUint16(6, 20, true);
+  view.setUint16(8, 0, true);
+  view.setUint16(10, 0, true);
+  view.setUint16(12, 0, true);
+  view.setUint16(14, 0, true);
+  view.setUint32(16, crc, true);
+  view.setUint32(20, dataBytes.length, true);
+  view.setUint32(24, dataBytes.length, true);
+  view.setUint16(28, pathBytes.length, true);
+  view.setUint16(30, 0, true);
+  view.setUint16(32, 0, true);
+  view.setUint16(34, 0, true);
+  view.setUint16(36, 0, true);
+  view.setUint32(38, 0, true);
+  view.setUint32(42, localHeaderOffset, true);
+  header.set(pathBytes, 46);
+  return header;
+}
+
+function makeEndOfCentralDirectoryRecord({ entryCount, centralSize, centralOffset }) {
+  const record = new Uint8Array(22);
+  const view = new DataView(record.buffer);
+  view.setUint32(0, 0x06054b50, true);
+  view.setUint16(4, 0, true);
+  view.setUint16(6, 0, true);
+  view.setUint16(8, entryCount, true);
+  view.setUint16(10, entryCount, true);
+  view.setUint32(12, centralSize, true);
+  view.setUint32(16, centralOffset, true);
+  view.setUint16(20, 0, true);
+  return record;
+}
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i += 1) {
+    crc ^= bytes[i];
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
 }
 
 function cloneJson(value) {

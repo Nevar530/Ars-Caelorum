@@ -2106,3 +2106,50 @@ button:disabled {
   gap: 14px;
   max-width: 700px;
 }
+
+/* =========================================
+   MISSION BUILDER — TERRAIN AUTHORING V1
+========================================= */
+
+.builder-terrain-tool-card {
+  border-color: rgba(121, 255, 184, 0.22);
+}
+
+.builder-tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 9px 0;
+}
+
+.builder-tool-button {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eaf2fb;
+  padding: 7px 9px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.builder-tool-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.builder-tool-button.is-active {
+  border-color: rgba(121, 255, 184, 0.58);
+  background: rgba(121, 255, 184, 0.14);
+  color: #dfffe9;
+}
+
+.builder-tool-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.builder-form-field.builder-form-field-compact {
+  margin-top: 9px;
+  padding: 9px;
+}
