@@ -1,0 +1,60 @@
+{
+  "id": "006_new_map_mission",
+  "name": "New Map Mission",
+  "mapId": "006_new_map",
+  "mapPath": "./data/maps/006_new_map.json",
+  "briefing": {
+    "title": "New Map Mission",
+    "text": "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.",
+    "objectives": [
+      "Defeat all enemy pilots."
+    ]
+  },
+  "objectives": [
+    {
+      "id": "defeat_enemies",
+      "type": "defeat_all",
+      "targetTeam": "enemy",
+      "label": "Defeat all enemy pilots"
+    }
+  ],
+  "dialogue": {
+    "intro": {
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "Mission Control",
+          "text": "Mission package loaded through builder export."
+        }
+      ]
+    },
+    "victory": {
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "Mission Control",
+          "text": "Victory confirmed."
+        }
+      ]
+    },
+    "defeat": {
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "Mission Control",
+          "text": "Mission failed."
+        }
+      ]
+    }
+  },
+  "results": {
+    "victory": {
+      "title": "Victory",
+      "text": "Mission complete."
+    },
+    "defeat": {
+      "title": "Defeat",
+      "text": "Mission failed."
+    }
+  }
+}

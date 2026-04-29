@@ -17,7 +17,8 @@
   },
   "startState": {
     "deployments": [],
-    "deploymentCells": []
+    "deploymentCells": [],
+    "startMode": "authored"
   },
   "structures": [],
   "tiles": [

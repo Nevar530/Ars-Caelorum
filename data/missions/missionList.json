@@ -30,6 +30,11 @@
       "id": "005_warehouse_district_mission",
       "name": "005 Warehouse District Mission",
       "path": "./data/missions/005_warehouse_district_mission.json"
+    },
+    {
+      "id": "006_new_map_mission",
+      "name": "New Map Mission",
+      "path": "./data/missions/006_new_map_mission.json"
     }
   ]
 }
