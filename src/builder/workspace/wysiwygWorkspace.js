@@ -428,7 +428,7 @@ function renderWorkspaceReadout({ appState, builderState, workspaceRefs }) {
   const selected = builderState?.selected;
 
   readout.innerHTML = `
-    <div class="builder-readout-kicker">ENGINE PREVIEW · READ ONLY</div>
+    <div class="builder-readout-kicker">DRAFT PREVIEW · READ ONLY</div>
     <div class="builder-readout-title">${escapeHtml(summary.name)}</div>
     <div class="builder-readout-grid">
       <span>Map ID</span><strong>${escapeHtml(summary.id)}</strong>
@@ -438,7 +438,7 @@ function renderWorkspaceReadout({ appState, builderState, workspaceRefs }) {
       <span>Spawns</span><strong>${summary.spawnCount}</strong>
       <span>Selected</span><strong>${escapeHtml(selected?.label ?? "Map")}</strong>
     </div>
-    <div class="builder-readout-help">Click a tile to inspect it. Shift-click selects the nearest tile edge. This pass is read-only: overlays and inspector cannot mutate map data.</div>
+    <div class="builder-readout-help">Click selects draft tile truth. Shift-click selects nearest tile edge. Preview is a builder-owned clone; the engine track is not changed.</div>
   `;
 }
 

@@ -12,6 +12,10 @@ import {
   toggleBuilderOverlay
 } from "./builderState.js";
 import {
+  createBuilderPreviewAppState,
+  ensureBuilderDraft
+} from "./builderDraft.js";
+import {
   createEdgeSelection,
   createTileSelection,
   setBuilderHover,
@@ -200,16 +204,19 @@ class MissionBuilder {
     if (!this.refs) return;
 
     syncBuilderRuntimeMap(this.builderState, this.appState);
+    ensureBuilderDraft(this.builderState, this.appState);
+
+    const previewAppState = createBuilderPreviewAppState(this.appState, this.builderState);
 
     renderBuilderShell({
       builderState: this.builderState,
       refs: this.refs,
-      appState: this.appState
+      appState: previewAppState
     });
 
     if (this.builderState.isOpen) {
       renderWysiwygWorkspace({
-        appState: this.appState,
+        appState: previewAppState,
         builderState: this.builderState,
         workspaceRefs: {
           board: this.refs.board,

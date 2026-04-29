@@ -38,21 +38,24 @@ export function createBuilderState() {
       deployment: true,
       tileHeights: false
     },
-    status: "READ ONLY",
+    status: "DRAFT READ ONLY",
     runtimeMapId: null,
+    runtimeMissionId: null,
+    draft: null,
     validation: {
       errors: [],
       warnings: [],
       info: [
         {
           code: "BUILDER_READ_ONLY_FOUNDATION",
-          message: "Mission Builder is in read-only foundation mode. Selection, overlays, and inspection are active; map mutation is locked."
+          message: "Mission Builder is in draft read-only mode. Preview uses a cloned map/mission package; mutation is still locked."
         }
       ]
     },
     log: [
-      "Mission Builder read-only foundation ready.",
-      "Click a tile to inspect runtime map truth.",
+      "Mission Builder draft read-only foundation ready.",
+      "Preview uses a builder-owned clone; the live engine track is not changed.",
+      "Click a tile to inspect draft map truth.",
       "Shift-click selects the nearest tile edge.",
       "Overlay buttons are builder-only read layers."
     ]
@@ -87,11 +90,14 @@ export function syncBuilderRuntimeMap(builderState, appState) {
   if (!builderState) return false;
 
   const map = appState?.map ?? null;
+  const mission = appState?.mission?.definition ?? null;
   const nextMapId = map?.id ?? "runtime-map";
+  const nextMissionId = mission?.id ?? null;
 
-  if (builderState.runtimeMapId === nextMapId) return false;
+  if (builderState.runtimeMapId === nextMapId && builderState.runtimeMissionId === nextMissionId) return false;
 
   builderState.runtimeMapId = nextMapId;
+  builderState.runtimeMissionId = nextMissionId;
   builderState.hover = null;
   builderState.selected = {
     type: "map",
@@ -100,7 +106,7 @@ export function syncBuilderRuntimeMap(builderState, appState) {
     mapId: nextMapId
   };
 
-  pushBuilderLog(builderState, `Builder synced to map ${map?.name ?? nextMapId}.`);
+  pushBuilderLog(builderState, `Builder synced to ${map?.name ?? nextMapId}; draft package refreshed.`);
   return true;
 }
 
