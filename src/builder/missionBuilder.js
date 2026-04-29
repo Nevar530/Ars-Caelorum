@@ -17,6 +17,7 @@ import {
   toggleBuilderOverlay
 } from "./builderState.js";
 import { createBlankBuilderMap, readBlankMapForm } from "./builderMapFactory.js";
+import { exportBuilderMissionPackage } from "./builderExport.js";
 import {
   createEdgeSelection,
   createTileSelection,
@@ -279,7 +280,11 @@ class MissionBuilder {
     }
 
     if (action === "export") {
-      pushBuilderLog(this.builderState, "Export Package is intentionally disabled until package/export adapters are real.");
+      const result = exportBuilderMissionPackage({
+        builderState: this.builderState,
+        appState: this.appState
+      });
+      pushBuilderLog(this.builderState, result.message);
       this.render();
     }
   }

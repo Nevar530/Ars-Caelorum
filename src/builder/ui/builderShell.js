@@ -290,7 +290,7 @@ function renderNewMapForm(appState) {
     </section>
 
     <section class="builder-landing-context">
-      <div class="builder-inspector-note">Pencil rule: this creates only the simple base map. Terrain brushes, structures, spawns, and export are separate later passes.</div>
+      <div class="builder-inspector-note">Pencil rule: this creates only the simple base map. Terrain brushes, structures, and spawns are separate later passes. Export is active for builder-owned maps.</div>
     </section>
   `;
 }
@@ -325,7 +325,7 @@ function renderInspector({ builderState, refs, appState }) {
         <div class="builder-field-value">${escapeHtml(shellScreen)}</div>
       </div>
       <div class="builder-inspector-note">
-        New Blank Map creates builder-owned map data. It does not edit the current runtime map and does not export files yet.
+        New Blank Map creates builder-owned map data. It does not edit the current runtime map. Export is active for builder-owned maps.
       </div>
     `;
     return;
@@ -338,7 +338,7 @@ function renderInspector({ builderState, refs, appState }) {
   const selectedTruth = buildTileInspectorHtml(workspaceAppState, selected);
   const sourceLabel = builderState.workspaceMode === "builder-map" ? "Builder-Owned Map" : "Current Runtime Map";
   const note = builderState.workspaceMode === "builder-map"
-    ? "This map is builder-owned. It is not saved/exported yet, and terrain/structure mutation tools are still locked."
+    ? "This map is builder-owned. Export Package will download map, mission, catalog, and manifest JSON. Terrain/structure mutation tools are still locked."
     : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
 
   refs.inspector.innerHTML = `
