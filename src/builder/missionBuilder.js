@@ -18,6 +18,7 @@ import {
 } from "./builderState.js";
 import { createBlankBuilderMap, readBlankMapForm } from "./builderMapFactory.js";
 import { exportBuilderMissionPackage } from "./builderExport.js";
+import { startBuilderRuntimeTest } from "./builderRuntimeTest.js";
 import {
   applyTerrainToolAtTile,
   isTerrainEyedropperActive,
@@ -79,6 +80,7 @@ class MissionBuilder {
     this.appState = null;
     this.renderApp = null;
     this.appRefs = null;
+    this.runtimeTestLauncher = null;
     this.refs = null;
     this.initialized = false;
 
@@ -89,7 +91,7 @@ class MissionBuilder {
     this.handlePointerLeave = this.handlePointerLeave.bind(this);
   }
 
-  init({ state, render, refs }) {
+  init({ state, render, refs, launchMissionFromBuilder }) {
     if (this.initialized) return this;
     if (!state) throw new Error("MissionBuilder.init requires app state.");
     if (typeof render !== "function") throw new Error("MissionBuilder.init requires app render function.");
@@ -97,6 +99,7 @@ class MissionBuilder {
     this.appState = state;
     this.renderApp = render;
     this.appRefs = refs ?? {};
+    this.runtimeTestLauncher = typeof launchMissionFromBuilder === "function" ? launchMissionFromBuilder : null;
     this.refs = createBuilderShell();
 
     window.addEventListener("keydown", this.handleKeyDown, { capture: true });
@@ -583,7 +586,12 @@ class MissionBuilder {
     }
 
     if (action === "test") {
-      pushBuilderLog(this.builderState, "Test Mission is intentionally disabled until package/export adapters are real.");
+      const result = startBuilderRuntimeTest({
+        builderState: this.builderState,
+        appState: this.appState,
+        launchMission: this.runtimeTestLauncher
+      });
+      pushBuilderLog(this.builderState, result.message);
       this.render();
       return;
     }
@@ -678,8 +686,8 @@ const missionBuilder = new MissionBuilder();
 
 export default missionBuilder;
 
-export function initializeMissionBuilder({ state, render, refs }) {
-  return missionBuilder.init({ state, render, refs });
+export function initializeMissionBuilder({ state, render, refs, launchMissionFromBuilder }) {
+  return missionBuilder.init({ state, render, refs, launchMissionFromBuilder });
 }
 
 export function toggleMissionBuilder(force) {

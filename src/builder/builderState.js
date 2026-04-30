@@ -89,6 +89,7 @@ export function createBuilderState() {
     },
     status: "BUILDER MENU",
     runtimeMapId: null,
+    testSession: null,
     validation: {
       errors: [],
       warnings: [],
@@ -113,6 +114,15 @@ export function canUseCurrentRuntimeMap(appState) {
 
 export function prepareBuilderLaunch(builderState, appState) {
   if (!builderState) return;
+
+  if (builderState.testSession?.active && builderState.authoring?.map) {
+    builderState.workspaceMode = "builder-map";
+    builderState.status = "BUILDER MAP";
+    builderState.activeTab = builderState.activeTab || "map";
+    syncBuilderAuthoredMap(builderState);
+    pushBuilderLog(builderState, "Returned to builder draft after Test Mission launch.");
+    return;
+  }
 
   if (canUseCurrentRuntimeMap(appState)) {
     builderState.workspaceMode = "current-map";

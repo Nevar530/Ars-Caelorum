@@ -532,7 +532,13 @@ async function init() {
   initializeMissionBuilder({
     state,
     render: gameController.render,
-    refs
+    refs,
+    launchMissionFromBuilder({ mapDefinition, missionDefinition }) {
+      state.ui.shell.screen = "game";
+      state.ui.shell.briefingMission = null;
+      state.ui.shell.briefingDefinition = null;
+      gameController.loadMapAndUnits(mapDefinition, missionDefinition);
+    }
   });
 
   gameController.render();
