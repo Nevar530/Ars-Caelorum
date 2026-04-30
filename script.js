@@ -29,6 +29,8 @@ const refs = {
   missionSelectScreen: document.getElementById("missionSelectScreen"),
   titleStartButton: document.getElementById("titleStartButton"),
   titleMissionSelectButton: document.getElementById("titleMissionSelectButton"),
+  titleAudioToggle: document.getElementById("titleAudioToggle"),
+  titleThemeAudio: document.getElementById("titleThemeAudio"),
   missionList: document.getElementById("missionList"),
   missionDescription: document.getElementById("missionDescription"),
   missionBackButton: document.getElementById("missionBackButton"),
@@ -149,10 +151,12 @@ async function init() {
   });
 
   refs.titleStartButton?.addEventListener("click", () => {
+    startTitleThemeAudio();
     actions.openMissionSelect();
   });
 
   refs.titleMissionSelectButton?.addEventListener("click", () => {
+    startTitleThemeAudio();
     actions.openMissionSelect();
   });
 
@@ -177,6 +181,70 @@ async function init() {
   refs.briefingStartButton?.addEventListener("click", () => {
     actions.startSelectedMission();
   });
+
+  const titleAudioState = {
+    muted: false,
+    started: false
+  };
+
+  function updateTitleAudioToggle() {
+    if (!refs.titleAudioToggle) return;
+
+    refs.titleAudioToggle.textContent = titleAudioState.muted ? "🔇" : "🔊";
+    refs.titleAudioToggle.classList.toggle("is-muted", titleAudioState.muted);
+    refs.titleAudioToggle.setAttribute("aria-pressed", titleAudioState.muted ? "true" : "false");
+    refs.titleAudioToggle.setAttribute("aria-label", titleAudioState.muted ? "Unmute title music" : "Mute title music");
+    refs.titleAudioToggle.title = titleAudioState.muted ? "Unmute title music" : "Mute title music";
+  }
+
+  function startTitleThemeAudio() {
+    const audio = refs.titleThemeAudio;
+    if (!audio || titleAudioState.muted) return;
+
+    audio.volume = 0.55;
+    audio.muted = false;
+    audio.play()
+      .then(() => {
+        titleAudioState.started = true;
+      })
+      .catch(() => {
+        // Browser may require another user gesture before audio can start.
+      });
+  }
+
+  function pauseTitleThemeAudio() {
+    const audio = refs.titleThemeAudio;
+    if (!audio) return;
+
+    audio.pause();
+  }
+
+  refs.titleAudioToggle?.addEventListener("click", (event) => {
+    event.stopPropagation();
+
+    titleAudioState.muted = !titleAudioState.muted;
+
+    if (refs.titleThemeAudio) {
+      refs.titleThemeAudio.muted = titleAudioState.muted;
+      if (titleAudioState.muted) {
+        refs.titleThemeAudio.pause();
+      } else {
+        startTitleThemeAudio();
+      }
+    }
+
+    updateTitleAudioToggle();
+  });
+
+  refs.titleScreen?.addEventListener("pointerdown", () => {
+    startTitleThemeAudio();
+  }, { once: true });
+
+  refs.titleScreen?.addEventListener("keydown", () => {
+    startTitleThemeAudio();
+  }, { once: true });
+
+  updateTitleAudioToggle();
 
 
   function getSelectedMissionEntry() {
@@ -227,6 +295,7 @@ async function init() {
     },
 
     openMissionSelect() {
+      startTitleThemeAudio();
       state.ui.shell.screen = "mission-select";
       gameController.render();
     },
@@ -267,6 +336,7 @@ async function init() {
     },
 
     async startSelectedMission() {
+      pauseTitleThemeAudio();
       const missionEntry = state.ui.shell.briefingMission ?? getSelectedMissionEntry();
       if (!missionEntry) return;
 

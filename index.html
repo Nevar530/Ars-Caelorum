@@ -11,9 +11,35 @@
     <div id="frontScreen" class="front-screen" aria-label="Front end screens">
       <section id="titleScreen" class="front-screen-view" aria-label="Title screen">
         <div class="front-screen-panel front-screen-panel-title">
+          <video
+            class="title-screen-video"
+            autoplay
+            muted
+            loop
+            playsinline
+            poster="./art/menu/titleScreen.png"
+            aria-hidden="true"
+          >
+            <source src="./art/menu/titleScreen.mp4" type="video/mp4" />
+          </video>
+
+          <audio id="titleThemeAudio" loop preload="auto">
+            <source src="./art/menu/titleTheme.mp3" type="audio/mpeg" />
+          </audio>
+
+          <div class="front-screen-title-shade" aria-hidden="true"></div>
+
           <div class="front-screen-actions front-screen-title-actions" aria-label="Title menu">
             <button id="titleStartButton" type="button" class="front-screen-primary">Start Game</button>
             <button id="titleMissionSelectButton" type="button">Mission Select</button>
+            <button
+              id="titleAudioToggle"
+              type="button"
+              class="title-audio-toggle"
+              aria-label="Mute title music"
+              aria-pressed="false"
+              title="Mute title music"
+            >&#128266;</button>
           </div>
         </div>
       </section>
