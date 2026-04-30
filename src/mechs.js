@@ -101,6 +101,8 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
     currentMechId: overrides.currentMechId ?? null,
     embarkedPilotId: overrides.embarkedPilotId ?? null,
     embarked: Boolean(overrides.embarked ?? false),
+    boardable: unitType === "mech" ? Boolean(overrides.boardable ?? true) : false,
+    locked: Boolean(overrides.locked ?? false),
 
     hasMoved: false,
     hasActed: false,
@@ -195,14 +197,14 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
 
     if (!includePlayerDeployments && controlType === "PC") continue;
 
-    const pilotDefinitionId = String(deployment?.pilotDefinitionId ?? "").trim();
-    const mechDefinitionId = String(deployment?.mechDefinitionId ?? "").trim();
-    const pilot = pilotDefinitionId ? getDefinitionById(pilotDefinitions, pilotDefinitionId, 0) : null;
-    const mech = mechDefinitionId ? getDefinitionById(mechDefinitions, mechDefinitionId, 0) : null;
+    const pilot = deployment?.pilotDefinitionId
+      ? getDefinitionById(pilotDefinitions, deployment?.pilotDefinitionId, 0)
+      : null;
+    const mech = deployment?.mechDefinitionId
+      ? getDefinitionById(mechDefinitions, deployment?.mechDefinitionId, 0)
+      : null;
 
     if (!pilot && !mech) continue;
-    if (pilotDefinitionId && !pilot) continue;
-    if (mechDefinitionId && !mech) continue;
 
     const pilotInstanceId = pilot
       ? (deployment?.pilotInstanceId ?? `${team}-pilot-${pilot.id}`)
@@ -213,14 +215,10 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
 
     const pilotSpawnId = deployment?.pilotSpawnId ?? null;
     const mechSpawnId = deployment?.mechSpawnId ?? null;
+    const pilotPos = pilotSpawnId ? atSpawn(pilotSpawnId) : null;
     const mechPos = mechSpawnId ? atSpawn(mechSpawnId) : null;
-    const pilotPos = pilotSpawnId
-      ? atSpawn(pilotSpawnId)
-      : startEmbarked && mechPos
-        ? mechPos
-        : null;
 
-    if (mech && !pilot) {
+    if (!pilot && mech) {
       if (!mechPos) {
         console.warn("Skipping empty mech deployment with missing map spawn.", {
           mechSpawnId,
@@ -235,9 +233,12 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
         y: mechPos.y,
         team,
         controlType,
-        pilot: null,
         spawnId: mechSpawnId,
-        embarkedPilotId: null
+        pilotId: null,
+        pilotName: null,
+        embarkedPilotId: null,
+        boardable: deployment?.boardable !== false,
+        locked: Boolean(deployment?.locked ?? false)
       });
 
       units.push(mechUnit);
@@ -287,7 +288,9 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
       controlType,
       pilot,
       spawnId: mechSpawnId,
-      embarkedPilotId: startEmbarked ? pilotInstanceId : null
+      embarkedPilotId: startEmbarked ? pilotInstanceId : null,
+      boardable: deployment?.boardable !== false,
+      locked: Boolean(deployment?.locked ?? false)
     });
 
     const pilotUnit = createPilotInstance(pilot, {
@@ -307,7 +310,6 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
 
   return units.length ? units : null;
 }
-
 export function instantiateTestUnits(content, map = null, options = {}) {
   const mechDefinitions = Array.isArray(content?.mechs) ? content.mechs : [];
   const pilotDefinitions = Array.isArray(content?.pilots) ? content.pilots : [];

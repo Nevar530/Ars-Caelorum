@@ -12,7 +12,16 @@ export function resolveEnterMech(state, pilot, mech) {
 
   pilot.embarked = true;
   pilot.currentMechId = mech.instanceId;
+  pilot.parentMechId = pilot.parentMechId ?? mech.instanceId;
+
   mech.embarkedPilotId = pilot.instanceId;
+  mech.pilotId = pilot.definitionId ?? pilot.pilotId ?? pilot.instanceId;
+  mech.pilotName = pilot.name ?? mech.pilotName ?? null;
+  mech.reaction = Number(pilot.reaction ?? mech.reaction ?? 0);
+  mech.targeting = Number(pilot.targeting ?? mech.targeting ?? 0);
+  mech.abilityPoints = Number(pilot.abilityPoints ?? mech.abilityPoints ?? 0);
+  mech.team = pilot.team ?? mech.team;
+  mech.controlType = pilot.controlType ?? mech.controlType;
 
   return {
     ok: true,

@@ -81,6 +81,24 @@ export function isEmptyMech(mech) {
   return Boolean(mech && !mech.embarkedPilotId);
 }
 
+function getPilotDefinitionId(pilot) {
+  return pilot?.definitionId ?? pilot?.pilotId ?? pilot?.id ?? null;
+}
+
+function isMechAssignedToPilot(pilot, mech) {
+  const assignedPilotId = mech?.pilotId ?? null;
+  if (!assignedPilotId) return true;
+
+  return assignedPilotId === pilot?.instanceId || assignedPilotId === getPilotDefinitionId(pilot);
+}
+
+export function isMechBoardableByPilot(pilot, mech) {
+  if (!pilot || !mech) return false;
+  if (mech.locked === true) return false;
+  if (mech.boardable === false) return false;
+  return isMechAssignedToPilot(pilot, mech);
+}
+
 export function getRearHatchBoardingTile(mech) {
   return getRearCenterTile(mech);
 }
@@ -108,6 +126,7 @@ export function canPilotBoardMech(state, pilot, mech) {
   if (pilot.embarked) return false;
   if (!isUsableMech(mech)) return false;
   if (!isEmptyMech(mech)) return false;
+  if (!isMechBoardableByPilot(pilot, mech)) return false;
   if (!isPilotOnRearHatchBoardingTile(pilot, mech)) return false;
 
   return true;
