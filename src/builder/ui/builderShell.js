@@ -387,7 +387,7 @@ function renderInspector({ builderState, refs, appState }) {
     ? renderUnitInspectorTools(builderState, appState)
     : "";
   const note = builderState.workspaceMode === "builder-map"
-    ? "Builder-owned map. Terrain paints tile truth. Structures paint cells/edges. Spawns paints map.spawns and deployment cells using runtime data shape."
+    ? "Builder-owned map. Terrain paints tile truth. Structures paint cells/edges. Spawns paints map.spawns and deployment cells. Units writes startState.deployments."
     : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
 
   refs.inspector.innerHTML = `
@@ -398,6 +398,7 @@ function renderInspector({ builderState, refs, appState }) {
     ${terrainTools}
     ${structureTools}
     ${spawnTools}
+    ${unitTools}
     ${selectedTruth}
     <div class="builder-inspector-card">
       <div class="builder-field-label">Map Source</div>
