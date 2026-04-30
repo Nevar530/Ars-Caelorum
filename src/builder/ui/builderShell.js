@@ -586,13 +586,7 @@ function renderUnitInspectorTools(builderState, appState) {
         <span>Pilot Spawn</span>
         <select data-builder-field="unit-pilot-spawn-id"${editable ? "" : " disabled"}>${pilotSpawnOptions}</select>
       </label>
-      ${hasSelectedMech ? `
-        <label class="builder-form-field builder-form-field-compact">
-          <span>Mech Spawn</span>
-          <select data-builder-field="unit-mech-spawn-id"${editable ? "" : " disabled"}>${mechSpawnOptions}</select>
-        </label>
-      ` : ""}
-      <div class="builder-inspector-note">Pilot with no mech starts on foot. Pilot with a mech starts embarked. For player deployment roster entries, spawn IDs can stay blank.</div>
+      <div class="builder-inspector-note">Pilot with no mech starts on foot. Pilot with a mech starts embarked at the pilot spawn/deployment slot. Separate parked vehicles use Empty Mech.</div>
     ` : "";
 
   const emptyMechFields = isEmptyMech ? `
@@ -657,7 +651,7 @@ function renderUnitStartList(starts) {
     const spawn = isEmptyMech
       ? "M:" + (entry?.mechSpawnId || "missing")
       : hasMech
-        ? "P:" + (entry?.pilotSpawnId || "deploy") + " M:" + (entry?.mechSpawnId || "deploy")
+        ? "P+M:" + (entry?.pilotSpawnId || entry?.mechSpawnId || "deploy")
         : "P:" + (entry?.pilotSpawnId || "deploy");
     return '<div class="builder-unit-start-row">' +
       '<div><strong>' + escapeHtml(index + 1 + ". " + name) + '</strong><span>' + escapeHtml(control + " · " + type + " · " + spawn) + '</span></div>' +

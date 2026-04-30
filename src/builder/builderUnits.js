@@ -131,15 +131,14 @@ export function addUnitStartAssignment(builderState, appState = null) {
     return { ok: false, message: "Choose a pilot before adding a pilot start." };
   }
 
-  const pilotSpawnId = tool.pilotSpawnId || (hasMech ? tool.mechSpawnId : "");
-  const mechSpawnId = hasMech ? (tool.mechSpawnId || tool.pilotSpawnId || "") : "";
+  // Pilot / Pilot + Mech authoring is pilot-first.
+  // If a pilot has a mech selected, both start from the pilot spawn/deployment slot.
+  // Separate parked vehicles belong to Empty Mech starts.
+  const pilotSpawnId = tool.pilotSpawnId || "";
+  const mechSpawnId = hasMech ? pilotSpawnId : "";
 
   if (!isPlayerDeploymentRoster && !pilotSpawnId) {
     return { ok: false, message: "Fixed pilot starts need a Pilot Spawn ID. Player deployment roster entries may leave spawn blank." };
-  }
-
-  if (!isPlayerDeploymentRoster && hasMech && !mechSpawnId) {
-    return { ok: false, message: "Fixed pilot + mech starts need a Mech Spawn ID." };
   }
 
   const next = {
