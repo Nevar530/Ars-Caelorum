@@ -12,13 +12,99 @@
     "concrete"
   ],
   "spawns": {
-    "player": [],
-    "enemy": []
+    "player": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "enemy": [
+      {
+        "x": 4,
+        "y": 10
+      },
+      {
+        "x": 10,
+        "y": 10
+      },
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
   },
   "startState": {
-    "deployments": [],
-    "deploymentCells": [],
-    "startMode": "authored"
+    "deployments": [
+      {
+        "pilotDefinitionId": "pilot_tom",
+        "pilotInstanceId": "enemy-1-pilot",
+        "pilotSpawnId": "enemy_1",
+        "mechDefinitionId": "",
+        "mechInstanceId": "",
+        "mechSpawnId": "",
+        "team": "enemy",
+        "controlType": "CPU",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_jerri",
+        "pilotInstanceId": "enemy-2-pilot",
+        "pilotSpawnId": "enemy_2",
+        "mechDefinitionId": "mech_c",
+        "mechInstanceId": "enemy-2-mech",
+        "mechSpawnId": "enemy_2",
+        "team": "enemy",
+        "controlType": "CPU",
+        "startEmbarked": true
+      },
+      {
+        "pilotDefinitionId": "pilot_biggs",
+        "pilotInstanceId": "player-3-pilot",
+        "pilotSpawnId": "",
+        "mechDefinitionId": "",
+        "mechInstanceId": "",
+        "mechSpawnId": "",
+        "team": "player",
+        "controlType": "PC",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_wedge",
+        "pilotInstanceId": "player-4-pilot",
+        "pilotSpawnId": "",
+        "mechDefinitionId": "",
+        "mechInstanceId": "",
+        "mechSpawnId": "",
+        "team": "player",
+        "controlType": "PC",
+        "startEmbarked": false
+      }
+    ],
+    "deploymentCells": [
+      {
+        "x": 5,
+        "y": 4,
+        "unitType": "pilot",
+        "controlType": "PC"
+      },
+      {
+        "x": 8,
+        "y": 4,
+        "unitType": "pilot",
+        "controlType": "PC"
+      }
+    ],
+    "startMode": "deployment",
+    "playerDeployment": {
+      "unitType": "pilot",
+      "requiredCount": 2
+    }
   },
   "structures": [],
   "tiles": [
@@ -3473,7 +3559,7 @@
       "terrainTypeId": "grass",
       "terrainSpriteId": "grass_001",
       "movementClass": "clear",
-      "spawnId": null,
+      "spawnId": "enemy_1",
       "detail": {
         "subdivisions": 1,
         "cells": [
@@ -3599,7 +3685,7 @@
       "terrainTypeId": "grass",
       "terrainSpriteId": "grass_001",
       "movementClass": "clear",
-      "spawnId": null,
+      "spawnId": "enemy_2",
       "detail": {
         "subdivisions": 1,
         "cells": [
