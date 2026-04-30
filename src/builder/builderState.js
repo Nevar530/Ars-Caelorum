@@ -65,6 +65,17 @@ export function createBuilderState() {
       edgeEyedropper: false,
       edgeErase: false
     },
+    spawnTool: {
+      mode: "spawn",
+      team: "player",
+      slot: 1,
+      spawnErase: false,
+      deploymentUnitType: "pilot",
+      deploymentControlType: "PC",
+      deploymentErase: false,
+      playerDeploymentUnitType: "pilot",
+      requiredCount: 2
+    },
     status: "BUILDER MENU",
     runtimeMapId: null,
     validation: {
@@ -73,14 +84,14 @@ export function createBuilderState() {
       info: [
         {
           code: "BUILDER_AUTHORING_FOUNDATION",
-          message: "Mission Builder can create, terrain-paint, structure-cell/edge paint, and export a builder-owned mission package. Structure edge authoring is active; spawns/objectives remain staged."
+          message: "Mission Builder can create, terrain-paint, structure-cell/edge paint, spawn/deployment paint, and export a builder-owned mission package. Units/objectives remain staged."
         }
       ]
     },
     log: [
       "Mission Builder menu ready.",
       "Choose New/Load from the builder menu, or open from an active map to inspect current runtime truth.",
-      "Builder can create and terrain/structure-cell edit a builder-owned map without mutating the engine/runtime map."
+      "Builder can create and terrain/structure/spawn/deployment edit a builder-owned map without mutating the engine/runtime map."
     ]
   };
 }

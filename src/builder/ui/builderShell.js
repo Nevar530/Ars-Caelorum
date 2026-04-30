@@ -33,6 +33,7 @@ import {
   isStructureEyedropperActive
 } from "../builderStructures.js";
 import { getMapSummary } from "../builderAdapters.js";
+import { ensureSpawnToolSettings } from "../builderSpawns.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 
 export function createBuilderShell() {
@@ -162,7 +163,7 @@ function renderTabHeader({ builderState, refs }) {
     map: "Map metadata and map-level setup live here. New blank maps are builder-owned and do not mutate the runtime map.",
     terrain: "Terrain owns tile truth: terrain type, tile flags/default movement, texture set, and height/elevation.",
     structures: "Structure cells/rooms are active for builder-owned maps. Roof visibility is an editor view toggle; edge/wall tools are active.",
-    spawns: "Spawn and deployment authoring will use existing deployment/startState truth.",
+    spawns: "Spawn and deployment authoring writes existing map.spawns and map.startState truth.",
     units: "Mission roster and later loadout restrictions will live here.",
     objectives: "Objective definitions come after mission package core.",
     triggers: "Tile/zone/runtime triggers connect to Logic Chains here.",
@@ -372,8 +373,11 @@ function renderInspector({ builderState, refs, appState }) {
   const structureTools = builderState.activeTab === "structures"
     ? renderStructureInspectorTools(builderState, appState)
     : "";
+  const spawnTools = builderState.activeTab === "spawns"
+    ? renderSpawnInspectorTools(builderState, appState)
+    : "";
   const note = builderState.workspaceMode === "builder-map"
-    ? "Builder-owned map. Terrain tab paints tile truth. Structures tab paints structure cells/rooms. Structure edges are authorable with Shift-click."
+    ? "Builder-owned map. Terrain paints tile truth. Structures paint cells/edges. Spawns paints map.spawns and deployment cells using runtime data shape."
     : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
 
   refs.inspector.innerHTML = `
@@ -383,6 +387,7 @@ function renderInspector({ builderState, refs, appState }) {
     </div>
     ${terrainTools}
     ${structureTools}
+    ${spawnTools}
     ${selectedTruth}
     <div class="builder-inspector-card">
       <div class="builder-field-label">Map Source</div>
@@ -543,6 +548,84 @@ function buildBrushSizeOptions(selectedSize = 1) {
     const selected = size === selectedNumber ? " selected" : "";
     return `<option value="${size}"${selected}>${size}x${size}</option>`;
   }).join("");
+}
+
+function renderSpawnInspectorTools(builderState, appState) {
+  const tool = ensureSpawnToolSettings(builderState) ?? {};
+  const editable = builderState.workspaceMode === "builder-map";
+  const modeOptions = buildSimpleOptions(["spawn", "deployment"], tool.mode ?? "spawn");
+  const teamOptions = buildSimpleOptions(["player", "enemy"], tool.team ?? "player");
+  const slotOptions = buildNumberOptions(1, 8, tool.slot ?? 1, (value) => "Slot " + value);
+  const unitTypeOptions = buildSimpleOptions(["pilot", "mech"], tool.deploymentUnitType ?? "pilot");
+  const playerUnitTypeOptions = buildSimpleOptions(["pilot", "mech"], tool.playerDeploymentUnitType ?? tool.deploymentUnitType ?? "pilot");
+  const controlOptions = buildSimpleOptions(["PC", "CPU"], tool.deploymentControlType ?? "PC");
+  const spawnEraseActive = tool.spawnErase ? " is-active" : "";
+  const deploymentEraseActive = tool.deploymentErase ? " is-active" : "";
+
+  return `
+    <div class="builder-inspector-card builder-spawn-tool-card">
+      <div class="builder-field-label">Spawns / Deployment Brush</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Paint Mode</span>
+        <select data-builder-field="spawn-tool-mode"${editable ? "" : " disabled"}>${modeOptions}</select>
+      </label>
+      <div class="builder-field-label builder-section-label">Fixed Spawn</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Team</span>
+        <select data-builder-field="spawn-team"${editable ? "" : " disabled"}>${teamOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Spawn Slot</span>
+        <select data-builder-field="spawn-slot"${editable ? "" : " disabled"}>${slotOptions}</select>
+      </label>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button${spawnEraseActive}" data-builder-action="spawn-erase"${editable ? "" : " disabled"}>Erase Spawn</button>
+      </div>
+      <div class="builder-field-label builder-section-label">Deployment Cell</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Unit Type</span>
+        <select data-builder-field="deployment-unit-type"${editable ? "" : " disabled"}>${unitTypeOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Control</span>
+        <select data-builder-field="deployment-control-type"${editable ? "" : " disabled"}>${controlOptions}</select>
+      </label>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button${deploymentEraseActive}" data-builder-action="deployment-erase"${editable ? "" : " disabled"}>Erase Deploy Cell</button>
+      </div>
+      <div class="builder-field-label builder-section-label">Player Deployment Start</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Roster Type</span>
+        <select data-builder-field="player-deployment-unit-type"${editable ? "" : " disabled"}>${playerUnitTypeOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Required Count</span>
+        <input type="number" data-builder-field="deployment-required-count" value="${escapeHtml(tool.requiredCount ?? 2)}" min="0" max="12" step="1"${editable ? "" : " disabled"}>
+      </label>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="apply-deployment-settings"${editable ? "" : " disabled"}>Apply Start Mode</button>
+        <button type="button" class="builder-tool-button" data-builder-action="reset-spawn-brush"${editable ? "" : " disabled"}>Reset Brush</button>
+      </div>
+      <div class="builder-inspector-note">Click tiles to place fixed spawns or deployment cells. This writes map.spawns and map.startState directly, so exported missions slot into the runtime without builder-only logic.</div>
+    </div>
+  `;
+}
+
+function buildSimpleOptions(values, selectedValue) {
+  return values.map((value) => {
+    const selected = String(value) === String(selectedValue) ? " selected" : "";
+    return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(value)}</option>`;
+  }).join("");
+}
+
+function buildNumberOptions(min, max, selectedValue, labeler = (value) => value) {
+  const options = [];
+  const selectedNumber = Number(selectedValue);
+  for (let value = min; value <= max; value += 1) {
+    const selected = value === selectedNumber ? " selected" : "";
+    options.push(`<option value="${value}"${selected}>${escapeHtml(labeler(value))}</option>`);
+  }
+  return options.join("");
 }
 
 function renderSelectionSummary({ builderState, refs }) {

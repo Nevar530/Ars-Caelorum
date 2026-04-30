@@ -628,7 +628,7 @@ function renderWorkspaceReadout({ appState, builderState, workspaceRefs }) {
   const selected = builderState?.selected;
 
   readout.innerHTML = `
-    <div class="builder-readout-kicker">ENGINE PREVIEW · READ ONLY</div>
+    <div class="builder-readout-kicker">ENGINE PREVIEW · BUILDER TRUTH</div>
     <div class="builder-readout-title">${escapeHtml(summary.name)}</div>
     <div class="builder-readout-grid">
       <span>Map ID</span><strong>${escapeHtml(summary.id)}</strong>
@@ -638,7 +638,7 @@ function renderWorkspaceReadout({ appState, builderState, workspaceRefs }) {
       <span>Spawns</span><strong>${summary.spawnCount}</strong>
       <span>Selected</span><strong>${escapeHtml(selected?.label ?? "Map")}</strong>
     </div>
-    <div class="builder-readout-help">Click a tile to inspect it. Shift-click selects the nearest tile edge. This pass is read-only: overlays and inspector cannot mutate map data.</div>
+    <div class="builder-readout-help">Click a tile to inspect or paint with the active tab. Shift-click selects/paints the nearest structure edge.</div>
   `;
 }
 
@@ -696,7 +696,7 @@ export function buildTileInspectorHtml(appState, selection) {
       <div class="builder-field-label">Runtime Unit</div>
       <div class="builder-field-value">${truth.unit ? escapeHtml(truth.unit.name ?? truth.unit.instanceId ?? truth.unit.id) : "None"}</div>
     </div>
-    <div class="builder-inspector-note">Read-only inspection through builder adapters. Edits stay locked until mutation adapters are in place.</div>
+    <div class="builder-inspector-note">Inspector reads through builder adapters. Terrain, structures, and spawns mutate only builder-owned maps; current runtime maps stay read-only.</div>
   `;
 }
 

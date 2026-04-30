@@ -49,6 +49,15 @@ import {
   setBuilderHover,
   setBuilderSelection
 } from "./builderSelection.js";
+import {
+  applyDeploymentSettings,
+  applySpawnAuthoringAtTile,
+  isSpawnAuthoringActive,
+  resetSpawnToolToDefaults,
+  setDeploymentEraseMode,
+  setSpawnEraseMode,
+  updateSpawnToolFromFields
+} from "./builderSpawns.js";
 import { createBuilderShell, renderBuilderShell } from "./ui/builderShell.js";
 import {
   clearWysiwygWorkspace,
@@ -164,7 +173,7 @@ class MissionBuilder {
 
   handleWorkspaceConfirmKey(event) {
     if (event.code !== "Space" && event.key !== " ") return false;
-    if (!this.isTerrainAuthoringActive() && !this.isStructureAuthoringActive()) return false;
+    if (!this.isTerrainAuthoringActive() && !this.isStructureAuthoringActive() && !this.isSpawnAuthoringActive()) return false;
 
     const selected = this.builderState.selected ?? null;
     const hover = this.builderState.hover ?? null;
@@ -180,7 +189,9 @@ class MissionBuilder {
       ? this.applyStructureEdgeActionAtEdge(selected.x, selected.y, selected.edge)
       : this.isStructureAuthoringActive()
         ? this.applyStructureActionAtTile(target.x, target.y)
-        : this.applyTerrainActionAtTile(target.x, target.y);
+        : this.isSpawnAuthoringActive()
+          ? this.applySpawnActionAtTile(target.x, target.y)
+          : this.applyTerrainActionAtTile(target.x, target.y);
 
     pushBuilderLog(this.builderState, result.message);
     this.render();
@@ -227,6 +238,12 @@ class MissionBuilder {
 
     if (this.builderState.activeTab === "structures") {
       updateStructureToolFromFields(this.builderState, this.refs.root, this.appState, { changedField: event.target.getAttribute("data-builder-field") });
+      this.render();
+      return;
+    }
+
+    if (this.builderState.activeTab === "spawns") {
+      updateSpawnToolFromFields(this.builderState, this.refs.root);
       this.render();
     }
   }
@@ -304,6 +321,9 @@ class MissionBuilder {
     } else if (this.isStructureAuthoringActive()) {
       const result = this.applyStructureActionAtTile(picked.x, picked.y);
       pushBuilderLog(this.builderState, result.message);
+    } else if (this.isSpawnAuthoringActive()) {
+      const result = this.applySpawnActionAtTile(picked.x, picked.y);
+      pushBuilderLog(this.builderState, result.message);
     } else {
       pushBuilderLog(this.builderState, "Selected tile " + picked.x + ", " + picked.y + ".");
     }
@@ -317,6 +337,10 @@ class MissionBuilder {
 
   isStructureAuthoringActive() {
     return this.builderState.workspaceMode === "builder-map" && this.builderState.activeTab === "structures";
+  }
+
+  isSpawnAuthoringActive() {
+    return isSpawnAuthoringActive(this.builderState);
   }
 
   applyTerrainActionAtTile(x, y) {
@@ -341,7 +365,43 @@ class MissionBuilder {
     return applyStructureEdgeToolAtEdge(this.builderState, this.appState, x, y, edge);
   }
 
+  applySpawnActionAtTile(x, y) {
+    updateSpawnToolFromFields(this.builderState, this.refs.root);
+    return applySpawnAuthoringAtTile(this.builderState, this.appState, x, y);
+  }
+
   handleAction(action) {
+    if (action === "spawn-erase") {
+      updateSpawnToolFromFields(this.builderState, this.refs.root);
+      const tool = setSpawnEraseMode(this.builderState, !this.builderState.spawnTool?.spawnErase);
+      pushBuilderLog(this.builderState, tool?.spawnErase ? "Spawn erase armed. Click a tile to remove its spawn." : "Spawn erase cancelled.");
+      this.render();
+      return;
+    }
+
+    if (action === "deployment-erase") {
+      updateSpawnToolFromFields(this.builderState, this.refs.root);
+      const tool = setDeploymentEraseMode(this.builderState, !this.builderState.spawnTool?.deploymentErase);
+      pushBuilderLog(this.builderState, tool?.deploymentErase ? "Deployment erase armed. Click a tile to remove its deployment cell." : "Deployment erase cancelled.");
+      this.render();
+      return;
+    }
+
+    if (action === "reset-spawn-brush") {
+      resetSpawnToolToDefaults(this.builderState);
+      pushBuilderLog(this.builderState, "Spawn/deployment brush reset to default settings.");
+      this.render();
+      return;
+    }
+
+    if (action === "apply-deployment-settings") {
+      updateSpawnToolFromFields(this.builderState, this.refs.root);
+      const result = applyDeploymentSettings(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
     if (action === "structure-eyedropper") {
       updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
       const tool = setStructureEyedropper(this.builderState, !isStructureEyedropperActive(this.builderState));
