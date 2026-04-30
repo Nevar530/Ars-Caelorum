@@ -34,6 +34,13 @@ import {
 } from "../builderStructures.js";
 import { getMapSummary } from "../builderAdapters.js";
 import { ensureSpawnToolSettings } from "../builderSpawns.js";
+import {
+  ensureUnitToolSettings,
+  getMechOptions,
+  getPilotOptions,
+  getSpawnIdOptions,
+  getUnitStartAssignments
+} from "../builderUnits.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 
 export function createBuilderShell() {
@@ -164,7 +171,7 @@ function renderTabHeader({ builderState, refs }) {
     terrain: "Terrain owns tile truth: terrain type, tile flags/default movement, texture set, and height/elevation.",
     structures: "Structure cells/rooms are active for builder-owned maps. Roof visibility is an editor view toggle; edge/wall tools are active.",
     spawns: "Spawn and deployment authoring writes existing map.spawns and map.startState truth.",
-    units: "Mission roster and later loadout restrictions will live here.",
+    units: "Unit start assignments write map.startState.deployments using the current runtime contract.",
     objectives: "Objective definitions come after mission package core.",
     triggers: "Tile/zone/runtime triggers connect to Logic Chains here.",
     logic: "Mission Logic Chains: trigger → conditions → effects → follow-up.",
@@ -376,6 +383,9 @@ function renderInspector({ builderState, refs, appState }) {
   const spawnTools = builderState.activeTab === "spawns"
     ? renderSpawnInspectorTools(builderState, appState)
     : "";
+  const unitTools = builderState.activeTab === "units"
+    ? renderUnitInspectorTools(builderState, appState)
+    : "";
   const note = builderState.workspaceMode === "builder-map"
     ? "Builder-owned map. Terrain paints tile truth. Structures paint cells/edges. Spawns paints map.spawns and deployment cells using runtime data shape."
     : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
@@ -540,6 +550,106 @@ function renderStructureSpritePreview(spriteId, label) {
 
   const src = escapeHtml(getStructureSpritePreviewPath(clean));
   return '<div class="builder-structure-art-preview"><span>' + escapeHtml(label) + '</span><img src="' + src + '" alt="' + escapeHtml(clean) + '"><strong>' + escapeHtml(clean) + '</strong></div>';
+}
+
+function renderUnitInspectorTools(builderState, appState) {
+  const tool = ensureUnitToolSettings(builderState, appState) ?? {};
+  const editable = builderState.workspaceMode === "builder-map";
+  const pilots = getPilotOptions(appState);
+  const mechs = getMechOptions(appState);
+  const spawns = getSpawnIdOptions(builderState);
+  const starts = getUnitStartAssignments(builderState);
+  const pilotOptions = buildObjectOptions(pilots, tool.pilotDefinitionId, "No pilots loaded");
+  const mechOptions = buildObjectOptions(mechs, tool.mechDefinitionId, "No mechs loaded");
+  const pilotSpawnOptions = buildObjectOptions(spawns, tool.pilotSpawnId, "No fixed spawns placed", true);
+  const mechSpawnOptions = buildObjectOptions(spawns, tool.mechSpawnId, "No fixed spawns placed", true);
+  const teamOptions = buildSimpleOptions(["player", "enemy"], tool.team ?? "player");
+  const controlOptions = buildSimpleOptions(["PC", "CPU"], tool.controlType ?? "PC");
+  const startTypeOptions = buildSimpleOptions(["pilot", "mech"], tool.startType ?? "pilot");
+  const mechDisabled = tool.startType === "mech" ? "" : " disabled";
+  const checked = tool.startType === "mech" && tool.startEmbarked ? " checked" : "";
+
+  return `
+    <div class="builder-inspector-card builder-unit-tool-card">
+      <div class="builder-field-label">Unit / Start Assignment</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Team</span>
+        <select data-builder-field="unit-team"${editable ? "" : " disabled"}>${teamOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Control</span>
+        <select data-builder-field="unit-control-type"${editable ? "" : " disabled"}>${controlOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Start Type</span>
+        <select data-builder-field="unit-start-type"${editable ? "" : " disabled"}>${startTypeOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Pilot</span>
+        <select data-builder-field="unit-pilot-id"${editable ? "" : " disabled"}>${pilotOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Mech</span>
+        <select data-builder-field="unit-mech-id"${editable ? mechDisabled : " disabled"}>${mechOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Pilot Spawn</span>
+        <select data-builder-field="unit-pilot-spawn-id"${editable ? "" : " disabled"}>${pilotSpawnOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Mech Spawn</span>
+        <select data-builder-field="unit-mech-spawn-id"${editable ? mechDisabled : " disabled"}>${mechSpawnOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact builder-checkbox-row">
+        <span>Start Embarked</span>
+        <input type="checkbox" data-builder-field="unit-start-embarked"${checked}${editable && tool.startType === "mech" ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Instance Prefix</span>
+        <input type="text" data-builder-field="unit-instance-prefix" value="${escapeHtml(tool.instancePrefix ?? "")}" placeholder="auto" spellcheck="false"${editable ? "" : " disabled"}>
+      </label>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="add-unit-start"${editable ? "" : " disabled"}>Add Unit Start</button>
+        <button type="button" class="builder-tool-button" data-builder-action="reset-unit-start-form"${editable ? "" : " disabled"}>Reset Form</button>
+      </div>
+      <div class="builder-inspector-note">For player deployment roster entries, spawn IDs can stay blank. Fixed CPU/player starts need spawn IDs so the current runtime loader can place them.</div>
+      <div class="builder-field-label builder-section-label">Current StartState Deployments</div>
+      ${renderUnitStartList(starts)}
+    </div>
+  `;
+}
+
+function renderUnitStartList(starts) {
+  if (!starts.length) {
+    return '<div class="builder-inspector-note">No unit start assignments yet.</div>';
+  }
+
+  return '<div class="builder-unit-start-list">' + starts.map((entry, index) => {
+    const type = entry?.mechDefinitionId ? "mech" : "pilot";
+    const name = entry?.mechDefinitionId
+      ? entry.mechDefinitionId + " / " + entry.pilotDefinitionId
+      : entry?.pilotDefinitionId ?? "unknown pilot";
+    const control = (entry?.controlType ?? "PC") + " " + (entry?.team ?? "player");
+    const spawn = entry?.mechDefinitionId
+      ? "P:" + (entry?.pilotSpawnId || "deploy") + " M:" + (entry?.mechSpawnId || "deploy")
+      : "P:" + (entry?.pilotSpawnId || "deploy");
+    return '<div class="builder-unit-start-row">' +
+      '<div><strong>' + escapeHtml(index + 1 + ". " + name) + '</strong><span>' + escapeHtml(control + " · " + type + " · " + spawn) + '</span></div>' +
+      '<button type="button" class="builder-tool-button" data-builder-action="remove-unit-start:' + index + '">Remove</button>' +
+    '</div>';
+  }).join("") + '</div>';
+}
+
+function buildObjectOptions(options, selectedId = "", emptyLabel = "None", includeBlank = false) {
+  const list = Array.isArray(options) ? options : [];
+  const blank = includeBlank ? '<option value="">deployment / none</option>' : "";
+  if (!list.length) return blank + '<option value="">' + escapeHtml(emptyLabel) + '</option>';
+  return blank + list.map((option) => {
+    const id = option?.id ?? "";
+    const selected = id === selectedId ? " selected" : "";
+    const label = option?.label ? option.label + " · " + id : id;
+    return '<option value="' + escapeHtml(id) + '"' + selected + '>' + escapeHtml(label) + '</option>';
+  }).join("");
 }
 
 function buildBrushSizeOptions(selectedSize = 1) {

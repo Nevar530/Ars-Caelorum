@@ -59,6 +59,12 @@ import {
   setSpawnToolMode,
   updateSpawnToolFromFields
 } from "./builderSpawns.js";
+import {
+  addUnitStartAssignment,
+  removeUnitStartAssignment,
+  resetUnitToolToDefaults,
+  updateUnitToolFromFields
+} from "./builderUnits.js";
 import { createBuilderShell, renderBuilderShell } from "./ui/builderShell.js";
 import {
   clearWysiwygWorkspace,
@@ -246,6 +252,12 @@ class MissionBuilder {
     if (this.builderState.activeTab === "spawns") {
       updateSpawnToolFromFields(this.builderState, this.refs.root);
       this.render();
+      return;
+    }
+
+    if (this.builderState.activeTab === "units") {
+      updateUnitToolFromFields(this.builderState, this.refs.root, this.appState);
+      this.render();
     }
   }
 
@@ -372,6 +384,29 @@ class MissionBuilder {
   }
 
   handleAction(action) {
+    if (action === "add-unit-start") {
+      updateUnitToolFromFields(this.builderState, this.refs.root, this.appState);
+      const result = addUnitStartAssignment(this.builderState, this.appState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "reset-unit-start-form") {
+      resetUnitToolToDefaults(this.builderState, this.appState);
+      pushBuilderLog(this.builderState, "Unit start form reset.");
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("remove-unit-start:")) {
+      const index = Number(action.split(":")[1]);
+      const result = removeUnitStartAssignment(this.builderState, index);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
     if (action === "spawn-tab-fixed") {
       updateSpawnToolFromFields(this.builderState, this.refs.root);
       setSpawnToolMode(this.builderState, "spawn");
