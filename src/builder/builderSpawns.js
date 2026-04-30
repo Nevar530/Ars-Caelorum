@@ -52,6 +52,15 @@ export function ensureSpawnToolSettings(builderState) {
   return tool;
 }
 
+export function setSpawnToolMode(builderState, mode) {
+  const tool = ensureSpawnToolSettings(builderState);
+  if (!tool || !TOOL_MODES.includes(mode)) return tool;
+  tool.mode = mode;
+  if (mode === "spawn") tool.deploymentErase = false;
+  if (mode === "deployment") tool.spawnErase = false;
+  return tool;
+}
+
 export function updateSpawnToolFromFields(builderState, root) {
   const tool = ensureSpawnToolSettings(builderState);
   if (!tool || !root) return tool;

@@ -553,7 +553,7 @@ function buildBrushSizeOptions(selectedSize = 1) {
 function renderSpawnInspectorTools(builderState, appState) {
   const tool = ensureSpawnToolSettings(builderState) ?? {};
   const editable = builderState.workspaceMode === "builder-map";
-  const modeOptions = buildSimpleOptions(["spawn", "deployment"], tool.mode ?? "spawn");
+  const mode = tool.mode === "deployment" ? "deployment" : "spawn";
   const teamOptions = buildSimpleOptions(["player", "enemy"], tool.team ?? "player");
   const slotOptions = buildNumberOptions(1, 8, tool.slot ?? 1, (value) => "Slot " + value);
   const unitTypeOptions = buildSimpleOptions(["pilot", "mech"], tool.deploymentUnitType ?? "pilot");
@@ -561,14 +561,10 @@ function renderSpawnInspectorTools(builderState, appState) {
   const controlOptions = buildSimpleOptions(["PC", "CPU"], tool.deploymentControlType ?? "PC");
   const spawnEraseActive = tool.spawnErase ? " is-active" : "";
   const deploymentEraseActive = tool.deploymentErase ? " is-active" : "";
+  const fixedTabActive = mode === "spawn" ? " is-active" : "";
+  const deploymentTabActive = mode === "deployment" ? " is-active" : "";
 
-  return `
-    <div class="builder-inspector-card builder-spawn-tool-card">
-      <div class="builder-field-label">Spawns / Deployment Brush</div>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Paint Mode</span>
-        <select data-builder-field="spawn-tool-mode"${editable ? "" : " disabled"}>${modeOptions}</select>
-      </label>
+  const fixedSpawnPanel = mode === "spawn" ? `
       <div class="builder-field-label builder-section-label">Fixed Spawn</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Team</span>
@@ -581,7 +577,11 @@ function renderSpawnInspectorTools(builderState, appState) {
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button${spawnEraseActive}" data-builder-action="spawn-erase"${editable ? "" : " disabled"}>Erase Spawn</button>
       </div>
-      <div class="builder-field-label builder-section-label">Deployment Cell</div>
+      <div class="builder-inspector-note">Click a tile to place the selected fixed spawn. This writes map.spawns plus the tile spawnId used by the runtime.</div>
+    ` : "";
+
+  const deploymentPanel = mode === "deployment" ? `
+      <div class="builder-field-label builder-section-label">Deployment Zone Paint</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Unit Type</span>
         <select data-builder-field="deployment-unit-type"${editable ? "" : " disabled"}>${unitTypeOptions}</select>
@@ -604,9 +604,22 @@ function renderSpawnInspectorTools(builderState, appState) {
       </label>
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="apply-deployment-settings"${editable ? "" : " disabled"}>Apply Start Mode</button>
-        <button type="button" class="builder-tool-button" data-builder-action="reset-spawn-brush"${editable ? "" : " disabled"}>Reset Brush</button>
       </div>
-      <div class="builder-inspector-note">Click tiles to place fixed spawns or deployment cells. This writes map.spawns and map.startState directly, so exported missions slot into the runtime without builder-only logic.</div>
+      <div class="builder-inspector-note">Click tiles to paint deployment cells. This writes map.startState.deploymentCells and playerDeployment using the runtime data shape.</div>
+    ` : "";
+
+  return `
+    <div class="builder-inspector-card builder-spawn-tool-card">
+      <div class="builder-field-label">Spawns</div>
+      <div class="builder-tool-row" role="tablist" aria-label="Spawn authoring sections">
+        <button type="button" class="builder-tool-button${fixedTabActive}" data-builder-action="spawn-tab-fixed"${editable ? "" : " disabled"}>Fixed Spawns</button>
+        <button type="button" class="builder-tool-button${deploymentTabActive}" data-builder-action="spawn-tab-deployment"${editable ? "" : " disabled"}>Deployment Zones</button>
+      </div>
+      ${fixedSpawnPanel}
+      ${deploymentPanel}
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="reset-spawn-brush"${editable ? "" : " disabled"}>Reset Spawn Tools</button>
+      </div>
     </div>
   `;
 }

@@ -56,6 +56,7 @@ import {
   resetSpawnToolToDefaults,
   setDeploymentEraseMode,
   setSpawnEraseMode,
+  setSpawnToolMode,
   updateSpawnToolFromFields
 } from "./builderSpawns.js";
 import { createBuilderShell, renderBuilderShell } from "./ui/builderShell.js";
@@ -371,6 +372,22 @@ class MissionBuilder {
   }
 
   handleAction(action) {
+    if (action === "spawn-tab-fixed") {
+      updateSpawnToolFromFields(this.builderState, this.refs.root);
+      setSpawnToolMode(this.builderState, "spawn");
+      pushBuilderLog(this.builderState, "Spawns menu set to Fixed Spawns.");
+      this.render();
+      return;
+    }
+
+    if (action === "spawn-tab-deployment") {
+      updateSpawnToolFromFields(this.builderState, this.refs.root);
+      setSpawnToolMode(this.builderState, "deployment");
+      pushBuilderLog(this.builderState, "Spawns menu set to Deployment Zones.");
+      this.render();
+      return;
+    }
+
     if (action === "spawn-erase") {
       updateSpawnToolFromFields(this.builderState, this.refs.root);
       const tool = setSpawnEraseMode(this.builderState, !this.builderState.spawnTool?.spawnErase);
