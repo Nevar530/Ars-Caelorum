@@ -84,7 +84,6 @@ export function createBuilderState() {
       mechDefinitionId: "",
       pilotSpawnId: "",
       mechSpawnId: "",
-      startEmbarked: false,
       instancePrefix: ""
     },
     status: "BUILDER MENU",
@@ -96,7 +95,7 @@ export function createBuilderState() {
       info: [
         {
           code: "BUILDER_AUTHORING_FOUNDATION",
-          message: "Mission Builder can create, terrain-paint, structure-cell/edge paint, spawn/deployment paint, author unit start assignments, and export a builder-owned mission package. Objectives remain staged."
+          message: "Mission Builder can create, terrain-paint, structure-cell/edge paint, spawn/deployment paint, author pilot/pilot+mech/empty-mech start assignments, and export a builder-owned mission package. Objectives remain staged."
         }
       ]
     },

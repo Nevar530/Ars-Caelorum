@@ -560,15 +560,52 @@ function renderUnitInspectorTools(builderState, appState) {
   const mechs = getMechOptions(appState);
   const spawns = getSpawnIdOptions(builderState);
   const starts = getUnitStartAssignments(builderState);
+  const isEmptyMech = tool.startType === "emptyMech";
+  const hasSelectedMech = Boolean(tool.mechDefinitionId);
   const pilotOptions = buildObjectOptions(pilots, tool.pilotDefinitionId, "No pilots loaded");
-  const mechOptions = buildObjectOptions(mechs, tool.mechDefinitionId, "No mechs loaded");
-  const pilotSpawnOptions = buildObjectOptions(spawns, tool.pilotSpawnId, "No fixed spawns placed", true);
-  const mechSpawnOptions = buildObjectOptions(spawns, tool.mechSpawnId, "No fixed spawns placed", true);
+  const mechOptions = buildObjectOptions(mechs, tool.mechDefinitionId, "No mechs loaded", !isEmptyMech, isEmptyMech ? "Choose a mech" : "none / on foot");
+  const pilotSpawnOptions = buildObjectOptions(spawns, tool.pilotSpawnId, "No fixed spawns placed", true, "deployment / none");
+  const mechSpawnOptions = buildObjectOptions(spawns, tool.mechSpawnId, "No fixed spawns placed", true, "deployment / none");
   const teamOptions = buildSimpleOptions(["player", "enemy"], tool.team ?? "player");
   const controlOptions = buildSimpleOptions(["PC", "CPU"], tool.controlType ?? "PC");
-  const startTypeOptions = buildSimpleOptions(["pilot", "mech"], tool.startType ?? "pilot");
-  const mechDisabled = tool.startType === "mech" ? "" : " disabled";
-  const checked = tool.startType === "mech" && tool.startEmbarked ? " checked" : "";
+  const startTypeOptions = buildLabeledOptions([
+    { value: "pilot", label: "Pilot / Pilot + Mech" },
+    { value: "emptyMech", label: "Empty Mech" }
+  ], tool.startType ?? "pilot");
+
+  const pilotFields = !isEmptyMech ? `
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Pilot</span>
+        <select data-builder-field="unit-pilot-id"${editable ? "" : " disabled"}>${pilotOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Optional Mech</span>
+        <select data-builder-field="unit-mech-id"${editable ? "" : " disabled"}>${mechOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Pilot Spawn</span>
+        <select data-builder-field="unit-pilot-spawn-id"${editable ? "" : " disabled"}>${pilotSpawnOptions}</select>
+      </label>
+      ${hasSelectedMech ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Mech Spawn</span>
+          <select data-builder-field="unit-mech-spawn-id"${editable ? "" : " disabled"}>${mechSpawnOptions}</select>
+        </label>
+      ` : ""}
+      <div class="builder-inspector-note">Pilot with no mech starts on foot. Pilot with a mech starts embarked. For player deployment roster entries, spawn IDs can stay blank.</div>
+    ` : "";
+
+  const emptyMechFields = isEmptyMech ? `
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Mech</span>
+        <select data-builder-field="unit-mech-id"${editable ? "" : " disabled"}>${mechOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Mech Spawn</span>
+        <select data-builder-field="unit-mech-spawn-id"${editable ? "" : " disabled"}>${mechSpawnOptions}</select>
+      </label>
+      <div class="builder-inspector-note">Empty Mech is a fixed vehicle start. It has no pilot and must use a Mech Spawn. It is not a deployment roster type.</div>
+    ` : "";
 
   return `
     <div class="builder-inspector-card builder-unit-tool-card">
@@ -582,38 +619,19 @@ function renderUnitInspectorTools(builderState, appState) {
         <select data-builder-field="unit-control-type"${editable ? "" : " disabled"}>${controlOptions}</select>
       </label>
       <label class="builder-form-field builder-form-field-compact">
-        <span>Start Type</span>
+        <span>Start Kind</span>
         <select data-builder-field="unit-start-type"${editable ? "" : " disabled"}>${startTypeOptions}</select>
       </label>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Pilot</span>
-        <select data-builder-field="unit-pilot-id"${editable ? "" : " disabled"}>${pilotOptions}</select>
-      </label>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Mech</span>
-        <select data-builder-field="unit-mech-id"${editable ? mechDisabled : " disabled"}>${mechOptions}</select>
-      </label>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Pilot Spawn</span>
-        <select data-builder-field="unit-pilot-spawn-id"${editable ? "" : " disabled"}>${pilotSpawnOptions}</select>
-      </label>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Mech Spawn</span>
-        <select data-builder-field="unit-mech-spawn-id"${editable ? mechDisabled : " disabled"}>${mechSpawnOptions}</select>
-      </label>
-      <label class="builder-form-field builder-form-field-compact builder-checkbox-row">
-        <span>Start Embarked</span>
-        <input type="checkbox" data-builder-field="unit-start-embarked"${checked}${editable && tool.startType === "mech" ? "" : " disabled"}>
-      </label>
+      ${pilotFields}
+      ${emptyMechFields}
       <label class="builder-form-field builder-form-field-compact">
         <span>Instance Prefix</span>
         <input type="text" data-builder-field="unit-instance-prefix" value="${escapeHtml(tool.instancePrefix ?? "")}" placeholder="auto" spellcheck="false"${editable ? "" : " disabled"}>
       </label>
       <div class="builder-tool-row">
-        <button type="button" class="builder-tool-button" data-builder-action="add-unit-start"${editable ? "" : " disabled"}>Add Unit Start</button>
+        <button type="button" class="builder-tool-button" data-builder-action="add-unit-start"${editable ? "" : " disabled"}>Add Start</button>
         <button type="button" class="builder-tool-button" data-builder-action="reset-unit-start-form"${editable ? "" : " disabled"}>Reset Form</button>
       </div>
-      <div class="builder-inspector-note">For player deployment roster entries, spawn IDs can stay blank. Fixed CPU/player starts need spawn IDs so the current runtime loader can place them.</div>
       <div class="builder-field-label builder-section-label">Current StartState Deployments</div>
       ${renderUnitStartList(starts)}
     </div>
@@ -626,14 +644,21 @@ function renderUnitStartList(starts) {
   }
 
   return '<div class="builder-unit-start-list">' + starts.map((entry, index) => {
-    const type = entry?.mechDefinitionId ? "mech" : "pilot";
-    const name = entry?.mechDefinitionId
-      ? entry.mechDefinitionId + " / " + entry.pilotDefinitionId
-      : entry?.pilotDefinitionId ?? "unknown pilot";
+    const hasPilot = Boolean(entry?.pilotDefinitionId);
+    const hasMech = Boolean(entry?.mechDefinitionId);
+    const isEmptyMech = hasMech && !hasPilot;
+    const type = isEmptyMech ? "empty mech" : hasMech ? "pilot + mech" : "pilot";
+    const name = isEmptyMech
+      ? entry.mechDefinitionId
+      : hasMech
+        ? entry.pilotDefinitionId + " / " + entry.mechDefinitionId
+        : entry?.pilotDefinitionId ?? "unknown pilot";
     const control = (entry?.controlType ?? "PC") + " " + (entry?.team ?? "player");
-    const spawn = entry?.mechDefinitionId
-      ? "P:" + (entry?.pilotSpawnId || "deploy") + " M:" + (entry?.mechSpawnId || "deploy")
-      : "P:" + (entry?.pilotSpawnId || "deploy");
+    const spawn = isEmptyMech
+      ? "M:" + (entry?.mechSpawnId || "missing")
+      : hasMech
+        ? "P:" + (entry?.pilotSpawnId || "deploy") + " M:" + (entry?.mechSpawnId || "deploy")
+        : "P:" + (entry?.pilotSpawnId || "deploy");
     return '<div class="builder-unit-start-row">' +
       '<div><strong>' + escapeHtml(index + 1 + ". " + name) + '</strong><span>' + escapeHtml(control + " · " + type + " · " + spawn) + '</span></div>' +
       '<button type="button" class="builder-tool-button" data-builder-action="remove-unit-start:' + index + '">Remove</button>' +
@@ -641,15 +666,22 @@ function renderUnitStartList(starts) {
   }).join("") + '</div>';
 }
 
-function buildObjectOptions(options, selectedId = "", emptyLabel = "None", includeBlank = false) {
+function buildObjectOptions(options, selectedId = "", emptyLabel = "None", includeBlank = false, blankLabel = "deployment / none") {
   const list = Array.isArray(options) ? options : [];
-  const blank = includeBlank ? '<option value="">deployment / none</option>' : "";
+  const blank = includeBlank ? '<option value="">' + escapeHtml(blankLabel) + '</option>' : "";
   if (!list.length) return blank + '<option value="">' + escapeHtml(emptyLabel) + '</option>';
   return blank + list.map((option) => {
     const id = option?.id ?? "";
     const selected = id === selectedId ? " selected" : "";
     const label = option?.label ? option.label + " · " + id : id;
     return '<option value="' + escapeHtml(id) + '"' + selected + '>' + escapeHtml(label) + '</option>';
+  }).join("");
+}
+
+function buildLabeledOptions(options, selectedValue) {
+  return options.map((option) => {
+    const selected = String(option.value) === String(selectedValue) ? " selected" : "";
+    return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(option.label)}</option>`;
   }).join("");
 }
 
@@ -667,8 +699,14 @@ function renderSpawnInspectorTools(builderState, appState) {
   const mode = tool.mode === "deployment" ? "deployment" : "spawn";
   const teamOptions = buildSimpleOptions(["player", "enemy"], tool.team ?? "player");
   const slotOptions = buildNumberOptions(1, 8, tool.slot ?? 1, (value) => "Slot " + value);
-  const unitTypeOptions = buildSimpleOptions(["pilot", "mech"], tool.deploymentUnitType ?? "pilot");
-  const playerUnitTypeOptions = buildSimpleOptions(["pilot", "mech"], tool.playerDeploymentUnitType ?? tool.deploymentUnitType ?? "pilot");
+  const unitTypeOptions = buildLabeledOptions([
+    { value: "pilot", label: "Pilot Cells" },
+    { value: "mech", label: "Pilot + Mech Cells" }
+  ], tool.deploymentUnitType ?? "pilot");
+  const playerUnitTypeOptions = buildLabeledOptions([
+    { value: "pilot", label: "Pilot Only" },
+    { value: "mech", label: "Pilot + Mech" }
+  ], tool.playerDeploymentUnitType ?? tool.deploymentUnitType ?? "pilot");
   const controlOptions = buildSimpleOptions(["PC", "CPU"], tool.deploymentControlType ?? "PC");
   const spawnEraseActive = tool.spawnErase ? " is-active" : "";
   const deploymentEraseActive = tool.deploymentErase ? " is-active" : "";
@@ -694,7 +732,7 @@ function renderSpawnInspectorTools(builderState, appState) {
   const deploymentPanel = mode === "deployment" ? `
       <div class="builder-field-label builder-section-label">Deployment Zone Paint</div>
       <label class="builder-form-field builder-form-field-compact">
-        <span>Unit Type</span>
+        <span>Deploy Cell Type</span>
         <select data-builder-field="deployment-unit-type"${editable ? "" : " disabled"}>${unitTypeOptions}</select>
       </label>
       <label class="builder-form-field builder-form-field-compact">
@@ -706,7 +744,7 @@ function renderSpawnInspectorTools(builderState, appState) {
       </div>
       <div class="builder-field-label builder-section-label">Player Deployment Start</div>
       <label class="builder-form-field builder-form-field-compact">
-        <span>Roster Type</span>
+        <span>Player Roster Type</span>
         <select data-builder-field="player-deployment-unit-type"${editable ? "" : " disabled"}>${playerUnitTypeOptions}</select>
       </label>
       <label class="builder-form-field builder-form-field-compact">

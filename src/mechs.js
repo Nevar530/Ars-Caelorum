@@ -195,21 +195,54 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
 
     if (!includePlayerDeployments && controlType === "PC") continue;
 
-    const pilot = getDefinitionById(pilotDefinitions, deployment?.pilotDefinitionId, 0);
-    const mech = deployment?.mechDefinitionId
-      ? getDefinitionById(mechDefinitions, deployment?.mechDefinitionId, 0)
-      : null;
-    if (!pilot) continue;
+    const pilotDefinitionId = String(deployment?.pilotDefinitionId ?? "").trim();
+    const mechDefinitionId = String(deployment?.mechDefinitionId ?? "").trim();
+    const pilot = pilotDefinitionId ? getDefinitionById(pilotDefinitions, pilotDefinitionId, 0) : null;
+    const mech = mechDefinitionId ? getDefinitionById(mechDefinitions, mechDefinitionId, 0) : null;
 
-    const pilotInstanceId = deployment?.pilotInstanceId ?? `${team}-pilot-${pilot.id}`;
+    if (!pilot && !mech) continue;
+    if (pilotDefinitionId && !pilot) continue;
+    if (mechDefinitionId && !mech) continue;
+
+    const pilotInstanceId = pilot
+      ? (deployment?.pilotInstanceId ?? `${team}-pilot-${pilot.id}`)
+      : null;
     const mechInstanceId = mech
       ? (deployment?.mechInstanceId ?? `${team}-mech-${mech.id}`)
       : null;
 
     const pilotSpawnId = deployment?.pilotSpawnId ?? null;
     const mechSpawnId = deployment?.mechSpawnId ?? null;
-    const pilotPos = pilotSpawnId ? atSpawn(pilotSpawnId) : null;
     const mechPos = mechSpawnId ? atSpawn(mechSpawnId) : null;
+    const pilotPos = pilotSpawnId
+      ? atSpawn(pilotSpawnId)
+      : startEmbarked && mechPos
+        ? mechPos
+        : null;
+
+    if (mech && !pilot) {
+      if (!mechPos) {
+        console.warn("Skipping empty mech deployment with missing map spawn.", {
+          mechSpawnId,
+          deployment
+        });
+        continue;
+      }
+
+      const mechUnit = createMechInstance(mech, {
+        instanceId: mechInstanceId,
+        x: mechPos.x,
+        y: mechPos.y,
+        team,
+        controlType,
+        pilot: null,
+        spawnId: mechSpawnId,
+        embarkedPilotId: null
+      });
+
+      units.push(mechUnit);
+      continue;
+    }
 
     if (!pilotPos) {
       console.warn("Skipping deployment with missing map spawn.", {

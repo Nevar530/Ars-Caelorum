@@ -3,11 +3,11 @@
 // Builder-owned unit/start assignment helpers.
 // This writes map.startState.deployments in the same shape the current
 // deployment/start-state runtime already consumes. It does not spawn units
-// and does not touch the stable game engine.
+// and does not touch combat rules.
 
 const TEAMS = ["player", "enemy"];
 const CONTROL_TYPES = ["PC", "CPU"];
-const START_TYPES = ["pilot", "mech"];
+const START_TYPES = ["pilot", "emptyMech"];
 
 export function createDefaultUnitTool() {
   return {
@@ -18,7 +18,6 @@ export function createDefaultUnitTool() {
     mechDefinitionId: "",
     pilotSpawnId: "",
     mechSpawnId: "",
-    startEmbarked: false,
     instancePrefix: ""
   };
 }
@@ -34,11 +33,19 @@ export function ensureUnitToolSettings(builderState, appState = null) {
   tool.team = TEAMS.includes(tool.team) ? tool.team : "player";
   tool.controlType = CONTROL_TYPES.includes(tool.controlType) ? tool.controlType : (tool.team === "enemy" ? "CPU" : "PC");
   tool.startType = START_TYPES.includes(tool.startType) ? tool.startType : "pilot";
-  tool.pilotDefinitionId = pickValidId(tool.pilotDefinitionId, pilots);
-  tool.mechDefinitionId = tool.startType === "mech" ? pickValidId(tool.mechDefinitionId, mechs) : "";
+
+  if (tool.startType === "emptyMech") {
+    tool.pilotDefinitionId = "";
+    tool.pilotSpawnId = "";
+    tool.mechDefinitionId = pickValidId(tool.mechDefinitionId, mechs);
+  } else {
+    tool.pilotDefinitionId = pickValidId(tool.pilotDefinitionId, pilots);
+    tool.mechDefinitionId = pickOptionalValidId(tool.mechDefinitionId, mechs);
+  }
+
   tool.pilotSpawnId = String(tool.pilotSpawnId ?? "").trim();
-  tool.mechSpawnId = tool.startType === "mech" ? String(tool.mechSpawnId ?? "").trim() : "";
-  tool.startEmbarked = tool.startType === "mech" ? Boolean(tool.startEmbarked) : false;
+  tool.mechSpawnId = String(tool.mechSpawnId ?? "").trim();
+  tool.startEmbarked = tool.startType === "pilot" && Boolean(tool.mechDefinitionId);
   tool.instancePrefix = sanitizeInstancePrefix(tool.instancePrefix);
   return tool;
 }
@@ -54,7 +61,6 @@ export function updateUnitToolFromFields(builderState, root, appState = null) {
   const mechDefinitionId = readField(root, "unit-mech-id");
   const pilotSpawnId = readField(root, "unit-pilot-spawn-id");
   const mechSpawnId = readField(root, "unit-mech-spawn-id");
-  const startEmbarked = root.querySelector('[data-builder-field="unit-start-embarked"]')?.checked;
   const instancePrefix = readField(root, "unit-instance-prefix");
 
   if (team !== undefined) tool.team = TEAMS.includes(team) ? team : tool.team;
@@ -64,7 +70,6 @@ export function updateUnitToolFromFields(builderState, root, appState = null) {
   if (mechDefinitionId !== undefined) tool.mechDefinitionId = mechDefinitionId;
   if (pilotSpawnId !== undefined) tool.pilotSpawnId = pilotSpawnId;
   if (mechSpawnId !== undefined) tool.mechSpawnId = mechSpawnId;
-  if (startEmbarked !== undefined) tool.startEmbarked = Boolean(startEmbarked);
   if (instancePrefix !== undefined) tool.instancePrefix = instancePrefix;
 
   return ensureUnitToolSettings(builderState, appState);
@@ -84,42 +89,69 @@ export function addUnitStartAssignment(builderState, appState = null) {
   const startState = ensureStartState(map);
   const deployments = Array.isArray(startState.deployments) ? startState.deployments : [];
   const index = deployments.length + 1;
-  const startType = tool.startType === "mech" ? "mech" : "pilot";
+  const isEmptyMech = tool.startType === "emptyMech";
+  const hasMech = Boolean(tool.mechDefinitionId);
   const team = tool.team === "enemy" ? "enemy" : "player";
   const controlType = tool.controlType === "CPU" ? "CPU" : "PC";
   const prefix = tool.instancePrefix || `${team}-${index}`;
-  const pilotSpawnId = tool.pilotSpawnId || "";
-  const mechSpawnId = startType === "mech" ? (tool.mechSpawnId || tool.pilotSpawnId || "") : "";
+  const deploymentMode = startState.startMode === "deployment";
+  const isPlayerDeploymentRoster = deploymentMode && team === "player" && controlType === "PC" && !isEmptyMech;
+
+  if (isEmptyMech) {
+    if (!tool.mechDefinitionId) {
+      return { ok: false, message: "Choose a mech before adding an empty mech start." };
+    }
+    if (!tool.mechSpawnId) {
+      return { ok: false, message: "Empty mech starts need a Mech Spawn ID." };
+    }
+
+    const next = {
+      pilotDefinitionId: "",
+      pilotInstanceId: "",
+      pilotSpawnId: "",
+      mechDefinitionId: tool.mechDefinitionId,
+      mechInstanceId: `${prefix}-mech`,
+      mechSpawnId: tool.mechSpawnId,
+      team,
+      controlType,
+      startEmbarked: false
+    };
+
+    deployments.push(next);
+    startState.deployments = deployments;
+    builderState.dirty = true;
+
+    return {
+      ok: true,
+      message: `Added empty ${controlType} ${team} mech start for ${tool.mechDefinitionId}.`
+    };
+  }
 
   if (!tool.pilotDefinitionId) {
-    return { ok: false, message: "Choose a pilot before adding a unit start." };
+    return { ok: false, message: "Choose a pilot before adding a pilot start." };
   }
 
-  if (startType === "mech" && !tool.mechDefinitionId) {
-    return { ok: false, message: "Choose a mech before adding a mech start." };
-  }
-
-  const deploymentMode = startState.startMode === "deployment";
-  const isPlayerDeploymentRoster = deploymentMode && team === "player" && controlType === "PC";
+  const pilotSpawnId = tool.pilotSpawnId || (hasMech ? tool.mechSpawnId : "");
+  const mechSpawnId = hasMech ? (tool.mechSpawnId || tool.pilotSpawnId || "") : "";
 
   if (!isPlayerDeploymentRoster && !pilotSpawnId) {
-    return { ok: false, message: "Fixed authored starts need a Pilot Spawn ID. Player deployment roster entries may leave spawn blank." };
+    return { ok: false, message: "Fixed pilot starts need a Pilot Spawn ID. Player deployment roster entries may leave spawn blank." };
   }
 
-  if (!isPlayerDeploymentRoster && startType === "mech" && !mechSpawnId) {
-    return { ok: false, message: "Fixed mech starts need a Mech Spawn ID." };
+  if (!isPlayerDeploymentRoster && hasMech && !mechSpawnId) {
+    return { ok: false, message: "Fixed pilot + mech starts need a Mech Spawn ID." };
   }
 
   const next = {
     pilotDefinitionId: tool.pilotDefinitionId,
     pilotInstanceId: `${prefix}-pilot`,
     pilotSpawnId,
-    mechDefinitionId: startType === "mech" ? tool.mechDefinitionId : "",
-    mechInstanceId: startType === "mech" ? `${prefix}-mech` : "",
+    mechDefinitionId: hasMech ? tool.mechDefinitionId : "",
+    mechInstanceId: hasMech ? `${prefix}-mech` : "",
     mechSpawnId,
     team,
     controlType,
-    startEmbarked: startType === "mech" ? Boolean(tool.startEmbarked) : false
+    startEmbarked: hasMech
   };
 
   deployments.push(next);
@@ -128,7 +160,7 @@ export function addUnitStartAssignment(builderState, appState = null) {
 
   return {
     ok: true,
-    message: `Added ${controlType} ${team} ${startType} start for ${tool.pilotDefinitionId}.`
+    message: `Added ${controlType} ${team} ${hasMech ? "pilot + mech" : "pilot"} start for ${tool.pilotDefinitionId}.`
   };
 }
 
@@ -149,7 +181,7 @@ export function removeUnitStartAssignment(builderState, index) {
   builderState.dirty = true;
   return {
     ok: true,
-    message: `Removed unit start ${removed?.pilotInstanceId || cleanIndex + 1}.`
+    message: `Removed unit start ${removed?.pilotInstanceId || removed?.mechInstanceId || cleanIndex + 1}.`
   };
 }
 
@@ -199,6 +231,12 @@ function pickValidId(currentId, options) {
   const clean = String(currentId ?? "").trim();
   if (options.some((option) => option.id === clean)) return clean;
   return options[0]?.id ?? "";
+}
+
+function pickOptionalValidId(currentId, options) {
+  const clean = String(currentId ?? "").trim();
+  if (!clean) return "";
+  return options.some((option) => option.id === clean) ? clean : "";
 }
 
 function readField(root, name) {
