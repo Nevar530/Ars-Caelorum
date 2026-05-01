@@ -185,12 +185,19 @@ export function evaluateLosForTargets(state, unit, profile, candidateTiles) {
       : manhattanDistance(unit.x, unit.y, tile.x, tile.y);
 
     if (isMissile) {
+      const losTargetX = Number.isFinite(Number(tile.losTargetX))
+        ? Number(tile.losTargetX)
+        : tile.x;
+      const losTargetY = Number.isFinite(Number(tile.losTargetY))
+        ? Number(tile.losTargetY)
+        : tile.y;
+
       const missileTarget = evaluateMissileTargetWithSpotter(
         state,
         unit,
         profile,
-        tile.x,
-        tile.y
+        losTargetX,
+        losTargetY
       );
 
       return {

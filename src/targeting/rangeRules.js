@@ -60,6 +60,23 @@ function makeUnitTargetTile(attackerX, attackerY, unit) {
   };
 }
 
+function makeMissileTileTarget(attackerX, attackerY, unit, tileX, tileY) {
+  const focus = getTargetFocusTile(unit);
+
+  return {
+    x: Number(tileX),
+    y: Number(tileY),
+    targetUnitId: unit.instanceId,
+    targetScale: unit.scale ?? unit.unitType ?? "mech",
+    targetFocusX: focus.x,
+    targetFocusY: focus.y,
+    losTargetX: focus.x,
+    losTargetY: focus.y,
+    targetDistance: manhattanDistance(attackerX, attackerY, tileX, tileY),
+    arcCheckTiles: [{ x: Number(tileX), y: Number(tileY) }]
+  };
+}
+
 export function manhattanDistance(x0, y0, x1, y1) {
   return Math.abs(x1 - x0) + Math.abs(y1 - y0);
 }
@@ -150,10 +167,15 @@ export function getWeaponCandidateTiles(state, mech, profile) {
           continue;
         }
 
+        if (isOccupiedTileBlockedForDirectTargeting(occupant, state)) continue;
+
+        if (profile.weaponType === "missile") {
+          candidates.push(makeMissileTileTarget(mech.x, mech.y, targetUnit, tile.x, tile.y));
+          continue;
+        }
+
         if (seenTargetUnits.has(targetUnit.instanceId)) continue;
         seenTargetUnits.add(targetUnit.instanceId);
-
-        if (isOccupiedTileBlockedForDirectTargeting(occupant, state)) continue;
 
         candidates.push(makeUnitTargetTile(mech.x, mech.y, targetUnit));
       }

@@ -1,4 +1,5 @@
 import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
+import { resolveExitMech } from "../vehicles/mechEmbarkActions.js";
 import { isDeploymentActive } from "../deployment/deploymentState.js";
 import { chooseCpuAttackPlan, chooseCpuMoveDestination } from "./cpuTurnPlanner.js";
 
@@ -60,10 +61,26 @@ export function createCpuTurnController({
   }
 
   function executeCpuActionTurn() {
+    const activeActor = getActiveActor(state);
     const activeBody = getActiveBody(state);
     if (!activeBody) {
       combatController.completeEndTurnForCurrentUnit();
       return;
+    }
+
+    if (
+      activeActor?.unitType === "pilot" &&
+      activeActor.embarked === true &&
+      activeBody.unitType === "mech" &&
+      activeBody.status === "disabled"
+    ) {
+      const exitResult = resolveExitMech(state, activeActor, activeBody);
+      if (exitResult.ok) {
+        logDev(`${exitResult.pilotName} (CPU) exits disabled ${exitResult.mechName}.`);
+        render();
+        combatController.completeEndTurnForCurrentUnit();
+        return;
+      }
     }
 
     const attackPlan = chooseCpuAttackPlan(state);
