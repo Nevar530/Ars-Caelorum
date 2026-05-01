@@ -10,9 +10,9 @@
     "aether": 3,
     "move": 9,
     "weapons": [
-      "rifle_01",
-      "pistol_01",
-      "melee_01"
+      "machinegun_01",
+      "melee_01",
+      "srm_01"
     ],
     "abilities": [],
     "tubes": [],
@@ -31,9 +31,9 @@
     },
     "loadout": {
       "weapons": [
-        "rifle_01",
-        "pistol_01",
-        "melee_01"
+        "machinegun_01",
+        "melee_01",
+        "srm_01"
       ],
       "abilities": []
     },
@@ -53,8 +53,8 @@
     "move": 6,
     "weapons": [
       "machinegun_01",
-      "srm_01",
-      "melee_01"
+      "melee_01",
+      "srm_01"
     ],
     "abilities": [],
     "tubes": [],
@@ -74,8 +74,8 @@
     "loadout": {
       "weapons": [
         "machinegun_01",
-        "srm_01",
-        "melee_01"
+        "melee_01",
+        "srm_01"
       ],
       "abilities": []
     },
@@ -94,8 +94,9 @@
     "aether": 2,
     "move": 6,
     "weapons": [
-      "cannon_01",
-      "lrm_01"
+      "machinegun_01",
+      "melee_01",
+      "srm_01"
     ],
     "abilities": [],
     "tubes": [],
@@ -108,14 +109,15 @@
       }
     },
     "slots": {
-      "weapon": 2,
+      "weapon": 3,
       "ability": 1,
       "item": 2
     },
     "loadout": {
       "weapons": [
-        "cannon_01",
-        "lrm_01"
+        "machinegun_01",
+        "melee_01",
+        "srm_01"
       ],
       "abilities": [
         "mech_repair_01"
@@ -139,9 +141,9 @@
     "aether": 6,
     "move": 9,
     "weapons": [
-      "sniper_01",
-      "rifle_01",
-      "pistol_01"
+      "machinegun_01",
+      "melee_01",
+      "srm_01"
     ],
     "abilities": [],
     "tubes": [],
@@ -160,9 +162,9 @@
     },
     "loadout": {
       "weapons": [
-        "sniper_01",
-        "rifle_01",
-        "pistol_01"
+        "machinegun_01",
+        "melee_01",
+        "srm_01"
       ],
       "abilities": []
     },

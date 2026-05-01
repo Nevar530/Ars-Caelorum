@@ -175,7 +175,7 @@ export function createMovementController({
     return false;
   }
 
-  function executeCpuMove(targetX, targetY) {
+  function executeCpuMove(targetX, targetY, options = {}) {
     const activeUnit = getActiveBody(state) ?? getUnitById(state.units, state.turn.activeUnitId);
     if (!activeUnit) return false;
     if (activeUnit.status === "disabled") return false;
@@ -184,7 +184,10 @@ export function createMovementController({
     const fromX = activeUnit.x;
     const fromY = activeUnit.y;
     const path = getPathToTile(state, targetX, targetY);
-    const nextFacing = getDefaultFacingFromPath(path, activeUnit.facing);
+    const requestedFacing = Number(options?.facing);
+    const nextFacing = [0, 1, 2, 3].includes(requestedFacing)
+      ? requestedFacing
+      : getDefaultFacingFromPath(path, activeUnit.facing);
     const steps = Array.isArray(path) ? path.slice(1) : [];
 
     function finishCpuMove() {

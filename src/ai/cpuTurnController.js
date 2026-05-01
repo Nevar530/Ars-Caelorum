@@ -52,7 +52,7 @@ export function createCpuTurnController({
       return;
     }
 
-    const moved = movementController.executeCpuMove(destination.x, destination.y);
+    const moved = movementController.executeCpuMove(destination.x, destination.y, { facing: destination.facing });
     if (!moved) {
       logDev(`${activeBody.name} (CPU) could not complete planned move.`);
       movementController.skipMoveForCurrentUnit();

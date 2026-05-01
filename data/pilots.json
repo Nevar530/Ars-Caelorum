@@ -11,7 +11,8 @@
     "targeting": 2,
     "abilityPoints": 0,
     "weapons": [
-      "pilot_pistol_01"
+      "pilot_pistol_01",
+      "pilot_rifle_01"
     ],
     "tabs": [],
     "image": null,
@@ -28,7 +29,8 @@
     },
     "loadout": {
       "weapons": [
-        "pilot_pistol_01"
+        "pilot_pistol_01",
+        "pilot_rifle_01"
       ],
       "armor": null,
       "abilities": []
@@ -49,6 +51,7 @@
     "targeting": 3,
     "abilityPoints": 0,
     "weapons": [
+      "pilot_pistol_01",
       "pilot_rifle_01"
     ],
     "tabs": [],
@@ -66,6 +69,7 @@
     },
     "loadout": {
       "weapons": [
+        "pilot_pistol_01",
         "pilot_rifle_01"
       ],
       "armor": null,
@@ -87,7 +91,8 @@
     "targeting": 1,
     "abilityPoints": 0,
     "weapons": [
-      "pilot_smg_01"
+      "pilot_pistol_01",
+      "pilot_rifle_01"
     ],
     "tabs": [],
     "image": null,
@@ -104,7 +109,8 @@
     },
     "loadout": {
       "weapons": [
-        "pilot_smg_01"
+        "pilot_pistol_01",
+        "pilot_rifle_01"
       ],
       "armor": null,
       "abilities": []
@@ -125,7 +131,8 @@
     "targeting": 2,
     "abilityPoints": 0,
     "weapons": [
-      "pilot_pistol_01"
+      "pilot_pistol_01",
+      "pilot_rifle_01"
     ],
     "tabs": [],
     "image": null,
@@ -142,7 +149,8 @@
     },
     "loadout": {
       "weapons": [
-        "pilot_pistol_01"
+        "pilot_pistol_01",
+        "pilot_rifle_01"
       ],
       "armor": null,
       "abilities": [
