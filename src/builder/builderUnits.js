@@ -5,8 +5,9 @@
 // deployment/start-state runtime already consumes. It does not spawn units
 // and does not touch combat rules.
 
-const TEAMS = ["player", "enemy"];
-const CONTROL_TYPES = ["PC", "CPU"];
+import { parseSpawnId, SPAWN_TEAMS } from "../maps/mapSpawns.js";
+import { getDefaultControlTypeForSpawnTeam } from "./builderSpawns.js";
+
 const START_TYPES = ["pilot", "emptyMech"];
 
 export function createDefaultUnitTool() {
@@ -30,8 +31,6 @@ export function ensureUnitToolSettings(builderState, appState = null) {
   const pilots = getPilotOptions(appState);
   const mechs = getMechOptions(appState);
 
-  tool.team = TEAMS.includes(tool.team) ? tool.team : "player";
-  tool.controlType = CONTROL_TYPES.includes(tool.controlType) ? tool.controlType : (tool.team === "enemy" ? "CPU" : "PC");
   tool.startType = START_TYPES.includes(tool.startType) ? tool.startType : "pilot";
 
   if (tool.startType === "emptyMech") {
@@ -41,12 +40,18 @@ export function ensureUnitToolSettings(builderState, appState = null) {
   } else {
     tool.pilotDefinitionId = pickValidId(tool.pilotDefinitionId, pilots);
     tool.mechDefinitionId = pickOptionalValidId(tool.mechDefinitionId, mechs);
+    tool.mechSpawnId = "";
   }
 
   tool.pilotSpawnId = String(tool.pilotSpawnId ?? "").trim();
   tool.mechSpawnId = String(tool.mechSpawnId ?? "").trim();
   tool.startEmbarked = tool.startType === "pilot" && Boolean(tool.mechDefinitionId);
   tool.instancePrefix = sanitizeInstancePrefix(tool.instancePrefix);
+
+  const inferred = inferTeamControlFromTool(builderState, tool);
+  tool.team = inferred.team;
+  tool.controlType = inferred.controlType;
+
   return tool;
 }
 
@@ -54,8 +59,6 @@ export function updateUnitToolFromFields(builderState, root, appState = null) {
   const tool = ensureUnitToolSettings(builderState, appState);
   if (!tool || !root) return tool;
 
-  const team = readField(root, "unit-team");
-  const controlType = readField(root, "unit-control-type");
   const startType = readField(root, "unit-start-type");
   const pilotDefinitionId = readField(root, "unit-pilot-id");
   const mechDefinitionId = readField(root, "unit-mech-id");
@@ -63,8 +66,6 @@ export function updateUnitToolFromFields(builderState, root, appState = null) {
   const mechSpawnId = readField(root, "unit-mech-spawn-id");
   const instancePrefix = readField(root, "unit-instance-prefix");
 
-  if (team !== undefined) tool.team = TEAMS.includes(team) ? team : tool.team;
-  if (controlType !== undefined) tool.controlType = CONTROL_TYPES.includes(controlType) ? controlType : tool.controlType;
   if (startType !== undefined) tool.startType = START_TYPES.includes(startType) ? startType : tool.startType;
   if (pilotDefinitionId !== undefined) tool.pilotDefinitionId = pilotDefinitionId;
   if (mechDefinitionId !== undefined) tool.mechDefinitionId = mechDefinitionId;
@@ -91,8 +92,9 @@ export function addUnitStartAssignment(builderState, appState = null) {
   const index = deployments.length + 1;
   const isEmptyMech = tool.startType === "emptyMech";
   const hasMech = Boolean(tool.mechDefinitionId);
-  const team = tool.team === "enemy" ? "enemy" : "player";
-  const controlType = tool.controlType === "CPU" ? "CPU" : "PC";
+  const inferred = inferTeamControlFromTool(builderState, tool);
+  const team = inferred.team;
+  const controlType = inferred.controlType;
   const prefix = tool.instancePrefix || `${team}-${index}`;
   const deploymentMode = startState.startMode === "deployment";
   const isPlayerDeploymentRoster = deploymentMode && team === "player" && controlType === "PC" && !isEmptyMech;
@@ -114,7 +116,9 @@ export function addUnitStartAssignment(builderState, appState = null) {
       mechSpawnId: tool.mechSpawnId,
       team,
       controlType,
-      startEmbarked: false
+      startEmbarked: false,
+      boardable: true,
+      locked: false
     };
 
     deployments.push(next);
@@ -195,14 +199,18 @@ export function getSpawnIdOptions(builderState) {
   const spawns = map?.spawns ?? {};
   const options = [];
 
-  for (const team of TEAMS) {
+  for (const team of SPAWN_TEAMS) {
     const list = Array.isArray(spawns[team]) ? spawns[team] : [];
     for (let index = 0; index < list.length; index += 1) {
       const point = list[index];
       if (!point) continue;
+      const spawnId = `${team}_${index + 1}`;
+      const controlType = point?.controlType ?? getDefaultControlTypeForSpawnTeam(team);
       options.push({
-        id: `${team}_${index + 1}`,
-        label: `${team}_${index + 1} (${point.x}, ${point.y})`
+        id: spawnId,
+        label: `${spawnId} (${point.x}, ${point.y}) · ${team}/${controlType}`,
+        team: point?.team ?? team,
+        controlType
       });
     }
   }
@@ -224,6 +232,32 @@ export function getMechOptions(appState = null) {
     id: String(mech?.id ?? "").trim(),
     label: String(mech?.name ?? mech?.id ?? "Mech").trim()
   })).filter((mech) => mech.id);
+}
+
+function inferTeamControlFromTool(builderState, tool) {
+  const spawnId = tool?.startType === "emptyMech" ? tool?.mechSpawnId : tool?.pilotSpawnId;
+  return getSpawnTeamControl(builderState, spawnId, "player");
+}
+
+function getSpawnTeamControl(builderState, spawnId, fallbackTeam = "player") {
+  const cleanId = String(spawnId ?? "").trim();
+  if (!cleanId) {
+    return {
+      team: fallbackTeam,
+      controlType: getDefaultControlTypeForSpawnTeam(fallbackTeam)
+    };
+  }
+
+  const parsed = parseSpawnId(cleanId);
+  const teamFromId = SPAWN_TEAMS.includes(parsed?.team) ? parsed.team : fallbackTeam;
+  const list = builderState?.authoring?.map?.spawns?.[teamFromId];
+  const point = Array.isArray(list) && Number.isInteger(parsed?.index) ? list[parsed.index] : null;
+  const team = SPAWN_TEAMS.includes(point?.team) ? point.team : teamFromId;
+  const controlType = point?.controlType === "PC" || point?.controlType === "CPU"
+    ? point.controlType
+    : getDefaultControlTypeForSpawnTeam(team);
+
+  return { team, controlType };
 }
 
 function pickValidId(currentId, options) {

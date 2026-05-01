@@ -19,7 +19,7 @@ export function attachMapMetadata(map, metadata = {}) {
     height: { value: height, writable: true, configurable: true },
     tiles: { value: flattenMapTiles(map), writable: true, configurable: true },
     spawns: {
-      value: structuredClone(metadata.spawns ?? map.spawns ?? { player: [], enemy: [] }),
+      value: structuredClone(metadata.spawns ?? map.spawns ?? { player: [], enemy: [], neutral: [] }),
       writable: true,
       configurable: true
     },
@@ -106,7 +106,7 @@ export function getMapHeight(map) {
 }
 
 export function getMapSpawns(map) {
-  return structuredClone(map?.spawns ?? { player: [], enemy: [] });
+  return structuredClone(map?.spawns ?? { player: [], enemy: [], neutral: [] });
 }
 
 export function getMapStartState(map) {
@@ -237,7 +237,7 @@ export function createInitialMap() {
     name: "Legacy Default Map",
     width: MAP_CONFIG.width,
     height: MAP_CONFIG.height,
-    spawns: { player: [], enemy: [] },
+    spawns: { player: [], enemy: [], neutral: [] },
     startState: { deployments: [] }
   });
 

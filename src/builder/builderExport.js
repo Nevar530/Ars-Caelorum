@@ -95,7 +95,7 @@ export function buildMapDefinitionForExport(map) {
     width,
     height,
     terrainTypes: normalizeTerrainTypes(map?.terrainTypes, tiles),
-    spawns: cloneJson(map?.spawns ?? { player: [], enemy: [] }),
+    spawns: cloneJson(map?.spawns ?? { player: [], enemy: [], neutral: [] }),
     startState: normalizeStartState(map?.startState),
     structures: sanitizeStructuresForExport(map?.structures ?? []),
     tiles

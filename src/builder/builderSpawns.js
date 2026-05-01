@@ -7,7 +7,8 @@
 import {
   buildSpawnId,
   clearSpawnIdFromTiles,
-  ensureMapSpawns
+  ensureMapSpawns,
+  SPAWN_TEAMS
 } from "../maps/mapSpawns.js";
 import {
   getMapHeight,
@@ -15,11 +16,14 @@ import {
   getTile
 } from "../map.js";
 
-const SPAWN_TEAMS = ["player", "enemy"];
 const CONTROL_TYPES = ["PC", "CPU"];
 const UNIT_TYPES = ["pilot", "mech"];
 const TOOL_MODES = ["spawn", "deployment"];
 const MAX_SPAWN_SLOTS = 8;
+
+export function getDefaultControlTypeForSpawnTeam(team) {
+  return team === "player" ? "PC" : "CPU";
+}
 
 export function createDefaultSpawnTool() {
   return {
@@ -151,6 +155,7 @@ export function applyDeploymentSettings(builderState) {
 function paintSpawnAt(builderState, map, x, y, tool) {
   const spawns = ensureSizedMapSpawns(map);
   const team = tool.team;
+  const controlType = getDefaultControlTypeForSpawnTeam(team);
   const index = tool.slot - 1;
   const spawnId = buildSpawnId(team, index);
   const tile = getTile(map, x, y);
@@ -158,15 +163,16 @@ function paintSpawnAt(builderState, map, x, y, tool) {
   clearSpawnIdFromTiles(map, spawnId, getMapWidth, getMapHeight, getTile);
   clearAnySpawnAtTile(map, x, y);
 
-  spawns[team][index] = { x, y };
+  spawns[team][index] = { x, y, team, controlType };
   tile.spawnId = spawnId;
   tile.spawnTeam = team;
+  tile.spawnControlType = controlType;
   map.tiles = flattenMapTiles(map);
   builderState.dirty = true;
 
   return {
     ok: true,
-    message: `Placed ${team} spawn ${index + 1} at ${x}, ${y}.`
+    message: `Placed ${team} spawn ${index + 1} (${controlType}) at ${x}, ${y}.`
   };
 }
 
@@ -176,6 +182,7 @@ function eraseSpawnAt(builderState, map, x, y) {
   if (tile) {
     tile.spawnId = null;
     delete tile.spawnTeam;
+    delete tile.spawnControlType;
   }
   map.tiles = flattenMapTiles(map);
   if (removed) builderState.dirty = true;

@@ -141,7 +141,7 @@ function buildRuntimeSpawnIndex(map = null) {
   const index = new Map();
   const mapSpawns = getMapSpawns(map);
 
-  for (const team of ["player", "enemy"]) {
+  for (const team of ["player", "enemy", "neutral"]) {
     const entries = Array.isArray(mapSpawns?.[team]) ? mapSpawns[team] : [];
     entries.forEach((spawn, spawnIndex) => {
       if (!spawn || !Number.isFinite(spawn.x) || !Number.isFinite(spawn.y)) return;
@@ -159,11 +159,13 @@ function buildRuntimeSpawnIndex(map = null) {
 function normalizeControlType(value, team = "player") {
   if (value === "CPU") return "CPU";
   if (value === "PC") return "PC";
-  return team === "enemy" ? "CPU" : "PC";
+  return team === "player" ? "PC" : "CPU";
 }
 
 function normalizeTeam(value) {
-  return value === "enemy" ? "enemy" : "player";
+  if (value === "enemy") return "enemy";
+  if (value === "neutral") return "neutral";
+  return "player";
 }
 
 function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {

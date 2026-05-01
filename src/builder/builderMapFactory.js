@@ -48,7 +48,7 @@ export function createBlankBuilderMap(options = {}) {
     width,
     height,
     terrainTypes,
-    spawns: { player: [], enemy: [] },
+    spawns: { player: [], enemy: [], neutral: [] },
     startState: { deployments: [], deploymentCells: [] },
     structures: []
   });

@@ -566,8 +566,6 @@ function renderUnitInspectorTools(builderState, appState) {
   const mechOptions = buildObjectOptions(mechs, tool.mechDefinitionId, "No mechs loaded", !isEmptyMech, isEmptyMech ? "Choose a mech" : "none / on foot");
   const pilotSpawnOptions = buildObjectOptions(spawns, tool.pilotSpawnId, "No fixed spawns placed", true, "deployment / none");
   const mechSpawnOptions = buildObjectOptions(spawns, tool.mechSpawnId, "No fixed spawns placed", true, "deployment / none");
-  const teamOptions = buildSimpleOptions(["player", "enemy"], tool.team ?? "player");
-  const controlOptions = buildSimpleOptions(["PC", "CPU"], tool.controlType ?? "PC");
   const startTypeOptions = buildLabeledOptions([
     { value: "pilot", label: "Pilot / Pilot + Mech" },
     { value: "emptyMech", label: "Empty Mech" }
@@ -604,14 +602,7 @@ function renderUnitInspectorTools(builderState, appState) {
   return `
     <div class="builder-inspector-card builder-unit-tool-card">
       <div class="builder-field-label">Unit / Start Assignment</div>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Team</span>
-        <select data-builder-field="unit-team"${editable ? "" : " disabled"}>${teamOptions}</select>
-      </label>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Control</span>
-        <select data-builder-field="unit-control-type"${editable ? "" : " disabled"}>${controlOptions}</select>
-      </label>
+      <div class="builder-inspector-note">Team and control are inferred from the selected spawn: player=PC, enemy=CPU, neutral=CPU. Export still writes explicit team/controlType.</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Start Kind</span>
         <select data-builder-field="unit-start-type"${editable ? "" : " disabled"}>${startTypeOptions}</select>
@@ -691,7 +682,7 @@ function renderSpawnInspectorTools(builderState, appState) {
   const tool = ensureSpawnToolSettings(builderState) ?? {};
   const editable = builderState.workspaceMode === "builder-map";
   const mode = tool.mode === "deployment" ? "deployment" : "spawn";
-  const teamOptions = buildSimpleOptions(["player", "enemy"], tool.team ?? "player");
+  const teamOptions = buildSimpleOptions(["player", "enemy", "neutral"], tool.team ?? "player");
   const slotOptions = buildNumberOptions(1, 8, tool.slot ?? 1, (value) => "Slot " + value);
   const unitTypeOptions = buildLabeledOptions([
     { value: "pilot", label: "Pilot Cells" },

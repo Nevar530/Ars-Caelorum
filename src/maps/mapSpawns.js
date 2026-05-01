@@ -1,3 +1,5 @@
+export const SPAWN_TEAMS = ['player', 'enemy', 'neutral'];
+
 export function buildSpawnId(team, index) {
   return `${team}_${index + 1}`;
 }
@@ -12,12 +14,14 @@ export function parseSpawnId(spawnId) {
 
 export function ensureMapSpawns(map) {
   if (!map.spawns) {
-    map.spawns = { player: [null, null, null, null], enemy: [null, null, null, null] };
+    map.spawns = { player: [null, null, null, null], enemy: [null, null, null, null], neutral: [null, null, null, null] };
   }
-  if (!Array.isArray(map.spawns.player)) map.spawns.player = [null, null, null, null];
-  if (!Array.isArray(map.spawns.enemy)) map.spawns.enemy = [null, null, null, null];
-  while (map.spawns.player.length < 4) map.spawns.player.push(null);
-  while (map.spawns.enemy.length < 4) map.spawns.enemy.push(null);
+
+  for (const team of SPAWN_TEAMS) {
+    if (!Array.isArray(map.spawns[team])) map.spawns[team] = [null, null, null, null];
+    while (map.spawns[team].length < 4) map.spawns[team].push(null);
+  }
+
   return map.spawns;
 }
 
@@ -36,7 +40,7 @@ export function buildLegacySpawnPoints(map) {
   ensureMapSpawns(map);
   const points = [];
 
-  for (const team of ['player', 'enemy']) {
+  for (const team of SPAWN_TEAMS) {
     map.spawns[team].forEach((spawn, index) => {
       if (!spawn || !Number.isFinite(spawn.x) || !Number.isFinite(spawn.y)) return;
       points.push({
@@ -44,7 +48,9 @@ export function buildLegacySpawnPoints(map) {
         label: `${team.charAt(0).toUpperCase()}${team.slice(1)} ${index + 1}`,
         x: spawn.x,
         y: spawn.y,
-        unitType: 'mech'
+        unitType: 'mech',
+        team: spawn.team ?? team,
+        controlType: spawn.controlType ?? (team === 'player' ? 'PC' : 'CPU')
       });
     });
   }
