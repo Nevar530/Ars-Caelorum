@@ -191,13 +191,34 @@ export function createMovementController({
     const steps = Array.isArray(path) ? path.slice(1) : [];
 
     function finishCpuMove() {
+      const currentX = activeUnit.x;
+      const currentY = activeUnit.y;
+      const previousFacing = activeUnit.facing;
+
+      activeUnit.aiMemory = {
+        ...(activeUnit.aiMemory ?? {}),
+        lastX: fromX,
+        lastY: fromY,
+        lastToX: targetX,
+        lastToY: targetY,
+        lastFacing: previousFacing,
+        currentX,
+        currentY
+      };
+
       setUnitFacing(state.units, activeUnit.instanceId, nextFacing);
 
-      if (fromX === Number(targetX) && fromY === Number(targetY)) {
-        logDev(`${activeUnit.name} held position and faced ${facingToLabel(nextFacing)}.`);
+      if (fromX === targetX && fromY === targetY) {
+        if (previousFacing !== nextFacing) {
+          logDev(
+            activeUnit.name + " held position and faced " + facingToLabel(nextFacing) + "."
+          );
+        } else {
+          logDev(activeUnit.name + " held position.");
+        }
       } else {
         logDev(
-          `${activeUnit.name} moved from (${fromX},${fromY}) to (${targetX},${targetY}).`
+          activeUnit.name + " moved from (" + fromX + "," + fromY + ") to (" + targetX + "," + targetY + ") and faced " + facingToLabel(nextFacing) + "."
         );
       }
 
