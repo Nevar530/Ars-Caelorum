@@ -192,9 +192,15 @@ export function createMovementController({
 
     function finishCpuMove() {
       setUnitFacing(state.units, activeUnit.instanceId, nextFacing);
-      logDev(
-        `${activeUnit.name} moved from (${fromX},${fromY}) to (${targetX},${targetY}).`
-      );
+
+      if (fromX === Number(targetX) && fromY === Number(targetY)) {
+        logDev(`${activeUnit.name} held position and faced ${facingToLabel(nextFacing)}.`);
+      } else {
+        logDev(
+          `${activeUnit.name} moved from (${fromX},${fromY}) to (${targetX},${targetY}).`
+        );
+      }
+
       clearTransientUi();
       advanceMoveTurn();
       render();
