@@ -10,13 +10,14 @@ The project is inspired by tactical RPGs, mech combat games, and board-game-styl
 
 ## Current State
 
-Ars Caelorum is no longer just a combat test harness.
+Ars Caelorum now has a real game shell and a real fullscreen Mission Builder foundation.
 
-The current game flow is:
+Current game flow:
 
 ```txt
 TITLE
 -> MISSION SELECT
+-> BRIEFING
 -> MAP LOAD
 -> DEPLOYMENT / AUTHORED START
 -> COMBAT
@@ -24,11 +25,22 @@ TITLE
 -> RETURN TO TITLE
 ```
 
-The project currently supports:
+Current builder flow:
+
+```txt
+MISSION BUILDER
+-> BUILDER-OWNED MAP DRAFT
+-> EXPORT / TEST PACKAGE
+-> REAL RUNTIME LOADER
+```
+
+The current repo supports:
 
 - Real title screen
 - Mission select screen
-- Catalog-backed map loading from `data/maps/mapList.json`
+- Mission briefing screen
+- Mission catalog loading from `data/missions/missionList.json`
+- Map catalog support from `data/maps/mapList.json`
 - Keyboard-first shell navigation
 - Authored map start states
 - Deployment-capable maps
@@ -42,12 +54,21 @@ The project currently supports:
 - Move / brace / attack / ability / item / end turn command buckets
 - Item / ability runtime path V1
 - Baseline CPU movement and attacks
+- CPU exit from disabled occupied mechs
+- Center-tile direct targeting for mech/body targets
+- Missile targeting that can still target open tiles
 - Mission result / return flow
+- Intro/victory/defeat dialogue hooks
 - Round / phase splash receipts
-- Live dev menu
-- Live map editor
-- JSON-backed map workflow
 - Structure foundation V1
+- New fullscreen Mission Builder
+- WYSIWYG builder workspace
+- Terrain/elevation painting V1
+- Structure cell/edge/room painting V1
+- Spawn/deployment authoring V1
+- Units tab start assignment V1
+- Builder export package V1
+- Builder Test Mission bridge V1
 
 ---
 
@@ -55,24 +76,30 @@ The project currently supports:
 
 These rules are locked unless deliberately redesigned:
 
-1. Pilots are the only initiative actors.
-2. Mechs are controlled bodies, not initiative owners.
-3. Occupancy is authority.
-4. Enter Mech / Exit Mech are core contextual actions.
-5. Weapons are not generic abilities.
-6. Items and abilities share the same broad runtime action path where possible.
-7. Start state and deployment are authored map data, not fallback hacks.
-8. Mission select is catalog-driven.
-9. CPU uses real gameplay rules, not cheat rules.
-10. Code is truth.
+1. Code is truth.
+2. Board truth comes first.
+3. Pilots are the only initiative actors.
+4. Mechs are controlled bodies, not initiative owners.
+5. Runtime unit `x/y` is the unit center tile.
+6. Occupancy is authority.
+7. Enter Mech / Exit Mech are core contextual actions.
+8. Weapons are not generic abilities.
+9. Items and abilities share the same broad runtime action path where possible.
+10. Start state and deployment are authored data, not fallback hacks.
+11. Mission select is catalog-driven.
+12. CPU uses real gameplay rules, not cheat rules.
+13. Builder writes truth.
+14. Engine runs truth.
+15. Export packages truth.
+16. Validation protects truth.
 
 ---
 
 ## Structure System V1
 
-Structures are now real board authority, not decorative art.
+Structures are real board authority, not decorative art.
 
-The structure system moved away from blocked tile thinking.
+The structure system moved away from blocked-tile thinking.
 
 ### Rejected Model
 
@@ -80,7 +107,7 @@ The structure system moved away from blocked tile thinking.
 wall tile = blocked tile
 ```
 
-This caused problems because walls consumed floor space and made tight interiors hard to use.
+That caused problems because walls consumed floor space and made tight interiors hard to use.
 
 ### Current Model
 
@@ -111,9 +138,32 @@ movement and LOS derive structure behavior from authored edgeHeight
 
 ---
 
+## Targeting Truth
+
+Direct targeting is now unit-based instead of footprint-square based.
+
+For large units:
+
+- A mech still occupies its full footprint for occupancy and arc checks.
+- Direct target selection resolves to the unit center/focus tile.
+- A 3x3 mech should not present nine separate direct target squares.
+- Fire arc can still consider footprint cells for legality.
+- LOS and attack resolution should use the resolved target/focus tile.
+
+Missiles remain different:
+
+- Missile weapons can target open tiles.
+- Missile splash/effect is resolved from the chosen tile.
+- If a missile is targeted at an occupied unit tile, LOS can use that unit’s focus/center tile.
+- Spotter logic exists through missile targeting helpers.
+
+Disabled/destroyed units should not be valid direct targets.
+
+---
+
 ## Room / Roof Cutaway System
 
-Structures can now support authored interior rooms.
+Structures can support authored interior rooms.
 
 Current structure room behavior:
 
@@ -128,36 +178,110 @@ Roof and wall fade are render readability systems only. They do not affect movem
 
 ---
 
-## Current Receipt Maps
+## Mission Builder Current State
 
-These maps should stay useful as regression receipts.
+The new Mission Builder lives under `src/builder/`.
 
-### `000_test`
+Important files:
+
+```txt
+src/builder/missionBuilder.js
+src/builder/builderState.js
+src/builder/builderAdapters.js
+src/builder/builderTerrain.js
+src/builder/builderStructures.js
+src/builder/builderSpawns.js
+src/builder/builderUnits.js
+src/builder/builderExport.js
+src/builder/builderRuntimeTest.js
+src/builder/ui/builderShell.js
+src/builder/workspace/wysiwygWorkspace.js
+```
+
+Current builder tabs:
+
+- Project
+- Map
+- Terrain
+- Structures
+- Spawns
+- Units
+- Objectives
+- Triggers
+- Logic
+- Dialogue
+- Results
+- Validate
+- Export
+
+Currently working in the builder:
+
+- Fullscreen shell opened with backtick
+- Engine-backed WYSIWYG map preview
+- Tile selection
+- Edge selection with Shift-click
+- Selection and hover markers
+- Overlays for structure edges, rooms, spawns, deployment cells, and tile heights
+- New blank builder-owned map creation
+- Current runtime map read-only inspection
+- Terrain/elevation/movement painting
+- Structure cell/room painting
+- Structure edge/wall/door/opening painting
+- Spawn placement
+- Deployment cell painting
+- Unit/start assignment authoring
+- Export package zip
+- Test Mission bridge through real runtime loader
+
+Current active layer:
+
+```txt
+Units tab / start assignment stabilization
+```
+
+Known builder gaps:
+
+- Load Existing is staged but not active.
+- Validate is placeholder only.
+- Objectives authoring is staged.
+- Triggers authoring is staged.
+- Logic Chains are staged.
+- Dialogue authoring is staged.
+- Results authoring is staged.
+- Mission metadata/package editing is still thin.
+- Export/Test do not have validation gates yet.
+
+---
+
+## Current Receipt Maps / Missions
+
+These maps and missions should stay useful as regression receipts.
+
+### `000_test` / `000_test_mission`
 
 - Authored pilot-start reference map
 
-### `001_test`
+### `001_test` / `001_embarked_test_mission`
 
 - Authored embarked mech-start reference map
 
-### `002_test`
+### `002_test` / `002_pilot_deployment_mission`
 
 - Pilot deployment V1 reference map
 
-### `003_test`
+### `003_test` / `003_mech_deployment_mission`
 
 - Mech deployment V1 reference map
 
-### `004_structure_test`
+### `004_structure_test` / `004_structure_test_mission`
 
 - Structure edge-height movement / LOS receipt map
-- Two pilots for testing LOS and combat through structure edges
 - Wall edges use `edgeHeight: 2`
 - Door/open edge uses `edgeHeight: 0`
 - Proves wall edges block movement and LOS
 - Proves door/open edges allow crossing and sight
 
-### `005_warehouse_district`
+### `005_warehouse_district` / `005_warehouse_district_mission`
 
 - Interior structure / room cutaway receipt map
 - Large warehouse structure
@@ -166,7 +290,13 @@ These maps should stay useful as regression receipts.
 - Multiple rooms and hallway through authored `roomId` cells
 - Room-based roof cutaway
 - Lower/front wall and door fade for pilot readability
-- Two on-foot pilots with sidearms for indoor combat tests
+- Indoor pilot combat testing
+
+### `006_new_map` / `006_new_map_mission`
+
+- Builder export receipt
+- Proves builder package export path exists
+- Useful current regression receipt for builder-generated map/mission output
 
 ---
 
@@ -176,6 +306,7 @@ These maps should stay useful as regression receipts.
 
 - Shared pilot/mech battlefield
 - Occupancy truth
+- Center-tile unit anchor truth
 - Pilot-only initiative
 - Actor/body separation
 - Embark/disembark
@@ -189,11 +320,13 @@ These maps should stay useful as regression receipts.
 
 - Title screen
 - Mission select screen
+- Briefing screen
 - Keyboard shell navigation
-- Map catalog-backed mission list
-- Authored map loading from selected catalog entry
+- Mission catalog-backed mission list
+- Authored map loading through mission definitions
 - Mission end return path
 - Center-screen round/phase splash
+- Intro/victory/defeat dialogue hooks
 
 ### Map / Authoring
 
@@ -201,8 +334,8 @@ These maps should stay useful as regression receipts.
 - Map-authored spawns
 - Map-authored `startState.deployments`
 - Deployment-capable map schema
-- Editor export of runtime-usable map JSON
 - Working add-to-catalog test loop
+- Builder export path for map/mission/catalog files
 
 ### Deployment V1
 
@@ -221,6 +354,15 @@ These maps should stay useful as regression receipts.
 - Legal move destination planning
 - Legal attack selection
 - Simple range-aware movement preference
+- Disabled occupied mech exit behavior for CPU
+
+### Targeting Baseline
+
+- Direct target candidates are unit-based
+- Mech direct targeting resolves to center/focus tile
+- Footprint cells still support arc legality
+- Missile open-tile targeting remains available
+- Disabled/destroyed targets are filtered out of direct targeting
 
 ### Structure Foundation V1
 
@@ -240,6 +382,18 @@ These maps should stay useful as regression receipts.
 - Room-based roof cutaway in warehouse test map
 - Lower/front wall and visible door fade for readability
 
+### Mission Builder V1 Foundation
+
+- Fullscreen builder shell
+- WYSIWYG workspace
+- Builder adapter layer
+- Terrain/elevation tools
+- Structure cell/edge tools
+- Spawn/deployment tools
+- Units tab start assignment tools
+- Export package V1
+- Test Mission bridge V1
+
 ---
 
 ## Current Active Layer
@@ -247,112 +401,127 @@ These maps should stay useful as regression receipts.
 The project is currently in:
 
 ```txt
-STRUCTURE AUTHORING / VALIDATION + POST-STRUCTURE CLEANUP
+MISSION BUILDER — UNITS TAB / START ASSIGNMENT STABILIZATION
 ```
 
-The structure rules work. The next major job is making the map editor author the same data shape that the hand-authored receipt maps currently prove.
+This means the next work should focus on:
+
+- pilot-only fixed starts
+- pilot+mech embarked fixed starts
+- empty mech fixed starts
+- player deployment roster entries
+- CPU/enemy authored starts
+- exported `startState.deployments`
+- Test Mission from builder
+- copied export running from Mission Select
 
 ---
 
 ## Next Required Work
 
-### 1. Cleanup / Contract Lock
+### 1. Units Tab Lock / Start Assignment Receipts
 
-- Update docs/comments to match current repo truth
-- Keep one clear authority path for:
-  - mission list
-  - map load
-  - startState
-  - deployment
-  - unit instantiation
-  - mission result
-  - CPU turn kickoff
-  - structure edgeHeight
-  - roomId / roof cutaway
-- Remove stale assumptions where safe
+- Test pilot fixed start
+- Test pilot+mech fixed start
+- Test empty mech fixed start
+- Test player deployment roster pilot-only
+- Test player deployment roster pilot+mech
+- Test CPU enemy starts
+- Test remove/re-add behavior
+- Test exported package from Mission Select
 
-### 2. Structure Editor Tools
+### 2. Validation System V1
 
-- Edge paint / edge select mode
-- Raise/lower selected `edgeHeight` with keys
-- Wall / door / window / opening presets
-- Structure cell paint mode
-- RoomId / zoneId paint mode
-- Roof/cell room assignment tools
-- Debug overlay for edgeHeight and roomId
-- Preserve structure cells/edges/roomId/roof data through import/export
+Add real errors/warnings for:
 
-### 3. Structure Validation Tools
+- Missing ids
+- Missing spawn references
+- Invalid pilot/mech references
+- Invalid startEmbarked combinations
+- Deployment required count impossible
+- Mech deployment zone too small
+- Duplicate structure edges
+- Structure art/edgeHeight mismatch
+- Room/roof mismatch
+- Placeholder mission fields
 
-Add warnings for:
+### 3. Load Existing / Package Draft Flow
 
-- Visible wall art with `edgeHeight: 0`
-- Visible door art with positive `edgeHeight` when not intended
-- `edgeHeight > 0` with no visible structure art
-- Roofed structure cells missing `roomId`
-- Roof/room mismatch
-- Room with no entrance/opening
-- Interior cells disconnected from access points
-- Deployment/spawn cells blocked by structure geometry
-- Overlapping or duplicate edge definitions
+- Load existing map as builder-owned draft
+- Clone existing map/mission
+- Preserve structures/spawns/startState
+- Keep current runtime map read-only
 
-### 4. AI Growth
+### 4. Mission Package Core
+
+- Mission id/name editing
+- Briefing editing
+- Result text editing
+- Catalog entry preview
+- Export summary
+
+### 5. Objectives V1
+
+- Defeat all
+- Survive rounds
+- Reach tile/zone/room later
+- Protect/extract/interact later
+
+### 6. Triggers + Logic Chains V1
+
+- Trigger data model
+- Simple list/chain editor
+- Tile/zone triggers
+- Dialogue effects
+- Objective effects
+- Victory/defeat effects
+- Animation effect placeholder
+
+### 7. Dialogue Authoring
+
+- Intro/victory/defeat line editor
+- Speaker name/id
+- Text
+- Optional portrait path
+
+### 8. Results Authoring
+
+- Victory title/text
+- Defeat title/text
+- Result dialogue link later
+
+### 9. AI Growth
 
 - Better movement readability
 - Stronger range discipline
 - Target priority and threat value
 - Objective awareness
-- Mech / pilot role handling
-- Structure-aware behavior
-- Room/interior pathing
-- Doorway awareness
-- LOS-aware indoor positioning
+- Mech/pilot role handling
+- Structure/door/interior awareness
 
-### 5. Scenario / Mission Layer
+---
 
-- Scenario definitions
-- Objective scripting hooks
-- Mission-specific win/loss rules
-- Escort / survive / reach exit / kill-all style mission truth
-- Interior objectives such as secure room, reach terminal, extract pilot
+## Build Order
 
-### 6. Abilities / Items Expansion
+Current practical build order:
 
-- More abilities
-- More items
-- Targeted effects
-- Buffs / debuffs
-- Movement utility
-- Support actions
-- Mission-specific content grants later
-
-### 7. Equipment / Frame Authority
-
-Frames should determine:
-
-- Speed / move baseline
-- Slot layout
-- Allowed equipment types
-
-Equipment should determine:
-
-- Weapons
-- Shield modules
-- Core modules
-- Utility/system modules
-
-### 8. Menus / Persistence
-
-- Controls/help menu polish
-- Mission/objective panel
-- Inventory menu
-- Journal/log
-- Save/load entry points
-- Campaign persistence later
-
-### 9. Art / Music / Sound
-
-Presentation comes after the rules shell is stable enough to deserve it.
+```txt
+1. Units tab lock / start assignment receipts
+2. Validation system V1
+3. Load Existing / package draft flow
+4. Mission package core fields
+5. Objectives V1
+6. Triggers + Logic Chains V1
+7. Dialogue authoring
+8. Results authoring
+9. Export/Test validation gates
+10. AI growth and structure/objective awareness
+11. Abilities/items expansion
+12. Equipment/frame authority
+13. Pre-mission loadout
+14. Menus/persistence/save/campaign
+15. Art/music/sound polish
+```
 
 ---
 
@@ -395,31 +564,14 @@ This is not fully locked yet.
 
 ## Biggest Current Risks
 
-1. Map validity
-2. Structure data consistency
-3. Editor tools lagging behind runtime structure truth
-4. AI not yet structure-aware
-5. Rendering/cutaway edge cases under rotation
-6. Scenario layer still thin
-
----
-
-## Build Order
-
-Current practical build order:
-
-```txt
-1. Cleanup / doc lock
-2. Structure editor tools
-3. Structure validation tools
-4. AI growth and tuning, including structure awareness
-5. Scenario / mission layer
-6. Abilities / items expansion
-7. Equipment / frame authority
-8. Menus / persistent UX
-9. Save / campaign layer
-10. Art / music / sound
-```
+1. Validation is not real yet.
+2. Units tab needs smoke-test receipts.
+3. Load Existing is staged.
+4. Mission objective runtime is still thin.
+5. Export works before validation gates.
+6. AI is functional but not objective/structure smart.
+7. Old dev menu/editor files still exist as legacy code.
+8. `src/combat/targetingResolver.js` looks legacy/placeholder-style; current targeting authority appears to be `src/targeting/targetingResolver.js`.
 
 ---
 
@@ -443,18 +595,22 @@ Current practical build order:
 Ars Caelorum currently has:
 
 - A real game shell
-- Real catalog-backed map loading
+- Real mission catalog loading
 - Real authored start-state authority
 - Real deployment V1
 - Real CPU participation
 - Real mission-end flow
 - Readable round/phase receipts
-- A working editor-to-runtime test loop
 - Real structure edge-height movement blocking
 - Real structure edge-height LOS blocking
 - Pilot-enterable interiors
 - Room-based roof cutaway
 - Lower/front wall and door fade for readability
-- Structure receipt maps proving the foundation
+- Center-tile direct targeting for mechs/large units
+- A real fullscreen Mission Builder foundation
+- Terrain, structure, spawn/deployment, and unit-start authoring V1
+- Builder export package V1
+- Builder Test Mission bridge V1
 
-The project is now proving not only open-field combat, but indoor/outdoor tactical board authority.
+The current active layer is Units tab stabilization.
+After that, build real validation.
