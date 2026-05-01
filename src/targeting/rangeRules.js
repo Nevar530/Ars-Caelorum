@@ -1,6 +1,7 @@
 // src/targeting/rangeRules.js
 
 import { getPrimaryOccupantAt } from "../scale/occupancy.js";
+import { isOccupiedTileBlockedForDirectTargeting, isUnitDirectlyTargetable } from "./targetLegality.js";
 import { getBoardUnits } from "../actors/actorResolver.js";
 import { getUnitOccupiedCells, getUnitFootprintBounds } from "../scale/scaleMath.js";
 import {
@@ -90,6 +91,7 @@ export function getWeaponCandidateTiles(state, mech, profile) {
           const targetUnit = targetEntry?.unit ?? null;
 
           if (!targetUnit) return null;
+          if (!isUnitDirectlyTargetable(targetUnit)) return null;
           if (targetUnit.team === mech.team) return null;
 
           return {
@@ -107,6 +109,7 @@ export function getWeaponCandidateTiles(state, mech, profile) {
       return units.flatMap((unit) => {
         if (!unit) return [];
         if (unit.instanceId === mech.instanceId) return [];
+        if (!isUnitDirectlyTargetable(unit)) return [];
         if (unit.team === mech.team) return [];
 
         const focusTile = getTargetFocusTile(unit);
@@ -128,7 +131,13 @@ export function getWeaponCandidateTiles(state, mech, profile) {
     }
 
     case "fire_arc_tile":
-      return getTilesInRangeBand(mech.x, mech.y, minRange, maxRange);
+      return getTilesInRangeBand(mech.x, mech.y, minRange, maxRange)
+        .filter((tile) => {
+          const occupant = getPrimaryOccupantAt(state, tile.x, tile.y, "base", {
+            excludeUnitId: mech.instanceId
+          });
+          return !isOccupiedTileBlockedForDirectTargeting(occupant);
+        });
 
     default:
       return [];
