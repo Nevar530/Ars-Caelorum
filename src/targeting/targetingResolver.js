@@ -150,9 +150,19 @@ export function applyFireArcFilter(profile, fireArcTiles, candidateTiles) {
 
   const fireArcSet = toTileKeySet(fireArcTiles);
 
-  return candidateTiles.filter((tile) =>
-    fireArcSet.has(`${tile.x},${tile.y}`)
-  );
+  return candidateTiles.filter((tile) => {
+    if (fireArcSet.has(`${tile.x},${tile.y}`)) {
+      return true;
+    }
+
+    const arcCheckTiles = Array.isArray(tile.arcCheckTiles)
+      ? tile.arcCheckTiles
+      : [];
+
+    return arcCheckTiles.some((checkTile) =>
+      fireArcSet.has(`${checkTile.x},${checkTile.y}`)
+    );
+  });
 }
 
 export function evaluateLosForTargets(state, unit, profile, candidateTiles) {
@@ -170,7 +180,9 @@ export function evaluateLosForTargets(state, unit, profile, candidateTiles) {
   }
 
   return candidateTiles.map((tile) => {
-    const distance = manhattanDistance(unit.x, unit.y, tile.x, tile.y);
+    const distance = Number.isFinite(Number(tile.targetDistance))
+      ? Number(tile.targetDistance)
+      : manhattanDistance(unit.x, unit.y, tile.x, tile.y);
 
     if (isMissile) {
       const missileTarget = evaluateMissileTargetWithSpotter(

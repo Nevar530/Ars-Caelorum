@@ -4,8 +4,7 @@ import { getEquippedWeaponIds } from "../content/unitLoadout.js";
 import { normalizeWeaponToActionProfile, updateActionTargetPreview } from "../targeting/targetingResolver.js";
 import { getPrimaryOccupantAt } from "../scale/occupancy.js";
 import { getRangeModifier } from "../combat/hitResolver.js";
-
-const CARDINAL_FACINGS = [0, 1, 2, 3];
+import { isUnitDirectlyTargetable } from "../targeting/targetLegality.js";
 
 function manhattanDistance(ax, ay, bx, by) {
   return Math.abs(Number(ax) - Number(bx)) + Math.abs(Number(ay) - Number(by));
@@ -15,45 +14,20 @@ function getEnemyBoardUnits(state, team) {
   return getBoardUnits(state).filter((unit) => {
     if (!unit) return false;
     if (unit.team === team) return false;
-    if (unit.status === "disabled") return false;
-    return true;
+    return isUnitDirectlyTargetable(unit, state);
   });
 }
 
-function normalizeFacing(value, fallback = 2) {
-  const facing = Number(value);
-  if ([0, 1, 2, 3].includes(facing)) return facing;
-  return fallback;
-}
-
-function getFacingTowardTile(fromX, fromY, toX, toY, fallbackFacing = 2) {
-  const dx = Number(toX) - Number(fromX);
-  const dy = Number(toY) - Number(fromY);
-
-  if (Math.abs(dx) >= Math.abs(dy) && dx !== 0) {
-    return dx > 0 ? 1 : 3;
-  }
-
-  if (dy !== 0) {
-    return dy > 0 ? 2 : 0;
-  }
-
-  return normalizeFacing(fallbackFacing);
-}
-
-function withPreviewBodyPose(state, body, x, y, facing, fn) {
+function withPreviewBodyPosition(state, body, x, y, fn) {
   const originalX = body.x;
   const originalY = body.y;
-  const originalFacing = body.facing;
   body.x = Number(x);
   body.y = Number(y);
-  body.facing = normalizeFacing(facing, body.facing);
   try {
     return fn();
   } finally {
     body.x = originalX;
     body.y = originalY;
-    body.facing = originalFacing;
   }
 }
 
@@ -97,7 +71,7 @@ function scoreAttackCandidate(weapon, tile, targetUnit) {
   };
 }
 
-function chooseCpuAttackPlanAtPosition(state, body, previewX, previewY, previewFacing = body?.facing) {
+function chooseCpuAttackPlanAtPosition(state, body, previewX, previewY) {
   const activeActor = getActiveActor(state);
   const activeBody = body ?? getActiveBody(state);
   if (!activeActor || !activeBody) return null;
@@ -116,7 +90,7 @@ function chooseCpuAttackPlanAtPosition(state, body, previewX, previewY, previewF
     const profile = normalizeWeaponToActionProfile(weapon);
     const snapshot = snapshotActionState(state);
 
-    const plan = withPreviewBodyPose(state, activeBody, previewX, previewY, previewFacing, () => {
+    const plan = withPreviewBodyPosition(state, activeBody, previewX, previewY, () => {
       state.ui.mode = "action-target";
       state.selection.action = "attack";
       state.ui.action.selectedAction = profile;
@@ -166,8 +140,7 @@ function chooseCpuAttackPlanAtPosition(state, body, previewX, previewY, previewF
         score: bestCandidate.score,
         distance: bestCandidate.distance,
         rangeBand: bestCandidate.rangeBand,
-        rangeModifier: bestCandidate.rangeModifier,
-        facing: normalizeFacing(previewFacing, activeBody.facing)
+        rangeModifier: bestCandidate.rangeModifier
       };
     });
 
@@ -176,28 +149,6 @@ function chooseCpuAttackPlanAtPosition(state, body, previewX, previewY, previewF
     if (!plan) continue;
     if (!bestPlan || plan.score > bestPlan.score) {
       bestPlan = plan;
-    }
-  }
-
-  return bestPlan;
-}
-
-function chooseBestAttackPlanForPosition(state, body, x, y) {
-  let bestPlan = null;
-
-  for (const facing of CARDINAL_FACINGS) {
-    const plan = chooseCpuAttackPlanAtPosition(state, body, x, y, facing);
-    if (!plan) continue;
-
-    const facingPenalty = normalizeFacing(body.facing) === facing ? 0 : 1;
-    const score = plan.score - facingPenalty;
-
-    if (!bestPlan || score > bestPlan.score) {
-      bestPlan = {
-        ...plan,
-        score,
-        facing
-      };
     }
   }
 
@@ -249,7 +200,7 @@ export function chooseCpuMoveDestination(state) {
   for (const tile of reachable) {
     if (!tile) continue;
 
-    const attackPlan = chooseBestAttackPlanForPosition(state, activeBody, tile.x, tile.y);
+    const attackPlan = chooseCpuAttackPlanAtPosition(state, activeBody, tile.x, tile.y);
     if (!attackPlan) continue;
 
     const score = attackPlan.score - ((tile.cost ?? 0) * 5);
@@ -257,7 +208,6 @@ export function chooseCpuMoveDestination(state) {
       bestAttackPosition = {
         x: tile.x,
         y: tile.y,
-        facing: attackPlan.facing,
         score,
         cost: tile.cost ?? 0,
         attackPlan
@@ -266,9 +216,7 @@ export function chooseCpuMoveDestination(state) {
   }
 
   if (bestAttackPosition) {
-    const sameTile = bestAttackPosition.x === activeBody.x && bestAttackPosition.y === activeBody.y;
-    const sameFacing = normalizeFacing(bestAttackPosition.facing, activeBody.facing) === normalizeFacing(activeBody.facing);
-    if (sameTile && sameFacing) {
+    if (bestAttackPosition.x === activeBody.x && bestAttackPosition.y === activeBody.y) {
       return null;
     }
     return bestAttackPosition;
@@ -280,17 +228,7 @@ export function chooseCpuMoveDestination(state) {
   for (const tile of reachable) {
     if (!tile) continue;
 
-    let nearestEnemy = null;
-    let nearestEnemyDistance = Infinity;
-
-    for (const enemy of enemies) {
-      const distance = manhattanDistance(tile.x, tile.y, enemy.x, enemy.y);
-      if (distance < nearestEnemyDistance) {
-        nearestEnemy = enemy;
-        nearestEnemyDistance = distance;
-      }
-    }
-
+    const nearestEnemyDistance = Math.min(...enemies.map((enemy) => manhattanDistance(tile.x, tile.y, enemy.x, enemy.y)));
     const distanceDelta = Math.abs(nearestEnemyDistance - preferredDistance);
     const score = (distanceDelta * 1000) + ((tile.cost ?? 0) * 10) + nearestEnemyDistance;
 
@@ -298,9 +236,6 @@ export function chooseCpuMoveDestination(state) {
       bestApproach = {
         x: tile.x,
         y: tile.y,
-        facing: nearestEnemy
-          ? getFacingTowardTile(tile.x, tile.y, nearestEnemy.x, nearestEnemy.y, activeBody.facing)
-          : activeBody.facing,
         score,
         nearestEnemyDistance,
         cost: tile.cost ?? 0,
@@ -310,10 +245,7 @@ export function chooseCpuMoveDestination(state) {
   }
 
   if (!bestApproach) return null;
-
-  const sameTile = bestApproach.x === activeBody.x && bestApproach.y === activeBody.y;
-  const sameFacing = normalizeFacing(bestApproach.facing, activeBody.facing) === normalizeFacing(activeBody.facing);
-  if (sameTile && sameFacing) return null;
+  if (bestApproach.x === activeBody.x && bestApproach.y === activeBody.y) return null;
 
   return bestApproach;
 }
@@ -321,5 +253,5 @@ export function chooseCpuMoveDestination(state) {
 export function chooseCpuAttackPlan(state) {
   const activeBody = getActiveBody(state);
   if (!activeBody) return null;
-  return chooseCpuAttackPlanAtPosition(state, activeBody, activeBody.x, activeBody.y, activeBody.facing);
+  return chooseCpuAttackPlanAtPosition(state, activeBody, activeBody.x, activeBody.y);
 }

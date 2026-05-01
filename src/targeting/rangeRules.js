@@ -25,22 +25,39 @@ function getTargetFocusTile(unit) {
   };
 }
 
-function getTargetableCellsForUnit(unit) {
-  const focus = getTargetFocusTile(unit);
+function getTargetFootprintCells(unit) {
+  return getUnitOccupiedCells(unit).map(({ x, y }) => ({ x, y }));
+}
 
-  return getUnitOccupiedCells(unit)
-    .map((cell) => ({
-      ...cell,
-      _sortDistance: Math.abs(cell.x - focus.x) + Math.abs(cell.y - focus.y)
-    }))
-    .sort((a, b) => {
-      if (a._sortDistance !== b._sortDistance) {
-        return a._sortDistance - b._sortDistance;
-      }
-      if (a.y !== b.y) return a.y - b.y;
-      return a.x - b.x;
-    })
-    .map(({ x, y }) => ({ x, y }));
+function getClosestFootprintDistance(attackerX, attackerY, unit) {
+  const cells = getTargetFootprintCells(unit);
+  if (!cells.length) {
+    const focus = getTargetFocusTile(unit);
+    return manhattanDistance(attackerX, attackerY, focus.x, focus.y);
+  }
+
+  return cells.reduce((best, cell) => {
+    const distance = manhattanDistance(attackerX, attackerY, cell.x, cell.y);
+    return Math.min(best, distance);
+  }, Infinity);
+}
+
+function makeUnitTargetTile(attackerX, attackerY, unit) {
+  const focus = getTargetFocusTile(unit);
+  const distance = getClosestFootprintDistance(attackerX, attackerY, unit);
+
+  return {
+    x: focus.x,
+    y: focus.y,
+    targetUnitId: unit.instanceId,
+    targetScale: unit.scale ?? unit.unitType ?? "mech",
+    targetFocusX: focus.x,
+    targetFocusY: focus.y,
+    targetDistance: Number.isFinite(distance)
+      ? distance
+      : manhattanDistance(attackerX, attackerY, focus.x, focus.y),
+    arcCheckTiles: getTargetFootprintCells(unit)
+  };
 }
 
 export function manhattanDistance(x0, y0, x1, y1) {
@@ -91,15 +108,10 @@ export function getWeaponCandidateTiles(state, mech, profile) {
           const targetUnit = targetEntry?.unit ?? null;
 
           if (!targetUnit) return null;
-          if (!isUnitDirectlyTargetable(targetUnit)) return null;
+          if (!isUnitDirectlyTargetable(targetUnit, state)) return null;
           if (targetUnit.team === mech.team) return null;
 
-          return {
-            x: tile.x,
-            y: tile.y,
-            targetUnitId: targetUnit.instanceId,
-            targetScale: targetUnit.scale ?? targetUnit.unitType ?? "mech"
-          };
+          return makeUnitTargetTile(mech.x, mech.y, targetUnit);
         })
         .filter(Boolean);
 
@@ -109,35 +121,45 @@ export function getWeaponCandidateTiles(state, mech, profile) {
       return units.flatMap((unit) => {
         if (!unit) return [];
         if (unit.instanceId === mech.instanceId) return [];
-        if (!isUnitDirectlyTargetable(unit)) return [];
+        if (!isUnitDirectlyTargetable(unit, state)) return [];
         if (unit.team === mech.team) return [];
 
-        const focusTile = getTargetFocusTile(unit);
-        const distance = manhattanDistance(mech.x, mech.y, focusTile.x, focusTile.y);
+        const targetTile = makeUnitTargetTile(mech.x, mech.y, unit);
+        const distance = Number(targetTile.targetDistance ?? 0);
 
         if (distance < minRange || distance > maxRange) {
           return [];
         }
 
-        return getTargetableCellsForUnit(unit).map((cell) => ({
-          x: cell.x,
-          y: cell.y,
-          targetUnitId: unit.instanceId,
-          targetScale: unit.scale ?? unit.unitType ?? "mech",
-          targetFocusX: focusTile.x,
-          targetFocusY: focusTile.y
-        }));
+        return [targetTile];
       });
     }
 
-    case "fire_arc_tile":
-      return getTilesInRangeBand(mech.x, mech.y, minRange, maxRange)
-        .filter((tile) => {
-          const occupant = getPrimaryOccupantAt(state, tile.x, tile.y, "base", {
-            excludeUnitId: mech.instanceId
-          });
-          return !isOccupiedTileBlockedForDirectTargeting(occupant);
+    case "fire_arc_tile": {
+      const seenTargetUnits = new Set();
+      const candidates = [];
+
+      for (const tile of getTilesInRangeBand(mech.x, mech.y, minRange, maxRange)) {
+        const occupant = getPrimaryOccupantAt(state, tile.x, tile.y, "base", {
+          excludeUnitId: mech.instanceId
         });
+        const targetUnit = occupant?.unit ?? null;
+
+        if (!targetUnit) {
+          candidates.push(tile);
+          continue;
+        }
+
+        if (seenTargetUnits.has(targetUnit.instanceId)) continue;
+        seenTargetUnits.add(targetUnit.instanceId);
+
+        if (isOccupiedTileBlockedForDirectTargeting(occupant, state)) continue;
+
+        candidates.push(makeUnitTargetTile(mech.x, mech.y, targetUnit));
+      }
+
+      return candidates;
+    }
 
     default:
       return [];
