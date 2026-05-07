@@ -11,6 +11,7 @@ const VALID_EDGE_SIDES = new Set(["ne", "se", "sw", "nw"]);
 const VALID_TEAMS = new Set(["player", "enemy", "neutral"]);
 const VALID_CONTROL_TYPES = new Set(["PC", "CPU"]);
 const DEFAULT_BRIEFING_TEXT = "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.";
+const VALID_OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds"]);
 
 export function validateBuilderPackage(builderState, appState = null) {
   const result = createValidationResult();
@@ -240,7 +241,60 @@ function validateMissionShell(result, map, mission) {
 
   const objectives = Array.isArray(mission?.objectives) ? mission.objectives : [];
   if (!objectives.length) {
-    addWarning(result, "MISSION_DEFAULT_OBJECTIVE", "No authored objectives yet. Export will use default defeat_all until Objectives V1 is built.");
+    addWarning(result, "MISSION_NO_OBJECTIVES", "No authored objectives yet. Export will use default defeat_all. Add Objectives V1 data before content lock.");
+    return;
+  }
+
+  validateObjectives(result, map, objectives);
+}
+
+
+function validateObjectives(result, map, objectives) {
+  const ids = new Set();
+  const width = getMapWidth(map);
+  const height = getMapHeight(map);
+
+  for (let index = 0; index < objectives.length; index += 1) {
+    const objective = objectives[index] ?? {};
+    const label = `objective ${index + 1}`;
+    const id = cleanString(objective.id);
+    const type = cleanString(objective.type);
+
+    if (!id) addError(result, "OBJECTIVE_ID_MISSING", `${label} is missing an id.`);
+    else if (ids.has(id)) addError(result, "OBJECTIVE_ID_DUPLICATE", `${label} duplicates objective id "${id}".`);
+    ids.add(id);
+
+    if (!VALID_OBJECTIVE_TYPES.has(type)) {
+      addError(result, "OBJECTIVE_TYPE_BAD", `${label} has unsupported type "${type}".`);
+      continue;
+    }
+
+    if (!cleanString(objective.label)) addWarning(result, "OBJECTIVE_LABEL_MISSING", `${label} has no HUD label.`);
+    if (!cleanString(objective.briefingText)) addWarning(result, "OBJECTIVE_BRIEFING_MISSING", `${label} has no briefing text.`);
+
+    if (type === "defeat_all") {
+      const targetTeam = cleanString(objective.targetTeam) || "enemy";
+      if (!VALID_TEAMS.has(targetTeam)) addError(result, "OBJECTIVE_TARGET_TEAM_BAD", `${label} has invalid targetTeam "${targetTeam}".`);
+    }
+
+    if (type === "reach_zone" || type === "hold_zone") {
+      const team = cleanString(objective.team) || "player";
+      if (!VALID_TEAMS.has(team)) addError(result, "OBJECTIVE_TEAM_BAD", `${label} has invalid team "${team}".`);
+      const tiles = Array.isArray(objective.tiles) ? objective.tiles : [];
+      if (!tiles.length) addError(result, "OBJECTIVE_ZONE_EMPTY", `${label} needs at least one painted zone tile.`);
+      for (const tile of tiles) {
+        const x = Number(tile?.x);
+        const y = Number(tile?.y);
+        if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
+          addError(result, "OBJECTIVE_ZONE_OUT_OF_BOUNDS", `${label} has zone tile outside map bounds at ${x}, ${y}.`);
+        }
+      }
+    }
+
+    if (type === "hold_zone" || type === "survive_rounds") {
+      const rounds = Number(objective.roundsRequired ?? objective.rounds ?? 0);
+      if (!Number.isInteger(rounds) || rounds < 1) addError(result, "OBJECTIVE_ROUNDS_BAD", `${label} needs roundsRequired of 1 or more.`);
+    }
   }
 }
 

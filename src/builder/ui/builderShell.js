@@ -41,6 +41,12 @@ import {
   getSpawnIdOptions,
   getUnitStartAssignments
 } from "../builderUnits.js";
+import {
+  ensureObjectiveToolSettings,
+  getObjectiveDefinitions,
+  getObjectiveTypeOptions,
+  objectiveTypeNeedsZone
+} from "../builderObjectives.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 
 export function createBuilderShell() {
@@ -170,7 +176,7 @@ function renderTabHeader({ builderState, refs }) {
     structures: "Structure cells/rooms are active for builder-owned maps. Roof visibility is an editor view toggle; edge/wall tools are active.",
     spawns: "Spawn and deployment authoring writes existing map.spawns and map.startState truth.",
     units: "Unit start assignments write map.startState.deployments using the current runtime contract.",
-    objectives: "Objective definitions come after mission package core.",
+    objectives: "Objective definitions are authored here. Reach/Hold objectives use map painting for zones.",
     triggers: "Tile/zone/runtime triggers connect to Logic Chains here.",
     logic: "Mission Logic Chains: trigger → conditions → effects → follow-up.",
     dialogue: "Dialogue authoring will adapt to current missionState dialogue hooks.",
@@ -195,6 +201,7 @@ function renderOverlayToggles({ builderState, refs }) {
     ["rooms", "Rooms"],
     ["spawns", "Spawns"],
     ["deployment", "Deploy"],
+    ["objectives", "Objectives"],
     ["tileHeights", "Heights"]
   ];
 
@@ -384,6 +391,9 @@ function renderInspector({ builderState, refs, appState }) {
   const unitTools = builderState.activeTab === "units"
     ? renderUnitInspectorTools(builderState, appState)
     : "";
+  const objectiveTools = builderState.activeTab === "objectives"
+    ? renderObjectiveInspectorTools(builderState, appState)
+    : "";
   const validationTools = builderState.activeTab === "validate"
     ? renderValidationInspectorTools(builderState)
     : "";
@@ -391,7 +401,7 @@ function renderInspector({ builderState, refs, appState }) {
     ? renderExportInspectorTools(builderState)
     : "";
   const note = builderState.workspaceMode === "builder-map"
-    ? "Builder-owned map. Terrain paints tile truth. Structures paint cells/edges. Spawns paints map.spawns and deployment cells. Units writes startState.deployments."
+    ? "Builder-owned map. Terrain paints tile truth. Structures paint cells/edges. Spawns paints map.spawns and deployment cells. Units writes startState.deployments. Objectives writes mission objectives."
     : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
 
   refs.inspector.innerHTML = `
@@ -403,6 +413,7 @@ function renderInspector({ builderState, refs, appState }) {
     ${structureTools}
     ${spawnTools}
     ${unitTools}
+    ${objectiveTools}
     ${validationTools}
     ${exportTools}
     ${selectedTruth}
@@ -781,6 +792,114 @@ function buildNumberOptions(min, max, selectedValue, labeler = (value) => value)
   return options.join("");
 }
 
+
+
+function renderObjectiveInspectorTools(builderState, appState) {
+  const tool = ensureObjectiveToolSettings(builderState) ?? {};
+  const editable = builderState.workspaceMode === "builder-map";
+  const objectives = getObjectiveDefinitions(builderState);
+  const typeOptions = buildObjectiveTypeOptions(tool.type ?? "defeat_all");
+  const teamOptions = buildSimpleOptions(["player", "enemy", "neutral"], tool.team ?? "player");
+  const targetTeamOptions = buildSimpleOptions(["enemy", "player", "neutral"], tool.targetTeam ?? "enemy");
+  const needsZone = objectiveTypeNeedsZone(tool.type);
+  const selectedObjective = Number.isInteger(Number(tool.selectedIndex)) && objectives[Number(tool.selectedIndex)]
+    ? objectives[Number(tool.selectedIndex)]
+    : null;
+  const selectedTileCount = Array.isArray(selectedObjective?.tiles) ? selectedObjective.tiles.length : 0;
+  const addActive = tool.paintMode !== "erase" ? " is-active" : "";
+  const eraseActive = tool.paintMode === "erase" ? " is-active" : "";
+
+  const targetTeamFields = tool.type === "defeat_all" ? `
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Target Team</span>
+        <select data-builder-field="objective-target-team"${editable ? "" : " disabled"}>${targetTeamOptions}</select>
+      </label>
+    ` : "";
+
+  const teamFields = tool.type !== "defeat_all" ? `
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Owning Team</span>
+        <select data-builder-field="objective-team"${editable ? "" : " disabled"}>${teamOptions}</select>
+      </label>
+    ` : "";
+
+  const roundFields = tool.type === "hold_zone" || tool.type === "survive_rounds" ? `
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Rounds</span>
+        <input type="number" data-builder-field="objective-rounds" value="${escapeHtml(tool.roundsRequired ?? 3)}" min="1" max="99" step="1"${editable ? "" : " disabled"}>
+      </label>
+    ` : "";
+
+  const zoneTools = needsZone ? `
+      <div class="builder-field-label builder-section-label">Zone Painter</div>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button${addActive}" data-builder-action="objective-paint-add"${editable ? "" : " disabled"}>Paint Zone</button>
+        <button type="button" class="builder-tool-button${eraseActive}" data-builder-action="objective-paint-erase"${editable ? "" : " disabled"}>Erase Zone</button>
+      </div>
+      <div class="builder-inspector-note">Select an objective below, then click tiles on the map. Current selected objective has ${selectedTileCount} zone tile(s).</div>
+    ` : `<div class="builder-inspector-note">This objective type does not use a painted zone.</div>`;
+
+  return `
+    <div class="builder-inspector-card builder-objective-tool-card">
+      <div class="builder-field-label">Objectives V1</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Mission Type</span>
+        <select data-builder-field="objective-type"${editable ? "" : " disabled"}>${typeOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Objective ID</span>
+        <input type="text" data-builder-field="objective-id" value="${escapeHtml(tool.id ?? "")}" placeholder="auto" spellcheck="false"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>HUD Label</span>
+        <input type="text" data-builder-field="objective-label" value="${escapeHtml(tool.label ?? "")}" placeholder="Objective label" spellcheck="false"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Briefing Text</span>
+        <textarea data-builder-field="objective-briefing-text" rows="3" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(tool.briefingText ?? "")}</textarea>
+      </label>
+      ${targetTeamFields}
+      ${teamFields}
+      ${roundFields}
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="add-objective"${editable ? "" : " disabled"}>Add Objective</button>
+        <button type="button" class="builder-tool-button" data-builder-action="update-objective"${editable ? "" : " disabled"}>Update Selected</button>
+      </div>
+      ${zoneTools}
+      <div class="builder-field-label builder-section-label">Current Objectives</div>
+      ${renderObjectiveList(objectives, tool.selectedIndex)}
+    </div>
+  `;
+}
+
+function renderObjectiveList(objectives, selectedIndex) {
+  const list = Array.isArray(objectives) ? objectives : [];
+  if (!list.length) return '<div class="builder-inspector-note">No authored objectives yet.</div>';
+
+  return '<div class="builder-objective-list">' + list.map((objective, index) => {
+    const selected = Number(selectedIndex) === index ? ' is-active' : '';
+    const tileCount = Array.isArray(objective?.tiles) ? objective.tiles.length : 0;
+    const sub = objective?.type === 'defeat_all'
+      ? 'target: ' + (objective?.targetTeam ?? 'enemy')
+      : objective?.type === 'survive_rounds'
+        ? 'rounds: ' + (objective?.roundsRequired ?? objective?.rounds ?? 0)
+        : 'zone tiles: ' + tileCount + (objective?.type === 'hold_zone' ? ' · rounds: ' + (objective?.roundsRequired ?? 0) : '');
+    return '<div class="builder-objective-row' + selected + '">' +
+      '<button type="button" class="builder-objective-main" data-builder-action="select-objective:' + index + '">' +
+        '<strong>' + escapeHtml((index + 1) + '. ' + (objective?.label ?? objective?.id ?? 'Objective')) + '</strong>' +
+        '<span>' + escapeHtml((objective?.type ?? 'objective') + ' · ' + sub) + '</span>' +
+      '</button>' +
+      '<button type="button" class="builder-tool-button" data-builder-action="remove-objective:' + index + '">Remove</button>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function buildObjectiveTypeOptions(selectedType = "defeat_all") {
+  return getObjectiveTypeOptions().map((option) => {
+    const selected = option.value === selectedType ? " selected" : "";
+    return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(option.label)}</option>`;
+  }).join("");
+}
 
 function renderValidationInspectorTools(builderState) {
   const validation = builderState.validation ?? { errors: [], warnings: [], info: [] };

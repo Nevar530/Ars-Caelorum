@@ -2290,3 +2290,88 @@ button:disabled {
 .builder-export-card .builder-tool-row {
   flex-wrap: wrap;
 }
+
+/* =========================================
+   MISSION BUILDER — OBJECTIVES V1
+========================================= */
+
+.builder-overlay-objective {
+  fill: rgba(121, 255, 184, 0.14);
+  stroke: rgba(121, 255, 184, 0.82);
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.builder-overlay-label-objective {
+  fill: #d8ffe9;
+}
+
+.builder-objective-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.builder-objective-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  min-width: 0;
+}
+
+.builder-objective-row.is-active {
+  border-color: rgba(121, 255, 184, 0.56);
+  background: rgba(121, 255, 184, 0.08);
+}
+
+.builder-objective-main {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+  text-align: left;
+  min-width: 0;
+  padding: 0;
+}
+
+.builder-objective-main strong,
+.builder-objective-main span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.builder-objective-main strong {
+  color: #f5f7ff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.builder-objective-main span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.builder-form-field textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 62px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+  color: #eaf2fb;
+  border-radius: 8px;
+  padding: 8px 9px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  box-sizing: border-box;
+}

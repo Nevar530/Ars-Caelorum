@@ -34,6 +34,7 @@ import {
   getStructureEdgeTruth,
   getTileTruth
 } from "../builderAdapters.js";
+import { getObjectiveZoneCells } from "../builderObjectives.js";
 
 const PICK_MAX_DISTANCE_PX = 44;
 
@@ -323,6 +324,7 @@ function renderBuilderWorkspaceOverlays({ previewState, appState, builderState, 
   const overlayState = builderState?.overlays ?? {};
 
   if (overlayState.deployment) overlays.push(renderDeploymentOverlays(previewState, appState));
+  if (overlayState.objectives) overlays.push(renderObjectiveZoneOverlays(previewState, builderState));
   if (overlayState.spawns) overlays.push(renderSpawnOverlays(previewState, appState));
   if (overlayState.rooms) overlays.push(renderRoomOverlays(previewState, appState));
   if (overlayState.structureEdges) overlays.push(renderStructureEdgeOverlays(previewState, appState));
@@ -419,6 +421,22 @@ function renderDeploymentOverlays(previewState, appState) {
     return `
       <polygon class="builder-overlay-deployment" points="${formatPointString(points)}" pointer-events="none" />
       ${renderTileText(previewState, cell.x, cell.y, label, "builder-overlay-label builder-overlay-label-deploy")}
+    `;
+  }).join("");
+}
+
+
+function renderObjectiveZoneOverlays(previewState, builderState) {
+  const cells = getObjectiveZoneCells(builderState);
+  if (!cells.length) return "";
+
+  return cells.map((cell) => {
+    const points = getTilePolygonPoints(previewState, cell.x, cell.y);
+    if (points.length !== 4) return "";
+    const label = cell.type === "hold_zone" ? "hold" : "reach";
+    return `
+      <polygon class="builder-overlay-objective" points="${formatPointString(points)}" pointer-events="none" />
+      ${renderTileText(previewState, cell.x, cell.y, label, "builder-overlay-label builder-overlay-label-objective")}
     `;
   }).join("");
 }

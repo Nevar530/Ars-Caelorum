@@ -42,6 +42,7 @@ export function createBuilderState() {
       rooms: false,
       spawns: true,
       deployment: true,
+      objectives: true,
       tileHeights: false
     },
     terrainTool: {
@@ -85,6 +86,17 @@ export function createBuilderState() {
       pilotSpawnId: "",
       mechSpawnId: "",
       instancePrefix: ""
+    },
+    objectiveTool: {
+      type: "defeat_all",
+      id: "",
+      label: "Defeat all enemy units",
+      briefingText: "Defeat all enemy units",
+      team: "player",
+      targetTeam: "enemy",
+      roundsRequired: 3,
+      selectedIndex: -1,
+      paintMode: "add"
     },
     status: "BUILDER MENU",
     runtimeMapId: null,

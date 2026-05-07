@@ -67,6 +67,16 @@ import {
   resetUnitToolToDefaults,
   updateUnitToolFromFields
 } from "./builderUnits.js";
+import {
+  addObjectiveDefinition,
+  applyObjectiveToolAtTile,
+  isObjectiveAuthoringActive,
+  removeObjectiveDefinition,
+  selectObjectiveDefinition,
+  setObjectivePaintMode,
+  updateObjectiveToolFromFields,
+  updateSelectedObjectiveDefinition
+} from "./builderObjectives.js";
 import { createBuilderShell, renderBuilderShell } from "./ui/builderShell.js";
 import {
   clearWysiwygWorkspace,
@@ -184,7 +194,7 @@ class MissionBuilder {
 
   handleWorkspaceConfirmKey(event) {
     if (event.code !== "Space" && event.key !== " ") return false;
-    if (!this.isTerrainAuthoringActive() && !this.isStructureAuthoringActive() && !this.isSpawnAuthoringActive()) return false;
+    if (!this.isTerrainAuthoringActive() && !this.isStructureAuthoringActive() && !this.isSpawnAuthoringActive() && !this.isObjectiveAuthoringActive()) return false;
 
     const selected = this.builderState.selected ?? null;
     const hover = this.builderState.hover ?? null;
@@ -202,7 +212,9 @@ class MissionBuilder {
         ? this.applyStructureActionAtTile(target.x, target.y)
         : this.isSpawnAuthoringActive()
           ? this.applySpawnActionAtTile(target.x, target.y)
-          : this.applyTerrainActionAtTile(target.x, target.y);
+          : this.isObjectiveAuthoringActive()
+            ? this.applyObjectiveActionAtTile(target.x, target.y)
+            : this.applyTerrainActionAtTile(target.x, target.y);
 
     pushBuilderLog(this.builderState, result.message);
     this.render();
@@ -261,6 +273,12 @@ class MissionBuilder {
 
     if (this.builderState.activeTab === "units") {
       updateUnitToolFromFields(this.builderState, this.refs.root, this.appState);
+      this.render();
+      return;
+    }
+
+    if (this.builderState.activeTab === "objectives") {
+      updateObjectiveToolFromFields(this.builderState, this.refs.root);
       this.render();
     }
   }
@@ -341,6 +359,9 @@ class MissionBuilder {
     } else if (this.isSpawnAuthoringActive()) {
       const result = this.applySpawnActionAtTile(picked.x, picked.y);
       pushBuilderLog(this.builderState, result.message);
+    } else if (this.isObjectiveAuthoringActive()) {
+      const result = this.applyObjectiveActionAtTile(picked.x, picked.y);
+      pushBuilderLog(this.builderState, result.message);
     } else {
       pushBuilderLog(this.builderState, "Selected tile " + picked.x + ", " + picked.y + ".");
     }
@@ -358,6 +379,10 @@ class MissionBuilder {
 
   isSpawnAuthoringActive() {
     return isSpawnAuthoringActive(this.builderState);
+  }
+
+  isObjectiveAuthoringActive() {
+    return isObjectiveAuthoringActive(this.builderState);
   }
 
   applyTerrainActionAtTile(x, y) {
@@ -387,7 +412,52 @@ class MissionBuilder {
     return applySpawnAuthoringAtTile(this.builderState, this.appState, x, y);
   }
 
+  applyObjectiveActionAtTile(x, y) {
+    updateObjectiveToolFromFields(this.builderState, this.refs.root);
+    return applyObjectiveToolAtTile(this.builderState, this.appState, x, y);
+  }
+
   handleAction(action) {
+    if (action === "add-objective") {
+      updateObjectiveToolFromFields(this.builderState, this.refs.root);
+      const result = addObjectiveDefinition(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "update-objective") {
+      updateObjectiveToolFromFields(this.builderState, this.refs.root);
+      const result = updateSelectedObjectiveDefinition(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("select-objective:")) {
+      const index = Number(action.split(":")[1]);
+      const result = selectObjectiveDefinition(this.builderState, index);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("remove-objective:")) {
+      const index = Number(action.split(":")[1]);
+      const result = removeObjectiveDefinition(this.builderState, index);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "objective-paint-add" || action === "objective-paint-erase") {
+      updateObjectiveToolFromFields(this.builderState, this.refs.root);
+      const tool = setObjectivePaintMode(this.builderState, action === "objective-paint-erase" ? "erase" : "add");
+      pushBuilderLog(this.builderState, tool.paintMode === "erase" ? "Objective zone erase armed." : "Objective zone paint armed.");
+      this.render();
+      return;
+    }
+
     if (action === "add-unit-start") {
       updateUnitToolFromFields(this.builderState, this.refs.root, this.appState);
       const result = addUnitStartAssignment(this.builderState, this.appState);
