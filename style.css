@@ -2236,3 +2236,57 @@ button:disabled {
   border-style: dashed;
   opacity: 0.82;
 }
+
+/* =========================================
+   MISSION BUILDER — VALIDATION UI V1
+========================================= */
+
+.builder-inspector,
+.builder-inspector-card,
+.builder-inspector-note {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.builder-validation-card,
+.builder-export-card,
+.builder-issue-card {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.builder-issue-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: #f5f7ff;
+  font-size: 13px;
+  line-height: 1.28;
+  max-width: 100%;
+}
+
+.builder-issue-list li {
+  margin: 0 0 8px;
+  padding-right: 2px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.builder-issue-list strong {
+  display: block;
+  color: #f5f7ff;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.builder-issue-list span {
+  display: block;
+  color: #d7e1eb;
+  overflow-wrap: anywhere;
+}
+
+.builder-validation-card .builder-tool-row,
+.builder-export-card .builder-tool-row {
+  flex-wrap: wrap;
+}

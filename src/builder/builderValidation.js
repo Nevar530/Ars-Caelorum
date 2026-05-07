@@ -1,344 +1,327 @@
 // src/builder/builderValidation.js
 //
 // Mission Builder validation V1.
-// This is the first safety rail between authored builder data and runtime truth.
-// Export/Test may run this module before handing data to the real loader.
+// This is the first safety rail: the builder may warn about unfinished authoring,
+// but export/test must block when authored data would break runtime truth.
 
 import { getMapHeight, getMapWidth, getTile } from "../map.js";
+import { parseSpawnId, SPAWN_TEAMS } from "../maps/mapSpawns.js";
 
+const VALID_EDGE_SIDES = new Set(["ne", "se", "sw", "nw"]);
 const VALID_TEAMS = new Set(["player", "enemy", "neutral"]);
 const VALID_CONTROL_TYPES = new Set(["PC", "CPU"]);
-const VALID_EDGES = new Set(["ne", "se", "sw", "nw"]);
-const PLACEHOLDER_BRIEFING_TEXT = "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.";
+const DEFAULT_BRIEFING_TEXT = "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.";
 
-export function runBuilderValidation(builderState, appState = null, options = {}) {
-  const issues = validateBuilderState(builderState, appState, options);
-  if (builderState) {
-    builderState.validation = issues;
-    builderState.lastValidationAt = Date.now();
+export function validateBuilderPackage(builderState, appState = null) {
+  const result = createValidationResult();
+  const map = builderState?.authoring?.map ?? null;
+  const mission = builderState?.authoring?.mission ?? null;
+
+  if (!map) {
+    addError(result, "MAP_MISSING", "No builder-owned map is active. Create or load a builder map before validating.");
+    return commitValidation(builderState, result);
   }
-  return issues;
+
+  const width = getMapWidth(map);
+  const height = getMapHeight(map);
+
+  validateMapBasics(result, map, width, height);
+  validateTiles(result, map, width, height);
+  validateSpawns(result, map, width, height);
+  validateDeployments(result, map, appState);
+  validateDeploymentCells(result, map, width, height);
+  validateStructures(result, map, width, height);
+  validateMissionShell(result, map, mission);
+  addSummaryInfo(result);
+
+  return commitValidation(builderState, result);
 }
 
-export function hasValidationErrors(validation) {
+export function hasBlockingValidationErrors(validation) {
   return (validation?.errors?.length ?? 0) > 0;
 }
 
-export function summarizeValidation(validation) {
-  const errors = validation?.errors?.length ?? 0;
-  const warnings = validation?.warnings?.length ?? 0;
-  const info = validation?.info?.length ?? 0;
-  if (errors > 0) return `${errors} error${errors === 1 ? "" : "s"} · ${warnings} warning${warnings === 1 ? "" : "s"}`;
-  if (warnings > 0) return `0 errors · ${warnings} warning${warnings === 1 ? "" : "s"}`;
-  return `0 errors · 0 warnings${info ? ` · ${info} info` : ""}`;
+function validateMapBasics(result, map, width, height) {
+  if (!cleanString(map?.id)) addError(result, "MAP_ID_MISSING", "Map id is missing.");
+  if (!cleanString(map?.name)) addWarning(result, "MAP_NAME_MISSING", "Map name is missing. Export can still run, but the catalog label will be ugly.");
+  if (!Number.isInteger(width) || width <= 0) addError(result, "MAP_WIDTH_BAD", "Map width is missing or invalid.");
+  if (!Number.isInteger(height) || height <= 0) addError(result, "MAP_HEIGHT_BAD", "Map height is missing or invalid.");
 }
 
-export function validateBuilderState(builderState, appState = null, options = {}) {
-  const validation = createValidationResult();
-  const map = builderState?.authoring?.map ?? null;
-  const mission = builderState?.authoring?.mission ?? null;
-  const requireMissionReady = options.requireMissionReady !== false;
+function validateTiles(result, map, width, height) {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) return;
 
-  if (!map) {
-    addError(validation, "NO_BUILDER_MAP", "No builder-owned map is active. Create or load a map before validating.");
-    return validation;
-  }
-
-  validateMapIdentity(validation, map);
-  validateMapTiles(validation, map);
-  validateSpawns(validation, map);
-  validateStartState(validation, map, appState, { requireMissionReady });
-  validateStructures(validation, map);
-  validateMissionShell(validation, map, mission, { requireMissionReady });
-
-  if (!validation.errors.length && !validation.warnings.length) {
-    addInfo(validation, "VALIDATION_CLEAN", "Builder package validation passed with no errors or warnings.");
-  } else if (!validation.errors.length) {
-    addInfo(validation, "VALIDATION_WARNINGS_ONLY", "Validation found warnings only. Export is allowed, but the warnings should be cleaned up before content lock.");
-  }
-
-  return validation;
-}
-
-function validateMapIdentity(validation, map) {
-  const id = String(map?.id ?? "").trim();
-  const name = String(map?.name ?? "").trim();
-  const width = Number(getMapWidth(map));
-  const height = Number(getMapHeight(map));
-
-  if (!id) addError(validation, "MAP_ID_MISSING", "Map id is missing.");
-  else if (!/^[a-z0-9_-]+$/i.test(id)) addError(validation, "MAP_ID_BAD_FORMAT", `Map id \"${id}\" should use only letters, numbers, underscores, or hyphens.`);
-
-  if (!name) addWarning(validation, "MAP_NAME_MISSING", "Map name is missing. Export can still run, but Mission Select will look unfinished.");
-  if (!Number.isFinite(width) || width <= 0) addError(validation, "MAP_WIDTH_INVALID", "Map width is missing or invalid.");
-  if (!Number.isFinite(height) || height <= 0) addError(validation, "MAP_HEIGHT_INVALID", "Map height is missing or invalid.");
-}
-
-function validateMapTiles(validation, map) {
-  const width = Number(getMapWidth(map));
-  const height = Number(getMapHeight(map));
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
-
-  const missing = [];
+  let missing = 0;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      if (!getTile(map, x, y)) missing.push(`${x},${y}`);
+      if (!getTile(map, x, y)) missing += 1;
     }
   }
 
-  if (missing.length) {
-    const sample = missing.slice(0, 8).join("; ");
-    addError(validation, "MAP_TILES_MISSING", `Map is missing ${missing.length} tile record${missing.length === 1 ? "" : "s"}. First: ${sample}.`);
+  if (missing > 0) {
+    addError(result, "MAP_TILES_MISSING", `${missing} map tile record(s) are missing.`);
   }
 }
 
-function validateSpawns(validation, map) {
-  const width = Number(getMapWidth(map));
-  const height = Number(getMapHeight(map));
-  const seen = new Set();
+function validateSpawns(result, map, width, height) {
   const spawns = map?.spawns ?? {};
+  const seen = new Set();
 
-  for (const team of ["player", "enemy", "neutral"]) {
-    const list = Array.isArray(spawns?.[team]) ? spawns[team] : [];
-    list.forEach((spawn, index) => {
-      if (!spawn) return;
-      const id = `${team}_${index + 1}`;
+  for (const team of SPAWN_TEAMS) {
+    const list = Array.isArray(spawns[team]) ? spawns[team] : [];
+    for (let index = 0; index < list.length; index += 1) {
+      const spawn = list[index];
+      if (!spawn) continue;
+
+      const spawnId = `${team}_${index + 1}`;
       const x = Number(spawn.x);
       const y = Number(spawn.y);
-      if (seen.has(id)) addError(validation, "SPAWN_ID_DUPLICATE", `Duplicate spawn id ${id}.`);
-      seen.add(id);
-      if (!isInsideMap(map, x, y)) addError(validation, "SPAWN_OUT_OF_BOUNDS", `Spawn ${id} is outside map bounds at ${spawn.x}, ${spawn.y}.`);
-      if (!VALID_TEAMS.has(spawn.team ?? team)) addError(validation, "SPAWN_TEAM_INVALID", `Spawn ${id} has invalid team ${spawn.team}.`);
-      if (spawn.controlType && !VALID_CONTROL_TYPES.has(spawn.controlType)) addError(validation, "SPAWN_CONTROL_INVALID", `Spawn ${id} has invalid controlType ${spawn.controlType}.`);
-    });
-  }
+      if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
+        addError(result, "SPAWN_OUT_OF_BOUNDS", `${spawnId} is outside map bounds.`);
+      }
 
-  if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0 && !seen.size) {
-    addWarning(validation, "NO_FIXED_SPAWNS", "No fixed spawns are authored. That is okay for pure deployment missions, but fixed starts will fail without spawn ids.");
+      const key = `${x},${y}`;
+      if (seen.has(key)) addWarning(result, "SPAWN_STACKED", `${spawnId} shares a tile with another spawn at ${key}.`);
+      seen.add(key);
+    }
   }
 }
 
-function validateStartState(validation, map, appState, { requireMissionReady }) {
+function validateDeployments(result, map, appState) {
   const startState = map?.startState ?? {};
   const deployments = Array.isArray(startState.deployments) ? startState.deployments : [];
-  const deploymentCells = Array.isArray(startState.deploymentCells) ? startState.deploymentCells : [];
   const startMode = startState.startMode ?? "authored";
-  const pilotIds = new Set((Array.isArray(appState?.content?.pilots) ? appState.content.pilots : []).map((pilot) => pilot?.id).filter(Boolean));
-  const mechIds = new Set((Array.isArray(appState?.content?.mechs) ? appState.content.mechs : []).map((mech) => mech?.id).filter(Boolean));
-  const seenInstanceIds = new Map();
-  let playerPilotCount = 0;
-  let enemyPilotCount = 0;
+  const pilotIds = new Set(getContentIds(appState?.content?.pilots));
+  const mechIds = new Set(getContentIds(appState?.content?.mechs));
+  const instanceIds = new Set();
+  let playerPilots = 0;
+  let enemyPilots = 0;
 
-  if (!Array.isArray(startState.deployments)) {
-    addError(validation, "DEPLOYMENTS_MISSING", "map.startState.deployments must be an array.");
-  }
-
-  deployments.forEach((entry, index) => {
+  for (let index = 0; index < deployments.length; index += 1) {
+    const entry = deployments[index] ?? {};
     const label = `deployment ${index + 1}`;
-    const team = entry?.team ?? "";
-    const controlType = entry?.controlType ?? "";
-    const hasPilot = Boolean(entry?.pilotDefinitionId);
-    const hasMech = Boolean(entry?.mechDefinitionId);
+    const team = cleanString(entry.team) || inferTeamFromSpawnId(entry.pilotSpawnId || entry.mechSpawnId) || "player";
+    const controlType = cleanString(entry.controlType) || (team === "enemy" ? "CPU" : "PC");
+    const hasPilot = Boolean(cleanString(entry.pilotDefinitionId));
+    const hasMech = Boolean(cleanString(entry.mechDefinitionId));
     const isEmptyMech = hasMech && !hasPilot;
-    const isPlayerDeploymentRoster = startMode === "deployment" && team === "player" && controlType === "PC" && hasPilot;
+    const fixedPilotStart = hasPilot && cleanString(entry.pilotSpawnId);
+    const fixedMechStart = hasMech && cleanString(entry.mechSpawnId);
+    const deploymentRosterEntry = startMode === "deployment" && team === "player" && controlType === "PC" && hasPilot && !entry.pilotSpawnId;
 
-    if (!VALID_TEAMS.has(team)) addError(validation, "DEPLOYMENT_TEAM_INVALID", `${label} has invalid team ${team || "blank"}.`);
-    if (!VALID_CONTROL_TYPES.has(controlType)) addError(validation, "DEPLOYMENT_CONTROL_INVALID", `${label} has invalid controlType ${controlType || "blank"}.`);
-
-    if (!hasPilot && !hasMech) addError(validation, "DEPLOYMENT_EMPTY", `${label} has neither a pilot nor a mech.`);
+    if (!VALID_TEAMS.has(team)) addError(result, "DEPLOYMENT_BAD_TEAM", `${label} has invalid team "${team}".`);
+    if (!VALID_CONTROL_TYPES.has(controlType)) addError(result, "DEPLOYMENT_BAD_CONTROL", `${label} has invalid controlType "${controlType}".`);
 
     if (hasPilot) {
-      if (pilotIds.size && !pilotIds.has(entry.pilotDefinitionId)) addError(validation, "PILOT_ID_INVALID", `${label} references missing pilot ${entry.pilotDefinitionId}.`);
-      if (!entry.pilotInstanceId) addError(validation, "PILOT_INSTANCE_ID_MISSING", `${label} is missing pilotInstanceId.`);
-      else trackInstanceId(validation, seenInstanceIds, entry.pilotInstanceId, label);
-      if (!isPlayerDeploymentRoster && !entry.pilotSpawnId) addError(validation, "PILOT_SPAWN_MISSING", `${label} is a fixed pilot start but has no pilotSpawnId.`);
-      if (entry.pilotSpawnId && !getSpawnById(map, entry.pilotSpawnId)) addError(validation, "PILOT_SPAWN_INVALID", `${label} references missing spawn ${entry.pilotSpawnId}.`);
-      if (team === "player") playerPilotCount += 1;
-      if (team === "enemy") enemyPilotCount += 1;
+      if (pilotIds.size && !pilotIds.has(entry.pilotDefinitionId)) {
+        addError(result, "DEPLOYMENT_BAD_PILOT_REF", `${label} references missing pilotDefinitionId "${entry.pilotDefinitionId}".`);
+      }
+      if (team === "player") playerPilots += 1;
+      if (team === "enemy") enemyPilots += 1;
     }
 
-    if (hasMech) {
-      if (mechIds.size && !mechIds.has(entry.mechDefinitionId)) addError(validation, "MECH_ID_INVALID", `${label} references missing mech ${entry.mechDefinitionId}.`);
-      if (!entry.mechInstanceId) addError(validation, "MECH_INSTANCE_ID_MISSING", `${label} is missing mechInstanceId.`);
-      else trackInstanceId(validation, seenInstanceIds, entry.mechInstanceId, label);
-
-      if (isEmptyMech && !entry.mechSpawnId) addError(validation, "EMPTY_MECH_SPAWN_MISSING", `${label} is an empty mech start but has no mechSpawnId.`);
-      if (entry.startEmbarked && !hasPilot) addError(validation, "START_EMBARKED_WITHOUT_PILOT", `${label} has startEmbarked true without a pilot.`);
-      if (entry.startEmbarked && !hasMech) addError(validation, "START_EMBARKED_WITHOUT_MECH", `${label} has startEmbarked true without a mech.`);
-      if (entry.startEmbarked && hasPilot && hasMech && !entry.mechSpawnId) addError(validation, "EMBARKED_MECH_SPAWN_MISSING", `${label} starts embarked but has no mechSpawnId.`);
-      if (entry.mechSpawnId && !isPlayerDeploymentRoster && !getSpawnById(map, entry.mechSpawnId)) addError(validation, "MECH_SPAWN_INVALID", `${label} references missing mech spawn ${entry.mechSpawnId}.`);
+    if (hasMech && mechIds.size && !mechIds.has(entry.mechDefinitionId)) {
+      addError(result, "DEPLOYMENT_BAD_MECH_REF", `${label} references missing mechDefinitionId "${entry.mechDefinitionId}".`);
     }
 
-    if (!hasMech && entry.startEmbarked) addError(validation, "PILOT_EMBARKED_NO_MECH", `${label} starts embarked but has no mechDefinitionId.`);
-  });
+    if (!hasPilot && !hasMech) {
+      addError(result, "DEPLOYMENT_EMPTY", `${label} has no pilot or mech definition.`);
+    }
 
-  validateDeploymentCells(validation, map, deploymentCells, startState);
+    if (hasPilot && !deploymentRosterEntry && !fixedPilotStart) {
+      addError(result, "DEPLOYMENT_PILOT_SPAWN_MISSING", `${label} is a fixed pilot start but has no pilotSpawnId.`);
+    }
 
-  if (requireMissionReady) {
-    if (!deployments.length) addError(validation, "NO_UNIT_STARTS", "No unit starts are authored. Add at least one player and one enemy pilot start before exporting a playable mission.");
-    if (deployments.length && playerPilotCount <= 0) addError(validation, "NO_PLAYER_PILOT", "No player pilot start is authored. Mission result logic needs at least one player-side pilot.");
-    if (deployments.length && enemyPilotCount <= 0) addError(validation, "NO_ENEMY_PILOT", "No enemy pilot start is authored. Current victory logic needs at least one enemy-side pilot.");
+    if (isEmptyMech && !fixedMechStart) {
+      addError(result, "DEPLOYMENT_MECH_SPAWN_MISSING", `${label} is an empty mech start but has no mechSpawnId.`);
+    }
+
+    if (entry.startEmbarked === true) {
+      if (!hasPilot || !hasMech) addError(result, "DEPLOYMENT_EMBARK_BAD_COMBO", `${label} has startEmbarked true but is missing pilot or mech.`);
+      if (!cleanString(entry.mechSpawnId)) addError(result, "DEPLOYMENT_EMBARK_MECH_SPAWN_MISSING", `${label} starts embarked but has no mechSpawnId.`);
+    }
+
+    validateSpawnReference(result, map, entry.pilotSpawnId, `${label} pilotSpawnId`);
+    validateSpawnReference(result, map, entry.mechSpawnId, `${label} mechSpawnId`);
+
+    addUniqueInstance(result, instanceIds, entry.pilotInstanceId, `${label} pilotInstanceId`);
+    addUniqueInstance(result, instanceIds, entry.mechInstanceId, `${label} mechInstanceId`);
   }
+
+  if (playerPilots <= 0) addError(result, "MISSION_NO_PLAYER_PILOT", "Mission has no player-side pilot start or deployment roster entry.");
+  if (enemyPilots <= 0) addError(result, "MISSION_NO_ENEMY_PILOT", "Mission has no enemy-side pilot start. Current runtime victory still needs enemy pilots.");
 }
 
-function validateDeploymentCells(validation, map, cells, startState) {
-  if (!Array.isArray(cells)) {
-    addError(validation, "DEPLOYMENT_CELLS_INVALID", "map.startState.deploymentCells must be an array.");
-    return;
+function validateDeploymentCells(result, map, width, height) {
+  const startState = map?.startState ?? {};
+  const cells = Array.isArray(startState.deploymentCells) ? startState.deploymentCells : [];
+  const playerDeployment = startState.playerDeployment ?? null;
+  const requiredCount = Number(playerDeployment?.requiredCount ?? 0);
+  const unitType = playerDeployment?.unitType ?? "pilot";
+
+  if (startState.startMode !== "deployment") return;
+
+  if (requiredCount > 0 && cells.length < requiredCount) {
+    addError(result, "DEPLOYMENT_CELLS_TOO_FEW", `Player deployment requires ${requiredCount} unit(s), but only ${cells.length} deployment cell(s) exist.`);
   }
 
-  const seen = new Set();
+  if (unitType === "mech") {
+    let fitCount = 0;
+    for (const cell of cells) {
+      if (canFitMechAt(map, cell?.x, cell?.y, width, height)) fitCount += 1;
+    }
+    if (requiredCount > 0 && fitCount < requiredCount) {
+      addError(result, "DEPLOYMENT_MECH_ZONE_TOO_SMALL", `Player mech deployment requires ${requiredCount} valid 3x3 fit location(s), but only ${fitCount} fit.`);
+    }
+  }
+
   for (const cell of cells) {
     const x = Number(cell?.x);
     const y = Number(cell?.y);
-    const key = `${x},${y}`;
-    if (seen.has(key)) addWarning(validation, "DEPLOYMENT_CELL_DUPLICATE", `Deployment cell ${key} is duplicated.`);
-    seen.add(key);
-    if (!isInsideMap(map, x, y)) addError(validation, "DEPLOYMENT_CELL_OUT_OF_BOUNDS", `Deployment cell ${key} is outside map bounds.`);
-    if (cell?.controlType && !VALID_CONTROL_TYPES.has(cell.controlType)) addError(validation, "DEPLOYMENT_CELL_CONTROL_INVALID", `Deployment cell ${key} has invalid controlType ${cell.controlType}.`);
-  }
-
-  const requiredCount = Number(startState?.playerDeployment?.requiredCount ?? 0);
-  const unitType = startState?.playerDeployment?.unitType ?? "pilot";
-  if (startState?.startMode === "deployment" && requiredCount > 0) {
-    const playerCells = cells.filter((cell) => (cell?.controlType ?? "PC") === "PC");
-    if (unitType === "mech") {
-      const fitCenters = countValidMechDeploymentCenters(map, playerCells);
-      if (fitCenters < requiredCount) {
-        addError(validation, "MECH_DEPLOYMENT_ZONE_TOO_SMALL", `Player mech deployment requires ${requiredCount} 3x3 fit center${requiredCount === 1 ? "" : "s"}, but only ${fitCenters} fit.`);
-      }
-    } else if (playerCells.length < requiredCount) {
-      addError(validation, "PILOT_DEPLOYMENT_ZONE_TOO_SMALL", `Player pilot deployment requires ${requiredCount} cell${requiredCount === 1 ? "" : "s"}, but only ${playerCells.length} player deployment cell${playerCells.length === 1 ? "" : "s"} exist.`);
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
+      addError(result, "DEPLOYMENT_CELL_OUT_OF_BOUNDS", `Deployment cell ${x}, ${y} is outside map bounds.`);
     }
   }
 }
 
-function validateStructures(validation, map) {
+function validateStructures(result, map, width, height) {
   const structures = Array.isArray(map?.structures) ? map.structures : [];
-  const globalEdges = new Set();
+  const edgeKeys = new Set();
+  const cellKeys = new Set();
 
-  structures.forEach((structure, structureIndex) => {
-    const structureId = structure?.id || `structure ${structureIndex + 1}`;
-    const cellKeys = new Set();
+  for (const structure of structures) {
+    const structureId = cleanString(structure?.id) || "unnamed-structure";
     const cells = Array.isArray(structure?.cells) ? structure.cells : [];
     const edges = Array.isArray(structure?.edges) ? structure.edges : [];
 
-    cells.forEach((cell) => {
+    for (const cell of cells) {
       const x = Number(cell?.x);
       const y = Number(cell?.y);
-      const key = `${x},${y}`;
-      if (cellKeys.has(key)) addWarning(validation, "STRUCTURE_CELL_DUPLICATE", `${structureId} has duplicate cell ${key}.`);
-      cellKeys.add(key);
-      if (!isInsideMap(map, x, y)) addError(validation, "STRUCTURE_CELL_OUT_OF_BOUNDS", `${structureId} cell ${key} is outside map bounds.`);
-      if ((structure?.roof || structure?.roofSprite || structure?.roofSpriteId) && !cell?.roomId) {
-        addWarning(validation, "ROOFED_CELL_MISSING_ROOM", `${structureId} cell ${key} has roofed structure data but no roomId.`);
+      const key = `${structureId}:${x},${y}`;
+      if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
+        addError(result, "STRUCTURE_CELL_OUT_OF_BOUNDS", `${structureId} has a cell outside map bounds at ${x}, ${y}.`);
       }
-    });
+      if (cellKeys.has(key)) addWarning(result, "STRUCTURE_DUPLICATE_CELL", `${structureId} has a duplicate cell at ${x}, ${y}.`);
+      cellKeys.add(key);
+      if (structure?.roof && !cleanString(cell?.roomId)) {
+        addWarning(result, "STRUCTURE_ROOF_CELL_NO_ROOM", `${structureId} has a roofed cell at ${x}, ${y} without roomId.`);
+      }
+    }
 
-    edges.forEach((edge) => {
+    for (const edge of edges) {
       const x = Number(edge?.x);
       const y = Number(edge?.y);
-      const side = String(edge?.edge ?? "").trim().toLowerCase();
-      const key = `${x},${y},${side}`;
-      const globalKey = `${structureId}:${key}`;
-      const edgeHeight = Number(edge?.edgeHeight ?? edge?.height ?? edge?.heightLevels ?? 0);
-      const type = String(edge?.type ?? "").trim().toLowerCase();
-      const spriteId = String(edge?.spriteId ?? edge?.edgeSpriteId ?? "").trim();
+      const side = cleanString(edge?.edge).toLowerCase();
+      const edgeHeight = Number(edge?.edgeHeight ?? 0);
+      const key = `${structureId}:${x},${y}:${side}`;
 
-      if (globalEdges.has(globalKey)) addError(validation, "STRUCTURE_EDGE_DUPLICATE", `${structureId} has duplicate edge ${key}.`);
-      globalEdges.add(globalKey);
-      if (!isInsideMap(map, x, y)) addError(validation, "STRUCTURE_EDGE_OUT_OF_BOUNDS", `${structureId} edge ${key} is outside map bounds.`);
-      if (!VALID_EDGES.has(side)) addError(validation, "STRUCTURE_EDGE_SIDE_INVALID", `${structureId} edge ${key} uses invalid edge side ${side || "blank"}.`);
-      if (!Number.isFinite(edgeHeight) || edgeHeight < 0) addError(validation, "STRUCTURE_EDGE_HEIGHT_INVALID", `${structureId} edge ${key} has invalid edgeHeight ${edge?.edgeHeight}.`);
-      if (edgeHeight > 0 && !spriteId) addWarning(validation, "EDGE_HEIGHT_WITHOUT_ART", `${structureId} edge ${key} blocks movement/LOS but has no sprite art.`);
-      if ((type === "door" || spriteId.toLowerCase().includes("door")) && edgeHeight > 0) addWarning(validation, "DOOR_ART_BLOCKS", `${structureId} edge ${key} looks like a door but edgeHeight is ${edgeHeight}; it will block movement/LOS.`);
-      if ((type === "wall" || spriteId.toLowerCase().includes("wall")) && edgeHeight === 0) addWarning(validation, "WALL_ART_OPEN", `${structureId} edge ${key} looks like a wall but edgeHeight is 0; it is open.`);
-    });
-  });
+      if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
+        addError(result, "STRUCTURE_EDGE_OUT_OF_BOUNDS", `${structureId} has an edge outside map bounds at ${x}, ${y}.`);
+      }
+      if (!VALID_EDGE_SIDES.has(side)) addError(result, "STRUCTURE_EDGE_BAD_SIDE", `${structureId} has invalid edge side "${side}" at ${x}, ${y}.`);
+      if (!Number.isFinite(edgeHeight) || edgeHeight < 0) addError(result, "STRUCTURE_EDGE_BAD_HEIGHT", `${structureId} has invalid edgeHeight at ${x}, ${y} ${side}.`);
+      if (edgeKeys.has(key)) addError(result, "STRUCTURE_DUPLICATE_EDGE", `${structureId} has duplicate edge at ${x}, ${y} ${side}.`);
+      edgeKeys.add(key);
+
+      const type = cleanString(edge?.type).toLowerCase();
+      const spriteId = cleanString(edge?.spriteId);
+      if (edgeHeight > 0 && !spriteId) addWarning(result, "STRUCTURE_EDGE_NO_SPRITE", `${structureId} edge ${x}, ${y} ${side} blocks movement/LOS but has no sprite.`);
+      if (type === "wall" && edgeHeight <= 0) addWarning(result, "STRUCTURE_WALL_OPEN_HEIGHT", `${structureId} wall edge ${x}, ${y} ${side} has edgeHeight 0.`);
+      if (type === "door" && edgeHeight > 0) addWarning(result, "STRUCTURE_DOOR_BLOCKING", `${structureId} door edge ${x}, ${y} ${side} has positive edgeHeight.`);
+    }
+  }
 }
 
-function validateMissionShell(validation, map, mission, { requireMissionReady }) {
-  const missionId = String(mission?.id ?? `${map?.id ?? "new_map"}_mission`).trim();
-  const missionName = String(mission?.name ?? `${map?.name ?? "New Map"} Mission`).trim();
-  if (!missionId) addError(validation, "MISSION_ID_MISSING", "Mission id is missing.");
-  if (!missionName) addWarning(validation, "MISSION_NAME_MISSING", "Mission name is missing.");
+function validateMissionShell(result, map, mission) {
+  if (!mission?.id) addWarning(result, "MISSION_ID_DEFAULT", "Mission id is currently generated from the map id. Mission Package authoring should set it later.");
+  if (!mission?.briefing?.text || mission?.briefing?.text === DEFAULT_BRIEFING_TEXT) {
+    addWarning(result, "MISSION_PLACEHOLDER_BRIEFING", "Mission briefing text is still placeholder/default text.");
+  }
 
   const objectives = Array.isArray(mission?.objectives) ? mission.objectives : [];
   if (!objectives.length) {
-    if (requireMissionReady) addWarning(validation, "MISSION_DEFAULT_OBJECTIVE", "No authored objectives yet. Export will use default defeat_all until Objectives V1 is built.");
-  }
-
-  const briefingText = String(mission?.briefing?.text ?? "").trim();
-  if (!briefingText || briefingText === PLACEHOLDER_BRIEFING_TEXT) {
-    addWarning(validation, "MISSION_PLACEHOLDER_BRIEFING", "Mission briefing text is still placeholder/default text.");
+    addWarning(result, "MISSION_DEFAULT_OBJECTIVE", "No authored objectives yet. Export will use default defeat_all until Objectives V1 is built.");
   }
 }
 
-function trackInstanceId(validation, seen, id, label) {
-  const clean = String(id ?? "").trim();
-  if (!clean) return;
-  if (seen.has(clean)) {
-    addError(validation, "INSTANCE_ID_DUPLICATE", `${label} duplicates instance id ${clean}; first used by ${seen.get(clean)}.`);
+function validateSpawnReference(result, map, spawnId, label) {
+  const cleanId = cleanString(spawnId);
+  if (!cleanId) return;
+  const parsed = parseSpawnId(cleanId);
+  if (!parsed || !SPAWN_TEAMS.includes(parsed.team) || !Number.isInteger(parsed.index)) {
+    addError(result, "SPAWN_REF_BAD_FORMAT", `${label} "${cleanId}" is not a valid spawn id.`);
     return;
   }
-  seen.set(clean, label);
-}
-
-function getSpawnById(map, spawnId) {
-  const parsed = parseSpawnId(spawnId);
-  if (!parsed) return null;
   const list = map?.spawns?.[parsed.team];
-  return Array.isArray(list) ? list[parsed.index] ?? null : null;
+  const spawn = Array.isArray(list) ? list[parsed.index] : null;
+  if (!spawn) addError(result, "SPAWN_REF_MISSING", `${label} references missing spawn "${cleanId}".`);
 }
 
-function parseSpawnId(spawnId) {
-  const match = String(spawnId ?? "").trim().match(/^(player|enemy|neutral)_(\d+)$/i);
-  if (!match) return null;
-  return {
-    team: match[1].toLowerCase(),
-    index: Number(match[2]) - 1
-  };
+function addUniqueInstance(result, instanceIds, value, label) {
+  const clean = cleanString(value);
+  if (!clean) return;
+  if (instanceIds.has(clean)) addError(result, "DEPLOYMENT_DUPLICATE_INSTANCE_ID", `${label} duplicates instance id "${clean}".`);
+  instanceIds.add(clean);
 }
 
-function countValidMechDeploymentCenters(map, cells) {
-  const set = new Set(cells.map((cell) => `${Number(cell?.x)},${Number(cell?.y)}`));
-  let count = 0;
-
-  for (const cell of cells) {
-    const cx = Number(cell?.x);
-    const cy = Number(cell?.y);
-    let fits = true;
-    for (let dy = -1; dy <= 1; dy += 1) {
-      for (let dx = -1; dx <= 1; dx += 1) {
-        const x = cx + dx;
-        const y = cy + dy;
-        if (!isInsideMap(map, x, y) || !set.has(`${x},${y}`)) fits = false;
-      }
+function canFitMechAt(map, centerX, centerY, width, height) {
+  const cx = Number(centerX);
+  const cy = Number(centerY);
+  if (!Number.isInteger(cx) || !Number.isInteger(cy)) return false;
+  for (let y = cy - 1; y <= cy + 1; y += 1) {
+    for (let x = cx - 1; x <= cx + 1; x += 1) {
+      if (x < 0 || y < 0 || x >= width || y >= height) return false;
+      if (!getTile(map, x, y)) return false;
     }
-    if (fits) count += 1;
   }
-
-  return count;
+  return true;
 }
 
-function isInsideMap(map, x, y) {
-  const width = Number(getMapWidth(map));
-  const height = Number(getMapHeight(map));
-  return Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < width && y < height;
+function getContentIds(values) {
+  return Array.isArray(values) ? values.map((value) => cleanString(value?.id ?? value)).filter(Boolean) : [];
+}
+
+function inferTeamFromSpawnId(spawnId) {
+  const parsed = parseSpawnId(cleanString(spawnId));
+  return parsed?.team ?? null;
+}
+
+function addSummaryInfo(result) {
+  if (result.errors.length > 0) {
+    addInfo(result, "VALIDATION_BLOCKING_ERRORS", "Export and Test Mission are blocked until errors are fixed. Warnings can wait.");
+  } else if (result.warnings.length > 0) {
+    addInfo(result, "VALIDATION_WARNINGS_ONLY", "Validation found warnings only. Export is allowed, but warnings should be cleaned up before content lock.");
+  } else {
+    addInfo(result, "VALIDATION_CLEAN", "Validation found no errors or warnings.");
+  }
 }
 
 function createValidationResult() {
-  return { errors: [], warnings: [], info: [] };
+  return {
+    errors: [],
+    warnings: [],
+    info: [],
+    checkedAt: new Date().toISOString()
+  };
 }
 
-function addError(validation, code, message) {
-  validation.errors.push({ severity: "error", code, message });
+function commitValidation(builderState, result) {
+  if (builderState) builderState.validation = result;
+  return result;
 }
 
-function addWarning(validation, code, message) {
-  validation.warnings.push({ severity: "warning", code, message });
+function addError(result, code, message) {
+  result.errors.push({ level: "error", code, message });
 }
 
-function addInfo(validation, code, message) {
-  validation.info.push({ severity: "info", code, message });
+function addWarning(result, code, message) {
+  result.warnings.push({ level: "warning", code, message });
+}
+
+function addInfo(result, code, message) {
+  result.info.push({ level: "info", code, message });
+}
+
+function cleanString(value) {
+  return String(value ?? "").trim();
 }

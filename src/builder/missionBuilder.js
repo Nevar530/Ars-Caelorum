@@ -18,8 +18,8 @@ import {
 } from "./builderState.js";
 import { createBlankBuilderMap, readBlankMapForm } from "./builderMapFactory.js";
 import { exportBuilderMissionPackage } from "./builderExport.js";
-import { hasValidationErrors, runBuilderValidation, summarizeValidation } from "./builderValidation.js";
 import { startBuilderRuntimeTest } from "./builderRuntimeTest.js";
+import { hasBlockingValidationErrors, validateBuilderPackage } from "./builderValidation.js";
 import {
   applyTerrainToolAtTile,
   isTerrainEyedropperActive,
@@ -581,17 +581,17 @@ class MissionBuilder {
     }
 
     if (action === "validate") {
-      const validation = runBuilderValidation(this.builderState, this.appState);
-      pushBuilderLog(this.builderState, "Validation complete: " + summarizeValidation(validation) + ".");
+      const validation = this.runValidation();
+      pushBuilderLog(this.builderState, `Validation complete: ${validation.errors.length} errors, ${validation.warnings.length} warnings.`);
       this.render();
       return;
     }
 
     if (action === "test") {
-      const validation = runBuilderValidation(this.builderState, this.appState);
-      if (hasValidationErrors(validation)) {
-        pushBuilderLog(this.builderState, "Test Mission blocked: " + summarizeValidation(validation) + ". Open Validate for details.");
+      const validation = this.runValidation();
+      if (hasBlockingValidationErrors(validation)) {
         setBuilderTab(this.builderState, "validate");
+        pushBuilderLog(this.builderState, `Test Mission blocked: ${validation.errors.length} validation error(s).`);
         this.render();
         return;
       }
@@ -607,10 +607,10 @@ class MissionBuilder {
     }
 
     if (action === "export") {
-      const validation = runBuilderValidation(this.builderState, this.appState);
-      if (hasValidationErrors(validation)) {
-        pushBuilderLog(this.builderState, "Export blocked: " + summarizeValidation(validation) + ". Open Validate for details.");
+      const validation = this.runValidation();
+      if (hasBlockingValidationErrors(validation)) {
         setBuilderTab(this.builderState, "validate");
+        pushBuilderLog(this.builderState, `Export blocked: ${validation.errors.length} validation error(s).`);
         this.render();
         return;
       }
@@ -622,6 +622,10 @@ class MissionBuilder {
       pushBuilderLog(this.builderState, result.message);
       this.render();
     }
+  }
+
+  runValidation() {
+    return validateBuilderPackage(this.builderState, this.appState);
   }
 
   toggle(force = null) {
