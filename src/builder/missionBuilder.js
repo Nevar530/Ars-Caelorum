@@ -18,6 +18,7 @@ import {
 } from "./builderState.js";
 import { createBlankBuilderMap, readBlankMapForm } from "./builderMapFactory.js";
 import { exportBuilderMissionPackage } from "./builderExport.js";
+import { hasValidationErrors, runBuilderValidation, summarizeValidation } from "./builderValidation.js";
 import { startBuilderRuntimeTest } from "./builderRuntimeTest.js";
 import {
   applyTerrainToolAtTile,
@@ -580,12 +581,21 @@ class MissionBuilder {
     }
 
     if (action === "validate") {
-      pushBuilderLog(this.builderState, "Validation placeholder active. Real validators come after authoring/export wiring.");
+      const validation = runBuilderValidation(this.builderState, this.appState);
+      pushBuilderLog(this.builderState, "Validation complete: " + summarizeValidation(validation) + ".");
       this.render();
       return;
     }
 
     if (action === "test") {
+      const validation = runBuilderValidation(this.builderState, this.appState);
+      if (hasValidationErrors(validation)) {
+        pushBuilderLog(this.builderState, "Test Mission blocked: " + summarizeValidation(validation) + ". Open Validate for details.");
+        setBuilderTab(this.builderState, "validate");
+        this.render();
+        return;
+      }
+
       const result = startBuilderRuntimeTest({
         builderState: this.builderState,
         appState: this.appState,
@@ -597,6 +607,14 @@ class MissionBuilder {
     }
 
     if (action === "export") {
+      const validation = runBuilderValidation(this.builderState, this.appState);
+      if (hasValidationErrors(validation)) {
+        pushBuilderLog(this.builderState, "Export blocked: " + summarizeValidation(validation) + ". Open Validate for details.");
+        setBuilderTab(this.builderState, "validate");
+        this.render();
+        return;
+      }
+
       const result = exportBuilderMissionPackage({
         builderState: this.builderState,
         appState: this.appState

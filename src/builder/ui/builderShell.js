@@ -348,7 +348,11 @@ function renderInspector({ builderState, refs, appState }) {
   if (!isBuilderWorkspaceMap(builderState)) {
     const shellScreen = appState?.ui?.shell?.screen ?? "unknown";
     const modeLabel = isBuilderNewMapForm(builderState) ? "New Blank Map Setup" : "Menu / Package Start";
+    const validationTools = builderState.activeTab === "validate" || builderState.activeTab === "export"
+      ? renderValidationInspector(builderState)
+      : "";
     refs.inspector.innerHTML = `
+      ${validationTools}
       <div class="builder-inspector-card">
         <div class="builder-field-label">Selected</div>
         <div class="builder-field-value">${escapeHtml(builderState.selected?.label ?? "New / Load")}</div>
@@ -386,6 +390,9 @@ function renderInspector({ builderState, refs, appState }) {
   const unitTools = builderState.activeTab === "units"
     ? renderUnitInspectorTools(builderState, appState)
     : "";
+  const validationTools = builderState.activeTab === "validate" || builderState.activeTab === "export"
+    ? renderValidationInspector(builderState)
+    : "";
   const note = builderState.workspaceMode === "builder-map"
     ? "Builder-owned map. Terrain paints tile truth. Structures paint cells/edges. Spawns paints map.spawns and deployment cells. Units writes startState.deployments."
     : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
@@ -399,6 +406,7 @@ function renderInspector({ builderState, refs, appState }) {
     ${structureTools}
     ${spawnTools}
     ${unitTools}
+    ${validationTools}
     ${selectedTruth}
     <div class="builder-inspector-card">
       <div class="builder-field-label">Map Source</div>
@@ -775,6 +783,37 @@ function buildNumberOptions(min, max, selectedValue, labeler = (value) => value)
   return options.join("");
 }
 
+function renderValidationInspector(builderState) {
+  const validation = builderState.validation ?? { errors: [], warnings: [], info: [] };
+  const errors = Array.isArray(validation.errors) ? validation.errors : [];
+  const warnings = Array.isArray(validation.warnings) ? validation.warnings : [];
+  const info = Array.isArray(validation.info) ? validation.info : [];
+  const checked = builderState.lastValidationAt ? new Date(builderState.lastValidationAt).toLocaleTimeString() : "not run yet";
+  const errorList = renderValidationIssueList(errors, "Errors", "No errors.");
+  const warningList = renderValidationIssueList(warnings, "Warnings", "No warnings.");
+  const infoList = renderValidationIssueList(info, "Info", "No info.");
+
+  return `
+    <div class="builder-inspector-card builder-validation-card">
+      <div class="builder-field-label">Validation V1</div>
+      <div class="builder-field-value">${escapeHtml(errors.length)} errors · ${escapeHtml(warnings.length)} warnings</div>
+      <div class="builder-inspector-note">Last check: ${escapeHtml(checked)}. Export and Test Mission run validation first and block on errors. Warnings are allowed for now.</div>
+    </div>
+    ${errorList}
+    ${warningList}
+    ${infoList}
+  `;
+}
+
+function renderValidationIssueList(issues, title, emptyText) {
+  const list = Array.isArray(issues) ? issues : [];
+  const items = list.length
+    ? list.map((issue) => '<li><strong>' + escapeHtml(issue.code ?? issue.severity ?? "issue") + '</strong><span>' + escapeHtml(issue.message ?? "") + '</span></li>').join("")
+    : '<li><span>' + escapeHtml(emptyText) + '</span></li>';
+
+  return '<div class="builder-inspector-card builder-validation-issues"><div class="builder-field-label">' + escapeHtml(title) + '</div><ul>' + items + '</ul></div>';
+}
+
 function renderSelectionSummary({ builderState, refs }) {
   if (!refs.selectionSummary) return;
   refs.selectionSummary.textContent = getBuilderSelectionSummary(builderState);
@@ -783,7 +822,8 @@ function renderSelectionSummary({ builderState, refs }) {
 function renderValidation({ builderState, refs }) {
   const errors = builderState.validation?.errors?.length ?? 0;
   const warnings = builderState.validation?.warnings?.length ?? 0;
-  refs.validation.textContent = `${errors} errors · ${warnings} warnings`;
+  const stale = builderState.lastValidationAt ? "" : " · not run";
+  refs.validation.textContent = `${errors} errors · ${warnings} warnings${stale}`;
 }
 
 function renderLog({ builderState, refs }) {

@@ -89,14 +89,12 @@ export function addUnitStartAssignment(builderState, appState = null) {
   const tool = ensureUnitToolSettings(builderState, appState);
   const startState = ensureStartState(map);
   const deployments = Array.isArray(startState.deployments) ? startState.deployments : [];
-  const index = deployments.length + 1;
   const isEmptyMech = tool.startType === "emptyMech";
   const hasMech = Boolean(tool.mechDefinitionId);
   const inferred = inferTeamControlFromTool(builderState, tool);
   const team = inferred.team;
   const controlType = inferred.controlType;
-  const existingInstanceIds = collectExistingInstanceIds(deployments);
-  const prefix = tool.instancePrefix || getNextAutoInstancePrefix(deployments, team);
+  const prefix = makeUniqueInstancePrefix(deployments, tool.instancePrefix || makeNextAutoInstancePrefix(deployments, team));
   const deploymentMode = startState.startMode === "deployment";
   const isPlayerDeploymentRoster = deploymentMode && team === "player" && controlType === "PC" && !isEmptyMech;
 
@@ -113,7 +111,7 @@ export function addUnitStartAssignment(builderState, appState = null) {
       pilotInstanceId: "",
       pilotSpawnId: "",
       mechDefinitionId: tool.mechDefinitionId,
-      mechInstanceId: makeUniqueInstanceId(`${prefix}-mech`, existingInstanceIds),
+      mechInstanceId: `${prefix}-mech`,
       mechSpawnId: tool.mechSpawnId,
       team,
       controlType,
@@ -146,16 +144,12 @@ export function addUnitStartAssignment(builderState, appState = null) {
     return { ok: false, message: "Fixed pilot starts need a Pilot Spawn ID. Player deployment roster entries may leave spawn blank." };
   }
 
-  const pilotInstanceId = makeUniqueInstanceId(`${prefix}-pilot`, existingInstanceIds);
-  if (pilotInstanceId) existingInstanceIds.add(pilotInstanceId);
-  const mechInstanceId = hasMech ? makeUniqueInstanceId(`${prefix}-mech`, existingInstanceIds) : "";
-
   const next = {
     pilotDefinitionId: tool.pilotDefinitionId,
-    pilotInstanceId,
+    pilotInstanceId: `${prefix}-pilot`,
     pilotSpawnId,
     mechDefinitionId: hasMech ? tool.mechDefinitionId : "",
-    mechInstanceId,
+    mechInstanceId: hasMech ? `${prefix}-mech` : "",
     mechSpawnId,
     team,
     controlType,
@@ -294,42 +288,39 @@ function getEditableBuilderMap(builderState) {
   return builderState?.authoring?.map ?? null;
 }
 
-
-function collectExistingInstanceIds(deployments) {
-  const ids = new Set();
-  for (const deployment of Array.isArray(deployments) ? deployments : []) {
-    const pilotId = String(deployment?.pilotInstanceId ?? "").trim();
-    const mechId = String(deployment?.mechInstanceId ?? "").trim();
-    if (pilotId) ids.add(pilotId);
-    if (mechId) ids.add(mechId);
-  }
-  return ids;
-}
-
-function getNextAutoInstancePrefix(deployments, team) {
-  const ids = collectExistingInstanceIds(deployments);
-  const cleanTeam = SPAWN_TEAMS.includes(team) ? team : "player";
+function makeNextAutoInstancePrefix(deployments, team) {
+  const cleanTeam = sanitizeInstancePrefix(team) || "unit";
+  const used = collectInstanceIds(deployments);
   let index = 1;
 
-  while (ids.has(`${cleanTeam}-${index}-pilot`) || ids.has(`${cleanTeam}-${index}-mech`)) {
+  while (used.has(`${cleanTeam}-${index}-pilot`) || used.has(`${cleanTeam}-${index}-mech`)) {
     index += 1;
   }
 
   return `${cleanTeam}-${index}`;
 }
 
-function makeUniqueInstanceId(baseId, existingIds) {
-  const cleanBase = sanitizeInstancePrefix(baseId);
-  if (!cleanBase) return "";
-  if (!existingIds.has(cleanBase)) return cleanBase;
+function makeUniqueInstancePrefix(deployments, prefix) {
+  const base = sanitizeInstancePrefix(prefix) || "unit";
+  const used = collectInstanceIds(deployments);
+  let suffix = 1;
+  let candidate = base;
 
-  let index = 2;
-  let candidate = `${cleanBase}-${index}`;
-  while (existingIds.has(candidate)) {
-    index += 1;
-    candidate = `${cleanBase}-${index}`;
+  while (used.has(`${candidate}-pilot`) || used.has(`${candidate}-mech`)) {
+    suffix += 1;
+    candidate = `${base}-${suffix}`;
   }
+
   return candidate;
+}
+
+function collectInstanceIds(deployments) {
+  const used = new Set();
+  for (const entry of Array.isArray(deployments) ? deployments : []) {
+    if (entry?.pilotInstanceId) used.add(String(entry.pilotInstanceId));
+    if (entry?.mechInstanceId) used.add(String(entry.mechInstanceId));
+  }
+  return used;
 }
 
 function sanitizeInstancePrefix(value) {
