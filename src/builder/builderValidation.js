@@ -241,7 +241,7 @@ function validateMissionShell(result, map, mission) {
 
   const objectives = Array.isArray(mission?.objectives) ? mission.objectives : [];
   if (!objectives.length) {
-    addWarning(result, "MISSION_NO_OBJECTIVES", "No authored objectives yet. Export will use default defeat_all. Add Objectives V1 data before content lock.");
+    addError(result, "MISSION_NO_OBJECTIVES", "No authored objectives exist. Add an objective before Test Mission or Export.");
     return;
   }
 

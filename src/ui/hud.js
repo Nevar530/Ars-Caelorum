@@ -7,6 +7,7 @@ import { getLineOfSightResult } from "../los.js";
 import { getActiveActor, getActiveBody, getEmbarkedPilotForMech } from "../actors/actorResolver.js";
 import { getDeploymentAvailableRoster, getDeploymentPlacedUnitAt, getDeploymentPlacementCount, getDeploymentReady, isDeploymentActive, isDeploymentMenuFocused } from "../deployment/deploymentState.js";
 import { getCurrentDialogueLine } from "../mission/missionState.js";
+import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
 
 /* =========================
    INPUT
@@ -389,6 +390,29 @@ function renderTurnSummary(state) {
           `;
         }).join("")}
       </div>
+    </div>
+
+    ${renderObjectiveSummary(state)}
+  `;
+}
+
+function renderObjectiveSummary(state) {
+  const objectives = getMissionObjectiveStatus(state);
+  if (!objectives.length) return "";
+
+  return `
+    <div class="hud-mini-card" style="margin-bottom:8px;">
+      <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Objectives</div>
+      ${objectives.map((objective) => {
+        const done = objective.completed;
+        const progress = objective.required > 1 ? ` ${objective.progress}/${objective.required}` : "";
+        return `
+          <div style="display:flex; justify-content:space-between; gap:8px; font-size:11px; margin-top:4px; opacity:${done ? .65 : 1};">
+            <span>${done ? "✓" : "□"} ${escapeHtml(objective.label)}</span>
+            <span>${escapeHtml(progress.trim())}</span>
+          </div>
+        `;
+      }).join("")}
     </div>
   `;
 }

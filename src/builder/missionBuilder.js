@@ -278,7 +278,7 @@ class MissionBuilder {
     }
 
     if (this.builderState.activeTab === "objectives") {
-      updateObjectiveToolFromFields(this.builderState, this.refs.root);
+      updateObjectiveToolFromFields(this.builderState, this.refs.root, { changedField: event.target.getAttribute("data-builder-field") });
       this.render();
     }
   }

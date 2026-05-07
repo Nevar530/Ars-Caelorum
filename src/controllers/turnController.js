@@ -2,6 +2,7 @@ import { getCommandMenuItemsForPhase } from "../action.js";
 import { getActiveUnitFromPhaseOrder, rebuildRoundOrder } from "../initiative.js";
 import { getActiveBody, getPilotActorById } from "../actors/actorResolver.js";
 import { cloneMapDefinition } from "../map.js";
+import { evaluateMissionResult } from "../mission/missionState.js";
 
 export function createTurnController({
   state,
@@ -12,8 +13,23 @@ export function createTurnController({
   logDev,
   showSplash,
   clearCombatTextMarkers,
-  onTurnReady = null
+  onTurnReady = null,
+  onMissionResult = null
 }) {
+
+  function resolveMissionResult(options = {}) {
+    const result = evaluateMissionResult(state, options);
+    if (!result) return false;
+
+    if (typeof onMissionResult === "function") {
+      onMissionResult(result);
+      return true;
+    }
+
+    state.mission.result = result;
+    return true;
+  }
+
   function getNextEligiblePhaseIndex(order, startIndex) {
     if (!Array.isArray(order)) return -1;
 
@@ -88,6 +104,9 @@ export function createTurnController({
 
   function endRoundAndBeginNext() {
     clearCombatTextMarkers(state);
+
+    if (resolveMissionResult({ timing: "round_end" })) return;
+
     state.turn.round += 1;
     state.turn.phase = "move";
 
@@ -111,6 +130,8 @@ export function createTurnController({
       activeActor.hasMoved = true;
     }
 
+    if (resolveMissionResult({ timing: "after_move" })) return;
+
     state.turn.moveIndex = getNextEligiblePhaseIndex(
       state.turn.moveOrder,
       state.turn.moveIndex + 1
@@ -131,6 +152,8 @@ export function createTurnController({
     if (activeActor) {
       activeActor.hasActed = true;
     }
+
+    if (resolveMissionResult({ timing: "after_action" })) return;
 
     state.turn.actionIndex = getNextEligiblePhaseIndex(
       state.turn.actionOrder,

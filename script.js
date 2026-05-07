@@ -105,7 +105,8 @@ async function init() {
     logDev,
     showSplash: gameController.showSplash,
     clearCombatTextMarkers,
-    onTurnReady: () => cpuTurnController?.scheduleForCurrentTurn()
+    onTurnReady: () => cpuTurnController?.scheduleForCurrentTurn(),
+    onMissionResult: gameController.endMission
   });
 
   const movementController = createMovementController({

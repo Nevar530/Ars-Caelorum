@@ -1,3 +1,5 @@
+import { evaluateObjectiveMissionResult, resetObjectiveRuntimeState } from "./missionObjectives.js";
+
 export function getMissionState(state) {
   if (!state.mission) {
     state.mission = {
@@ -14,11 +16,13 @@ export function setActiveMissionDefinition(state, missionDefinition = null) {
   const mission = getMissionState(state);
   mission.definition = missionDefinition ?? null;
   mission.result = null;
+  resetObjectiveRuntimeState(state);
 }
 
 export function clearMissionResult(state) {
   const mission = getMissionState(state);
   mission.result = null;
+  resetObjectiveRuntimeState(state);
 }
 
 export function getMissionResultCopy(state, result) {
@@ -118,25 +122,8 @@ function isPilotOutOfPlay(pilot) {
   return Number(pilot.core ?? 0) <= 0;
 }
 
-export function evaluateMissionResult(state) {
-  const mission = getMissionState(state);
-  if (mission.result) return mission.result;
-
-  const pilots = getPilotActors(state);
-  const playerPilots = pilots.filter((pilot) => pilot.team !== "enemy");
-  const enemyPilots = pilots.filter((pilot) => pilot.team === "enemy");
-
-  if (playerPilots.length > 0 && playerPilots.every(isPilotOutOfPlay)) {
-    mission.result = "defeat";
-    return mission.result;
-  }
-
-  if (enemyPilots.length > 0 && enemyPilots.every(isPilotOutOfPlay)) {
-    mission.result = "victory";
-    return mission.result;
-  }
-
-  return null;
+export function evaluateMissionResult(state, options = {}) {
+  return evaluateObjectiveMissionResult(state, options);
 }
 
 function defaultResultTitle(result) {

@@ -116,14 +116,7 @@ export function buildMissionDefinitionForExport(mapDefinition, mission = null) {
       text: mission?.briefing?.text ?? "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.",
       objectives: mission?.briefing?.objectives ?? ["Defeat all enemy pilots."]
     },
-    objectives: mission?.objectives ?? [
-      {
-        id: "defeat_enemies",
-        type: "defeat_all",
-        targetTeam: "enemy",
-        label: "Defeat all enemy pilots"
-      }
-    ],
+    objectives: normalizeMissionObjectives(mission?.objectives),
     dialogue: mission?.dialogue ?? {
       intro: {
         lines: [
@@ -188,6 +181,20 @@ export function buildUpdatedMissionList(existingCatalog, missionDefinition) {
     defaultMissionId: catalog.defaultMissionId ?? missions[0]?.id ?? missionDefinition.id,
     missions: upsertCatalogEntry(missions, entry)
   };
+}
+
+function normalizeMissionObjectives(objectives) {
+  if (Array.isArray(objectives) && objectives.length) return cloneJson(objectives);
+
+  return [
+    {
+      id: "defeat_enemies",
+      type: "defeat_all",
+      targetTeam: "enemy",
+      label: "Defeat all enemy pilots",
+      briefingText: "Defeat all enemy pilots."
+    }
+  ];
 }
 
 function buildPackageManifest({ mapDefinition, missionDefinition, mapList, missionList }) {

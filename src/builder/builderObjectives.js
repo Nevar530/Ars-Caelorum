@@ -20,8 +20,8 @@ function createDefaultObjectiveTool() {
   return {
     type: "defeat_all",
     id: "",
-    label: "Defeat all enemy units",
-    briefingText: "Defeat all enemy units",
+    label: getDefaultObjectiveLabel("defeat_all", "enemy", 3),
+    briefingText: getDefaultObjectiveBriefingText("defeat_all", "enemy", 3),
     team: "player",
     targetTeam: "enemy",
     roundsRequired: 3,
@@ -40,8 +40,8 @@ export function ensureObjectiveToolSettings(builderState) {
   const tool = builderState.objectiveTool;
   if (!OBJECTIVE_TYPE_SET.has(tool.type)) tool.type = "defeat_all";
   if (!tool.id) tool.id = "";
-  if (!tool.label) tool.label = getDefaultObjectiveLabel(tool.type, tool.targetTeam);
-  if (!tool.briefingText) tool.briefingText = tool.label;
+  if (!tool.label) tool.label = getDefaultObjectiveLabel(tool.type, tool.targetTeam, tool.roundsRequired);
+  if (!tool.briefingText) tool.briefingText = getDefaultObjectiveBriefingText(tool.type, tool.targetTeam, tool.roundsRequired);
   if (!tool.team) tool.team = "player";
   if (!tool.targetTeam) tool.targetTeam = "enemy";
   if (!Number.isInteger(Number(tool.roundsRequired)) || Number(tool.roundsRequired) < 1) tool.roundsRequired = 3;
@@ -51,21 +51,48 @@ export function ensureObjectiveToolSettings(builderState) {
   return tool;
 }
 
-export function updateObjectiveToolFromFields(builderState, root) {
+export function updateObjectiveToolFromFields(builderState, root, options = {}) {
   const tool = ensureObjectiveToolSettings(builderState);
   if (!tool || !root) return tool;
 
-  tool.type = readField(root, "objective-type", tool.type);
-  if (!OBJECTIVE_TYPE_SET.has(tool.type)) tool.type = "defeat_all";
+  const previous = {
+    type: tool.type ?? "defeat_all",
+    targetTeam: tool.targetTeam ?? "enemy",
+    team: tool.team ?? "player",
+    roundsRequired: Math.max(1, Math.floor(Number(tool.roundsRequired ?? 3) || 3)),
+    label: tool.label ?? "",
+    briefingText: tool.briefingText ?? ""
+  };
+
+  const changedField = options?.changedField ?? null;
+  const incomingType = readField(root, "objective-type", tool.type);
+  tool.type = OBJECTIVE_TYPE_SET.has(incomingType) ? incomingType : "defeat_all";
   tool.id = sanitizeId(readField(root, "objective-id", tool.id));
-  tool.label = readField(root, "objective-label", tool.label).trim();
-  tool.briefingText = readField(root, "objective-briefing-text", tool.briefingText).trim();
   tool.team = readField(root, "objective-team", tool.team).trim() || "player";
   tool.targetTeam = readField(root, "objective-target-team", tool.targetTeam).trim() || "enemy";
   tool.roundsRequired = Math.max(1, Math.floor(Number(readField(root, "objective-rounds", tool.roundsRequired)) || 1));
 
-  if (!tool.label) tool.label = getDefaultObjectiveLabel(tool.type, tool.targetTeam);
-  if (!tool.briefingText) tool.briefingText = tool.label;
+  const incomingLabel = readField(root, "objective-label", tool.label).trim();
+  const incomingBriefing = readField(root, "objective-briefing-text", tool.briefingText).trim();
+  const previousDefaults = getObjectiveDefaults(previous.type, previous.targetTeam, previous.roundsRequired);
+  const nextDefaults = getObjectiveDefaults(tool.type, tool.targetTeam, tool.roundsRequired);
+
+  const defaultDrivingFieldChanged = [
+    "objective-type",
+    "objective-target-team",
+    "objective-rounds"
+  ].includes(changedField);
+
+  const labelWasDefault = !incomingLabel || incomingLabel === previousDefaults.label;
+  const briefingWasDefault = !incomingBriefing || incomingBriefing === previousDefaults.briefingText;
+
+  tool.label = defaultDrivingFieldChanged && labelWasDefault
+    ? nextDefaults.label
+    : incomingLabel || nextDefaults.label;
+
+  tool.briefingText = defaultDrivingFieldChanged && briefingWasDefault
+    ? nextDefaults.briefingText
+    : incomingBriefing || nextDefaults.briefingText;
 
   return tool;
 }
@@ -307,14 +334,34 @@ function createUniqueObjectiveId(baseId, objectives) {
   return `${base}_${index}`;
 }
 
-function getDefaultObjectiveLabel(type, targetTeam = "enemy") {
+function getObjectiveDefaults(type, targetTeam = "enemy", roundsRequired = 3) {
+  return {
+    label: getDefaultObjectiveLabel(type, targetTeam, roundsRequired),
+    briefingText: getDefaultObjectiveBriefingText(type, targetTeam, roundsRequired)
+  };
+}
+
+function getDefaultObjectiveLabel(type, targetTeam = "enemy", roundsRequired = 3) {
+  const rounds = Math.max(1, Math.floor(Number(roundsRequired) || 3));
   switch (type) {
-    case "reach_zone": return "Reach the marked zone";
-    case "hold_zone": return "Hold the marked zone";
-    case "survive_rounds": return "Survive for the required rounds";
+    case "reach_zone": return "Reach extraction zone";
+    case "hold_zone": return `Hold zone for ${rounds} rounds`;
+    case "survive_rounds": return `Survive ${rounds} rounds`;
     case "defeat_all":
     default:
       return `Defeat all ${targetTeam || "enemy"} units`;
+  }
+}
+
+function getDefaultObjectiveBriefingText(type, targetTeam = "enemy", roundsRequired = 3) {
+  const rounds = Math.max(1, Math.floor(Number(roundsRequired) || 3));
+  switch (type) {
+    case "reach_zone": return "Move a player unit into the marked zone.";
+    case "hold_zone": return `Hold the marked zone for ${rounds} rounds.`;
+    case "survive_rounds": return `Survive for ${rounds} rounds.`;
+    case "defeat_all":
+    default:
+      return `Defeat all ${targetTeam || "enemy"} units.`;
   }
 }
 
