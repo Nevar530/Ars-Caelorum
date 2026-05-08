@@ -517,7 +517,7 @@ function renderPackageInspectorTools(builderState, appState) {
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="add-package-map"${editable ? "" : " disabled"}>New Map</button>
         <button type="button" class="builder-tool-button" data-builder-action="duplicate-package-map"${editable ? "" : " disabled"}>Duplicate Active</button>
-        <button type="button" class="builder-tool-button" data-builder-action="delete-package-map"${editable && summary.maps.length > 1 ? "" : " disabled"}>Remove From Mission</button>
+        
       </div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Load Existing Map</span>
@@ -620,6 +620,7 @@ function renderResultsInspectorTools(builderState) {
 function renderMissionMapList(summary) {
   const maps = Array.isArray(summary?.maps) ? summary.maps : [];
   if (!maps.length) return "";
+  const canRemove = maps.length > 1;
 
   return `
     <div class="builder-inspector-card builder-mission-map-list-card">
@@ -627,7 +628,15 @@ function renderMissionMapList(summary) {
       ${maps.map((map) => {
         const active = map.id === summary.activeMapId ? " · ACTIVE" : "";
         const start = map.id === summary.startMapId ? " · START" : "";
-        return `<div class="builder-field-value">${escapeHtml(map.phaseIndex ?? "")}. ${escapeHtml(map.name)}${escapeHtml(active)}${escapeHtml(start)}</div><div class="builder-inspector-note">${escapeHtml(map.id)} · ${escapeHtml(map.objectiveCount)} objective(s)</div>`;
+        const removeDisabled = canRemove ? "" : " disabled";
+        const removeTitle = canRemove ? "Remove this map from the mission" : "Mission package must keep at least one map";
+        return `
+          <div class="builder-tool-row">
+            <div class="builder-field-value">${escapeHtml(map.phaseIndex ?? "")}. ${escapeHtml(map.name)}${escapeHtml(active)}${escapeHtml(start)}</div>
+            <button type="button" class="builder-tool-button" data-builder-action="remove-package-map:${escapeHtml(map.id)}" title="${escapeHtml(removeTitle)}" aria-label="Remove ${escapeHtml(map.name)} from mission"${removeDisabled}>✕</button>
+          </div>
+          <div class="builder-inspector-note">${escapeHtml(map.id)} · ${escapeHtml(map.objectiveCount)} objective(s)</div>
+        `;
       }).join("")}
     </div>
   `;

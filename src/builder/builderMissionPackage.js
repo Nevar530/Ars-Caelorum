@@ -297,18 +297,44 @@ export function duplicateActiveMissionPackageMap(builderState) {
   return { ok: true, message: `Duplicated active map as ${id}.` };
 }
 
-export function deleteActiveMissionPackageMap(builderState) {
+export function removeMissionPackageMap(builderState, mapId = "") {
   const mission = ensureMissionPackageDraft(builderState);
-  const activeId = builderState?.authoring?.activeMapId ?? builderState?.authoring?.map?.id;
+  const requestedId = sanitizeId(mapId, builderState?.authoring?.activeMapId ?? builderState?.authoring?.map?.id ?? "");
   const maps = getMissionMapDrafts(builderState);
   if (!mission || maps.length <= 1) return { ok: false, message: "Mission package must keep at least one map." };
 
-  const nextMaps = maps.filter((map) => sanitizeId(map?.id, "") !== activeId);
-  const nextActive = nextMaps[0] ?? null;
+  const removeIndex = maps.findIndex((map) => sanitizeId(map?.id, "") === requestedId);
+  if (removeIndex < 0) return { ok: false, message: `Map ${requestedId || "unknown"} was not found in this mission package.` };
+
+  const nextMaps = maps.filter((map) => sanitizeId(map?.id, "") !== requestedId);
+  const fallbackIndex = Math.max(0, Math.min(removeIndex, nextMaps.length - 1));
+  const currentActiveId = sanitizeId(builderState?.authoring?.activeMapId, "");
+  const nextActiveId = currentActiveId === requestedId
+    ? sanitizeId(nextMaps[fallbackIndex]?.id, sanitizeId(nextMaps[0]?.id, ""))
+    : sanitizeId(currentActiveId, sanitizeId(nextMaps[0]?.id, ""));
+
   builderState.authoring.maps = nextMaps;
-  setActiveMissionPackageMap(builderState, nextActive?.id);
+  builderState.authoring.map = null;
+  builderState.authoring.activeMapId = nextActiveId;
+
+  if (mission.startMapId === requestedId) mission.startMapId = nextActiveId;
+  if (mission.activeMapId === requestedId) mission.activeMapId = nextActiveId;
+  if (mission.mapId === requestedId) mission.mapId = mission.startMapId || nextActiveId;
+  mission.mapPath = `./data/maps/${mission.startMapId || nextActiveId}.json`;
+
+  const activateResult = setActiveMissionPackageMap(builderState, nextActiveId);
   builderState.dirty = true;
-  return { ok: true, message: `Removed map ${activeId} from mission package.` };
+
+  if (!activateResult?.ok) {
+    return { ok: false, message: activateResult?.message || `Removed map ${requestedId}, but could not select the next map.` };
+  }
+
+  return { ok: true, message: `Removed map ${requestedId} from mission package.` };
+}
+
+export function deleteActiveMissionPackageMap(builderState) {
+  const activeId = builderState?.authoring?.activeMapId ?? builderState?.authoring?.map?.id;
+  return removeMissionPackageMap(builderState, activeId);
 }
 
 export function setActiveMissionPackageMap(builderState, mapId) {

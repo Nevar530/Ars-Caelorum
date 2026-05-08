@@ -74,6 +74,7 @@ import {
   deleteActiveMissionPackageMap,
   duplicateActiveMissionPackageMap,
   ensureMissionPackageDraft,
+  removeMissionPackageMap,
   readMapSettingsFields,
   readMissionPackageFields,
   setActiveMissionPackageMap
@@ -686,6 +687,16 @@ class MissionBuilder {
     if (action === "duplicate-package-map") {
       readMissionPackageFields(this.builderState, this.refs.root);
       const result = duplicateActiveMissionPackageMap(this.builderState);
+      syncBuilderAuthoredMap(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("remove-package-map:")) {
+      readMissionPackageFields(this.builderState, this.refs.root);
+      const mapId = String(action.split(":").slice(1).join(":") || "");
+      const result = removeMissionPackageMap(this.builderState, mapId);
       syncBuilderAuthoredMap(this.builderState);
       pushBuilderLog(this.builderState, result.message);
       this.render();
