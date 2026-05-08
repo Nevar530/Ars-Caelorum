@@ -606,7 +606,8 @@ class MissionBuilder {
     if (action && typeof action === "string" && action.startsWith("toggle-overlay:")) {
       const overlayId = action.split(":")[1];
       const enabled = toggleBuilderOverlay(this.builderState, overlayId);
-      pushBuilderLog(this.builderState, overlayId + " overlay " + (enabled ? "shown" : "hidden") + ".");
+      const label = overlayId === "structureArt" ? "Structure art" : overlayId + " overlay";
+      pushBuilderLog(this.builderState, label + " " + (enabled ? "shown" : "hidden") + ".");
       this.render();
       return;
     }

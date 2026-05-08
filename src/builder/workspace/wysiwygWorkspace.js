@@ -19,6 +19,10 @@ import {
 } from "../../map.js";
 import { getTerrainBrushPreviewCells } from "../builderTerrain.js";
 import {
+  areBuilderStructuresVisible,
+  shouldShowStructureArtToggle
+} from "../builderState.js";
+import {
   areStructureRoofsVisible,
   getStructureBrushPreviewCells,
   isStructureEraseModeActive
@@ -82,9 +86,13 @@ export function pickWorkspaceEdgeFromEvent({ event, appState, board }) {
 
 function buildPreviewState(appState, options = {}) {
   const previewState = cloneForPreview(appState);
-  if (options.builderState?.activeTab === "structures" && areStructureRoofsVisible(options.builderState) === false) {
+
+  if (shouldHideStructureArtForBuilderPreview(options.builderState)) {
+    hideStructuresForBuilderPreview(previewState);
+  } else if (options.builderState?.activeTab === "structures" && areStructureRoofsVisible(options.builderState) === false) {
     hideStructureRoofsForBuilderPreview(previewState);
   }
+
   const builderFocus = getBuilderFocusTile(options.builderState);
 
   previewState.ui.viewMode = "iso";
@@ -130,6 +138,15 @@ function getBuilderFocusTile(builderState) {
   }
 
   return null;
+}
+
+function shouldHideStructureArtForBuilderPreview(builderState) {
+  return shouldShowStructureArtToggle(builderState) && areBuilderStructuresVisible(builderState) === false;
+}
+
+function hideStructuresForBuilderPreview(previewState) {
+  if (!previewState?.map) return;
+  previewState.map.structures = [];
 }
 
 function hideStructureRoofsForBuilderPreview(previewState) {

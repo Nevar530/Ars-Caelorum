@@ -5,12 +5,14 @@
 
 import {
   BUILDER_TABS,
+  areBuilderStructuresVisible,
   canUseCurrentRuntimeMap,
   getBuilderSelectionSummary,
   getBuilderTab,
   getBuilderWorkspaceAppState,
   isBuilderNewMapForm,
-  isBuilderWorkspaceMap
+  isBuilderWorkspaceMap,
+  shouldShowStructureArtToggle
 } from "../builderState.js";
 import { BUILDER_DEFAULT_TERRAIN_TYPES } from "../builderMapFactory.js";
 import {
@@ -201,17 +203,23 @@ function renderOverlayToggles({ builderState, refs }) {
     return;
   }
 
-  const overlays = [
-    ["structureEdges", "Edges"],
-    ["rooms", "Rooms"],
-    ["spawns", "Spawns"],
-    ["deployment", "Deploy"],
-    ["objectives", "Objectives"],
-    ["tileHeights", "Heights"]
-  ];
+  const toggles = [];
 
-  refs.overlayToggles.innerHTML = overlays.map(([id, label]) => {
-    const active = builderState.overlays?.[id] ? " is-active" : "";
+  if (shouldShowStructureArtToggle(builderState)) {
+    toggles.push(["structureArt", "Structures", areBuilderStructuresVisible(builderState)]);
+  }
+
+  toggles.push(
+    ["structureEdges", "Edges", builderState.overlays?.structureEdges],
+    ["rooms", "Rooms", builderState.overlays?.rooms],
+    ["spawns", "Spawns", builderState.overlays?.spawns],
+    ["deployment", "Deploy", builderState.overlays?.deployment],
+    ["objectives", "Objectives", builderState.overlays?.objectives],
+    ["tileHeights", "Heights", builderState.overlays?.tileHeights]
+  );
+
+  refs.overlayToggles.innerHTML = toggles.map(([id, label, enabled]) => {
+    const active = enabled ? " is-active" : "";
     return '<button type="button" class="builder-overlay-toggle' + active + '" data-builder-action="toggle-overlay:' + id + '">' + label + '</button>';
   }).join("");
 }

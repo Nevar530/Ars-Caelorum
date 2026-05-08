@@ -38,6 +38,7 @@ export function createBuilderState() {
     },
     hover: null,
     overlays: {
+      structureArt: true,
       structureEdges: false,
       rooms: false,
       spawns: true,
@@ -219,6 +220,19 @@ export function isBuilderNewMapForm(builderState) {
 
 export function getBuilderTab(tabId) {
   return BUILDER_TABS.find((tab) => tab.id === tabId) ?? BUILDER_TABS[0];
+}
+
+export function shouldShowStructureArtToggle(builderState) {
+  if (!isBuilderWorkspaceMap(builderState)) return false;
+
+  const activeIndex = BUILDER_TABS.findIndex((tab) => tab.id === builderState?.activeTab);
+  const structuresIndex = BUILDER_TABS.findIndex((tab) => tab.id === "structures");
+
+  return activeIndex > structuresIndex;
+}
+
+export function areBuilderStructuresVisible(builderState) {
+  return builderState?.overlays?.structureArt !== false;
 }
 
 export function setBuilderOpen(builderState, isOpen) {
