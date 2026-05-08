@@ -55,6 +55,7 @@ import {
   getObjectiveTypeOptions,
   objectiveTypeNeedsZone
 } from "../builderObjectives.js";
+import { getBuilderMapCatalogOptions } from "../builderLoadExisting.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 
 export function createBuilderShell() {
@@ -246,6 +247,8 @@ function renderLanding(appState) {
   const canUseCurrent = canUseCurrentRuntimeMap(appState);
   const shellScreen = appState?.ui?.shell?.screen ?? "unknown";
   const mapSummary = getMapSummary(appState);
+  const mapCatalogOptions = buildExistingMapOptions(appState);
+  const hasCatalogMaps = Boolean(mapCatalogOptions);
 
   return `
     <section class="builder-landing-hero">
@@ -263,10 +266,15 @@ function renderLanding(appState) {
         <span>New Blank Map</span>
         <small>Pick size, base terrain fill, and base elevation.</small>
       </button>
-      <button type="button" class="builder-start-card" data-builder-action="load-existing">
-        <span>Load Existing</span>
-        <small>Next flow: load a mission/map package from catalog or imported JSON.</small>
-      </button>
+      <div class="builder-start-card builder-start-card-form">
+        <span>Load Existing Map</span>
+        <small>Clone a reusable catalog map into builder memory. The source map is untouched.</small>
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Map</span>
+          <select data-builder-field="existing-map-id"${hasCatalogMaps ? "" : " disabled"}>${mapCatalogOptions || '<option value="">No catalog maps found</option>'}</select>
+        </label>
+        <button type="button" class="builder-tool-button" data-builder-action="load-existing-map"${hasCatalogMaps ? "" : " disabled"}>Load Map Copy</button>
+      </div>
       <button type="button" class="builder-start-card${canUseCurrent ? "" : " is-disabled"}" data-builder-action="use-current-map"${canUseCurrent ? "" : " disabled"}>
         <span>Use Current Loaded Map</span>
         <small>${canUseCurrent ? "Inspect the active mission map." : "Only available while a mission map is active."}</small>
@@ -394,7 +402,7 @@ function renderInspector({ builderState, refs, appState }) {
   const selectedTruth = buildTileInspectorHtml(workspaceAppState, selected);
   const sourceLabel = builderState.workspaceMode === "builder-map" ? "Builder-Owned Map" : "Current Runtime Map";
   const packageTools = builderState.activeTab === "project"
-    ? renderPackageInspectorTools(builderState)
+    ? renderPackageInspectorTools(builderState, appState)
     : "";
   const mapTools = builderState.activeTab === "map"
     ? renderMapInspectorTools(builderState, appState)
@@ -460,13 +468,15 @@ function renderInspector({ builderState, refs, appState }) {
 }
 
 
-function renderPackageInspectorTools(builderState) {
+function renderPackageInspectorTools(builderState, appState) {
   const mission = ensureMissionPackageDraft(builderState) ?? {};
   const editable = builderState.workspaceMode === "builder-map";
   const summary = getMissionPackageSummary(builderState);
   const presetOptions = buildObjectivePresetOptions(mission.objectivePreset ?? mission.objectives?.[0]?.type ?? "defeat_all");
   const activeMapOptions = buildMissionMapOptions(summary.maps, summary.activeMapId);
   const startMapOptions = buildMissionMapOptions(summary.maps, summary.startMapId);
+  const existingMapOptions = buildExistingMapOptions(appState);
+  const hasCatalogMaps = Boolean(existingMapOptions);
 
   return `
     <div class="builder-inspector-card builder-package-tool-card">
@@ -492,9 +502,16 @@ function renderPackageInspectorTools(builderState) {
         <select data-builder-field="package-start-map-id"${editable ? "" : " disabled"}>${startMapOptions}</select>
       </label>
       <div class="builder-tool-row">
-        <button type="button" class="builder-tool-button" data-builder-action="add-package-map"${editable ? "" : " disabled"}>Add Map</button>
-        <button type="button" class="builder-tool-button" data-builder-action="duplicate-package-map"${editable ? "" : " disabled"}>Duplicate</button>
-        <button type="button" class="builder-tool-button" data-builder-action="delete-package-map"${editable && summary.maps.length > 1 ? "" : " disabled"}>Delete</button>
+        <button type="button" class="builder-tool-button" data-builder-action="add-package-map"${editable ? "" : " disabled"}>New Map</button>
+        <button type="button" class="builder-tool-button" data-builder-action="duplicate-package-map"${editable ? "" : " disabled"}>Duplicate Active</button>
+        <button type="button" class="builder-tool-button" data-builder-action="delete-package-map"${editable && summary.maps.length > 1 ? "" : " disabled"}>Remove From Mission</button>
+      </div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Load Existing Map</span>
+        <select data-builder-field="package-load-map-id"${editable && hasCatalogMaps ? "" : " disabled"}>${existingMapOptions || '<option value="">No catalog maps found</option>'}</select>
+      </label>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="load-package-map"${editable && hasCatalogMaps ? "" : " disabled"}>Add Loaded Copy</button>
       </div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Briefing Title</span>
@@ -615,6 +632,15 @@ function renderCatalogPreview(summary) {
       ${(summary.catalogMapEntries ?? []).map((entry) => `<div class="builder-inspector-note">${escapeHtml(entry.path)}</div>`).join("")}
     </div>
   `;
+}
+
+function buildExistingMapOptions(appState, selectedId = "") {
+  const maps = getBuilderMapCatalogOptions(appState);
+  return maps.map((map, index) => {
+    const id = map.id;
+    const selected = (selectedId ? id === selectedId : index === 0) ? " selected" : "";
+    return `<option value="${escapeHtml(id)}"${selected}>${escapeHtml(map.name || id)} (${escapeHtml(id)})</option>`;
+  }).join("");
 }
 
 function buildMissionMapOptions(maps, selectedId) {

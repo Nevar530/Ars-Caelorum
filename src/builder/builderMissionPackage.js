@@ -261,6 +261,25 @@ export function addNewMapToMissionPackage(builderState, appState = null) {
   return { ok: true, message: `Added map ${id} to mission package.` };
 }
 
+export function addExistingMapToMissionPackage(builderState, sourceMap, sourceEntry = null) {
+  const mission = ensureMissionPackageDraft(builderState);
+  if (!mission || !sourceMap) return { ok: false, message: "No mission package or source map available to load." };
+
+  const maps = getMissionMapDrafts(builderState);
+  const sourceId = sanitizeId(sourceMap.id ?? sourceEntry?.id, "loaded_map");
+  const sourceName = sanitizeName(sourceMap.name ?? sourceEntry?.name, titleFromId(sourceId));
+  const id = createUniqueMapId(`${sourceId}_copy`, maps);
+  const map = cloneJson(sourceMap);
+  map.id = id;
+  map.name = `${sourceName} Copy`;
+  if (!Array.isArray(map.objectives)) map.objectives = [cloneJson(OBJECTIVE_PRESETS[0].objective)];
+
+  builderState.authoring.maps = [...maps, map];
+  setActiveMissionPackageMap(builderState, id);
+  builderState.dirty = true;
+  return { ok: true, message: `Loaded existing map ${sourceName} as ${id}.` };
+}
+
 export function duplicateActiveMissionPackageMap(builderState) {
   const mission = ensureMissionPackageDraft(builderState);
   const active = builderState?.authoring?.map ?? null;
@@ -288,7 +307,7 @@ export function deleteActiveMissionPackageMap(builderState) {
   builderState.authoring.maps = nextMaps;
   setActiveMissionPackageMap(builderState, nextActive?.id);
   builderState.dirty = true;
-  return { ok: true, message: `Deleted map ${activeId}.` };
+  return { ok: true, message: `Removed map ${activeId} from mission package.` };
 }
 
 export function setActiveMissionPackageMap(builderState, mapId) {

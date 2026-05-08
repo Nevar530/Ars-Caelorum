@@ -79,6 +79,10 @@ import {
   setActiveMissionPackageMap
 } from "./builderMissionPackage.js";
 import {
+  loadExistingMapAsStandalone,
+  loadExistingMapIntoMission
+} from "./builderLoadExisting.js";
+import {
   addObjectiveDefinition,
   applyObjectiveToolAtTile,
   isObjectiveAuthoringActive,
@@ -442,7 +446,7 @@ class MissionBuilder {
     return applyObjectiveToolAtTile(this.builderState, this.appState, x, y);
   }
 
-  handleAction(action) {
+  async handleAction(action) {
     if (action === "add-objective") {
       updateObjectiveToolFromFields(this.builderState, this.refs.root);
       const result = addObjectiveDefinition(this.builderState);
@@ -657,6 +661,19 @@ class MissionBuilder {
       return;
     }
 
+    if (action === "load-package-map") {
+      readMissionPackageFields(this.builderState, this.refs.root);
+      const result = await loadExistingMapIntoMission({
+        builderState: this.builderState,
+        appState: this.appState,
+        root: this.refs.root
+      });
+      syncBuilderAuthoredMap(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
     if (action === "duplicate-package-map") {
       readMissionPackageFields(this.builderState, this.refs.root);
       const result = duplicateActiveMissionPackageMap(this.builderState);
@@ -711,8 +728,14 @@ class MissionBuilder {
       return;
     }
 
-    if (action === "load-existing") {
-      pushBuilderLog(this.builderState, "Load Existing flow is staged next; catalog/file picker is not active yet.");
+    if (action === "load-existing" || action === "load-existing-map") {
+      const result = await loadExistingMapAsStandalone({
+        builderState: this.builderState,
+        appState: this.appState,
+        root: this.refs.root
+      });
+      syncBuilderAuthoredMap(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
       this.render();
       return;
     }
