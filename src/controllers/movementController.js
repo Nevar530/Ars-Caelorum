@@ -129,21 +129,39 @@ export function createMovementController({
       if (canMoveActiveUnitTo(state, state.focus.x, state.focus.y)) {
         const fromX = activeUnit.x;
         const fromY = activeUnit.y;
+        const targetX = state.focus.x;
+        const targetY = state.focus.y;
+        const path = Array.isArray(state.ui.previewPath) && state.ui.previewPath.length
+          ? state.ui.previewPath
+          : getPathToTile(state, targetX, targetY);
 
         const defaultFacing = getDefaultFacingFromPath(
-          state.ui.previewPath,
+          path,
           activeUnit.facing
         );
 
-        moveUnitTo(
-          state.units,
-          activeUnit.instanceId,
-          state.focus.x,
-          state.focus.y
-        );
+        const steps = Array.isArray(path) ? path.slice(1) : [{ x: targetX, y: targetY }];
+        for (const step of steps) {
+          moveUnitTo(
+            state.units,
+            activeUnit.instanceId,
+            Number(step.x),
+            Number(step.y)
+          );
+
+          if (handleUnitEnteredZone(activeUnit)) {
+            logDev(
+              `${activeUnit.name} moved from (${fromX},${fromY}) to (${activeUnit.x},${activeUnit.y}) and triggered an interrupt.`
+            );
+            clearTransientUi();
+            snapFocusToActiveUnit();
+            render();
+            return true;
+          }
+        }
 
         logDev(
-          `${activeUnit.name} moved from (${fromX},${fromY}) to (${state.focus.x},${state.focus.y}).`
+          `${activeUnit.name} moved from (${fromX},${fromY}) to (${targetX},${targetY}).`
         );
 
         state.ui.mode = "face";
@@ -171,12 +189,6 @@ export function createMovementController({
         logDev(
           `${activeUnit.name} facing set to ${facingToLabel(state.ui.facingPreview)}.`
         );
-      }
-
-      if (handleUnitEnteredZone(activeUnit)) {
-        clearTransientUi();
-        render();
-        return true;
       }
 
       clearTransientUi();
@@ -260,6 +272,14 @@ export function createMovementController({
 
       moveUnitTo(state.units, activeUnit.instanceId, step.x, step.y);
       render();
+
+      if (handleUnitEnteredZone(activeUnit)) {
+        logDev(activeUnit.name + " triggered an interrupt at (" + activeUnit.x + "," + activeUnit.y + ").");
+        clearTransientUi();
+        render();
+        return;
+      }
+
       stepIndex += 1;
 
       if (stepIndex >= steps.length) {

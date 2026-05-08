@@ -15,6 +15,19 @@ const SUPPORTED_PRESETS = new Set([
   "run_logic"
 ]);
 
+const SUPPORTED_TRIGGER_TYPES = new Set([
+  "onUnitEnterZone",
+  "onMissionStart",
+  "onRoundStart",
+  "onRoundEnd",
+  "onEnterMech",
+  "onExitMech",
+  "onHitTarget",
+  "onStatChange"
+]);
+
+const ZONE_TRIGGER_TYPES = new Set(["onUnitEnterZone"]);
+
 export function resetTriggerRuntimeState(state) {
   const mission = ensureMissionState(state);
   mission.triggerRuntime = {
@@ -25,29 +38,36 @@ export function resetTriggerRuntimeState(state) {
 }
 
 export function resolveOnUnitEnterZoneTriggers(state, unit) {
-  if (!state || !unit || state?.mission?.result) return null;
+  return resolveMissionEventTriggers(state, "onUnitEnterZone", { unit });
+}
+
+export function resolveMissionEventTriggers(state, eventType, context = {}) {
+  if (!state || state?.mission?.result) return null;
+
+  const type = String(eventType ?? "").trim();
+  if (!SUPPORTED_TRIGGER_TYPES.has(type)) return null;
 
   const triggers = Array.isArray(state?.map?.triggers) ? state.map.triggers : [];
   if (!triggers.length) return null;
 
   const runtime = ensureTriggerRuntimeState(state);
   const mapId = String(state?.map?.id ?? state?.mission?.definition?.activeMapId ?? "map");
-  const unitX = Number(unit.x);
-  const unitY = Number(unit.y);
-
+  const unit = context?.unit ?? context?.actor ?? context?.sourceUnit ?? null;
+  const unitX = Number(unit?.x);
+  const unitY = Number(unit?.y);
   const results = [];
 
   for (const trigger of triggers) {
     if (!trigger?.id) continue;
-    if (trigger.type !== "onUnitEnterZone") continue;
+    if (trigger.type !== type) continue;
     if (!SUPPORTED_PRESETS.has(trigger.preset)) continue;
-    if (!doesTeamMatch(trigger.team ?? "player", unit.team ?? "player")) continue;
-    if (!triggerHasTile(trigger, unitX, unitY)) continue;
+    if (unit && !doesTeamMatch(trigger.team ?? "player", unit.team ?? "player")) continue;
+    if (ZONE_TRIGGER_TYPES.has(type) && !triggerHasTile(trigger, unitX, unitY)) continue;
 
-    const firedKey = `${mapId}:${trigger.id}`;
+    const firedKey = `${mapId}:${type}:${trigger.id}`;
     if (trigger.once !== false && runtime.fired[firedKey]) continue;
 
-    const result = applyTriggerPreset(state, trigger, unit);
+    const result = applyTriggerPreset(state, trigger, unit, { ...context, eventType: type });
     if (result?.ok) {
       if (trigger.once !== false && !result.skipped) runtime.fired[firedKey] = true;
       results.push(result);
@@ -55,10 +75,10 @@ export function resolveOnUnitEnterZoneTriggers(state, unit) {
     }
   }
 
-  return results.length ? { ok: true, results } : null;
+  return results.length ? { ok: true, eventType: type, results } : null;
 }
 
-function applyTriggerPreset(state, trigger, unit) {
+function applyTriggerPreset(state, trigger, unit, context = {}) {
   if (trigger.completeObjectiveId) {
     markObjectiveCompleted(state, trigger.completeObjectiveId);
   }
@@ -87,13 +107,17 @@ function applyTriggerPreset(state, trigger, unit) {
     const stat = trigger.stat === "shield" ? "shield" : "core";
     const value = Math.trunc(Number(trigger.value ?? 0));
     const changed = applyUnitStatChange(unit, stat, value);
+    const statTriggerResult = changed && context?.eventType !== "onStatChange"
+      ? resolveMissionEventTriggers(state, "onStatChange", { unit, trigger, stat, value })
+      : null;
     return {
       ok: changed,
       preset: "change_unit_stat",
       triggerId: trigger.id,
-      unitId: unit.id ?? null,
+      unitId: unit?.instanceId ?? unit?.id ?? null,
       stat,
-      value
+      value,
+      results: statTriggerResult?.results ?? []
     };
   }
 
@@ -145,8 +169,11 @@ function applyLogicChain(state, trigger, unit) {
 
   const actionResults = [];
   for (const action of Array.isArray(chain.actions) ? chain.actions : []) {
-    const result = applyLogicAction(state, trigger, unit, action);
-    if (result?.ok) actionResults.push(result);
+    const result = applyLogicAction(state, trigger, unit, action, { eventType: trigger?.type });
+    if (result?.ok) {
+      actionResults.push(result);
+      if (Array.isArray(result.results)) actionResults.push(...result.results.filter((entry) => entry?.ok));
+    }
   }
 
   return {
@@ -190,7 +217,7 @@ function singleLogicConditionPasses(state, condition) {
   return false;
 }
 
-function applyLogicAction(state, trigger, unit, action) {
+function applyLogicAction(state, trigger, unit, action, context = {}) {
   const type = String(action?.type ?? "");
 
   if (type === "complete_objective") {
@@ -203,7 +230,10 @@ function applyLogicAction(state, trigger, unit, action) {
     const stat = action?.stat === "shield" ? "shield" : "core";
     const value = Math.trunc(Number(action?.value ?? 0));
     const changed = applyUnitStatChange(unit, stat, value);
-    return { ok: changed, preset: "change_unit_stat", triggerId: trigger.id, logicAction: true, unitId: unit?.id ?? unit?.instanceId ?? null, stat, value };
+    const statTriggerResult = changed && context?.eventType !== "onStatChange"
+      ? resolveMissionEventTriggers(state, "onStatChange", { unit, trigger, stat, value })
+      : null;
+    return { ok: changed, preset: "change_unit_stat", triggerId: trigger.id, logicAction: true, unitId: unit?.instanceId ?? unit?.id ?? null, stat, value, results: statTriggerResult?.results ?? [] };
   }
 
   if (type === "load_map") {

@@ -2446,3 +2446,69 @@ button:disabled {
   font-size: 11px;
   margin-top: 2px;
 }
+
+/* Mission Builder right inspector compact pass */
+.builder-inspector {
+  padding: 10px;
+}
+
+.builder-inspector-card.builder-compact-card {
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+}
+
+.builder-compact-card .builder-form-field.builder-form-field-compact {
+  margin-top: 6px;
+  padding: 6px;
+  gap: 4px;
+  border-radius: 8px;
+}
+
+.builder-compact-card .builder-form-field span {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.builder-compact-card .builder-form-field input,
+.builder-compact-card .builder-form-field select {
+  min-height: 30px;
+  padding: 5px 7px;
+  font-size: 12px;
+  border-radius: 7px;
+}
+
+.builder-compact-card .builder-section-label {
+  margin-top: 9px;
+  padding-top: 8px;
+}
+
+.builder-tool-row.builder-tool-row-tight,
+.builder-compact-card .builder-tool-row {
+  gap: 6px;
+  margin: 7px 0;
+}
+
+.builder-compact-card .builder-tool-button {
+  padding: 5px 7px;
+  font-size: 10px;
+  border-radius: 7px;
+}
+
+.builder-inspector-note.builder-note-compact,
+.builder-compact-card .builder-inspector-note {
+  padding: 7px;
+  margin-bottom: 7px;
+  border-radius: 8px;
+  line-height: 1.25;
+}
+
+.builder-compact-card .builder-trigger-list {
+  gap: 6px;
+}
+
+.builder-compact-card .builder-trigger-row {
+  padding: 5px;
+  gap: 6px;
+  border-radius: 7px;
+}

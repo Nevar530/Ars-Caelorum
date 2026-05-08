@@ -15,7 +15,14 @@ const TRIGGER_PRESETS = [
 ];
 
 const TRIGGER_TYPES = [
-  { value: "onUnitEnterZone", label: "Unit Enters Zone" }
+  { value: "onUnitEnterZone", label: "Unit Enters Zone" },
+  { value: "onMissionStart", label: "Mission Start" },
+  { value: "onRoundStart", label: "Round Start" },
+  { value: "onRoundEnd", label: "Round End" },
+  { value: "onEnterMech", label: "Enter Mech" },
+  { value: "onExitMech", label: "Exit Mech" },
+  { value: "onHitTarget", label: "Hit Target" },
+  { value: "onStatChange", label: "Stat Changed" }
 ];
 
 const TEAM_FILTERS = ["player", "enemy", "any"];
@@ -216,8 +223,13 @@ export function setTriggerPaintMode(builderState, mode) {
   return tool;
 }
 
+export function triggerTypeNeedsZone(type) {
+  return String(type ?? "onUnitEnterZone") === "onUnitEnterZone";
+}
+
 export function isTriggerAuthoringActive(builderState) {
-  return builderState?.workspaceMode === "builder-map" && builderState?.activeTab === "triggers";
+  const type = builderState?.triggerTool?.type ?? "onUnitEnterZone";
+  return builderState?.workspaceMode === "builder-map" && builderState?.activeTab === "triggers" && triggerTypeNeedsZone(type);
 }
 
 export function applyTriggerToolAtTile(builderState, appState, x, y) {

@@ -26,9 +26,16 @@ export function createCombatController({
   clearTransientUi,
   advanceActionTurn,
   movementController,
-  endMission
+  endMission,
+  onMissionTriggerEvent = null
 }) {
   let actionAdvanceTimer = null;
+
+  function fireMissionTriggerEvent(eventType, context = {}) {
+    if (typeof onMissionTriggerEvent !== "function") return false;
+    return onMissionTriggerEvent(eventType, context) === true;
+  }
+
   function startAttack() {
     if (!state.turn.combatStarted || state.turn.phase !== "action") return;
 
@@ -147,6 +154,18 @@ export function createCombatController({
 
       const dr = damageResult.result;
       if (!dr) continue;
+
+      const hitTarget = getUnitById(state.units, dr.targetId ?? singleResult.targetId);
+      if (fireMissionTriggerEvent("onHitTarget", {
+        unit: activeUnit,
+        sourceUnit: activeUnit,
+        targetUnit: hitTarget,
+        weapon,
+        hitResult: singleResult,
+        damageResult: dr
+      })) {
+        return true;
+      }
 
       for (const event of dr.damageEvents ?? []) {
         if (event.shieldDamage > 0) {
@@ -276,6 +295,11 @@ export function createCombatController({
           const enterResult = resolveEnterMech(state, activeActor, targetMech);
           if (enterResult.ok) {
             logDev(`${enterResult.pilotName} entered ${enterResult.mechName}.`);
+            if (fireMissionTriggerEvent("onEnterMech", { unit: activeActor, actor: activeActor, mech: targetMech, result: enterResult })) {
+              clearTransientUi();
+              render();
+              return;
+            }
             clearTransientUi();
             advanceActionTurn();
             render();
@@ -288,6 +312,11 @@ export function createCombatController({
           const exitResult = resolveExitMech(state, activeActor, targetMech, selectedAbility.exitTile ?? null);
           if (exitResult.ok) {
             logDev(`${exitResult.pilotName} exited ${exitResult.mechName} at (${exitResult.exitTile.x},${exitResult.exitTile.y}).`);
+            if (fireMissionTriggerEvent("onExitMech", { unit: activeActor, actor: activeActor, mech: targetMech, result: exitResult })) {
+              clearTransientUi();
+              render();
+              return;
+            }
             clearTransientUi();
             advanceActionTurn();
             render();

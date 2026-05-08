@@ -4,7 +4,7 @@
 // Keeps script.js as boot/wiring while trigger loading/effects stay in mission modules.
 
 import { normalizeMapDefinition } from "../map.js";
-import { resolveOnUnitEnterZoneTriggers } from "./missionTriggers.js";
+import { resolveMissionEventTriggers, resolveOnUnitEnterZoneTriggers } from "./missionTriggers.js";
 
 export function createMissionTriggerRuntime({
   state,
@@ -35,9 +35,8 @@ export function createMissionTriggerRuntime({
     return loadMapDefinitionByPath(`./data/maps/${cleanMapId}.json`).catch(() => null);
   }
 
-  function handleUnitEnteredZone(unit) {
-    const triggerResult = resolveOnUnitEnterZoneTriggers(state, unit);
-    if (!triggerResult?.ok) return false;
+  function processTriggerResult(triggerResult) {
+    if (!triggerResult?.ok) return { handled: false, interrupt: false };
 
     const results = Array.isArray(triggerResult.results) ? triggerResult.results : [triggerResult];
     logTriggerResults(results);
@@ -45,17 +44,34 @@ export function createMissionTriggerRuntime({
     const endMissionResult = results.find((result) => result?.preset === "end_mission");
     if (endMissionResult?.missionResult) {
       gameController.endMission(endMissionResult.missionResult);
-      return true;
+      return { handled: true, interrupt: true, result: endMissionResult };
     }
 
     const loadMapResult = results.find((result) => result?.preset === "load_map");
     if (loadMapResult) {
       loadNextMapFromTrigger(loadMapResult);
-      return true;
+      return { handled: true, interrupt: true, result: loadMapResult };
     }
 
+    const dialogueResult = results.find((result) => result?.preset === "start_dialogue");
+    const disablingStatResult = results.find((result) => result?.preset === "change_unit_stat" && result?.stat === "core");
+    const disabledUnit = disablingStatResult ? state?.units?.find?.((unit) => unit?.instanceId === disablingStatResult.unitId || unit?.id === disablingStatResult.unitId) : null;
     gameController.render();
-    return true;
+    return {
+      handled: true,
+      interrupt: Boolean(dialogueResult) || Boolean(disabledUnit && disabledUnit.status === "disabled"),
+      result: dialogueResult ?? disablingStatResult ?? results[0]
+    };
+  }
+
+  function handleUnitEnteredZone(unit) {
+    const triggerResult = resolveOnUnitEnterZoneTriggers(state, unit);
+    return processTriggerResult(triggerResult).interrupt === true;
+  }
+
+  function handleMissionTriggerEvent(eventType, context = {}) {
+    const triggerResult = resolveMissionEventTriggers(state, eventType, context);
+    return processTriggerResult(triggerResult).interrupt === true;
   }
 
   function logTriggerResults(results) {
@@ -97,6 +113,7 @@ export function createMissionTriggerRuntime({
   }
 
   return {
-    handleUnitEnteredZone
+    handleUnitEnteredZone,
+    handleMissionTriggerEvent
   };
 }

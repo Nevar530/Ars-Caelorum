@@ -62,7 +62,8 @@ import {
   getTriggerPresetOptions,
   getTriggerStatOptions,
   getTriggerTeamOptions,
-  getTriggerTypeOptions
+  getTriggerTypeOptions,
+  triggerTypeNeedsZone
 } from "../builderTriggers.js";
 import {
   ensureDialogueToolSettings,
@@ -1301,9 +1302,10 @@ function renderTriggerInspectorTools(builderState, appState) {
   const showResultField = tool.preset === "end_mission";
   const showDialogueField = tool.preset === "start_dialogue";
   const showLogicField = tool.preset === "run_logic";
+  const needsZone = triggerTypeNeedsZone(tool.type);
 
   return `
-    <div class="builder-inspector-card builder-trigger-tool-card">
+    <div class="builder-inspector-card builder-trigger-tool-card builder-compact-card">
       <div class="builder-field-label">Triggers V1</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Trigger ID</span>
@@ -1373,12 +1375,16 @@ function renderTriggerInspectorTools(builderState, appState) {
         <button type="button" class="builder-tool-button" data-builder-action="add-trigger"${editable ? "" : " disabled"}>Add Trigger</button>
         <button type="button" class="builder-tool-button" data-builder-action="update-trigger"${editable ? "" : " disabled"}>Update Selected</button>
       </div>
-      <div class="builder-field-label builder-section-label">Zone Painter</div>
-      <div class="builder-tool-row">
-        <button type="button" class="builder-tool-button${addActive}" data-builder-action="trigger-paint-add"${editable ? "" : " disabled"}>Paint Zone</button>
-        <button type="button" class="builder-tool-button${eraseActive}" data-builder-action="trigger-paint-erase"${editable ? "" : " disabled"}>Erase Zone</button>
-      </div>
-      <div class="builder-inspector-note">Select or add a trigger, then click tiles on the map. Only fields used by the selected preset are shown. Current selected trigger has ${selectedTileCount} zone tile(s).</div>
+      ${needsZone ? `
+        <div class="builder-field-label builder-section-label">Zone Painter</div>
+        <div class="builder-tool-row builder-tool-row-tight">
+          <button type="button" class="builder-tool-button${addActive}" data-builder-action="trigger-paint-add"${editable ? "" : " disabled"}>Paint Zone</button>
+          <button type="button" class="builder-tool-button${eraseActive}" data-builder-action="trigger-paint-erase"${editable ? "" : " disabled"}>Erase Zone</button>
+        </div>
+        <div class="builder-inspector-note builder-note-compact">Click map tiles to paint this zone. Selected trigger has ${selectedTileCount} tile(s).</div>
+      ` : `
+        <div class="builder-inspector-note builder-note-compact">This trigger fires from a combat/system moment, so no painted zone is needed.</div>
+      `}
       <div class="builder-field-label builder-section-label">Current Triggers</div>
       ${renderTriggerList(triggers, tool.selectedIndex)}
     </div>
@@ -1449,7 +1455,7 @@ function renderLogicInspectorTools(builderState, appState) {
   const showActionItem = tool.actionType === "give_item" || tool.actionType === "remove_item";
 
   return `
-    <div class="builder-inspector-card builder-logic-tool-card">
+    <div class="builder-inspector-card builder-logic-tool-card builder-compact-card">
       <div class="builder-field-label">Logic V1</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Logic ID</span>

@@ -107,7 +107,8 @@ async function init() {
     showSplash: gameController.showSplash,
     clearCombatTextMarkers,
     onTurnReady: () => cpuTurnController?.scheduleForCurrentTurn(),
-    onMissionResult: gameController.endMission
+    onMissionResult: gameController.endMission,
+    onMissionTriggerEvent: (eventType, context) => missionTriggerRuntime.handleMissionTriggerEvent(eventType, context)
   });
 
 
@@ -141,7 +142,8 @@ async function init() {
     clearTransientUi,
     advanceActionTurn: turnController.advanceActionTurn,
     movementController,
-    endMission: gameController.endMission
+    endMission: gameController.endMission,
+    onMissionTriggerEvent: (eventType, context) => missionTriggerRuntime.handleMissionTriggerEvent(eventType, context)
   });
 
   cpuTurnController = createCpuTurnController({

@@ -14,8 +14,14 @@ export function createTurnController({
   showSplash,
   clearCombatTextMarkers,
   onTurnReady = null,
-  onMissionResult = null
+  onMissionResult = null,
+  onMissionTriggerEvent = null
 }) {
+
+  function fireMissionTriggerEvent(eventType, context = {}) {
+    if (typeof onMissionTriggerEvent !== "function") return false;
+    return onMissionTriggerEvent(eventType, context) === true;
+  }
 
   function resolveMissionResult(options = {}) {
     const result = evaluateMissionResult(state, options);
@@ -105,6 +111,7 @@ export function createTurnController({
   function endRoundAndBeginNext() {
     clearCombatTextMarkers(state);
 
+    if (fireMissionTriggerEvent("onRoundEnd", { round: state.turn.round })) return;
     if (resolveMissionResult({ timing: "round_end" })) return;
 
     state.turn.round += 1;
@@ -116,6 +123,8 @@ export function createTurnController({
     state.turn.moveIndex = getNextEligiblePhaseIndex(state.turn.moveOrder, 0);
     state.turn.actionIndex = -1;
     setActiveUnitByCurrentTurnIndex();
+
+    if (fireMissionTriggerEvent("onRoundStart", { round: state.turn.round })) return;
 
     logDev(`Round advanced to ${state.turn.round}.`);
     logDev("Phase changed to MOVE.");
@@ -189,6 +198,9 @@ export function createTurnController({
     state.turn.moveIndex = getNextEligiblePhaseIndex(state.turn.moveOrder, 0);
     state.turn.actionIndex = -1;
     setActiveUnitByCurrentTurnIndex();
+
+    if (fireMissionTriggerEvent("onMissionStart", { round: state.turn.round })) return;
+    if (fireMissionTriggerEvent("onRoundStart", { round: state.turn.round })) return;
 
     logDev("Combat started.");
     logDev("Phase changed to MOVE.");
