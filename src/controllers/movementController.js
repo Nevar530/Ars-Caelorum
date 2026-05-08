@@ -56,8 +56,20 @@ export function createMovementController({
   }
 
   function handleUnitEnteredZone(unit) {
-    if (!unit || typeof onUnitEnteredZone !== "function") return false;
-    return onUnitEnteredZone(unit) === true;
+    if (!unit || typeof onUnitEnteredZone !== "function") return null;
+    const outcome = onUnitEnteredZone(unit);
+    if (outcome === true) return { interrupt: true, consumeTurn: true };
+    if (outcome && typeof outcome === "object") return outcome;
+    return null;
+  }
+
+  function didTriggerInterrupt(outcome) {
+    return outcome === true || outcome?.interrupt === true;
+  }
+
+  function shouldConsumeMove(outcome) {
+    if (!didTriggerInterrupt(outcome)) return false;
+    return outcome?.consumeTurn !== false;
   }
 
   function startMove() {
@@ -149,13 +161,18 @@ export function createMovementController({
             Number(step.y)
           );
 
-          if (handleUnitEnteredZone(activeUnit)) {
+          const triggerOutcome = handleUnitEnteredZone(activeUnit);
+          if (didTriggerInterrupt(triggerOutcome)) {
             logDev(
               `${activeUnit.name} moved from (${fromX},${fromY}) to (${activeUnit.x},${activeUnit.y}) and triggered an interrupt.`
             );
             clearTransientUi();
             snapFocusToActiveUnit();
-            render();
+            if (shouldConsumeMove(triggerOutcome) && state.turn.phase === "move" && !state.mission?.result) {
+              advanceMoveTurn();
+            } else {
+              render();
+            }
             return true;
           }
         }
@@ -246,9 +263,14 @@ export function createMovementController({
         );
       }
 
-      if (handleUnitEnteredZone(activeUnit)) {
+      const triggerOutcome = handleUnitEnteredZone(activeUnit);
+      if (didTriggerInterrupt(triggerOutcome)) {
         clearTransientUi();
-        render();
+        if (shouldConsumeMove(triggerOutcome) && state.turn.phase === "move" && !state.mission?.result) {
+          advanceMoveTurn();
+        } else {
+          render();
+        }
         return;
       }
 
@@ -273,10 +295,15 @@ export function createMovementController({
       moveUnitTo(state.units, activeUnit.instanceId, step.x, step.y);
       render();
 
-      if (handleUnitEnteredZone(activeUnit)) {
+      const triggerOutcome = handleUnitEnteredZone(activeUnit);
+      if (didTriggerInterrupt(triggerOutcome)) {
         logDev(activeUnit.name + " triggered an interrupt at (" + activeUnit.x + "," + activeUnit.y + ").");
         clearTransientUi();
-        render();
+        if (shouldConsumeMove(triggerOutcome) && state.turn.phase === "move" && !state.mission?.result) {
+          advanceMoveTurn();
+        } else {
+          render();
+        }
         return;
       }
 

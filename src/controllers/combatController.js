@@ -32,8 +32,38 @@ export function createCombatController({
   let actionAdvanceTimer = null;
 
   function fireMissionTriggerEvent(eventType, context = {}) {
-    if (typeof onMissionTriggerEvent !== "function") return false;
-    return onMissionTriggerEvent(eventType, context) === true;
+    if (typeof onMissionTriggerEvent !== "function") return null;
+    const outcome = onMissionTriggerEvent(eventType, context);
+    if (outcome === true) return { interrupt: true, consumeTurn: true };
+    if (outcome && typeof outcome === "object") return outcome;
+    return null;
+  }
+
+  function didTriggerInterrupt(outcome) {
+    return outcome === true || outcome?.interrupt === true;
+  }
+
+  function shouldConsumeAction(outcome) {
+    if (!didTriggerInterrupt(outcome)) return false;
+    return outcome?.consumeTurn !== false;
+  }
+
+  function finishActionAfterTriggerInterrupt(outcome) {
+    if (actionAdvanceTimer) {
+      clearTimeout(actionAdvanceTimer);
+      actionAdvanceTimer = null;
+    }
+
+    clearCombatTextMarkers(state);
+    clearTransientUi();
+
+    if (shouldConsumeAction(outcome) && state.turn.phase === "action" && !state.mission?.result) {
+      advanceActionTurn();
+    } else {
+      render();
+    }
+
+    return true;
   }
 
   function startAttack() {
@@ -155,18 +185,6 @@ export function createCombatController({
       const dr = damageResult.result;
       if (!dr) continue;
 
-      const hitTarget = getUnitById(state.units, dr.targetId ?? singleResult.targetId);
-      if (fireMissionTriggerEvent("onHitTarget", {
-        unit: activeUnit,
-        sourceUnit: activeUnit,
-        targetUnit: hitTarget,
-        weapon,
-        hitResult: singleResult,
-        damageResult: dr
-      })) {
-        return true;
-      }
-
       for (const event of dr.damageEvents ?? []) {
         if (event.shieldDamage > 0) {
           addCombatTextMarker(state, event.targetId, `-${event.shieldDamage} SHD`, {
@@ -185,6 +203,20 @@ export function createCombatController({
             tone: "disabled"
           });
         }
+      }
+
+      const hitTarget = getUnitById(state.units, dr.targetId ?? singleResult.targetId);
+      const hitTriggerOutcome = fireMissionTriggerEvent("onHitTarget", {
+        unit: activeUnit,
+        sourceUnit: activeUnit,
+        targetUnit: hitTarget,
+        weapon,
+        hitResult: singleResult,
+        damageResult: dr
+      });
+      if (didTriggerInterrupt(hitTriggerOutcome)) {
+        render();
+        return finishActionAfterTriggerInterrupt(hitTriggerOutcome);
       }
     }
 
@@ -295,10 +327,9 @@ export function createCombatController({
           const enterResult = resolveEnterMech(state, activeActor, targetMech);
           if (enterResult.ok) {
             logDev(`${enterResult.pilotName} entered ${enterResult.mechName}.`);
-            if (fireMissionTriggerEvent("onEnterMech", { unit: activeActor, actor: activeActor, mech: targetMech, result: enterResult })) {
-              clearTransientUi();
-              render();
-              return;
+            const enterTriggerOutcome = fireMissionTriggerEvent("onEnterMech", { unit: activeActor, actor: activeActor, mech: targetMech, result: enterResult });
+            if (didTriggerInterrupt(enterTriggerOutcome)) {
+              return finishActionAfterTriggerInterrupt(enterTriggerOutcome);
             }
             clearTransientUi();
             advanceActionTurn();
@@ -312,10 +343,9 @@ export function createCombatController({
           const exitResult = resolveExitMech(state, activeActor, targetMech, selectedAbility.exitTile ?? null);
           if (exitResult.ok) {
             logDev(`${exitResult.pilotName} exited ${exitResult.mechName} at (${exitResult.exitTile.x},${exitResult.exitTile.y}).`);
-            if (fireMissionTriggerEvent("onExitMech", { unit: activeActor, actor: activeActor, mech: targetMech, result: exitResult })) {
-              clearTransientUi();
-              render();
-              return;
+            const exitTriggerOutcome = fireMissionTriggerEvent("onExitMech", { unit: activeActor, actor: activeActor, mech: targetMech, result: exitResult });
+            if (didTriggerInterrupt(exitTriggerOutcome)) {
+              return finishActionAfterTriggerInterrupt(exitTriggerOutcome);
             }
             clearTransientUi();
             advanceActionTurn();

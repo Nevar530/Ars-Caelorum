@@ -64,14 +64,25 @@ export function createMissionTriggerRuntime({
     };
   }
 
+  function withConsumeTurn(outcome) {
+    if (!outcome?.interrupt) return outcome;
+
+    const preset = outcome?.result?.preset;
+    const consumeTurn = preset !== "load_map" && preset !== "end_mission";
+    return {
+      ...outcome,
+      consumeTurn
+    };
+  }
+
   function handleUnitEnteredZone(unit) {
     const triggerResult = resolveOnUnitEnterZoneTriggers(state, unit);
-    return processTriggerResult(triggerResult).interrupt === true;
+    return withConsumeTurn(processTriggerResult(triggerResult));
   }
 
   function handleMissionTriggerEvent(eventType, context = {}) {
     const triggerResult = resolveMissionEventTriggers(state, eventType, context);
-    return processTriggerResult(triggerResult).interrupt === true;
+    return withConsumeTurn(processTriggerResult(triggerResult));
   }
 
   function logTriggerResults(results) {
