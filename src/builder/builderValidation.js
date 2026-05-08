@@ -149,7 +149,7 @@ function validateDeployments(result, map, appState) {
     const isEmptyMech = hasMech && !hasPilot;
     const fixedPilotStart = hasPilot && cleanString(entry.pilotSpawnId);
     const fixedMechStart = hasMech && cleanString(entry.mechSpawnId);
-    const deploymentRosterEntry = startMode === "deployment" && team === "player" && controlType === "PC" && hasPilot && !entry.pilotSpawnId;
+    const deploymentRosterEntry = startMode === "deployment" && team === "player" && controlType === "PC" && hasPilot && !fixedPilotStart;
 
     if (!VALID_TEAMS.has(team)) addError(result, "DEPLOYMENT_BAD_TEAM", `${label} has invalid team "${team}".`);
     if (!VALID_CONTROL_TYPES.has(controlType)) addError(result, "DEPLOYMENT_BAD_CONTROL", `${label} has invalid controlType "${controlType}".`);
@@ -180,7 +180,7 @@ function validateDeployments(result, map, appState) {
 
     if (entry.startEmbarked === true) {
       if (!hasPilot || !hasMech) addError(result, "DEPLOYMENT_EMBARK_BAD_COMBO", `${label} has startEmbarked true but is missing pilot or mech.`);
-      if (!cleanString(entry.mechSpawnId)) addError(result, "DEPLOYMENT_EMBARK_MECH_SPAWN_MISSING", `${label} starts embarked but has no mechSpawnId.`);
+      if (!deploymentRosterEntry && !fixedMechStart) addError(result, "DEPLOYMENT_EMBARK_MECH_SPAWN_MISSING", `${label} starts embarked but has no mechSpawnId.`);
     }
 
     validateSpawnReference(result, map, entry.pilotSpawnId, `${label} pilotSpawnId`);
