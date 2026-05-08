@@ -5,7 +5,7 @@
 // It intentionally does not reuse the old dev menu state shape.
 
 export const BUILDER_TABS = [
-  { id: "project", label: "Project" },
+  { id: "project", label: "Mission" },
   { id: "map", label: "Map" },
   { id: "terrain", label: "Terrain" },
   { id: "structures", label: "Structures" },
@@ -28,6 +28,8 @@ export function createBuilderState() {
     dirty: false,
     authoring: {
       map: null,
+      maps: [],
+      activeMapId: null,
       mission: null,
       source: "none"
     },
@@ -258,19 +260,30 @@ export function toggleBuilderOverlay(builderState, overlayId) {
 export function setBuilderAuthoredMap(builderState, map, source = "new-map") {
   if (!builderState || !map) return;
 
-  builderState.authoring = {
+  const authoring = {
     ...(builderState.authoring ?? {}),
     map,
     source
   };
+  const mapId = String(map?.id ?? "new_map").trim() || "new_map";
+  const maps = Array.isArray(authoring.maps) ? [...authoring.maps] : [];
+  const mapIndex = maps.findIndex((entry) => String(entry?.id ?? "") === mapId);
+  if (mapIndex >= 0) maps[mapIndex] = map;
+  else maps.push(map);
+  authoring.maps = maps;
+  authoring.activeMapId = mapId;
+  builderState.authoring = authoring;
   if (!builderState.authoring.mission) {
-    const mapId = String(map?.id ?? "new_map").trim() || "new_map";
     const mapName = String(map?.name ?? "New Map").trim() || "New Map";
     builderState.authoring.mission = {
       id: `${mapId}_mission`,
       name: `${mapName} Mission`,
+      goalText: "Complete all tactical phases.",
       mapId,
       mapPath: `./data/maps/${mapId}.json`,
+      startMapId: mapId,
+      activeMapId: mapId,
+      maps: [{ id: mapId, name: mapName, mapPath: `./data/maps/${mapId}.json`, objectiveSummary: "Defeat all enemy units.", phaseIndex: 1 }],
       objectivePreset: "defeat_all",
       briefing: {
         title: `${mapName} Mission`,

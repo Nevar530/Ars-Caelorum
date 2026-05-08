@@ -50,7 +50,13 @@ export function createBlankBuilderMap(options = {}) {
     terrainTypes,
     spawns: { player: [], enemy: [], neutral: [] },
     startState: { deployments: [], deploymentCells: [] },
-    structures: []
+    structures: [],
+    objectives: [],
+    defaults: {
+      terrainTypeId,
+      elevation,
+      movementClass: terrainDefinition?.movementClass ?? "clear"
+    }
   });
 }
 

@@ -15,24 +15,42 @@ const VALID_OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", 
 
 export function validateBuilderPackage(builderState, appState = null) {
   const result = createValidationResult();
-  const map = builderState?.authoring?.map ?? null;
+  const activeMap = builderState?.authoring?.map ?? null;
+  const maps = Array.isArray(builderState?.authoring?.maps) && builderState.authoring.maps.length
+    ? builderState.authoring.maps
+    : activeMap ? [activeMap] : [];
   const mission = builderState?.authoring?.mission ?? null;
 
-  if (!map) {
+  if (!maps.length) {
     addError(result, "MAP_MISSING", "No builder-owned map is active. Create or load a builder map before validating.");
     return commitValidation(builderState, result);
   }
 
-  const width = getMapWidth(map);
-  const height = getMapHeight(map);
+  validateMissionPackageBasics(result, mission, maps);
 
-  validateMapBasics(result, map, width, height);
-  validateTiles(result, map, width, height);
-  validateSpawns(result, map, width, height);
-  validateDeployments(result, map, appState);
-  validateDeploymentCells(result, map, width, height);
-  validateStructures(result, map, width, height);
-  validateMissionShell(result, map, mission);
+  for (const map of maps) {
+    const width = getMapWidth(map);
+    const height = getMapHeight(map);
+    const mapLabel = cleanString(map?.id) || cleanString(map?.name) || "unnamed map";
+
+    validateMapBasics(result, map, width, height);
+    validateTiles(result, map, width, height);
+    validateSpawns(result, map, width, height);
+    validateDeployments(result, map, appState);
+    validateDeploymentCells(result, map, width, height);
+    validateStructures(result, map, width, height);
+
+    const objectives = Array.isArray(map?.objectives) && map.objectives.length
+      ? map.objectives
+      : (map === activeMap && Array.isArray(mission?.objectives) ? mission.objectives : []);
+
+    if (!objectives.length) {
+      addError(result, "MAP_NO_OBJECTIVES", `${mapLabel} has no authored objectives.`);
+    } else {
+      validateObjectives(result, map, objectives);
+    }
+  }
+
   addSummaryInfo(result);
 
   return commitValidation(builderState, result);
@@ -40,6 +58,29 @@ export function validateBuilderPackage(builderState, appState = null) {
 
 export function hasBlockingValidationErrors(validation) {
   return (validation?.errors?.length ?? 0) > 0;
+}
+
+function validateMissionPackageBasics(result, mission, maps) {
+  if (!cleanString(mission?.id)) addError(result, "MISSION_ID_MISSING", "Mission id is missing.");
+  if (!cleanString(mission?.name)) addWarning(result, "MISSION_NAME_MISSING", "Mission name is missing.");
+  if (!mission?.briefing?.text || mission?.briefing?.text === DEFAULT_BRIEFING_TEXT) {
+    addWarning(result, "MISSION_PLACEHOLDER_BRIEFING", "Mission briefing text is still placeholder/default text.");
+  }
+
+  const mapIds = new Set();
+  for (const map of maps) {
+    const id = cleanString(map?.id);
+    if (!id) continue;
+    if (mapIds.has(id)) addError(result, "MISSION_DUPLICATE_MAP_ID", `Mission package has duplicate map id "${id}".`);
+    mapIds.add(id);
+  }
+
+  const startMapId = cleanString(mission?.startMapId ?? mission?.mapId);
+  if (!startMapId) {
+    addError(result, "MISSION_START_MAP_MISSING", "Mission package has no startMapId.");
+  } else if (!mapIds.has(startMapId)) {
+    addError(result, "MISSION_START_MAP_BAD", `Mission startMapId "${startMapId}" does not match any map in the package.`);
+  }
 }
 
 function validateMapBasics(result, map, width, height) {

@@ -11,7 +11,8 @@ import {
 } from "./builderExport.js";
 
 export function startBuilderRuntimeTest({ builderState, appState, launchMission } = {}) {
-  if (!builderState?.authoring?.map) {
+  const maps = getRuntimeTestMaps(builderState);
+  if (!maps.length) {
     return {
       ok: false,
       message: "No builder-owned map is active. Create or load a builder map before using Test Mission."
@@ -25,21 +26,29 @@ export function startBuilderRuntimeTest({ builderState, appState, launchMission 
     };
   }
 
-  const mapDefinition = buildMapDefinitionForExport(builderState.authoring.map);
-  const missionDefinition = buildMissionDefinitionForExport(mapDefinition, builderState.authoring.mission);
+  const mapDefinitions = maps.map(buildMapDefinitionForExport);
+  const missionDraft = builderState.authoring.mission;
+  const startMapId = missionDraft?.startMapId ?? builderState.authoring.activeMapId ?? mapDefinitions[0]?.id;
+  const startMapDefinition = mapDefinitions.find((map) => map.id === startMapId) ?? mapDefinitions[0];
+  const missionDefinition = buildMissionDefinitionForExport(startMapDefinition, missionDraft, mapDefinitions);
 
   const testPackage = {
-    mapDefinition: cloneJson(mapDefinition),
+    mapDefinition: cloneJson(startMapDefinition),
     missionDefinition: {
       ...cloneJson(missionDefinition),
       testSource: "builder-memory"
+    },
+    packageDefinition: {
+      id: missionDefinition.id,
+      startMapId: missionDefinition.startMapId ?? missionDefinition.mapId,
+      maps: cloneJson(mapDefinitions)
     }
   };
 
   builderState.testSession = {
     active: true,
     source: "builder-memory",
-    mapId: mapDefinition.id,
+    mapId: startMapDefinition.id,
     missionId: missionDefinition.id,
     startedAt: new Date().toISOString()
   };
@@ -50,8 +59,21 @@ export function startBuilderRuntimeTest({ builderState, appState, launchMission 
 
   return {
     ok: true,
-    message: `Testing ${missionDefinition.id} from builder memory through the real runtime loader.`
+    message: `Testing ${missionDefinition.id} from builder memory on start map ${startMapDefinition.id}.`
   };
+}
+
+function getRuntimeTestMaps(builderState) {
+  const maps = Array.isArray(builderState?.authoring?.maps) ? builderState.authoring.maps : [];
+  if (maps.length) {
+    const active = builderState?.authoring?.map;
+    if (active?.id) {
+      const activeIndex = maps.findIndex((map) => map?.id === active.id);
+      if (activeIndex >= 0) maps[activeIndex] = active;
+    }
+    return maps.filter(Boolean);
+  }
+  return builderState?.authoring?.map ? [builderState.authoring.map] : [];
 }
 
 function cloneJson(value) {

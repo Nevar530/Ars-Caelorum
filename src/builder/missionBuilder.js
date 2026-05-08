@@ -13,6 +13,7 @@ import {
   setBuilderOpen,
   setBuilderTab,
   setBuilderWorkspaceMode,
+  syncBuilderAuthoredMap,
   syncBuilderRuntimeMap,
   toggleBuilderOverlay
 } from "./builderState.js";
@@ -68,9 +69,14 @@ import {
   updateUnitToolFromFields
 } from "./builderUnits.js";
 import {
+  addNewMapToMissionPackage,
   applyMissionPackagePreset,
+  deleteActiveMissionPackageMap,
+  duplicateActiveMissionPackageMap,
   ensureMissionPackageDraft,
-  readMissionPackageFields
+  readMapSettingsFields,
+  readMissionPackageFields,
+  setActiveMissionPackageMap
 } from "./builderMissionPackage.js";
 import {
   addObjectiveDefinition,
@@ -251,6 +257,13 @@ class MissionBuilder {
     if (!this.builderState.isOpen) return;
     if (!event.target?.closest?.("[data-builder-field]")) return;
 
+    if (this.builderState.activeTab === "map") {
+      const result = readMapSettingsFields(this.builderState, this.refs.root, this.appState);
+      if (result?.mapIdChanged) syncBuilderAuthoredMap(this.builderState);
+      this.render();
+      return;
+    }
+
     if (this.builderState.activeTab === "terrain") {
       const previousTerrainTypeId = this.builderState.terrainTool?.terrainTypeId;
       updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
@@ -284,7 +297,7 @@ class MissionBuilder {
 
     if (this.builderState.activeTab === "project" || this.builderState.activeTab === "results") {
       const result = readMissionPackageFields(this.builderState, this.refs.root);
-      if (result?.mapIdChanged) syncBuilderAuthoredMap(this.builderState);
+      if (result?.mapIdChanged || result?.activeMapChanged) syncBuilderAuthoredMap(this.builderState);
       this.render();
       return;
     }
@@ -623,13 +636,48 @@ class MissionBuilder {
       setBuilderAuthoredMap(this.builderState, map, "new-mission-package");
       ensureMissionPackageDraft(this.builderState);
       setBuilderTab(this.builderState, "project");
-      pushBuilderLog(this.builderState, "Created new Mission Package with default blank map and defeat-all preset.");
+      pushBuilderLog(this.builderState, "Created new Mission Package with one default map and defeat-all preset.");
       this.render();
       return;
     }
 
     if (action === "apply-objective-preset") {
       const result = applyMissionPackagePreset(this.builderState, this.refs.root);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "add-package-map") {
+      readMissionPackageFields(this.builderState, this.refs.root);
+      const result = addNewMapToMissionPackage(this.builderState, this.appState);
+      syncBuilderAuthoredMap(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "duplicate-package-map") {
+      readMissionPackageFields(this.builderState, this.refs.root);
+      const result = duplicateActiveMissionPackageMap(this.builderState);
+      syncBuilderAuthoredMap(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "delete-package-map") {
+      readMissionPackageFields(this.builderState, this.refs.root);
+      const result = deleteActiveMissionPackageMap(this.builderState);
+      syncBuilderAuthoredMap(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "apply-map-settings") {
+      const result = readMapSettingsFields(this.builderState, this.refs.root, this.appState);
+      if (result?.mapIdChanged) syncBuilderAuthoredMap(this.builderState);
       pushBuilderLog(this.builderState, result.message);
       this.render();
       return;

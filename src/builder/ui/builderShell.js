@@ -45,6 +45,7 @@ import {
 } from "../builderUnits.js";
 import {
   ensureMissionPackageDraft,
+  getMissionMapDrafts,
   getMissionPackageSummary,
   getObjectivePresetOptions
 } from "../builderMissionPackage.js";
@@ -173,11 +174,11 @@ function renderTabs({ builderState, refs }) {
 
 function renderTabHeader({ builderState, refs }) {
   const tab = getBuilderTab(builderState.activeTab);
-  refs.tabKicker.textContent = tab.id.toUpperCase();
+  refs.tabKicker.textContent = (tab.id === "project" ? "MISSION" : tab.id.toUpperCase());
   refs.tabTitle.textContent = isBuilderWorkspaceMap(builderState) ? tab.label : isBuilderNewMapForm(builderState) ? "New Blank Map" : "New / Load";
 
   const notes = {
-    project: "Start a new package, load existing mission data, or open current runtime map only when a mission is active.",
+    project: "Mission wrapper, map list, start map, briefing, and overall goal live here.",
     map: "Map metadata and map-level setup live here. New blank maps are builder-owned and do not mutate the runtime map.",
     terrain: "Terrain owns tile truth: terrain type, tile flags/default movement, texture set, and height/elevation.",
     structures: "Structure cells/rooms are active for builder-owned maps. Roof visibility is an editor view toggle; edge/wall tools are active.",
@@ -395,6 +396,9 @@ function renderInspector({ builderState, refs, appState }) {
   const packageTools = builderState.activeTab === "project"
     ? renderPackageInspectorTools(builderState)
     : "";
+  const mapTools = builderState.activeTab === "map"
+    ? renderMapInspectorTools(builderState, appState)
+    : "";
   const terrainTools = builderState.activeTab === "terrain"
     ? renderTerrainInspectorTools(builderState, appState)
     : "";
@@ -420,7 +424,7 @@ function renderInspector({ builderState, refs, appState }) {
     ? renderExportInspectorTools(builderState)
     : "";
   const note = builderState.workspaceMode === "builder-map"
-    ? "Builder-owned map. Terrain paints tile truth. Structures paint cells/edges. Spawns paints map.spawns and deployment cells. Units writes startState.deployments. Objectives writes mission objectives."
+    ? "Builder-owned map. Terrain paints tile truth. Structures paint cells/edges. Spawns paints map.spawns and deployment cells. Units writes startState.deployments. Objectives writes active-map objectives."
     : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
 
   refs.inspector.innerHTML = `
@@ -429,6 +433,7 @@ function renderInspector({ builderState, refs, appState }) {
       <div class="builder-field-value">${escapeHtml(selected.label ?? selected.type ?? "None")}</div>
     </div>
     ${packageTools}
+    ${mapTools}
     ${terrainTools}
     ${structureTools}
     ${spawnTools}
@@ -460,13 +465,12 @@ function renderPackageInspectorTools(builderState) {
   const editable = builderState.workspaceMode === "builder-map";
   const summary = getMissionPackageSummary(builderState);
   const presetOptions = buildObjectivePresetOptions(mission.objectivePreset ?? mission.objectives?.[0]?.type ?? "defeat_all");
-  const objectiveSummary = Array.isArray(mission.briefing?.objectives) && mission.briefing.objectives.length
-    ? mission.briefing.objectives[0]
-    : mission.objectives?.[0]?.briefingText ?? mission.objectives?.[0]?.label ?? "";
+  const activeMapOptions = buildMissionMapOptions(summary.maps, summary.activeMapId);
+  const startMapOptions = buildMissionMapOptions(summary.maps, summary.startMapId);
 
   return `
     <div class="builder-inspector-card builder-package-tool-card">
-      <div class="builder-field-label">Mission Package Core V1</div>
+      <div class="builder-field-label">Mission Package Core</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Mission ID</span>
         <input type="text" data-builder-field="package-mission-id" value="${escapeHtml(mission.id ?? "")}" spellcheck="false"${editable ? "" : " disabled"}>
@@ -476,9 +480,22 @@ function renderPackageInspectorTools(builderState) {
         <input type="text" data-builder-field="package-mission-name" value="${escapeHtml(mission.name ?? "")}" spellcheck="true"${editable ? "" : " disabled"}>
       </label>
       <label class="builder-form-field builder-form-field-compact">
-        <span>Map ID / Reference</span>
-        <input type="text" data-builder-field="package-map-id" value="${escapeHtml(summary.mapId ?? "")}" spellcheck="false"${editable ? "" : " disabled"}>
+        <span>Overall Goal</span>
+        <textarea data-builder-field="package-goal-text" rows="3" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(summary.goalText ?? mission.goalText ?? "")}</textarea>
       </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Active Map / Phase</span>
+        <select data-builder-field="package-active-map-id"${editable ? "" : " disabled"}>${activeMapOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Start Map</span>
+        <select data-builder-field="package-start-map-id"${editable ? "" : " disabled"}>${startMapOptions}</select>
+      </label>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="add-package-map"${editable ? "" : " disabled"}>Add Map</button>
+        <button type="button" class="builder-tool-button" data-builder-action="duplicate-package-map"${editable ? "" : " disabled"}>Duplicate</button>
+        <button type="button" class="builder-tool-button" data-builder-action="delete-package-map"${editable && summary.maps.length > 1 ? "" : " disabled"}>Delete</button>
+      </div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Briefing Title</span>
         <input type="text" data-builder-field="package-briefing-title" value="${escapeHtml(mission.briefing?.title ?? mission.name ?? "")}" spellcheck="true"${editable ? "" : " disabled"}>
@@ -488,21 +505,60 @@ function renderPackageInspectorTools(builderState) {
         <textarea data-builder-field="package-briefing-body" rows="5" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(mission.briefing?.text ?? "")}</textarea>
       </label>
       <label class="builder-form-field builder-form-field-compact">
-        <span>Objective Summary / Starter Text</span>
-        <textarea data-builder-field="package-objective-summary" rows="3" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(objectiveSummary)}</textarea>
-      </label>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Objective Preset</span>
+        <span>Objective Preset For Active Map</span>
         <select data-builder-field="package-objective-preset"${editable ? "" : " disabled"}>${presetOptions}</select>
       </label>
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="apply-objective-preset"${editable ? "" : " disabled"}>Apply Preset</button>
       </div>
-      <div class="builder-inspector-note">Preset replaces the current objective starter with clean V1 data. Zone presets still need zone tiles painted in Objectives.</div>
+      <div class="builder-inspector-note">Mission owns the goal and map list. Objectives are scoped to the active map/phase.</div>
     </div>
+    ${renderMissionMapList(summary)}
     ${renderCatalogPreview(summary)}
   `;
 }
+
+function renderMapInspectorTools(builderState, appState) {
+  const map = builderState?.authoring?.map ?? null;
+  const editable = builderState.workspaceMode === "builder-map";
+  const width = Array.isArray(map) ? map[0]?.length ?? 0 : 0;
+  const height = Array.isArray(map) ? map.length : 0;
+  const selectedTerrain = map?.defaults?.terrainTypeId ?? map?.defaultTerrainTypeId ?? map?.terrainTypes?.[0] ?? "grass";
+  const terrainOptions = buildTerrainOptions(appState, builderState, selectedTerrain);
+  const movementOptions = buildMovementOptions(map?.defaults?.movementClass ?? "clear");
+
+  return `
+    <div class="builder-inspector-card builder-map-tool-card">
+      <div class="builder-field-label">Active Map Defaults</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Map ID</span>
+        <input type="text" data-builder-field="active-map-id" value="${escapeHtml(map?.id ?? "")}" spellcheck="false"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Map Name</span>
+        <input type="text" data-builder-field="active-map-name" value="${escapeHtml(map?.name ?? "")}" spellcheck="true"${editable ? "" : " disabled"}>
+      </label>
+      <div class="builder-field-value">Size: ${escapeHtml(width)}×${escapeHtml(height)}</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Default Terrain</span>
+        <select data-builder-field="map-default-terrain"${editable ? "" : " disabled"}>${terrainOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Default Height</span>
+        <input type="number" data-builder-field="map-default-elevation" value="${escapeHtml(map?.defaults?.elevation ?? 0)}" min="-8" max="16" step="1"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Default Movement</span>
+        <select data-builder-field="map-default-movement"${editable ? "" : " disabled"}>${movementOptions}</select>
+      </label>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="apply-map-settings"${editable ? "" : " disabled"}>Apply Map Settings</button>
+      </div>
+      <div class="builder-inspector-note">This edits active map metadata/defaults. It does not repaint existing tiles; terrain painting remains on the Terrain tab.</div>
+    </div>
+  `;
+}
+
 
 function renderResultsInspectorTools(builderState) {
   const mission = ensureMissionPackageDraft(builderState) ?? {};
@@ -531,17 +587,43 @@ function renderResultsInspectorTools(builderState) {
   `;
 }
 
+function renderMissionMapList(summary) {
+  const maps = Array.isArray(summary?.maps) ? summary.maps : [];
+  if (!maps.length) return "";
+
+  return `
+    <div class="builder-inspector-card builder-mission-map-list-card">
+      <div class="builder-field-label">Maps In Mission</div>
+      ${maps.map((map) => {
+        const active = map.id === summary.activeMapId ? " · ACTIVE" : "";
+        const start = map.id === summary.startMapId ? " · START" : "";
+        return `<div class="builder-field-value">${escapeHtml(map.phaseIndex ?? "")}. ${escapeHtml(map.name)}${escapeHtml(active)}${escapeHtml(start)}</div><div class="builder-inspector-note">${escapeHtml(map.id)} · ${escapeHtml(map.objectiveCount)} objective(s)</div>`;
+      }).join("")}
+    </div>
+  `;
+}
+
 function renderCatalogPreview(summary) {
   return `
     <div class="builder-inspector-card builder-catalog-preview-card">
       <div class="builder-field-label">Catalog Entry Preview</div>
       <div class="builder-field-value">Mission: ${escapeHtml(summary.missionId)}</div>
       <div class="builder-inspector-note">${escapeHtml(summary.missionPath)}</div>
-      <div class="builder-field-value">Map: ${escapeHtml(summary.mapId)}</div>
-      <div class="builder-inspector-note">${escapeHtml(summary.mapPath)}</div>
+      <div class="builder-field-value">Complete Package</div>
+      <div class="builder-inspector-note">${escapeHtml(summary.packagePath)}</div>
+      <div class="builder-field-value">Maps: ${escapeHtml(summary.maps?.length ?? 0)}</div>
+      ${(summary.catalogMapEntries ?? []).map((entry) => `<div class="builder-inspector-note">${escapeHtml(entry.path)}</div>`).join("")}
     </div>
   `;
 }
+
+function buildMissionMapOptions(maps, selectedId) {
+  return (Array.isArray(maps) ? maps : []).map((map) => {
+    const selected = map.id === selectedId ? " selected" : "";
+    return `<option value="${escapeHtml(map.id)}"${selected}>${escapeHtml(map.name)} (${escapeHtml(map.id)})</option>`;
+  }).join("");
+}
+
 
 function buildObjectivePresetOptions(selectedPreset = "defeat_all") {
   return getObjectivePresetOptions().map((preset) => {
