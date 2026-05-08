@@ -104,6 +104,15 @@ import {
   updateSelectedTriggerDefinition,
   updateTriggerToolFromFields
 } from "./builderTriggers.js";
+import {
+  addLogicAction,
+  addLogicDefinition,
+  removeLogicAction,
+  removeLogicDefinition,
+  selectLogicDefinition,
+  updateLogicToolFromFields,
+  updateSelectedLogicDefinition
+} from "./builderLogic.js";
 import { createBuilderShell, renderBuilderShell } from "./ui/builderShell.js";
 import {
   clearWysiwygWorkspace,
@@ -337,6 +346,12 @@ class MissionBuilder {
     if (this.builderState.activeTab === "triggers") {
       updateTriggerToolFromFields(this.builderState, this.refs.root);
       this.render();
+      return;
+    }
+
+    if (this.builderState.activeTab === "logic") {
+      updateLogicToolFromFields(this.builderState, this.refs.root);
+      this.render();
     }
   }
 
@@ -487,6 +502,54 @@ class MissionBuilder {
   }
 
   async handleAction(action) {
+    if (action === "add-logic") {
+      updateLogicToolFromFields(this.builderState, this.refs.root);
+      const result = addLogicDefinition(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "update-logic") {
+      updateLogicToolFromFields(this.builderState, this.refs.root);
+      const result = updateSelectedLogicDefinition(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("select-logic:")) {
+      const index = Number(action.split(":")[1]);
+      const result = selectLogicDefinition(this.builderState, index);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("remove-logic:")) {
+      const index = Number(action.split(":")[1]);
+      const result = removeLogicDefinition(this.builderState, index);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "add-logic-action") {
+      updateLogicToolFromFields(this.builderState, this.refs.root);
+      const result = addLogicAction(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("remove-logic-action:")) {
+      const [, chainIndex, actionIndex] = action.split(":");
+      const result = removeLogicAction(this.builderState, Number(chainIndex), Number(actionIndex));
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
     if (action === "add-trigger") {
       updateTriggerToolFromFields(this.builderState, this.refs.root);
       const result = addTriggerDefinition(this.builderState);

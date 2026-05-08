@@ -13,10 +13,12 @@ const VALID_CONTROL_TYPES = new Set(["PC", "CPU"]);
 const DEFAULT_BRIEFING_TEXT = "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.";
 const VALID_OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds", "trigger_complete"]);
 const VALID_TRIGGER_TYPES = new Set(["onUnitEnterZone"]);
-const VALID_TRIGGER_PRESETS = new Set(["load_map", "change_unit_stat", "complete_objective", "end_mission"]);
+const VALID_TRIGGER_PRESETS = new Set(["load_map", "change_unit_stat", "complete_objective", "end_mission", "run_logic"]);
 const VALID_TRIGGER_STATS = new Set(["core", "shield"]);
 const VALID_MISSION_RESULTS = new Set(["victory", "defeat"]);
 const VALID_TRIGGER_TEAMS = new Set(["player", "enemy", "any"]);
+const VALID_LOGIC_CONDITIONS = new Set(["objective_complete", "objective_incomplete", "flag_true", "flag_false", "round_at_least"]);
+const VALID_LOGIC_ACTIONS = new Set(["complete_objective", "change_unit_stat", "load_map", "end_mission", "set_flag", "give_item", "remove_item"]);
 
 export function validateBuilderPackage(builderState, appState = null) {
   const result = createValidationResult();
@@ -55,6 +57,7 @@ export function validateBuilderPackage(builderState, appState = null) {
       validateObjectives(result, map, objectives);
     }
 
+    validateLogic(result, map, mission, objectives, appState);
     validateTriggers(result, map, mission, objectives);
   }
 
@@ -370,6 +373,9 @@ function validateTriggers(result, map, mission, objectives) {
   const objectiveIds = new Set((Array.isArray(objectives) ? objectives : [])
     .map((objective) => cleanString(objective?.id))
     .filter(Boolean));
+  const logicIds = new Set((Array.isArray(map?.logic) ? map.logic : [])
+    .map((chain) => cleanString(chain?.id))
+    .filter(Boolean));
   const ids = new Set();
 
   for (let index = 0; index < triggers.length; index += 1) {
@@ -427,6 +433,97 @@ function validateTriggers(result, map, mission, objectives) {
     if (preset === "end_mission") {
       const missionResult = cleanString(trigger.missionResult) || "victory";
       if (!VALID_MISSION_RESULTS.has(missionResult)) addError(result, "TRIGGER_RESULT_BAD", `${label} end_mission has invalid missionResult "${missionResult}".`);
+    }
+
+    if (preset === "run_logic") {
+      const logicChainId = cleanString(trigger.logicChainId);
+      if (!logicChainId) addError(result, "TRIGGER_LOGIC_MISSING", `${label} run_logic preset needs logicChainId.`);
+      else if (!logicIds.has(logicChainId)) addError(result, "TRIGGER_LOGIC_BAD", `${label} references missing logic chain "${logicChainId}".`);
+    }
+  }
+}
+
+function validateLogic(result, map, mission, objectives, appState = null) {
+  const logic = Array.isArray(map?.logic) ? map.logic : [];
+  if (!logic.length) return;
+
+  const activeMapId = cleanString(map?.id);
+  const missionMapIds = new Set((Array.isArray(mission?.maps) ? mission.maps : [])
+    .map((entry) => cleanString(entry?.id ?? entry?.mapId))
+    .filter(Boolean));
+  if (activeMapId) missionMapIds.add(activeMapId);
+
+  const objectiveIds = new Set((Array.isArray(objectives) ? objectives : [])
+    .map((objective) => cleanString(objective?.id))
+    .filter(Boolean));
+  const itemIds = new Set([
+    ...getContentIds(appState?.content?.pilotItems),
+    ...getContentIds(appState?.content?.mechItems)
+  ]);
+  const ids = new Set();
+
+  for (let index = 0; index < logic.length; index += 1) {
+    const chain = logic[index] ?? {};
+    const label = `logic chain ${index + 1}`;
+    const id = cleanString(chain.id);
+    if (!id) addError(result, "LOGIC_ID_MISSING", `${label} is missing an id.`);
+    else if (ids.has(id)) addError(result, "LOGIC_ID_DUPLICATE", `${label} duplicates logic id "${id}".`);
+    ids.add(id);
+
+    const conditions = Array.isArray(chain.conditions) ? chain.conditions : [];
+    for (let c = 0; c < conditions.length; c += 1) {
+      const condition = conditions[c] ?? {};
+      const conditionLabel = `${label} condition ${c + 1}`;
+      const type = cleanString(condition.type);
+      if (!VALID_LOGIC_CONDITIONS.has(type)) addError(result, "LOGIC_CONDITION_BAD", `${conditionLabel} has unsupported condition "${type}".`);
+      if ((type === "objective_complete" || type === "objective_incomplete") && !objectiveIds.has(cleanString(condition.objectiveId))) {
+        addError(result, "LOGIC_CONDITION_OBJECTIVE_BAD", `${conditionLabel} references missing objective "${cleanString(condition.objectiveId)}".`);
+      }
+      if ((type === "flag_true" || type === "flag_false") && !cleanString(condition.flagId)) {
+        addError(result, "LOGIC_CONDITION_FLAG_MISSING", `${conditionLabel} needs flagId.`);
+      }
+      if (type === "round_at_least") {
+        const round = Number(condition.round);
+        if (!Number.isInteger(round) || round < 1) addError(result, "LOGIC_CONDITION_ROUND_BAD", `${conditionLabel} needs round of 1 or more.`);
+      }
+    }
+
+    const actions = Array.isArray(chain.actions) ? chain.actions : [];
+    if (!actions.length) addError(result, "LOGIC_ACTIONS_EMPTY", `${label} needs at least one action.`);
+
+    for (let a = 0; a < actions.length; a += 1) {
+      const action = actions[a] ?? {};
+      const actionLabel = `${label} action ${a + 1}`;
+      const type = cleanString(action.type);
+      if (!VALID_LOGIC_ACTIONS.has(type)) addError(result, "LOGIC_ACTION_BAD", `${actionLabel} has unsupported action "${type}".`);
+
+      if (type === "complete_objective" && !objectiveIds.has(cleanString(action.objectiveId))) {
+        addError(result, "LOGIC_ACTION_OBJECTIVE_BAD", `${actionLabel} references missing objective "${cleanString(action.objectiveId)}".`);
+      }
+      if (type === "change_unit_stat") {
+        const stat = cleanString(action.stat) || "core";
+        const value = Number(action.value);
+        if (!VALID_TRIGGER_STATS.has(stat)) addError(result, "LOGIC_ACTION_STAT_BAD", `${actionLabel} has invalid stat "${stat}".`);
+        if (!Number.isInteger(value) || value === 0) addError(result, "LOGIC_ACTION_VALUE_BAD", `${actionLabel} needs a non-zero whole-number value.`);
+      }
+      if (type === "load_map") {
+        const nextMapId = cleanString(action.nextMapId);
+        if (!nextMapId) addError(result, "LOGIC_ACTION_LOAD_MAP_MISSING", `${actionLabel} needs nextMapId.`);
+        else if (!missionMapIds.has(nextMapId)) addError(result, "LOGIC_ACTION_LOAD_MAP_BAD", `${actionLabel} nextMapId "${nextMapId}" is not in this mission package.`);
+        else if (nextMapId === activeMapId) addError(result, "LOGIC_ACTION_LOAD_MAP_SELF", `${actionLabel} loads the current map. V1 blocks self-load to avoid reload loops.`);
+      }
+      if (type === "end_mission") {
+        const missionResult = cleanString(action.missionResult) || "victory";
+        if (!VALID_MISSION_RESULTS.has(missionResult)) addError(result, "LOGIC_ACTION_RESULT_BAD", `${actionLabel} has invalid missionResult "${missionResult}".`);
+      }
+      if (type === "set_flag" && !cleanString(action.flagId)) {
+        addError(result, "LOGIC_ACTION_FLAG_MISSING", `${actionLabel} needs flagId.`);
+      }
+      if (type === "give_item" || type === "remove_item") {
+        const itemId = cleanString(action.itemId);
+        if (!itemId) addError(result, "LOGIC_ACTION_ITEM_MISSING", `${actionLabel} needs itemId.`);
+        else if (itemIds.size && !itemIds.has(itemId)) addWarning(result, "LOGIC_ACTION_ITEM_UNKNOWN", `${actionLabel} itemId "${itemId}" is not in pilot/mech item content.`);
+      }
     }
   }
 }

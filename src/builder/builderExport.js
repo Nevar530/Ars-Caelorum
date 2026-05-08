@@ -107,6 +107,7 @@ export function buildMapDefinitionForExport(map) {
     defaults: normalizeMapDefaults(map),
     objectives: normalizeMissionObjectives(map?.objectives),
     triggers: normalizeTriggers(map?.triggers),
+    logic: normalizeLogic(map?.logic),
     spawns: cloneJson(map?.spawns ?? { player: [], enemy: [], neutral: [] }),
     startState: normalizeStartState(map?.startState),
     structures: sanitizeStructuresForExport(map?.structures ?? []),
@@ -138,6 +139,7 @@ export function buildMissionDefinitionForExport(mapDefinition, mission = null, m
     },
     objectives: normalizeMissionObjectives(startObjectives),
     triggers: normalizeTriggers(startMap?.triggers),
+    logic: normalizeLogic(startMap?.logic ?? mission?.logic),
     dialogue: mission?.dialogue ?? createDefaultDialogue(),
     results: mission?.results ?? {
       victory: { title: "Victory", text: "Mission complete." },
@@ -394,6 +396,48 @@ function normalizeTriggers(triggers) {
     if (clean.stat) clean.stat = sanitizeId(clean.stat, "core");
     if (clean.value !== undefined) clean.value = Math.trunc(Number(clean.value) || 0);
     if (clean.missionResult) clean.missionResult = sanitizeId(clean.missionResult, "victory");
+    if (clean.logicChainId) clean.logicChainId = sanitizeId(clean.logicChainId, "");
+    return clean;
+  });
+}
+
+function normalizeLogic(logic) {
+  if (!Array.isArray(logic)) return [];
+  return logic.map((chain) => {
+    const clean = cloneJson(chain ?? {});
+    clean.id = sanitizeId(clean.id, "logic_chain");
+    clean.name = sanitizeName(clean.name, clean.id);
+    clean.conditions = normalizeLogicConditions(clean.conditions);
+    clean.actions = normalizeLogicActions(clean.actions);
+    return clean;
+  });
+}
+
+function normalizeLogicConditions(conditions) {
+  if (!Array.isArray(conditions)) return [];
+  return conditions.map((condition) => {
+    const clean = cloneJson(condition ?? {});
+    clean.type = sanitizeId(clean.type, "none");
+    if (clean.objectiveId) clean.objectiveId = sanitizeId(clean.objectiveId, "");
+    if (clean.flagId) clean.flagId = sanitizeId(clean.flagId, "");
+    if (clean.round !== undefined) clean.round = Math.max(1, Math.trunc(Number(clean.round) || 1));
+    return clean;
+  }).filter((condition) => condition.type && condition.type !== "none");
+}
+
+function normalizeLogicActions(actions) {
+  if (!Array.isArray(actions)) return [];
+  return actions.map((action) => {
+    const clean = cloneJson(action ?? {});
+    clean.type = sanitizeId(clean.type, "complete_objective");
+    if (clean.objectiveId) clean.objectiveId = sanitizeId(clean.objectiveId, "");
+    if (clean.nextMapId) clean.nextMapId = sanitizeId(clean.nextMapId, "");
+    if (clean.stat) clean.stat = sanitizeId(clean.stat, "core");
+    if (clean.value !== undefined) clean.value = Math.trunc(Number(clean.value) || 0);
+    if (clean.missionResult) clean.missionResult = sanitizeId(clean.missionResult, "victory");
+    if (clean.flagId) clean.flagId = sanitizeId(clean.flagId, "");
+    if (clean.itemId) clean.itemId = sanitizeId(clean.itemId, "");
+    if (clean.target) clean.target = sanitizeId(clean.target, "triggering_unit");
     return clean;
   });
 }

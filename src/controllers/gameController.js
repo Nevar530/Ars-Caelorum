@@ -113,7 +113,8 @@ export function createGameController({
       activeMapId: mapDefinition.id ?? missionDefinition.activeMapId ?? missionDefinition.mapId,
       mapPath: mapDefinition.id ? `./data/maps/${mapDefinition.id}.json` : missionDefinition.mapPath,
       objectives: Array.isArray(mapDefinition.objectives) ? mapDefinition.objectives : (missionDefinition.objectives ?? []),
-      triggers: Array.isArray(mapDefinition.triggers) ? mapDefinition.triggers : (missionDefinition.triggers ?? [])
+      triggers: Array.isArray(mapDefinition.triggers) ? mapDefinition.triggers : (missionDefinition.triggers ?? []),
+      logic: Array.isArray(mapDefinition.logic) ? mapDefinition.logic : (missionDefinition.logic ?? [])
     };
   }
 

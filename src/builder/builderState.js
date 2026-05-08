@@ -119,11 +119,30 @@ export function createBuilderState() {
       once: true,
       nextMapId: "",
       completeObjectiveId: "",
+      logicChainId: "",
       stat: "core",
       value: -1,
       missionResult: "victory",
       selectedIndex: -1,
       paintMode: "add"
+    },
+    logicTool: {
+      id: "",
+      name: "Logic Chain",
+      selectedIndex: -1,
+      conditionType: "none",
+      conditionObjectiveId: "",
+      conditionFlagId: "",
+      conditionRound: 1,
+      actionType: "complete_objective",
+      actionObjectiveId: "",
+      actionNextMapId: "",
+      actionStat: "core",
+      actionValue: -1,
+      actionMissionResult: "victory",
+      actionFlagId: "",
+      actionFlagValue: true,
+      actionItemId: ""
     },
     status: "BUILDER MENU",
     runtimeMapId: null,
@@ -134,7 +153,7 @@ export function createBuilderState() {
       info: [
         {
           code: "BUILDER_AUTHORING_FOUNDATION",
-          message: "Mission Builder can create, terrain-paint, structure-cell/edge paint, spawn/deployment paint, author pilot/pilot+mech/empty-mech start assignments, and export a builder-owned mission package. Objectives remain staged."
+          message: "Mission Builder can create, terrain-paint, structure-cell/edge paint, spawn/deployment paint, author pilot/pilot+mech/empty-mech start assignments, and export a builder-owned mission package. Objectives/triggers/logic are active in V1 form."
         }
       ]
     },

@@ -65,6 +65,14 @@ import {
   getTriggerTypeOptions
 } from "../builderTriggers.js";
 import {
+  ensureLogicToolSettings,
+  getLogicActionOptions,
+  getLogicConditionOptions,
+  getLogicDefinitions,
+  getLogicMissionResultOptions,
+  getLogicStatOptions
+} from "../builderLogic.js";
+import {
   getBuilderMapCatalogOptions,
   getBuilderMissionCatalogOptions
 } from "../builderLoadExisting.js";
@@ -198,8 +206,8 @@ function renderTabHeader({ builderState, refs }) {
     spawns: "Spawn and deployment authoring writes existing map.spawns and map.startState truth.",
     units: "Unit start assignments write map.startState.deployments using the current runtime contract.",
     objectives: "Objective definitions are authored here. Reach/Hold objectives use map painting for zones.",
-    triggers: "Preset triggers live here. V1 starts with on-enter-zone Load Map.",
-    logic: "Mission Logic Chains: trigger → conditions → effects → follow-up.",
+    triggers: "Preset triggers live here. Use Run Logic Chain when one zone needs several actions.",
+    logic: "Logic V1 is simple: optional condition, then ordered action list. No node graph, no NASA console.",
     dialogue: "Dialogue authoring will adapt to current missionState dialogue hooks.",
     results: "Victory/defeat result authoring belongs here.",
     validate: "Validation is part of authoring, not end polish.",
@@ -442,6 +450,9 @@ function renderInspector({ builderState, refs, appState }) {
   const triggerTools = builderState.activeTab === "triggers"
     ? renderTriggerInspectorTools(builderState, appState)
     : "";
+  const logicTools = builderState.activeTab === "logic"
+    ? renderLogicInspectorTools(builderState, appState)
+    : "";
   const resultsTools = builderState.activeTab === "results"
     ? renderResultsInspectorTools(builderState)
     : "";
@@ -468,6 +479,7 @@ function renderInspector({ builderState, refs, appState }) {
     ${unitTools}
     ${objectiveTools}
     ${triggerTools}
+    ${logicTools}
     ${resultsTools}
     ${validationTools}
     ${exportTools}
@@ -1176,6 +1188,7 @@ function renderTriggerInspectorTools(builderState, appState) {
   const objectiveOptions = buildTriggerObjectiveOptions(triggerObjectiveList, tool.completeObjectiveId);
   const statOptions = buildSimpleOptions(getTriggerStatOptions(), tool.stat ?? "core");
   const missionResultOptions = buildSimpleOptions(getTriggerMissionResultOptions(), tool.missionResult ?? "victory");
+  const logicOptions = buildLogicChainOptions(getLogicDefinitions(builderState), tool.logicChainId);
   const selectedTrigger = Number.isInteger(Number(tool.selectedIndex)) && triggers[Number(tool.selectedIndex)]
     ? triggers[Number(tool.selectedIndex)]
     : null;
@@ -1186,6 +1199,7 @@ function renderTriggerInspectorTools(builderState, appState) {
   const showObjectiveField = tool.preset === "load_map" || tool.preset === "complete_objective";
   const showStatFields = tool.preset === "change_unit_stat";
   const showResultField = tool.preset === "end_mission";
+  const showLogicField = tool.preset === "run_logic";
 
   return `
     <div class="builder-inspector-card builder-trigger-tool-card">
@@ -1242,6 +1256,12 @@ function renderTriggerInspectorTools(builderState, appState) {
           <select data-builder-field="trigger-mission-result"${editable ? "" : " disabled"}>${missionResultOptions}</select>
         </label>
       ` : ""}
+      ${showLogicField ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Logic Chain</span>
+          <select data-builder-field="trigger-logic-chain-id"${editable ? "" : " disabled"}>${logicOptions}</select>
+        </label>
+      ` : ""}
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="add-trigger"${editable ? "" : " disabled"}>Add Trigger</button>
         <button type="button" class="builder-tool-button" data-builder-action="update-trigger"${editable ? "" : " disabled"}>Update Selected</button>
@@ -1282,7 +1302,230 @@ function formatTriggerListDetail(trigger) {
   if (trigger?.preset === 'change_unit_stat') return ' · ' + (trigger?.stat ?? 'core') + ' ' + (Number(trigger?.value ?? 0) >= 0 ? '+' : '') + (trigger?.value ?? 0);
   if (trigger?.preset === 'complete_objective') return trigger?.completeObjectiveId ? ' · objective: ' + trigger.completeObjectiveId : ' · objective: missing';
   if (trigger?.preset === 'end_mission') return ' · result: ' + (trigger?.missionResult ?? 'victory');
+  if (trigger?.preset === 'run_logic') return trigger?.logicChainId ? ' · logic: ' + trigger.logicChainId : ' · logic: missing';
   return '';
+}
+
+
+function renderLogicInspectorTools(builderState, appState) {
+  const tool = ensureLogicToolSettings(builderState) ?? {};
+  const editable = builderState.workspaceMode === "builder-map";
+  const logic = getLogicDefinitions(builderState);
+  const mapDrafts = getMissionMapDrafts(builderState);
+  const activeMapId = String(builderState?.authoring?.map?.id ?? builderState?.authoring?.activeMapId ?? "");
+  const objectiveList = Array.isArray(builderState?.authoring?.map?.objectives) && builderState.authoring.map.objectives.length
+    ? builderState.authoring.map.objectives
+    : builderState?.authoring?.mission?.objectives;
+  const conditionOptions = buildSimpleObjectOptions(getLogicConditionOptions(), tool.conditionType ?? "none");
+  const actionOptions = buildSimpleObjectOptions(getLogicActionOptions(), tool.actionType ?? "complete_objective");
+  const objectiveOptions = buildTriggerObjectiveOptions(objectiveList, tool.actionObjectiveId || tool.conditionObjectiveId);
+  const conditionObjectiveOptions = buildTriggerObjectiveOptions(objectiveList, tool.conditionObjectiveId);
+  const nextMapOptions = buildTriggerMapOptions(mapDrafts, tool.actionNextMapId, activeMapId);
+  const statOptions = buildSimpleOptions(getLogicStatOptions(), tool.actionStat ?? "core");
+  const missionResultOptions = buildSimpleOptions(getLogicMissionResultOptions(), tool.actionMissionResult ?? "victory");
+  const itemOptions = buildLogicItemOptions(appState, tool.actionItemId);
+  const selectedChain = Number.isInteger(Number(tool.selectedIndex)) && logic[Number(tool.selectedIndex)]
+    ? logic[Number(tool.selectedIndex)]
+    : null;
+  const actionCount = Array.isArray(selectedChain?.actions) ? selectedChain.actions.length : 0;
+  const showConditionObjective = tool.conditionType === "objective_complete" || tool.conditionType === "objective_incomplete";
+  const showConditionFlag = tool.conditionType === "flag_true" || tool.conditionType === "flag_false";
+  const showConditionRound = tool.conditionType === "round_at_least";
+  const showActionObjective = tool.actionType === "complete_objective";
+  const showActionStat = tool.actionType === "change_unit_stat";
+  const showActionMap = tool.actionType === "load_map";
+  const showActionResult = tool.actionType === "end_mission";
+  const showActionFlag = tool.actionType === "set_flag";
+  const showActionItem = tool.actionType === "give_item" || tool.actionType === "remove_item";
+
+  return `
+    <div class="builder-inspector-card builder-logic-tool-card">
+      <div class="builder-field-label">Logic V1</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Logic ID</span>
+        <input type="text" data-builder-field="logic-id" value="${escapeHtml(tool.id ?? "")}" placeholder="auto" spellcheck="false"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Logic Name</span>
+        <input type="text" data-builder-field="logic-name" value="${escapeHtml(tool.name ?? "")}" spellcheck="true"${editable ? "" : " disabled"}>
+      </label>
+      <div class="builder-field-label builder-section-label">Condition Optional</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Condition</span>
+        <select data-builder-field="logic-condition-type"${editable ? "" : " disabled"}>${conditionOptions}</select>
+      </label>
+      ${showConditionObjective ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Objective</span>
+          <select data-builder-field="logic-condition-objective-id"${editable ? "" : " disabled"}>${conditionObjectiveOptions}</select>
+        </label>
+      ` : ""}
+      ${showConditionFlag ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Flag ID</span>
+          <input type="text" data-builder-field="logic-condition-flag-id" value="${escapeHtml(tool.conditionFlagId ?? "")}" placeholder="alarm_on" spellcheck="false"${editable ? "" : " disabled"}>
+        </label>
+      ` : ""}
+      ${showConditionRound ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Round At Least</span>
+          <input type="number" min="1" step="1" data-builder-field="logic-condition-round" value="${escapeHtml(tool.conditionRound ?? 1)}"${editable ? "" : " disabled"}>
+        </label>
+      ` : ""}
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="add-logic"${editable ? "" : " disabled"}>Add Logic</button>
+        <button type="button" class="builder-tool-button" data-builder-action="update-logic"${editable ? "" : " disabled"}>Update Selected</button>
+      </div>
+
+      <div class="builder-field-label builder-section-label">Add Action</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Action</span>
+        <select data-builder-field="logic-action-type"${editable ? "" : " disabled"}>${actionOptions}</select>
+      </label>
+      ${showActionObjective ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Objective</span>
+          <select data-builder-field="logic-action-objective-id"${editable ? "" : " disabled"}>${objectiveOptions}</select>
+        </label>
+      ` : ""}
+      ${showActionStat ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Target</span>
+          <div class="builder-field-value">Triggering unit</div>
+        </label>
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Stat</span>
+          <select data-builder-field="logic-action-stat"${editable ? "" : " disabled"}>${statOptions}</select>
+        </label>
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Value (+ heals / - hurts)</span>
+          <input type="number" step="1" data-builder-field="logic-action-value" value="${escapeHtml(tool.actionValue ?? -1)}"${editable ? "" : " disabled"}>
+        </label>
+      ` : ""}
+      ${showActionMap ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Next Map</span>
+          <select data-builder-field="logic-action-next-map-id"${editable ? "" : " disabled"}>${nextMapOptions}</select>
+        </label>
+      ` : ""}
+      ${showActionResult ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Mission Result</span>
+          <select data-builder-field="logic-action-mission-result"${editable ? "" : " disabled"}>${missionResultOptions}</select>
+        </label>
+      ` : ""}
+      ${showActionFlag ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Flag ID</span>
+          <input type="text" data-builder-field="logic-action-flag-id" value="${escapeHtml(tool.actionFlagId ?? "")}" placeholder="alarm_on" spellcheck="false"${editable ? "" : " disabled"}>
+        </label>
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Flag Value</span>
+          <select data-builder-field="logic-action-flag-value"${editable ? "" : " disabled"}>${buildSimpleOptions(["true", "false"], tool.actionFlagValue === false ? "false" : "true")}</select>
+        </label>
+      ` : ""}
+      ${showActionItem ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Target</span>
+          <div class="builder-field-value">Triggering unit</div>
+        </label>
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Item</span>
+          <select data-builder-field="logic-action-item-id"${editable ? "" : " disabled"}>${itemOptions}</select>
+        </label>
+      ` : ""}
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="add-logic-action"${editable ? "" : " disabled"}>Add Action To Selected</button>
+      </div>
+      <div class="builder-inspector-note">Triggers call logic with the Run Logic Chain preset. Logic chains are optional condition + ordered actions. Current selected chain has ${actionCount} action(s).</div>
+      <div class="builder-field-label builder-section-label">Current Logic Chains</div>
+      ${renderLogicList(logic, tool.selectedIndex)}
+    </div>
+  `;
+}
+
+function renderLogicList(logic, selectedIndex) {
+  const list = Array.isArray(logic) ? logic : [];
+  if (!list.length) return '<div class="builder-inspector-note">No authored logic chains yet.</div>';
+  return '<div class="builder-trigger-list builder-logic-list">' + list.map((chain, index) => {
+    const selected = Number(selectedIndex) === index ? ' is-active' : '';
+    const actions = Array.isArray(chain?.actions) ? chain.actions : [];
+    const conditionText = formatLogicCondition(chain?.conditions?.[0]);
+    const actionText = actions.length ? actions.map(formatLogicAction).join(' → ') : 'no actions';
+    return '<div class="builder-trigger-row' + selected + '">' +
+      '<button type="button" class="builder-trigger-main" data-builder-action="select-logic:' + index + '">' +
+        '<strong>' + escapeHtml((index + 1) + '. ' + (chain?.name ?? chain?.id ?? 'Logic Chain')) + '</strong>' +
+        '<span>' + escapeHtml(conditionText + ' · ' + actionText) + '</span>' +
+      '</button>' +
+      '<button type="button" class="builder-tool-button" data-builder-action="remove-logic:' + index + '">Remove</button>' +
+      '<div class="builder-logic-actions">' + actions.map((action, actionIndex) =>
+        '<button type="button" class="builder-tool-button" data-builder-action="remove-logic-action:' + index + ':' + actionIndex + '">Remove ' + escapeHtml(String(actionIndex + 1)) + '</button>'
+      ).join('') + '</div>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function formatLogicCondition(condition) {
+  if (!condition?.type) return 'always';
+  if (condition.type === 'objective_complete') return 'if ' + (condition.objectiveId ?? 'objective') + ' complete';
+  if (condition.type === 'objective_incomplete') return 'if ' + (condition.objectiveId ?? 'objective') + ' incomplete';
+  if (condition.type === 'flag_true') return 'if flag ' + (condition.flagId ?? 'flag') + ' true';
+  if (condition.type === 'flag_false') return 'if flag ' + (condition.flagId ?? 'flag') + ' false';
+  if (condition.type === 'round_at_least') return 'if round >= ' + (condition.round ?? 1);
+  return 'always';
+}
+
+function formatLogicAction(action) {
+  if (action?.type === 'complete_objective') return 'complete ' + (action.objectiveId ?? 'objective');
+  if (action?.type === 'change_unit_stat') return (action.stat ?? 'core') + ' ' + (Number(action.value ?? 0) >= 0 ? '+' : '') + (action.value ?? 0);
+  if (action?.type === 'load_map') return 'load ' + (action.nextMapId ?? 'map');
+  if (action?.type === 'end_mission') return 'end ' + (action.missionResult ?? 'victory');
+  if (action?.type === 'set_flag') return 'flag ' + (action.flagId ?? 'flag') + '=' + (action.value === false ? 'false' : 'true');
+  if (action?.type === 'give_item') return 'give ' + (action.itemId ?? 'item');
+  if (action?.type === 'remove_item') return 'remove ' + (action.itemId ?? 'item');
+  return action?.type ?? 'action';
+}
+
+
+function buildLogicItemOptions(appState, selectedItemId = "") {
+  const content = appState?.content ?? {};
+  const items = [
+    ...(Array.isArray(content.pilotItems) ? content.pilotItems : []),
+    ...(Array.isArray(content.mechItems) ? content.mechItems : [])
+  ];
+  const cleanSelected = String(selectedItemId ?? "");
+  const seen = new Set();
+  const options = ['<option value="">Select item...</option>'];
+  for (const item of items) {
+    const id = String(item?.id ?? item ?? "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    const label = String(item?.label ?? item?.name ?? id);
+    options.push(`<option value="${escapeHtml(id)}"${id === cleanSelected ? " selected" : ""}>${escapeHtml(label)}</option>`);
+  }
+  if (cleanSelected && !seen.has(cleanSelected)) {
+    options.push(`<option value="${escapeHtml(cleanSelected)}" selected>${escapeHtml(cleanSelected)}</option>`);
+  }
+  return options.join("");
+}
+
+function buildLogicChainOptions(logic, selectedId = "") {
+  const list = Array.isArray(logic) ? logic : [];
+  if (!list.length) return '<option value="">No logic chains</option>';
+  const selected = String(selectedId ?? "");
+  return ['<option value="">Select logic chain</option>', ...list.map((chain) => {
+    const id = String(chain?.id ?? "");
+    return `<option value="${escapeHtml(id)}"${id === selected ? " selected" : ""}>${escapeHtml(chain?.name || id)}</option>`;
+  })].join("");
+}
+
+function buildSimpleObjectOptions(options, selectedValue) {
+  return (Array.isArray(options) ? options : []).map((option) => {
+    const value = String(option?.value ?? option ?? "");
+    const label = String(option?.label ?? option?.value ?? option ?? "");
+    const selected = value === String(selectedValue ?? "") ? " selected" : "";
+    return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(label)}</option>`;
+  }).join("");
 }
 
 function buildTriggerPresetOptions(selectedPreset = "load_map") {

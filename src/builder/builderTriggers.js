@@ -9,7 +9,8 @@ const TRIGGER_PRESETS = [
   { value: "load_map", label: "Load Map / Next Map" },
   { value: "change_unit_stat", label: "Change Unit Stat" },
   { value: "complete_objective", label: "Complete Objective" },
-  { value: "end_mission", label: "End Mission" }
+  { value: "end_mission", label: "End Mission" },
+  { value: "run_logic", label: "Run Logic Chain" }
 ];
 
 const TRIGGER_TYPES = [
@@ -32,6 +33,7 @@ function createDefaultTriggerTool() {
     once: true,
     nextMapId: "",
     completeObjectiveId: "",
+    logicChainId: "",
     stat: "core",
     value: -1,
     missionResult: "victory",
@@ -53,6 +55,7 @@ export function ensureTriggerToolSettings(builderState) {
   tool.once = tool.once !== false;
   tool.nextMapId = sanitizeId(tool.nextMapId ?? "");
   tool.completeObjectiveId = sanitizeId(tool.completeObjectiveId ?? "");
+  tool.logicChainId = sanitizeId(tool.logicChainId ?? "");
   if (!STAT_FIELDS.includes(tool.stat)) tool.stat = "core";
   tool.value = normalizeInteger(tool.value, -1);
   if (!MISSION_RESULTS.includes(tool.missionResult)) tool.missionResult = "victory";
@@ -80,6 +83,7 @@ export function updateTriggerToolFromFields(builderState, root) {
   tool.once = readCheckbox(root, "trigger-once", tool.once !== false);
   tool.nextMapId = sanitizeId(readField(root, "trigger-next-map-id", tool.nextMapId));
   tool.completeObjectiveId = sanitizeId(readField(root, "trigger-complete-objective-id", tool.completeObjectiveId));
+  tool.logicChainId = sanitizeId(readField(root, "trigger-logic-chain-id", tool.logicChainId));
 
   const stat = readField(root, "trigger-stat", tool.stat);
   tool.stat = STAT_FIELDS.includes(stat) ? stat : "core";
@@ -174,6 +178,7 @@ export function selectTriggerDefinition(builderState, index) {
   tool.once = trigger.once !== false;
   tool.nextMapId = trigger.nextMapId ?? "";
   tool.completeObjectiveId = trigger.completeObjectiveId ?? "";
+  tool.logicChainId = trigger.logicChainId ?? "";
   tool.stat = trigger.stat ?? "core";
   tool.value = normalizeInteger(trigger.value, -1);
   tool.missionResult = trigger.missionResult ?? "victory";
@@ -298,6 +303,10 @@ function buildTriggerFromTool(tool, id) {
 
   if (trigger.preset === "end_mission") {
     trigger.missionResult = MISSION_RESULTS.includes(tool.missionResult) ? tool.missionResult : "victory";
+  }
+
+  if (trigger.preset === "run_logic") {
+    trigger.logicChainId = tool.logicChainId || "";
   }
 
   return trigger;
