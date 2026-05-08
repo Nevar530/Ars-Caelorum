@@ -95,7 +95,8 @@ export function createBuilderState() {
     },
     loadExistingTool: {
       standaloneMapId: "",
-      packageMapId: ""
+      packageMapId: "",
+      standaloneMissionId: ""
     },
     objectiveTool: {
       type: "defeat_all",

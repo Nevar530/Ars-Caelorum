@@ -5,6 +5,7 @@
 // by mirroring the active map's objective array into mission.objectives for the
 // current runtime/export contract.
 
+import { cloneMapDefinition } from "../map.js";
 import { createBlankBuilderMap } from "./builderMapFactory.js";
 
 const DEFAULT_BRIEFING_BODY = "Mission package created in the Mission Builder.";
@@ -269,7 +270,7 @@ export function addExistingMapToMissionPackage(builderState, sourceMap, sourceEn
   const sourceId = sanitizeId(sourceMap.id ?? sourceEntry?.id, "loaded_map");
   const sourceName = sanitizeName(sourceMap.name ?? sourceEntry?.name, titleFromId(sourceId));
   const id = createUniqueMapId(`${sourceId}_copy`, maps);
-  const map = cloneJson(sourceMap);
+  const map = cloneBuilderMap(sourceMap);
   map.id = id;
   map.name = `${sourceName} Copy`;
   if (!Array.isArray(map.objectives)) map.objectives = [cloneJson(OBJECTIVE_PRESETS[0].objective)];
@@ -287,7 +288,7 @@ export function duplicateActiveMissionPackageMap(builderState) {
 
   const maps = getMissionMapDrafts(builderState);
   const id = createUniqueMapId(`${sanitizeId(active.id, "map")}_copy`, maps);
-  const copy = cloneJson(active);
+  const copy = cloneBuilderMap(active);
   copy.id = id;
   copy.name = `${sanitizeName(active.name, titleFromId(active.id))} Copy`;
   builderState.authoring.maps = [...maps, copy];
@@ -558,6 +559,17 @@ function clampWholeNumber(value, fallback, min, max) {
   const number = Math.trunc(Number(value));
   if (!Number.isFinite(number)) return fallback;
   return Math.max(min, Math.min(max, number));
+}
+
+function cloneBuilderMap(map) {
+  const clone = cloneMapDefinition(map);
+  if (!clone.spawns || typeof clone.spawns !== "object") clone.spawns = { player: [], enemy: [], neutral: [] };
+  if (!clone.startState || typeof clone.startState !== "object") clone.startState = { deployments: [], deploymentCells: [] };
+  if (!Array.isArray(clone.startState.deployments)) clone.startState.deployments = [];
+  if (!Array.isArray(clone.startState.deploymentCells)) clone.startState.deploymentCells = [];
+  if (!Array.isArray(clone.structures)) clone.structures = [];
+  if (!Array.isArray(clone.objectives)) clone.objectives = [];
+  return clone;
 }
 
 function cloneJson(value) {

@@ -41,6 +41,16 @@ export function attachMapMetadata(map, metadata = {}) {
           : ["grass", "rock", "sand", "water", "asphalt", "concrete"],
       writable: true,
       configurable: true
+    },
+    objectives: {
+      value: structuredClone(metadata.objectives ?? map.objectives ?? []),
+      writable: true,
+      configurable: true
+    },
+    defaults: {
+      value: structuredClone(metadata.defaults ?? map.defaults ?? null),
+      writable: true,
+      configurable: true
     }
   });
 
@@ -142,7 +152,9 @@ export function normalizeMapDefinition(definition) {
       height: definition.height,
       spawns: definition.spawns,
       startState: definition.startState,
-      terrainTypes: definition.terrainTypes
+      terrainTypes: definition.terrainTypes,
+      objectives: definition.objectives,
+      defaults: definition.defaults
     });
   }
 
@@ -162,7 +174,9 @@ export function cloneMapDefinition(sourceMap = null) {
       height: sourceMap.height,
       spawns: sourceMap.spawns,
       startState: sourceMap.startState,
-      terrainTypes: sourceMap.terrainTypes
+      terrainTypes: sourceMap.terrainTypes,
+      objectives: sourceMap.objectives,
+      defaults: sourceMap.defaults
     });
   }
 

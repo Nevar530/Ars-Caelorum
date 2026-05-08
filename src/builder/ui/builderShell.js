@@ -55,7 +55,10 @@ import {
   getObjectiveTypeOptions,
   objectiveTypeNeedsZone
 } from "../builderObjectives.js";
-import { getBuilderMapCatalogOptions } from "../builderLoadExisting.js";
+import {
+  getBuilderMapCatalogOptions,
+  getBuilderMissionCatalogOptions
+} from "../builderLoadExisting.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 
 export function createBuilderShell() {
@@ -248,8 +251,11 @@ function renderLanding(appState, builderState = null) {
   const shellScreen = appState?.ui?.shell?.screen ?? "unknown";
   const mapSummary = getMapSummary(appState);
   const selectedMapId = builderState?.loadExistingTool?.standaloneMapId ?? "";
+  const selectedMissionId = builderState?.loadExistingTool?.standaloneMissionId ?? "";
   const mapCatalogOptions = buildExistingMapOptions(appState, selectedMapId);
+  const missionCatalogOptions = buildExistingMissionOptions(appState, selectedMissionId);
   const hasCatalogMaps = Boolean(mapCatalogOptions);
+  const hasCatalogMissions = Boolean(missionCatalogOptions);
 
   return `
     <section class="builder-landing-hero">
@@ -268,8 +274,13 @@ function renderLanding(appState, builderState = null) {
         <small>Pick size, base terrain fill, and base elevation.</small>
       </button>
       <div class="builder-start-card builder-start-card-form">
-        <span>Load Existing Map</span>
-        <small>Clone a reusable catalog map into builder memory. The source map is untouched.</small>
+        <span>Load Existing</span>
+        <small>Load a mission package for editing, or clone a reusable map into builder memory.</small>
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Mission</span>
+          <select data-builder-field="existing-mission-id"${hasCatalogMissions ? "" : " disabled"}>${missionCatalogOptions || '<option value="">No catalog missions found</option>'}</select>
+        </label>
+        <button type="button" class="builder-tool-button" data-builder-action="load-existing-mission"${hasCatalogMissions ? "" : " disabled"}>Load Mission</button>
         <label class="builder-form-field builder-form-field-compact">
           <span>Map</span>
           <select data-builder-field="existing-map-id"${hasCatalogMaps ? "" : " disabled"}>${mapCatalogOptions || '<option value="">No catalog maps found</option>'}</select>
@@ -1212,3 +1223,14 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+function buildExistingMissionOptions(appState, selectedId = "") {
+  const options = getBuilderMissionCatalogOptions(appState);
+  if (!options.length) return "";
+
+  const selected = selectedId || options[0]?.id || "";
+  return options.map((entry) => {
+    const isSelected = entry.id === selected ? " selected" : "";
+    return `<option value="${escapeHtml(entry.id)}"${isSelected}>${escapeHtml(entry.name || entry.id)}</option>`;
+  }).join("");
+}
+

@@ -80,7 +80,8 @@ import {
 } from "./builderMissionPackage.js";
 import {
   loadExistingMapAsStandalone,
-  loadExistingMapIntoMission
+  loadExistingMapIntoMission,
+  loadExistingMissionPackageAsDraft
 } from "./builderLoadExisting.js";
 import {
   addObjectiveDefinition,
@@ -262,10 +263,11 @@ class MissionBuilder {
     if (!event.target?.closest?.("[data-builder-field]")) return;
 
     const changedField = event.target.getAttribute("data-builder-field");
-    if (changedField === "existing-map-id" || changedField === "package-load-map-id") {
-      if (!this.builderState.loadExistingTool) this.builderState.loadExistingTool = { standaloneMapId: "", packageMapId: "" };
+    if (changedField === "existing-map-id" || changedField === "package-load-map-id" || changedField === "existing-mission-id") {
+      if (!this.builderState.loadExistingTool) this.builderState.loadExistingTool = { standaloneMapId: "", packageMapId: "", standaloneMissionId: "" };
       if (changedField === "existing-map-id") this.builderState.loadExistingTool.standaloneMapId = String(event.target.value ?? "");
       if (changedField === "package-load-map-id") this.builderState.loadExistingTool.packageMapId = String(event.target.value ?? "");
+      if (changedField === "existing-mission-id") this.builderState.loadExistingTool.standaloneMissionId = String(event.target.value ?? "");
       return;
     }
 
@@ -731,6 +733,18 @@ class MissionBuilder {
         terrainDefinitions: this.appState?.content?.terrainDefinitions ?? {}
       });
       setBuilderAuthoredMap(this.builderState, map, "new-blank-map");
+      this.render();
+      return;
+    }
+
+    if (action === "load-existing-mission") {
+      const result = await loadExistingMissionPackageAsDraft({
+        builderState: this.builderState,
+        appState: this.appState,
+        root: this.refs.root
+      });
+      syncBuilderAuthoredMap(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
       this.render();
       return;
     }

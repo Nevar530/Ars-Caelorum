@@ -181,7 +181,9 @@ function preservePreviewMapMetadata(previewState, sourceState) {
     "terrainTypes",
     "spawns",
     "startState",
-    "structures"
+    "structures",
+    "objectives",
+    "defaults"
   ];
 
   for (const key of metadataKeys) {
@@ -340,12 +342,12 @@ function renderBuilderWorkspaceOverlays({ previewState, appState, builderState, 
   const selected = builderState?.selected;
   const overlayState = builderState?.overlays ?? {};
 
-  if (overlayState.deployment) overlays.push(renderDeploymentOverlays(previewState, appState));
+  if (overlayState.deployment) overlays.push(renderDeploymentOverlays(previewState));
   if (overlayState.objectives) overlays.push(renderObjectiveZoneOverlays(previewState, builderState));
-  if (overlayState.spawns) overlays.push(renderSpawnOverlays(previewState, appState));
-  if (overlayState.rooms) overlays.push(renderRoomOverlays(previewState, appState));
-  if (overlayState.structureEdges) overlays.push(renderStructureEdgeOverlays(previewState, appState));
-  if (overlayState.tileHeights) overlays.push(renderTileHeightOverlays(previewState, appState));
+  if (overlayState.spawns) overlays.push(renderSpawnOverlays(previewState));
+  if (overlayState.rooms) overlays.push(renderRoomOverlays(previewState));
+  if (overlayState.structureEdges) overlays.push(renderStructureEdgeOverlays(previewState));
+  if (overlayState.tileHeights) overlays.push(renderTileHeightOverlays(previewState));
 
   if (isTerrainBrushPreviewActive(builderState)) {
     overlays.push(renderTerrainBrushPreview(previewState, appState, builderState));
@@ -427,8 +429,8 @@ function getTerrainBrushAnchor(builderState) {
 
   return null;
 }
-function renderDeploymentOverlays(previewState, appState) {
-  const cells = getDeploymentCellTruth(appState?.map);
+function renderDeploymentOverlays(previewState) {
+  const cells = getDeploymentCellTruth(previewState?.map);
   if (!cells.length) return "";
 
   return cells.map((cell) => {
@@ -458,8 +460,8 @@ function renderObjectiveZoneOverlays(previewState, builderState) {
   }).join("");
 }
 
-function renderSpawnOverlays(previewState, appState) {
-  const spawns = getSpawnTruth(appState?.map);
+function renderSpawnOverlays(previewState) {
+  const spawns = getSpawnTruth(previewState?.map);
   if (!spawns.length) return "";
 
   return spawns.map((spawn) => {
@@ -473,8 +475,8 @@ function renderSpawnOverlays(previewState, appState) {
   }).join("");
 }
 
-function renderRoomOverlays(previewState, appState) {
-  const cells = getStructureCellTruth(appState?.map);
+function renderRoomOverlays(previewState) {
+  const cells = getStructureCellTruth(previewState?.map);
   if (!cells.length) return "";
 
   return cells.map((cell) => {
@@ -488,8 +490,8 @@ function renderRoomOverlays(previewState, appState) {
   }).join("");
 }
 
-function renderStructureEdgeOverlays(previewState, appState) {
-  const edges = getStructureEdgeTruth(appState?.map);
+function renderStructureEdgeOverlays(previewState) {
+  const edges = getStructureEdgeTruth(previewState?.map);
   if (!edges.length) return "";
 
   return edges.map((edge) => {
@@ -510,8 +512,8 @@ function renderStructureEdgeOverlays(previewState, appState) {
   }).join("");
 }
 
-function renderTileHeightOverlays(previewState, appState) {
-  const map = appState?.map;
+function renderTileHeightOverlays(previewState) {
+  const map = previewState?.map;
   const width = getMapWidth(map);
   const height = getMapHeight(map);
   const labels = [];
