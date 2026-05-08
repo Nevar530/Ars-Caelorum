@@ -1,5 +1,5 @@
 import { createState } from "./src/state.js";
-import { createInitialMap, normalizeMapDefinition } from "./src/map.js";
+import { createInitialMap } from "./src/map.js";
 import {
   instantiateTestUnits,
   getUnitAt,
@@ -22,7 +22,7 @@ import { isCommandMenuItemDisabled } from "./src/action.js";
 import { getMissionEntries } from "./src/ui/frontScreen.js";
 import { confirmDeploymentPlacement, getDeploymentReady, isDeploymentActive, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "./src/deployment/deploymentState.js";
 import { advanceMissionDialogue } from "./src/mission/missionState.js";
-import { resolveOnUnitEnterZoneTriggers } from "./src/mission/missionTriggers.js";
+import { createMissionTriggerRuntime } from "./src/mission/missionTriggerRuntime.js";
 
 const refs = {
   frontScreen: document.getElementById("frontScreen"),
@@ -111,86 +111,12 @@ async function init() {
   });
 
 
-  async function loadMissionMapById(mapId) {
-    const cleanMapId = String(mapId ?? "").trim();
-    if (!cleanMapId) return null;
-
-    const missionDefinition = state?.mission?.definition ?? null;
-    const packageMaps = missionDefinition?.packageDefinition?.maps;
-    if (Array.isArray(packageMaps)) {
-      const packageMap = packageMaps.find((map) => String(map?.id ?? "") === cleanMapId);
-      if (packageMap) return normalizeMapDefinition(packageMap);
-    }
-
-    const missionMaps = Array.isArray(missionDefinition?.maps) ? missionDefinition.maps : [];
-    const missionMapEntry = missionMaps.find((entry) => String(entry?.id ?? entry?.mapId ?? "") === cleanMapId);
-    const path = missionMapEntry?.mapPath ?? missionMapEntry?.path ?? (missionMapEntry ? `./data/maps/${cleanMapId}.json` : null);
-    if (path) return loadMapDefinitionByPath(path);
-
-    const catalogMaps = Array.isArray(state?.content?.mapCatalog?.maps) ? state.content.mapCatalog.maps : [];
-    const catalogEntry = catalogMaps.find((entry) => String(entry?.id ?? "") === cleanMapId);
-    if (catalogEntry?.path) return loadMapDefinitionByPath(catalogEntry.path);
-
-    return loadMapDefinitionByPath(`./data/maps/${cleanMapId}.json`).catch(() => null);
-  }
-
-  function buildRuntimeMissionDefinitionForMap(mapDefinition) {
-    const missionDefinition = state?.mission?.definition ?? null;
-    if (!missionDefinition || !mapDefinition) return missionDefinition;
-
-    return {
-      ...missionDefinition,
-      mapId: mapDefinition.id,
-      activeMapId: mapDefinition.id,
-      mapPath: `./data/maps/${mapDefinition.id}.json`,
-      objectives: Array.isArray(mapDefinition.objectives) ? mapDefinition.objectives : []
-    };
-  }
-
-  function handleRuntimeUnitEnteredZone(unit) {
-    const triggerResult = resolveOnUnitEnterZoneTriggers(state, unit);
-    if (!triggerResult?.ok) return false;
-
-    const results = Array.isArray(triggerResult.results) ? triggerResult.results : [triggerResult];
-    const loadMapResult = results.find((result) => result?.preset === "load_map");
-    const endMissionResult = results.find((result) => result?.preset === "end_mission");
-
-    for (const result of results) {
-      if (result?.preset === "change_unit_stat") {
-        logDev(`Trigger ${result.triggerId} changed ${result.unitId ?? "unit"} ${result.stat} by ${result.value}.`);
-      } else if (result?.preset === "complete_objective") {
-        logDev(`Trigger ${result.triggerId} completed objective ${result.completeObjectiveId}.`);
-      }
-    }
-
-    if (endMissionResult?.missionResult) {
-      gameController.endMission(endMissionResult.missionResult);
-      return true;
-    }
-
-    if (loadMapResult) {
-      logDev(`Trigger ${loadMapResult.triggerId} loading map ${loadMapResult.nextMapId}.`);
-      loadMissionMapById(loadMapResult.nextMapId)
-        .then((mapDefinition) => {
-          if (!mapDefinition) {
-            logDev(`Trigger ${loadMapResult.triggerId} failed: map ${loadMapResult.nextMapId} could not be loaded.`);
-            gameController.render();
-            return;
-          }
-
-          gameController.loadMapAndUnits(mapDefinition, buildRuntimeMissionDefinitionForMap(mapDefinition));
-        })
-        .catch((error) => {
-          console.error(error);
-          logDev(`Trigger ${loadMapResult.triggerId} failed while loading ${loadMapResult.nextMapId}.`);
-          gameController.render();
-        });
-      return true;
-    }
-
-    gameController.render();
-    return true;
-  }
+  const missionTriggerRuntime = createMissionTriggerRuntime({
+    state,
+    gameController,
+    loadMapDefinitionByPath,
+    logDev
+  });
 
   const movementController = createMovementController({
     state,
@@ -203,7 +129,7 @@ async function init() {
     logDev,
     advanceMoveTurn: turnController.advanceMoveTurn,
     advanceActionTurn: turnController.advanceActionTurn,
-    onUnitEnteredZone: handleRuntimeUnitEnteredZone
+    onUnitEnteredZone: missionTriggerRuntime.handleUnitEnteredZone
   });
 
   const combatController = createCombatController({

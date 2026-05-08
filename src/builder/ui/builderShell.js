@@ -1214,26 +1214,34 @@ function renderTriggerInspectorTools(builderState, appState) {
         <input type="checkbox" data-builder-field="trigger-once"${tool.once !== false ? " checked" : ""}${editable ? "" : " disabled"}>
         <span>Once</span>
       </label>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Next Map</span>
-        <select data-builder-field="trigger-next-map-id"${editable && showLoadMapFields ? "" : " disabled"}>${nextMapOptions}</select>
-      </label>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>${showObjectiveField && tool.preset === "complete_objective" ? "Objective To Complete" : "Complete Objective Optional"}</span>
-        <select data-builder-field="trigger-complete-objective-id"${editable && showObjectiveField ? "" : " disabled"}>${objectiveOptions}</select>
-      </label>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Stat</span>
-        <select data-builder-field="trigger-stat"${editable && showStatFields ? "" : " disabled"}>${statOptions}</select>
-      </label>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Value (+ heals / - hurts)</span>
-        <input type="number" step="1" data-builder-field="trigger-value" value="${escapeHtml(tool.value ?? -1)}"${editable && showStatFields ? "" : " disabled"}>
-      </label>
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Mission Result</span>
-        <select data-builder-field="trigger-mission-result"${editable && showResultField ? "" : " disabled"}>${missionResultOptions}</select>
-      </label>
+      ${showLoadMapFields ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Next Map</span>
+          <select data-builder-field="trigger-next-map-id"${editable ? "" : " disabled"}>${nextMapOptions}</select>
+        </label>
+      ` : ""}
+      ${showObjectiveField ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>${tool.preset === "complete_objective" ? "Objective To Complete" : "Complete Objective Optional"}</span>
+          <select data-builder-field="trigger-complete-objective-id"${editable ? "" : " disabled"}>${objectiveOptions}</select>
+        </label>
+      ` : ""}
+      ${showStatFields ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Stat</span>
+          <select data-builder-field="trigger-stat"${editable ? "" : " disabled"}>${statOptions}</select>
+        </label>
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Value (+ heals / - hurts)</span>
+          <input type="number" step="1" data-builder-field="trigger-value" value="${escapeHtml(tool.value ?? -1)}"${editable ? "" : " disabled"}>
+        </label>
+      ` : ""}
+      ${showResultField ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Mission Result</span>
+          <select data-builder-field="trigger-mission-result"${editable ? "" : " disabled"}>${missionResultOptions}</select>
+        </label>
+      ` : ""}
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="add-trigger"${editable ? "" : " disabled"}>Add Trigger</button>
         <button type="button" class="builder-tool-button" data-builder-action="update-trigger"${editable ? "" : " disabled"}>Update Selected</button>
@@ -1243,7 +1251,7 @@ function renderTriggerInspectorTools(builderState, appState) {
         <button type="button" class="builder-tool-button${addActive}" data-builder-action="trigger-paint-add"${editable ? "" : " disabled"}>Paint Zone</button>
         <button type="button" class="builder-tool-button${eraseActive}" data-builder-action="trigger-paint-erase"${editable ? "" : " disabled"}>Erase Zone</button>
       </div>
-      <div class="builder-inspector-note">Select or add a trigger, then click tiles on the map. Presets are simple: load map, change core/shield, complete an objective, or end the mission. Current selected trigger has ${selectedTileCount} zone tile(s).</div>
+      <div class="builder-inspector-note">Select or add a trigger, then click tiles on the map. Only fields used by the selected preset are shown. Current selected trigger has ${selectedTileCount} zone tile(s).</div>
       <div class="builder-field-label builder-section-label">Current Triggers</div>
       ${renderTriggerList(triggers, tool.selectedIndex)}
     </div>
