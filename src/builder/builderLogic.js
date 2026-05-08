@@ -18,6 +18,7 @@ const ACTION_TYPES = [
   { value: "change_unit_stat", label: "Change Unit Stat" },
   { value: "load_map", label: "Load Map / Next Map" },
   { value: "end_mission", label: "End Mission" },
+  { value: "start_dialogue", label: "Start Dialogue" },
   { value: "set_flag", label: "Set Flag" },
   { value: "give_item", label: "Give Item" },
   { value: "remove_item", label: "Remove Item" }
@@ -43,6 +44,7 @@ function createDefaultLogicTool() {
     actionStat: "core",
     actionValue: -1,
     actionMissionResult: "victory",
+    actionDialogueKey: "intro",
     actionFlagId: "",
     actionFlagValue: true,
     actionItemId: ""
@@ -67,6 +69,7 @@ export function ensureLogicToolSettings(builderState) {
   if (!STAT_FIELDS.includes(tool.actionStat)) tool.actionStat = "core";
   tool.actionValue = normalizeInteger(tool.actionValue, -1);
   if (!MISSION_RESULTS.includes(tool.actionMissionResult)) tool.actionMissionResult = "victory";
+  tool.actionDialogueKey = sanitizeId(tool.actionDialogueKey ?? "intro") || "intro";
   tool.actionFlagId = sanitizeId(tool.actionFlagId ?? "");
   tool.actionFlagValue = tool.actionFlagValue !== false;
   tool.actionItemId = sanitizeId(tool.actionItemId ?? "");
@@ -96,6 +99,7 @@ export function updateLogicToolFromFields(builderState, root) {
   tool.actionValue = normalizeInteger(readField(root, "logic-action-value", tool.actionValue), tool.actionValue);
   const missionResult = readField(root, "logic-action-mission-result", tool.actionMissionResult);
   tool.actionMissionResult = MISSION_RESULTS.includes(missionResult) ? missionResult : "victory";
+  tool.actionDialogueKey = sanitizeId(readField(root, "logic-action-dialogue-key", tool.actionDialogueKey)) || "intro";
   tool.actionFlagId = sanitizeId(readField(root, "logic-action-flag-id", tool.actionFlagId));
   tool.actionFlagValue = readField(root, "logic-action-flag-value", tool.actionFlagValue ? "true" : "false") !== "false";
   tool.actionItemId = sanitizeId(readField(root, "logic-action-item-id", tool.actionItemId));
@@ -258,6 +262,7 @@ function buildActionFromTool(tool) {
   if (type === "change_unit_stat") return { type, target: "triggering_unit", stat: STAT_FIELDS.includes(tool.actionStat) ? tool.actionStat : "core", value: normalizeInteger(tool.actionValue, -1) };
   if (type === "load_map") return { type, nextMapId: sanitizeId(tool.actionNextMapId) };
   if (type === "end_mission") return { type, missionResult: MISSION_RESULTS.includes(tool.actionMissionResult) ? tool.actionMissionResult : "victory" };
+  if (type === "start_dialogue") return { type, dialogueKey: sanitizeId(tool.actionDialogueKey) || "intro" };
   if (type === "set_flag") return { type, flagId: sanitizeId(tool.actionFlagId), value: tool.actionFlagValue !== false };
   if (type === "give_item" || type === "remove_item") return { type, target: "triggering_unit", itemId: sanitizeId(tool.actionItemId) };
   return { type: "complete_objective", objectiveId: sanitizeId(tool.actionObjectiveId) };

@@ -4,12 +4,14 @@
 // Preset-based tile triggers. Keeps mission scripting simple and data-driven.
 
 import { markObjectiveCompleted } from "./missionObjectives.js";
+import { startMissionDialogue } from "./missionState.js";
 
 const SUPPORTED_PRESETS = new Set([
   "load_map",
   "change_unit_stat",
   "complete_objective",
   "end_mission",
+  "start_dialogue",
   "run_logic"
 ]);
 
@@ -103,6 +105,17 @@ function applyTriggerPreset(state, trigger, unit) {
       preset: "end_mission",
       triggerId: trigger.id,
       missionResult: result
+    };
+  }
+
+  if (trigger.preset === "start_dialogue") {
+    const dialogueKey = String(trigger.dialogueKey ?? "intro").trim() || "intro";
+    const started = startMissionDialogue(state, dialogueKey);
+    return {
+      ok: started,
+      preset: "start_dialogue",
+      triggerId: trigger.id,
+      dialogueKey
     };
   }
 
@@ -201,6 +214,12 @@ function applyLogicAction(state, trigger, unit, action) {
     const result = action?.missionResult === "defeat" ? "defeat" : "victory";
     ensureMissionState(state).result = result;
     return { ok: true, preset: "end_mission", triggerId: trigger.id, logicAction: true, missionResult: result };
+  }
+
+  if (type === "start_dialogue") {
+    const dialogueKey = String(action?.dialogueKey ?? "intro").trim() || "intro";
+    const started = startMissionDialogue(state, dialogueKey);
+    return { ok: started, preset: "start_dialogue", triggerId: trigger.id, logicAction: true, dialogueKey };
   }
 
   if (type === "set_flag") {

@@ -65,6 +65,11 @@ import {
   getTriggerTypeOptions
 } from "../builderTriggers.js";
 import {
+  ensureDialogueToolSettings,
+  getDialogueBlockOptions,
+  getDialogueBlocks
+} from "../builderDialogue.js";
+import {
   ensureLogicToolSettings,
   getLogicActionOptions,
   getLogicConditionOptions,
@@ -208,7 +213,7 @@ function renderTabHeader({ builderState, refs }) {
     objectives: "Objective definitions are authored here. Reach/Hold objectives use map painting for zones.",
     triggers: "Preset triggers live here. Use Run Logic Chain when one zone needs several actions.",
     logic: "Logic V1 is simple: optional condition, then ordered action list. No node graph, no NASA console.",
-    dialogue: "Dialogue authoring will adapt to current missionState dialogue hooks.",
+    dialogue: "Dialogue V1 authors keyed dialogue blocks. Triggers/Logic can start any block by key.",
     results: "Victory/defeat result authoring belongs here.",
     validate: "Validation is part of authoring, not end polish.",
     export: "Exports a contained mission package zip with repo paths."
@@ -453,6 +458,9 @@ function renderInspector({ builderState, refs, appState }) {
   const logicTools = builderState.activeTab === "logic"
     ? renderLogicInspectorTools(builderState, appState)
     : "";
+  const dialogueTools = builderState.activeTab === "dialogue"
+    ? renderDialogueInspectorTools(builderState)
+    : "";
   const resultsTools = builderState.activeTab === "results"
     ? renderResultsInspectorTools(builderState)
     : "";
@@ -480,6 +488,7 @@ function renderInspector({ builderState, refs, appState }) {
     ${objectiveTools}
     ${triggerTools}
     ${logicTools}
+    ${dialogueTools}
     ${resultsTools}
     ${validationTools}
     ${exportTools}
@@ -610,6 +619,96 @@ function renderMapInspectorTools(builderState, appState) {
   `;
 }
 
+
+
+function renderDialogueInspectorTools(builderState) {
+  const tool = ensureDialogueToolSettings(builderState) ?? {};
+  const editable = builderState.workspaceMode === "builder-map";
+  const blocks = getDialogueBlocks(builderState);
+  const selectedBlock = blocks.find((block) => block.key === tool.selectedKey) ?? blocks[0] ?? null;
+  const selectedLines = Array.isArray(selectedBlock?.lines) ? selectedBlock.lines : [];
+  const blockOptions = buildDialogueBlockOptions(builderState, tool.selectedKey);
+
+  return `
+    <div class="builder-inspector-card builder-dialogue-tool-card">
+      <div class="builder-field-label">Dialogue V1</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Selected Block</span>
+        <select data-builder-field="dialogue-selected-key"${editable ? "" : " disabled"}>${blockOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Block Key</span>
+        <input type="text" data-builder-field="dialogue-block-key" value="${escapeHtml(tool.blockKey ?? "intro")}" placeholder="hangar_warning" spellcheck="false"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Block Name</span>
+        <input type="text" data-builder-field="dialogue-block-name" value="${escapeHtml(tool.blockName ?? "Intro")}" spellcheck="true"${editable ? "" : " disabled"}>
+      </label>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="save-dialogue-block"${editable ? "" : " disabled"}>Save Block</button>
+      </div>
+
+      <div class="builder-field-label builder-section-label">Add Line</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Speaker ID</span>
+        <input type="text" data-builder-field="dialogue-speaker-id" value="${escapeHtml(tool.speakerId ?? "system")}" spellcheck="false"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Speaker Name</span>
+        <input type="text" data-builder-field="dialogue-speaker-name" value="${escapeHtml(tool.speakerName ?? "Mission Control")}" spellcheck="true"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Portrait Path Optional</span>
+        <input type="text" data-builder-field="dialogue-portrait" value="${escapeHtml(tool.portrait ?? "")}" placeholder="art/pilots/skye.png" spellcheck="false"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Line Text</span>
+        <textarea data-builder-field="dialogue-text" rows="5" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(tool.text ?? "")}</textarea>
+      </label>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="add-dialogue-line"${editable ? "" : " disabled"}>Add Line To Selected</button>
+      </div>
+      <div class="builder-inspector-note">Core blocks intro/victory/defeat still work. Custom blocks can be started by Trigger or Logic. This is keyed dialogue, not raw trigger text.</div>
+      <div class="builder-field-label builder-section-label">Current Dialogue Blocks</div>
+      ${renderDialogueBlockList(blocks, tool.selectedKey)}
+      <div class="builder-field-label builder-section-label">Selected Lines</div>
+      ${renderDialogueLineList(selectedBlock, selectedLines)}
+    </div>
+  `;
+}
+
+function renderDialogueBlockList(blocks, selectedKey) {
+  const list = Array.isArray(blocks) ? blocks : [];
+  if (!list.length) return '<div class="builder-inspector-note">No dialogue blocks yet.</div>';
+  return '<div class="builder-trigger-list builder-dialogue-list">' + list.map((block) => {
+    const selected = block.key === selectedKey ? ' is-active' : '';
+    const lineCount = Array.isArray(block.lines) ? block.lines.length : 0;
+    const removeButton = ['intro', 'victory', 'defeat'].includes(block.key)
+      ? ''
+      : '<button type="button" class="builder-tool-button" data-builder-action="remove-dialogue-block:' + escapeHtml(block.key) + '">Remove</button>';
+    return '<div class="builder-trigger-row' + selected + '">' +
+      '<button type="button" class="builder-trigger-main" data-builder-action="select-dialogue:' + escapeHtml(block.key) + '">' +
+        '<strong>' + escapeHtml(block.name || block.key) + '</strong>' +
+        '<span>' + escapeHtml(block.key + ' · ' + lineCount + ' line(s)') + '</span>' +
+      '</button>' +
+      removeButton +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function renderDialogueLineList(block, lines) {
+  const key = block?.key ?? '';
+  const list = Array.isArray(lines) ? lines : [];
+  if (!list.length) return '<div class="builder-inspector-note">Selected dialogue block has no lines.</div>';
+  return '<div class="builder-dialogue-line-list">' + list.map((line, index) => {
+    const speaker = line?.name || line?.speakerId || 'Unknown';
+    const text = line?.text || '';
+    return '<div class="builder-unit-start-row">' +
+      '<div><strong>' + escapeHtml((index + 1) + '. ' + speaker) + '</strong><span>' + escapeHtml(text) + '</span></div>' +
+      '<button type="button" class="builder-tool-button" data-builder-action="remove-dialogue-line:' + escapeHtml(key) + ':' + index + '">Remove</button>' +
+    '</div>';
+  }).join('') + '</div>';
+}
 
 function renderResultsInspectorTools(builderState) {
   const mission = ensureMissionPackageDraft(builderState) ?? {};
@@ -1189,6 +1288,7 @@ function renderTriggerInspectorTools(builderState, appState) {
   const statOptions = buildSimpleOptions(getTriggerStatOptions(), tool.stat ?? "core");
   const missionResultOptions = buildSimpleOptions(getTriggerMissionResultOptions(), tool.missionResult ?? "victory");
   const logicOptions = buildLogicChainOptions(getLogicDefinitions(builderState), tool.logicChainId);
+  const dialogueOptions = buildDialogueBlockOptions(builderState, tool.dialogueKey);
   const selectedTrigger = Number.isInteger(Number(tool.selectedIndex)) && triggers[Number(tool.selectedIndex)]
     ? triggers[Number(tool.selectedIndex)]
     : null;
@@ -1199,6 +1299,7 @@ function renderTriggerInspectorTools(builderState, appState) {
   const showObjectiveField = tool.preset === "load_map" || tool.preset === "complete_objective";
   const showStatFields = tool.preset === "change_unit_stat";
   const showResultField = tool.preset === "end_mission";
+  const showDialogueField = tool.preset === "start_dialogue";
   const showLogicField = tool.preset === "run_logic";
 
   return `
@@ -1256,6 +1357,12 @@ function renderTriggerInspectorTools(builderState, appState) {
           <select data-builder-field="trigger-mission-result"${editable ? "" : " disabled"}>${missionResultOptions}</select>
         </label>
       ` : ""}
+      ${showDialogueField ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Dialogue Block</span>
+          <select data-builder-field="trigger-dialogue-key"${editable ? "" : " disabled"}>${dialogueOptions}</select>
+        </label>
+      ` : ""}
       ${showLogicField ? `
         <label class="builder-form-field builder-form-field-compact">
           <span>Logic Chain</span>
@@ -1302,6 +1409,7 @@ function formatTriggerListDetail(trigger) {
   if (trigger?.preset === 'change_unit_stat') return ' · ' + (trigger?.stat ?? 'core') + ' ' + (Number(trigger?.value ?? 0) >= 0 ? '+' : '') + (trigger?.value ?? 0);
   if (trigger?.preset === 'complete_objective') return trigger?.completeObjectiveId ? ' · objective: ' + trigger.completeObjectiveId : ' · objective: missing';
   if (trigger?.preset === 'end_mission') return ' · result: ' + (trigger?.missionResult ?? 'victory');
+  if (trigger?.preset === 'start_dialogue') return trigger?.dialogueKey ? ' · dialogue: ' + trigger.dialogueKey : ' · dialogue: missing';
   if (trigger?.preset === 'run_logic') return trigger?.logicChainId ? ' · logic: ' + trigger.logicChainId : ' · logic: missing';
   return '';
 }
@@ -1324,6 +1432,7 @@ function renderLogicInspectorTools(builderState, appState) {
   const statOptions = buildSimpleOptions(getLogicStatOptions(), tool.actionStat ?? "core");
   const missionResultOptions = buildSimpleOptions(getLogicMissionResultOptions(), tool.actionMissionResult ?? "victory");
   const itemOptions = buildLogicItemOptions(appState, tool.actionItemId);
+  const dialogueOptions = buildDialogueBlockOptions(builderState, tool.actionDialogueKey);
   const selectedChain = Number.isInteger(Number(tool.selectedIndex)) && logic[Number(tool.selectedIndex)]
     ? logic[Number(tool.selectedIndex)]
     : null;
@@ -1335,6 +1444,7 @@ function renderLogicInspectorTools(builderState, appState) {
   const showActionStat = tool.actionType === "change_unit_stat";
   const showActionMap = tool.actionType === "load_map";
   const showActionResult = tool.actionType === "end_mission";
+  const showActionDialogue = tool.actionType === "start_dialogue";
   const showActionFlag = tool.actionType === "set_flag";
   const showActionItem = tool.actionType === "give_item" || tool.actionType === "remove_item";
 
@@ -1414,6 +1524,12 @@ function renderLogicInspectorTools(builderState, appState) {
           <select data-builder-field="logic-action-mission-result"${editable ? "" : " disabled"}>${missionResultOptions}</select>
         </label>
       ` : ""}
+      ${showActionDialogue ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Dialogue Block</span>
+          <select data-builder-field="logic-action-dialogue-key"${editable ? "" : " disabled"}>${dialogueOptions}</select>
+        </label>
+      ` : ""}
       ${showActionFlag ? `
         <label class="builder-form-field builder-form-field-compact">
           <span>Flag ID</span>
@@ -1480,12 +1596,24 @@ function formatLogicAction(action) {
   if (action?.type === 'change_unit_stat') return (action.stat ?? 'core') + ' ' + (Number(action.value ?? 0) >= 0 ? '+' : '') + (action.value ?? 0);
   if (action?.type === 'load_map') return 'load ' + (action.nextMapId ?? 'map');
   if (action?.type === 'end_mission') return 'end ' + (action.missionResult ?? 'victory');
+  if (action?.type === 'start_dialogue') return 'dialogue ' + (action.dialogueKey ?? 'intro');
   if (action?.type === 'set_flag') return 'flag ' + (action.flagId ?? 'flag') + '=' + (action.value === false ? 'false' : 'true');
   if (action?.type === 'give_item') return 'give ' + (action.itemId ?? 'item');
   if (action?.type === 'remove_item') return 'remove ' + (action.itemId ?? 'item');
   return action?.type ?? 'action';
 }
 
+
+
+function buildDialogueBlockOptions(builderState, selectedKey = "") {
+  const options = getDialogueBlockOptions(builderState);
+  if (!options.length) return '<option value="">No dialogue blocks</option>';
+  const selected = String(selectedKey ?? "");
+  return options.map((option) => {
+    const id = String(option?.id ?? "");
+    return `<option value="${escapeHtml(id)}"${id === selected ? " selected" : ""}>${escapeHtml(option?.label ?? id)}</option>`;
+  }).join("");
+}
 
 function buildLogicItemOptions(appState, selectedItemId = "") {
   const content = appState?.content ?? {};

@@ -13,12 +13,12 @@ const VALID_CONTROL_TYPES = new Set(["PC", "CPU"]);
 const DEFAULT_BRIEFING_TEXT = "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.";
 const VALID_OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds", "trigger_complete"]);
 const VALID_TRIGGER_TYPES = new Set(["onUnitEnterZone"]);
-const VALID_TRIGGER_PRESETS = new Set(["load_map", "change_unit_stat", "complete_objective", "end_mission", "run_logic"]);
+const VALID_TRIGGER_PRESETS = new Set(["load_map", "change_unit_stat", "complete_objective", "end_mission", "start_dialogue", "run_logic"]);
 const VALID_TRIGGER_STATS = new Set(["core", "shield"]);
 const VALID_MISSION_RESULTS = new Set(["victory", "defeat"]);
 const VALID_TRIGGER_TEAMS = new Set(["player", "enemy", "any"]);
 const VALID_LOGIC_CONDITIONS = new Set(["objective_complete", "objective_incomplete", "flag_true", "flag_false", "round_at_least"]);
-const VALID_LOGIC_ACTIONS = new Set(["complete_objective", "change_unit_stat", "load_map", "end_mission", "set_flag", "give_item", "remove_item"]);
+const VALID_LOGIC_ACTIONS = new Set(["complete_objective", "change_unit_stat", "load_map", "end_mission", "start_dialogue", "set_flag", "give_item", "remove_item"]);
 
 export function validateBuilderPackage(builderState, appState = null) {
   const result = createValidationResult();
@@ -57,6 +57,7 @@ export function validateBuilderPackage(builderState, appState = null) {
       validateObjectives(result, map, objectives);
     }
 
+    validateDialogue(result, mission);
     validateLogic(result, map, mission, objectives, appState);
     validateTriggers(result, map, mission, objectives);
   }
@@ -376,6 +377,7 @@ function validateTriggers(result, map, mission, objectives) {
   const logicIds = new Set((Array.isArray(map?.logic) ? map.logic : [])
     .map((chain) => cleanString(chain?.id))
     .filter(Boolean));
+  const dialogueIds = getDialogueIds(mission);
   const ids = new Set();
 
   for (let index = 0; index < triggers.length; index += 1) {
@@ -435,6 +437,12 @@ function validateTriggers(result, map, mission, objectives) {
       if (!VALID_MISSION_RESULTS.has(missionResult)) addError(result, "TRIGGER_RESULT_BAD", `${label} end_mission has invalid missionResult "${missionResult}".`);
     }
 
+    if (preset === "start_dialogue") {
+      const dialogueKey = cleanString(trigger.dialogueKey);
+      if (!dialogueKey) addError(result, "TRIGGER_DIALOGUE_MISSING", `${label} start_dialogue preset needs dialogueKey.`);
+      else if (!dialogueIds.has(dialogueKey)) addError(result, "TRIGGER_DIALOGUE_BAD", `${label} references missing dialogue block "${dialogueKey}".`);
+    }
+
     if (preset === "run_logic") {
       const logicChainId = cleanString(trigger.logicChainId);
       if (!logicChainId) addError(result, "TRIGGER_LOGIC_MISSING", `${label} run_logic preset needs logicChainId.`);
@@ -456,6 +464,7 @@ function validateLogic(result, map, mission, objectives, appState = null) {
   const objectiveIds = new Set((Array.isArray(objectives) ? objectives : [])
     .map((objective) => cleanString(objective?.id))
     .filter(Boolean));
+  const dialogueIds = getDialogueIds(mission);
   const itemIds = new Set([
     ...getContentIds(appState?.content?.pilotItems),
     ...getContentIds(appState?.content?.mechItems)
@@ -516,6 +525,11 @@ function validateLogic(result, map, mission, objectives, appState = null) {
         const missionResult = cleanString(action.missionResult) || "victory";
         if (!VALID_MISSION_RESULTS.has(missionResult)) addError(result, "LOGIC_ACTION_RESULT_BAD", `${actionLabel} has invalid missionResult "${missionResult}".`);
       }
+      if (type === "start_dialogue") {
+        const dialogueKey = cleanString(action.dialogueKey);
+        if (!dialogueKey) addError(result, "LOGIC_ACTION_DIALOGUE_MISSING", `${actionLabel} needs dialogueKey.`);
+        else if (!dialogueIds.has(dialogueKey)) addError(result, "LOGIC_ACTION_DIALOGUE_BAD", `${actionLabel} references missing dialogue block "${dialogueKey}".`);
+      }
       if (type === "set_flag" && !cleanString(action.flagId)) {
         addError(result, "LOGIC_ACTION_FLAG_MISSING", `${actionLabel} needs flagId.`);
       }
@@ -526,6 +540,40 @@ function validateLogic(result, map, mission, objectives, appState = null) {
       }
     }
   }
+}
+
+function validateDialogue(result, mission) {
+  const dialogue = mission?.dialogue;
+  if (!dialogue || typeof dialogue !== "object" || Array.isArray(dialogue)) {
+    addWarning(result, "DIALOGUE_MISSING", "Mission has no dialogue object. Intro/victory/defeat dialogue will be empty.");
+    return;
+  }
+
+  for (const key of ["intro", "victory", "defeat"]) {
+    if (!dialogue[key]) addWarning(result, "DIALOGUE_CORE_BLOCK_MISSING", `Mission dialogue is missing core block "${key}".`);
+  }
+
+  const ids = new Set();
+  for (const [key, block] of Object.entries(dialogue)) {
+    const cleanKey = cleanString(key);
+    if (!cleanKey) addError(result, "DIALOGUE_KEY_MISSING", "A dialogue block has a blank key.");
+    else if (ids.has(cleanKey)) addError(result, "DIALOGUE_KEY_DUPLICATE", `Dialogue block key "${cleanKey}" is duplicated.`);
+    ids.add(cleanKey);
+
+    const lines = Array.isArray(block?.lines) ? block.lines : [];
+    if (!lines.length) addWarning(result, "DIALOGUE_BLOCK_EMPTY", `Dialogue block "${cleanKey}" has no lines.`);
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index] ?? {};
+      if (!cleanString(line.text)) addError(result, "DIALOGUE_LINE_TEXT_MISSING", `Dialogue block "${cleanKey}" line ${index + 1} has no text.`);
+      if (!cleanString(line.name) && !cleanString(line.speakerId)) addWarning(result, "DIALOGUE_LINE_SPEAKER_MISSING", `Dialogue block "${cleanKey}" line ${index + 1} has no speaker.`);
+    }
+  }
+}
+
+function getDialogueIds(mission) {
+  const dialogue = mission?.dialogue;
+  if (!dialogue || typeof dialogue !== "object" || Array.isArray(dialogue)) return new Set();
+  return new Set(Object.keys(dialogue).map(cleanString).filter(Boolean));
 }
 
 function validateTriggerObjectiveReference(result, trigger, objectiveIds, label, required) {

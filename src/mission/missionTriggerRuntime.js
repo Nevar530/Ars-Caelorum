@@ -64,6 +64,8 @@ export function createMissionTriggerRuntime({
         logDev(`Trigger ${result.triggerId} changed ${result.unitId ?? "unit"} ${result.stat} by ${result.value}.`);
       } else if (result?.preset === "complete_objective") {
         logDev(`Trigger ${result.triggerId} completed objective ${result.completeObjectiveId}.`);
+      } else if (result?.preset === "start_dialogue") {
+        logDev(`Trigger ${result.triggerId} started dialogue ${result.dialogueKey}.`);
       } else if (result?.preset === "set_flag") {
         logDev(`Trigger ${result.triggerId} set flag ${result.flagId} to ${result.value}.`);
       } else if (result?.preset === "give_item" || result?.preset === "remove_item") {

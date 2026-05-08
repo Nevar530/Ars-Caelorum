@@ -2,7 +2,9 @@
 
 import { getUnitById } from "../mechs.js";
 import { getPrimaryOccupantAt } from "../scale/occupancy.js";
-import { getUnitOccupiedCells } from "../scale/scaleMath.js";
+import { getUnitOccupiedCells, isCellWithinBoard } from "../scale/scaleMath.js";
+import { getBoardUnits } from "../actors/actorResolver.js";
+import { getRearHatchBoardingTile, isEmptyMech, isUsableMech } from "../vehicles/mechEmbarkRules.js";
 
 function makeStyle(fill, stroke, strokeWidth = 2, priority = 0) {
   return { fill, stroke, strokeWidth, priority };
@@ -116,6 +118,21 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
     }
   }
 
+
+  const boardingStyle = makeStyle(
+    "rgba(255, 255, 255, 0.18)",
+    "rgba(255, 255, 255, 1)",
+    3.75,
+    35
+  );
+
+  for (const mech of getEmptyBoardableMechs(state)) {
+    const tile = getRearHatchBoardingTile(mech);
+    if (!tile || !isCellWithinBoard(tile.x, tile.y)) continue;
+    if (getPrimaryOccupantAt(state, tile.x, tile.y)?.unit) continue;
+    setStyle(styleMap, tile.x, tile.y, boardingStyle);
+  }
+
   if (state.focus) {
     const focusStyle = makeStyle(
       "rgba(255, 230, 64, 0.22)",
@@ -164,6 +181,14 @@ export function buildTileOverlayStyleMap(state, reachableMap = new Map()) {
   }
 
   return styleMap;
+}
+
+function getEmptyBoardableMechs(state) {
+  return getBoardUnits(state).filter((unit) =>
+    unit?.unitType === "mech" &&
+    isEmptyMech(unit) &&
+    isUsableMech(unit)
+  );
 }
 
 export function getTileOverlayStyle(styleMap, x, y) {

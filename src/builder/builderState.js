@@ -142,7 +142,17 @@ export function createBuilderState() {
       actionMissionResult: "victory",
       actionFlagId: "",
       actionFlagValue: true,
-      actionItemId: ""
+      actionItemId: "",
+      actionDialogueKey: "intro"
+    },
+    dialogueTool: {
+      selectedKey: "intro",
+      blockKey: "intro",
+      blockName: "Intro",
+      speakerId: "system",
+      speakerName: "Mission Control",
+      portrait: "",
+      text: "Mission loaded."
     },
     status: "BUILDER MENU",
     runtimeMapId: null,

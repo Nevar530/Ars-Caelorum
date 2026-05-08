@@ -105,6 +105,14 @@ import {
   updateTriggerToolFromFields
 } from "./builderTriggers.js";
 import {
+  addDialogueLine,
+  addOrUpdateDialogueBlock,
+  removeDialogueBlock,
+  removeDialogueLine,
+  selectDialogueBlock,
+  updateDialogueToolFromFields
+} from "./builderDialogue.js";
+import {
   addLogicAction,
   addLogicDefinition,
   removeLogicAction,
@@ -352,6 +360,12 @@ class MissionBuilder {
     if (this.builderState.activeTab === "logic") {
       updateLogicToolFromFields(this.builderState, this.refs.root);
       this.render();
+      return;
+    }
+
+    if (this.builderState.activeTab === "dialogue") {
+      updateDialogueToolFromFields(this.builderState, this.refs.root);
+      this.render();
     }
   }
 
@@ -502,6 +516,46 @@ class MissionBuilder {
   }
 
   async handleAction(action) {
+    if (action === "save-dialogue-block") {
+      updateDialogueToolFromFields(this.builderState, this.refs.root);
+      const result = addOrUpdateDialogueBlock(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "add-dialogue-line") {
+      updateDialogueToolFromFields(this.builderState, this.refs.root);
+      const result = addDialogueLine(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("select-dialogue:")) {
+      const key = action.split(":").slice(1).join(":");
+      const result = selectDialogueBlock(this.builderState, key);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("remove-dialogue-block:")) {
+      const key = action.split(":").slice(1).join(":");
+      const result = removeDialogueBlock(this.builderState, key);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("remove-dialogue-line:")) {
+      const [, key, lineIndex] = action.split(":");
+      const result = removeDialogueLine(this.builderState, key, Number(lineIndex));
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
     if (action === "add-logic") {
       updateLogicToolFromFields(this.builderState, this.refs.root);
       const result = addLogicDefinition(this.builderState);

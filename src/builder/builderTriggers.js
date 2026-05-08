@@ -10,6 +10,7 @@ const TRIGGER_PRESETS = [
   { value: "change_unit_stat", label: "Change Unit Stat" },
   { value: "complete_objective", label: "Complete Objective" },
   { value: "end_mission", label: "End Mission" },
+  { value: "start_dialogue", label: "Start Dialogue" },
   { value: "run_logic", label: "Run Logic Chain" }
 ];
 
@@ -37,6 +38,7 @@ function createDefaultTriggerTool() {
     stat: "core",
     value: -1,
     missionResult: "victory",
+    dialogueKey: "intro",
     selectedIndex: -1,
     paintMode: "add"
   };
@@ -59,6 +61,7 @@ export function ensureTriggerToolSettings(builderState) {
   if (!STAT_FIELDS.includes(tool.stat)) tool.stat = "core";
   tool.value = normalizeInteger(tool.value, -1);
   if (!MISSION_RESULTS.includes(tool.missionResult)) tool.missionResult = "victory";
+  tool.dialogueKey = sanitizeId(tool.dialogueKey ?? "intro") || "intro";
   if (!Number.isInteger(Number(tool.selectedIndex))) tool.selectedIndex = -1;
   if (tool.paintMode !== "erase") tool.paintMode = "add";
 
@@ -91,6 +94,7 @@ export function updateTriggerToolFromFields(builderState, root) {
 
   const missionResult = readField(root, "trigger-mission-result", tool.missionResult);
   tool.missionResult = MISSION_RESULTS.includes(missionResult) ? missionResult : "victory";
+  tool.dialogueKey = sanitizeId(readField(root, "trigger-dialogue-key", tool.dialogueKey)) || "intro";
 
   return tool;
 }
@@ -182,6 +186,7 @@ export function selectTriggerDefinition(builderState, index) {
   tool.stat = trigger.stat ?? "core";
   tool.value = normalizeInteger(trigger.value, -1);
   tool.missionResult = trigger.missionResult ?? "victory";
+  tool.dialogueKey = trigger.dialogueKey ?? "intro";
 
   ensureTriggerToolSettings(builderState);
   return { ok: true, message: `Selected trigger ${trigger.id ?? cleanIndex + 1}.` };
@@ -303,6 +308,10 @@ function buildTriggerFromTool(tool, id) {
 
   if (trigger.preset === "end_mission") {
     trigger.missionResult = MISSION_RESULTS.includes(tool.missionResult) ? tool.missionResult : "victory";
+  }
+
+  if (trigger.preset === "start_dialogue") {
+    trigger.dialogueKey = tool.dialogueKey || "intro";
   }
 
   if (trigger.preset === "run_logic") {

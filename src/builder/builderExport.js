@@ -140,7 +140,7 @@ export function buildMissionDefinitionForExport(mapDefinition, mission = null, m
     objectives: normalizeMissionObjectives(startObjectives),
     triggers: normalizeTriggers(startMap?.triggers),
     logic: normalizeLogic(startMap?.logic ?? mission?.logic),
-    dialogue: mission?.dialogue ?? createDefaultDialogue(),
+    dialogue: normalizeDialogue(mission?.dialogue ?? createDefaultDialogue()),
     results: mission?.results ?? {
       victory: { title: "Victory", text: "Mission complete." },
       defeat: { title: "Defeat", text: "Mission failed." }
@@ -375,6 +375,33 @@ function sanitizeStructuresForExport(structures) {
 }
 
 
+function normalizeDialogue(dialogue) {
+  const source = dialogue && typeof dialogue === "object" && !Array.isArray(dialogue) ? dialogue : createDefaultDialogue();
+  const clean = {};
+  for (const [key, block] of Object.entries(source)) {
+    const dialogueKey = sanitizeId(key, "");
+    if (!dialogueKey) continue;
+    const lines = Array.isArray(block?.lines) ? block.lines : [];
+    clean[dialogueKey] = {
+      ...(block?.name ? { name: sanitizeName(block.name, dialogueKey) } : {}),
+      lines: lines
+        .map((line) => {
+          const text = String(line?.text ?? "").trim();
+          if (!text) return null;
+          const next = {
+            speakerId: sanitizeId(line?.speakerId ?? "system", "system"),
+            name: sanitizeName(line?.name ?? line?.speakerId ?? "Unknown", "Unknown"),
+            text
+          };
+          if (line?.portrait) next.portrait = String(line.portrait).trim();
+          return next;
+        })
+        .filter(Boolean)
+    };
+  }
+  return Object.keys(clean).length ? clean : createDefaultDialogue();
+}
+
 function normalizeTriggers(triggers) {
   if (!Array.isArray(triggers)) return [];
 
@@ -396,6 +423,7 @@ function normalizeTriggers(triggers) {
     if (clean.stat) clean.stat = sanitizeId(clean.stat, "core");
     if (clean.value !== undefined) clean.value = Math.trunc(Number(clean.value) || 0);
     if (clean.missionResult) clean.missionResult = sanitizeId(clean.missionResult, "victory");
+    if (clean.dialogueKey) clean.dialogueKey = sanitizeId(clean.dialogueKey, "intro");
     if (clean.logicChainId) clean.logicChainId = sanitizeId(clean.logicChainId, "");
     return clean;
   });
@@ -435,6 +463,7 @@ function normalizeLogicActions(actions) {
     if (clean.stat) clean.stat = sanitizeId(clean.stat, "core");
     if (clean.value !== undefined) clean.value = Math.trunc(Number(clean.value) || 0);
     if (clean.missionResult) clean.missionResult = sanitizeId(clean.missionResult, "victory");
+    if (clean.dialogueKey) clean.dialogueKey = sanitizeId(clean.dialogueKey, "intro");
     if (clean.flagId) clean.flagId = sanitizeId(clean.flagId, "");
     if (clean.itemId) clean.itemId = sanitizeId(clean.itemId, "");
     if (clean.target) clean.target = sanitizeId(clean.target, "triggering_unit");
