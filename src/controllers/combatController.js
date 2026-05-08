@@ -30,6 +30,7 @@ export function createCombatController({
   onMissionTriggerEvent = null
 }) {
   let actionAdvanceTimer = null;
+  let pendingActionAfterDialogue = null;
 
   function fireMissionTriggerEvent(eventType, context = {}) {
     if (typeof onMissionTriggerEvent !== "function") return null;
@@ -48,7 +49,25 @@ export function createCombatController({
     return outcome?.consumeTurn !== false;
   }
 
-  function finishActionAfterTriggerInterrupt(outcome) {
+  function shouldPauseForDialogue(outcome) {
+    return didTriggerInterrupt(outcome) && outcome?.result?.preset === "start_dialogue";
+  }
+
+  function resumePendingActionAfterDialogue() {
+    if (!pendingActionAfterDialogue) return false;
+    const pending = pendingActionAfterDialogue;
+    pendingActionAfterDialogue = null;
+    finishActionAfterTriggerInterrupt(pending.outcome, { allowDialoguePause: false });
+    return true;
+  }
+
+  function finishActionAfterTriggerInterrupt(outcome, options = {}) {
+    if (options.allowDialoguePause !== false && shouldPauseForDialogue(outcome)) {
+      pendingActionAfterDialogue = { outcome };
+      render();
+      return true;
+    }
+
     if (actionAdvanceTimer) {
       clearTimeout(actionAdvanceTimer);
       actionAdvanceTimer = null;
@@ -437,6 +456,7 @@ export function createCombatController({
     startItem,
     completeEndTurnForCurrentUnit,
     waitTurn,
+    resumePendingActionAfterDialogue,
     handleConfirmedTarget,
     executeCpuAttack,
     confirmAction,

@@ -495,6 +495,8 @@ function getSelectedMissionEntry() {
 
     advanceDialogue() {
       if (advanceMissionDialogue(state)) {
+        if (movementController.resumePendingMoveAfterDialogue?.()) return;
+        if (combatController.resumePendingActionAfterDialogue?.()) return;
         gameController.render();
         return;
       }

@@ -26,6 +26,7 @@ function sign(value) {
 
 const CPU_MOVE_STEP_DELAY_MS = 85;
 
+
 export function createMovementController({
   state,
   getUnitById,
@@ -39,6 +40,9 @@ export function createMovementController({
   advanceActionTurn,
   onUnitEnteredZone = null
 }) {
+  let pendingPlayerMoveAfterDialogue = null;
+  let pendingCpuMoveAfterDialogue = null;
+
   function getDefaultFacingFromPath(path, fallbackFacing) {
     if (!path || path.length < 2) return fallbackFacing;
 
@@ -70,6 +74,82 @@ export function createMovementController({
   function shouldConsumeMove(outcome) {
     if (!didTriggerInterrupt(outcome)) return false;
     return outcome?.consumeTurn !== false;
+  }
+
+  function shouldPauseForDialogue(outcome) {
+    return didTriggerInterrupt(outcome) && outcome?.result?.preset === "start_dialogue";
+  }
+
+  function setFacingModeAfterMove(activeUnit, defaultFacing) {
+    state.ui.mode = "face";
+    state.selection.action = "face";
+    state.ui.previewPath = [];
+    state.ui.facingPreview = defaultFacing;
+    snapFocusToActiveUnit();
+    render();
+  }
+
+  function resumePendingMoveAfterDialogue() {
+    if (pendingPlayerMoveAfterDialogue) {
+      const pending = pendingPlayerMoveAfterDialogue;
+      pendingPlayerMoveAfterDialogue = null;
+      resumePlayerMoveSteps(pending);
+      return true;
+    }
+
+    if (pendingCpuMoveAfterDialogue) {
+      const pending = pendingCpuMoveAfterDialogue;
+      pendingCpuMoveAfterDialogue = null;
+      pending.resume();
+      return true;
+    }
+
+    return false;
+  }
+
+  function resumePlayerMoveSteps(pending) {
+    const activeUnit = getUnitById(state.units, pending.unitId);
+    if (!activeUnit || activeUnit.status === "disabled") {
+      clearTransientUi();
+      snapFocusToActiveUnit();
+      render();
+      return;
+    }
+
+    for (let index = pending.nextIndex; index < pending.steps.length; index += 1) {
+      const step = pending.steps[index];
+      moveUnitTo(state.units, activeUnit.instanceId, Number(step.x), Number(step.y));
+
+      const triggerOutcome = handleUnitEnteredZone(activeUnit);
+      if (shouldPauseForDialogue(triggerOutcome)) {
+        pendingPlayerMoveAfterDialogue = {
+          ...pending,
+          nextIndex: index + 1
+        };
+        snapFocusToActiveUnit();
+        render();
+        return;
+      }
+
+      if (didTriggerInterrupt(triggerOutcome)) {
+        logDev(
+          `${activeUnit.name} moved from (${pending.fromX},${pending.fromY}) to (${activeUnit.x},${activeUnit.y}) and triggered an interrupt.`
+        );
+        clearTransientUi();
+        snapFocusToActiveUnit();
+        if (shouldConsumeMove(triggerOutcome) && state.turn.phase === "move" && !state.mission?.result) {
+          advanceMoveTurn();
+        } else {
+          render();
+        }
+        return;
+      }
+    }
+
+    logDev(
+      `${activeUnit.name} moved from (${pending.fromX},${pending.fromY}) to (${activeUnit.x},${activeUnit.y}).`
+    );
+    setFacingModeAfterMove(activeUnit, pending.defaultFacing);
   }
 
   function startMove() {
@@ -153,40 +233,16 @@ export function createMovementController({
         );
 
         const steps = Array.isArray(path) ? path.slice(1) : [{ x: targetX, y: targetY }];
-        for (const step of steps) {
-          moveUnitTo(
-            state.units,
-            activeUnit.instanceId,
-            Number(step.x),
-            Number(step.y)
-          );
-
-          const triggerOutcome = handleUnitEnteredZone(activeUnit);
-          if (didTriggerInterrupt(triggerOutcome)) {
-            logDev(
-              `${activeUnit.name} moved from (${fromX},${fromY}) to (${activeUnit.x},${activeUnit.y}) and triggered an interrupt.`
-            );
-            clearTransientUi();
-            snapFocusToActiveUnit();
-            if (shouldConsumeMove(triggerOutcome) && state.turn.phase === "move" && !state.mission?.result) {
-              advanceMoveTurn();
-            } else {
-              render();
-            }
-            return true;
-          }
-        }
-
-        logDev(
-          `${activeUnit.name} moved from (${fromX},${fromY}) to (${targetX},${targetY}).`
-        );
-
-        state.ui.mode = "face";
-        state.selection.action = "face";
-        state.ui.previewPath = [];
-        state.ui.facingPreview = defaultFacing;
-        snapFocusToActiveUnit();
-        render();
+        resumePlayerMoveSteps({
+          unitId: activeUnit.instanceId,
+          fromX,
+          fromY,
+          targetX,
+          targetY,
+          steps,
+          nextIndex: 0,
+          defaultFacing
+        });
       }
 
       return true;
@@ -264,6 +320,12 @@ export function createMovementController({
       }
 
       const triggerOutcome = handleUnitEnteredZone(activeUnit);
+      if (shouldPauseForDialogue(triggerOutcome)) {
+        pendingCpuMoveAfterDialogue = { resume: finishCpuMove };
+        render();
+        return;
+      }
+
       if (didTriggerInterrupt(triggerOutcome)) {
         clearTransientUi();
         if (shouldConsumeMove(triggerOutcome) && state.turn.phase === "move" && !state.mission?.result) {
@@ -296,6 +358,14 @@ export function createMovementController({
       render();
 
       const triggerOutcome = handleUnitEnteredZone(activeUnit);
+      if (shouldPauseForDialogue(triggerOutcome)) {
+        logDev(activeUnit.name + " paused for dialogue at (" + activeUnit.x + "," + activeUnit.y + ").");
+        stepIndex += 1;
+        pendingCpuMoveAfterDialogue = { resume: advanceCpuStep };
+        render();
+        return;
+      }
+
       if (didTriggerInterrupt(triggerOutcome)) {
         logDev(activeUnit.name + " triggered an interrupt at (" + activeUnit.x + "," + activeUnit.y + ").");
         clearTransientUi();
@@ -362,6 +432,7 @@ export function createMovementController({
     skipMoveForCurrentUnit,
     confirmMoveOrFacing,
     cancelMoveOrFacing,
+    resumePendingMoveAfterDialogue,
     executeCpuMove
   };
 }
