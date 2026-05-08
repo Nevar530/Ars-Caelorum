@@ -391,6 +391,9 @@ function normalizeTriggers(triggers) {
       : [];
     if (clean.completeObjectiveId) clean.completeObjectiveId = sanitizeId(clean.completeObjectiveId, "");
     if (clean.nextMapId) clean.nextMapId = sanitizeId(clean.nextMapId, "");
+    if (clean.stat) clean.stat = sanitizeId(clean.stat, "core");
+    if (clean.value !== undefined) clean.value = Math.trunc(Number(clean.value) || 0);
+    if (clean.missionResult) clean.missionResult = sanitizeId(clean.missionResult, "victory");
     return clean;
   });
 }

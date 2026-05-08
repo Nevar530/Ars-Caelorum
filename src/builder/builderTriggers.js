@@ -1,12 +1,15 @@
 // src/builder/builderTriggers.js
 //
 // Mission Builder Triggers V1.
-// Preset-first trigger authoring. V1 intentionally supports the load_map preset only.
+// Preset-first trigger authoring. V1 supports simple repeated tile-trigger effects.
 
 import { getTile } from "../map.js";
 
 const TRIGGER_PRESETS = [
-  { value: "load_map", label: "Load Map / Next Map" }
+  { value: "load_map", label: "Load Map / Next Map" },
+  { value: "change_unit_stat", label: "Change Unit Stat" },
+  { value: "complete_objective", label: "Complete Objective" },
+  { value: "end_mission", label: "End Mission" }
 ];
 
 const TRIGGER_TYPES = [
@@ -14,6 +17,8 @@ const TRIGGER_TYPES = [
 ];
 
 const TEAM_FILTERS = ["player", "enemy", "any"];
+const STAT_FIELDS = ["core", "shield"];
+const MISSION_RESULTS = ["victory", "defeat"];
 const PRESET_SET = new Set(TRIGGER_PRESETS.map((entry) => entry.value));
 const TYPE_SET = new Set(TRIGGER_TYPES.map((entry) => entry.value));
 
@@ -27,6 +32,9 @@ function createDefaultTriggerTool() {
     once: true,
     nextMapId: "",
     completeObjectiveId: "",
+    stat: "core",
+    value: -1,
+    missionResult: "victory",
     selectedIndex: -1,
     paintMode: "add"
   };
@@ -45,6 +53,9 @@ export function ensureTriggerToolSettings(builderState) {
   tool.once = tool.once !== false;
   tool.nextMapId = sanitizeId(tool.nextMapId ?? "");
   tool.completeObjectiveId = sanitizeId(tool.completeObjectiveId ?? "");
+  if (!STAT_FIELDS.includes(tool.stat)) tool.stat = "core";
+  tool.value = normalizeInteger(tool.value, -1);
+  if (!MISSION_RESULTS.includes(tool.missionResult)) tool.missionResult = "victory";
   if (!Number.isInteger(Number(tool.selectedIndex))) tool.selectedIndex = -1;
   if (tool.paintMode !== "erase") tool.paintMode = "add";
 
@@ -70,6 +81,13 @@ export function updateTriggerToolFromFields(builderState, root) {
   tool.nextMapId = sanitizeId(readField(root, "trigger-next-map-id", tool.nextMapId));
   tool.completeObjectiveId = sanitizeId(readField(root, "trigger-complete-objective-id", tool.completeObjectiveId));
 
+  const stat = readField(root, "trigger-stat", tool.stat);
+  tool.stat = STAT_FIELDS.includes(stat) ? stat : "core";
+  tool.value = normalizeInteger(readField(root, "trigger-value", tool.value), tool.value);
+
+  const missionResult = readField(root, "trigger-mission-result", tool.missionResult);
+  tool.missionResult = MISSION_RESULTS.includes(missionResult) ? missionResult : "victory";
+
   return tool;
 }
 
@@ -83,6 +101,14 @@ export function getTriggerTypeOptions() {
 
 export function getTriggerTeamOptions() {
   return [...TEAM_FILTERS];
+}
+
+export function getTriggerStatOptions() {
+  return [...STAT_FIELDS];
+}
+
+export function getTriggerMissionResultOptions() {
+  return [...MISSION_RESULTS];
 }
 
 export function getTriggerDefinitions(builderState) {
@@ -148,7 +174,11 @@ export function selectTriggerDefinition(builderState, index) {
   tool.once = trigger.once !== false;
   tool.nextMapId = trigger.nextMapId ?? "";
   tool.completeObjectiveId = trigger.completeObjectiveId ?? "";
+  tool.stat = trigger.stat ?? "core";
+  tool.value = normalizeInteger(trigger.value, -1);
+  tool.missionResult = trigger.missionResult ?? "victory";
 
+  ensureTriggerToolSettings(builderState);
   return { ok: true, message: `Selected trigger ${trigger.id ?? cleanIndex + 1}.` };
 }
 
@@ -242,17 +272,35 @@ function ensureMapDraft(builderState) {
 }
 
 function buildTriggerFromTool(tool, id) {
-  return {
+  const trigger = {
     id,
     name: tool.name || id,
     preset: tool.preset || "load_map",
     type: tool.type || "onUnitEnterZone",
     team: tool.team || "player",
     once: tool.once !== false,
-    tiles: [],
-    completeObjectiveId: tool.completeObjectiveId || undefined,
-    nextMapId: tool.nextMapId || ""
+    tiles: []
   };
+
+  if (trigger.preset === "load_map") {
+    trigger.nextMapId = tool.nextMapId || "";
+    if (tool.completeObjectiveId) trigger.completeObjectiveId = tool.completeObjectiveId;
+  }
+
+  if (trigger.preset === "change_unit_stat") {
+    trigger.stat = STAT_FIELDS.includes(tool.stat) ? tool.stat : "core";
+    trigger.value = normalizeInteger(tool.value, -1);
+  }
+
+  if (trigger.preset === "complete_objective") {
+    trigger.completeObjectiveId = tool.completeObjectiveId || "";
+  }
+
+  if (trigger.preset === "end_mission") {
+    trigger.missionResult = MISSION_RESULTS.includes(tool.missionResult) ? tool.missionResult : "victory";
+  }
+
+  return trigger;
 }
 
 function createTriggerId(preset, triggers) {
@@ -293,6 +341,12 @@ function readField(root, fieldName, fallback = "") {
 function readCheckbox(root, fieldName, fallback = true) {
   const node = root?.querySelector?.(`[data-builder-field="${fieldName}"]`);
   return node ? Boolean(node.checked) : Boolean(fallback);
+}
+
+function normalizeInteger(value, fallback = 0) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return Number(fallback) || 0;
+  return Math.trunc(number);
 }
 
 function sanitizeId(value) {

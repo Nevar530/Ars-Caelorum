@@ -470,7 +470,11 @@ function renderTriggerZoneOverlays(previewState, builderState) {
   return cells.map((cell) => {
     const points = getTilePolygonPoints(previewState, cell.x, cell.y);
     if (points.length !== 4) return "";
-    const label = cell.preset === "load_map" ? "load" : "trigger";
+    const label = cell.preset === "load_map" ? "load"
+      : cell.preset === "change_unit_stat" ? "stat"
+      : cell.preset === "complete_objective" ? "obj"
+      : cell.preset === "end_mission" ? "end"
+      : "trigger";
     return `
       <polygon class="builder-overlay-trigger" points="${formatPointString(points)}" pointer-events="none" />
       ${renderTileText(previewState, cell.x, cell.y, label, "builder-overlay-label builder-overlay-label-trigger")}

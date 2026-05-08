@@ -13,7 +13,9 @@ const VALID_CONTROL_TYPES = new Set(["PC", "CPU"]);
 const DEFAULT_BRIEFING_TEXT = "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.";
 const VALID_OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds", "trigger_complete"]);
 const VALID_TRIGGER_TYPES = new Set(["onUnitEnterZone"]);
-const VALID_TRIGGER_PRESETS = new Set(["load_map"]);
+const VALID_TRIGGER_PRESETS = new Set(["load_map", "change_unit_stat", "complete_objective", "end_mission"]);
+const VALID_TRIGGER_STATS = new Set(["core", "shield"]);
+const VALID_MISSION_RESULTS = new Set(["victory", "defeat"]);
 const VALID_TRIGGER_TEAMS = new Set(["player", "enemy", "any"]);
 
 export function validateBuilderPackage(builderState, appState = null) {
@@ -408,11 +410,35 @@ function validateTriggers(result, map, mission, objectives) {
         addError(result, "TRIGGER_LOAD_MAP_SELF", `${label} loads the current map. V1 blocks self-load to avoid reload loops.`);
       }
 
-      const completeObjectiveId = cleanString(trigger.completeObjectiveId);
-      if (completeObjectiveId && !objectiveIds.has(completeObjectiveId)) {
-        addError(result, "TRIGGER_COMPLETE_OBJECTIVE_BAD", `${label} completeObjectiveId "${completeObjectiveId}" does not match an objective on this map.`);
-      }
+      validateTriggerObjectiveReference(result, trigger, objectiveIds, label, false);
     }
+
+    if (preset === "complete_objective") {
+      validateTriggerObjectiveReference(result, trigger, objectiveIds, label, true);
+    }
+
+    if (preset === "change_unit_stat") {
+      const stat = cleanString(trigger.stat) || "core";
+      const value = Number(trigger.value);
+      if (!VALID_TRIGGER_STATS.has(stat)) addError(result, "TRIGGER_STAT_BAD", `${label} change_unit_stat has invalid stat "${stat}".`);
+      if (!Number.isInteger(value) || value === 0) addError(result, "TRIGGER_VALUE_BAD", `${label} change_unit_stat needs a non-zero whole-number value.`);
+    }
+
+    if (preset === "end_mission") {
+      const missionResult = cleanString(trigger.missionResult) || "victory";
+      if (!VALID_MISSION_RESULTS.has(missionResult)) addError(result, "TRIGGER_RESULT_BAD", `${label} end_mission has invalid missionResult "${missionResult}".`);
+    }
+  }
+}
+
+function validateTriggerObjectiveReference(result, trigger, objectiveIds, label, required) {
+  const completeObjectiveId = cleanString(trigger.completeObjectiveId);
+  if (!completeObjectiveId) {
+    if (required) addError(result, "TRIGGER_COMPLETE_OBJECTIVE_MISSING", `${label} needs completeObjectiveId.`);
+    return;
+  }
+  if (!objectiveIds.has(completeObjectiveId)) {
+    addError(result, "TRIGGER_COMPLETE_OBJECTIVE_BAD", `${label} completeObjectiveId "${completeObjectiveId}" does not match an objective on this map.`);
   }
 }
 

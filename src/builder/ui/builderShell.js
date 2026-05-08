@@ -58,7 +58,9 @@ import {
 import {
   ensureTriggerToolSettings,
   getTriggerDefinitions,
+  getTriggerMissionResultOptions,
   getTriggerPresetOptions,
+  getTriggerStatOptions,
   getTriggerTeamOptions,
   getTriggerTypeOptions
 } from "../builderTriggers.js";
@@ -1172,13 +1174,18 @@ function renderTriggerInspectorTools(builderState, appState) {
     ? builderState.authoring.map.objectives
     : builderState?.authoring?.mission?.objectives;
   const objectiveOptions = buildTriggerObjectiveOptions(triggerObjectiveList, tool.completeObjectiveId);
+  const statOptions = buildSimpleOptions(getTriggerStatOptions(), tool.stat ?? "core");
+  const missionResultOptions = buildSimpleOptions(getTriggerMissionResultOptions(), tool.missionResult ?? "victory");
   const selectedTrigger = Number.isInteger(Number(tool.selectedIndex)) && triggers[Number(tool.selectedIndex)]
     ? triggers[Number(tool.selectedIndex)]
     : null;
   const selectedTileCount = Array.isArray(selectedTrigger?.tiles) ? selectedTrigger.tiles.length : 0;
   const addActive = tool.paintMode !== "erase" ? " is-active" : "";
   const eraseActive = tool.paintMode === "erase" ? " is-active" : "";
-  const disableLoadMapFields = tool.preset !== "load_map";
+  const showLoadMapFields = tool.preset === "load_map";
+  const showObjectiveField = tool.preset === "load_map" || tool.preset === "complete_objective";
+  const showStatFields = tool.preset === "change_unit_stat";
+  const showResultField = tool.preset === "end_mission";
 
   return `
     <div class="builder-inspector-card builder-trigger-tool-card">
@@ -1209,11 +1216,23 @@ function renderTriggerInspectorTools(builderState, appState) {
       </label>
       <label class="builder-form-field builder-form-field-compact">
         <span>Next Map</span>
-        <select data-builder-field="trigger-next-map-id"${editable && !disableLoadMapFields ? "" : " disabled"}>${nextMapOptions}</select>
+        <select data-builder-field="trigger-next-map-id"${editable && showLoadMapFields ? "" : " disabled"}>${nextMapOptions}</select>
       </label>
       <label class="builder-form-field builder-form-field-compact">
-        <span>Complete Objective Optional</span>
-        <select data-builder-field="trigger-complete-objective-id"${editable && !disableLoadMapFields ? "" : " disabled"}>${objectiveOptions}</select>
+        <span>${showObjectiveField && tool.preset === "complete_objective" ? "Objective To Complete" : "Complete Objective Optional"}</span>
+        <select data-builder-field="trigger-complete-objective-id"${editable && showObjectiveField ? "" : " disabled"}>${objectiveOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Stat</span>
+        <select data-builder-field="trigger-stat"${editable && showStatFields ? "" : " disabled"}>${statOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Value (+ heals / - hurts)</span>
+        <input type="number" step="1" data-builder-field="trigger-value" value="${escapeHtml(tool.value ?? -1)}"${editable && showStatFields ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Mission Result</span>
+        <select data-builder-field="trigger-mission-result"${editable && showResultField ? "" : " disabled"}>${missionResultOptions}</select>
       </label>
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="add-trigger"${editable ? "" : " disabled"}>Add Trigger</button>
@@ -1224,7 +1243,7 @@ function renderTriggerInspectorTools(builderState, appState) {
         <button type="button" class="builder-tool-button${addActive}" data-builder-action="trigger-paint-add"${editable ? "" : " disabled"}>Paint Zone</button>
         <button type="button" class="builder-tool-button${eraseActive}" data-builder-action="trigger-paint-erase"${editable ? "" : " disabled"}>Erase Zone</button>
       </div>
-      <div class="builder-inspector-note">Select or add a trigger, then click tiles on the map. A load-map trigger can complete a Trigger Event objective, so you only paint this zone once. Current selected trigger has ${selectedTileCount} zone tile(s).</div>
+      <div class="builder-inspector-note">Select or add a trigger, then click tiles on the map. Presets are simple: load map, change core/shield, complete an objective, or end the mission. Current selected trigger has ${selectedTileCount} zone tile(s).</div>
       <div class="builder-field-label builder-section-label">Current Triggers</div>
       ${renderTriggerList(triggers, tool.selectedIndex)}
     </div>
@@ -1238,7 +1257,7 @@ function renderTriggerList(triggers, selectedIndex) {
   return '<div class="builder-trigger-list">' + list.map((trigger, index) => {
     const selected = Number(selectedIndex) === index ? ' is-active' : '';
     const tileCount = Array.isArray(trigger?.tiles) ? trigger.tiles.length : 0;
-    const sub = (trigger?.preset ?? 'trigger') + ' · ' + (trigger?.team ?? 'player') + ' · tiles: ' + tileCount + (trigger?.nextMapId ? ' · next: ' + trigger.nextMapId : '');
+    const sub = (trigger?.preset ?? 'trigger') + ' · ' + (trigger?.team ?? 'player') + ' · tiles: ' + tileCount + formatTriggerListDetail(trigger);
     return '<div class="builder-trigger-row' + selected + '">' +
       '<button type="button" class="builder-trigger-main" data-builder-action="select-trigger:' + index + '">' +
         '<strong>' + escapeHtml((index + 1) + '. ' + (trigger?.name ?? trigger?.id ?? 'Trigger')) + '</strong>' +
@@ -1247,6 +1266,15 @@ function renderTriggerList(triggers, selectedIndex) {
       '<button type="button" class="builder-tool-button" data-builder-action="remove-trigger:' + index + '">Remove</button>' +
     '</div>';
   }).join('') + '</div>';
+}
+
+
+function formatTriggerListDetail(trigger) {
+  if (trigger?.preset === 'load_map') return trigger?.nextMapId ? ' · next: ' + trigger.nextMapId : ' · next: missing';
+  if (trigger?.preset === 'change_unit_stat') return ' · ' + (trigger?.stat ?? 'core') + ' ' + (Number(trigger?.value ?? 0) >= 0 ? '+' : '') + (trigger?.value ?? 0);
+  if (trigger?.preset === 'complete_objective') return trigger?.completeObjectiveId ? ' · objective: ' + trigger.completeObjectiveId : ' · objective: missing';
+  if (trigger?.preset === 'end_mission') return ' · result: ' + (trigger?.missionResult ?? 'victory');
+  return '';
 }
 
 function buildTriggerPresetOptions(selectedPreset = "load_map") {

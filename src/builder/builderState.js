@@ -119,6 +119,9 @@ export function createBuilderState() {
       once: true,
       nextMapId: "",
       completeObjectiveId: "",
+      stat: "core",
+      value: -1,
+      missionResult: "victory",
       selectedIndex: -1,
       paintMode: "add"
     },

@@ -151,12 +151,29 @@ async function init() {
     const triggerResult = resolveOnUnitEnterZoneTriggers(state, unit);
     if (!triggerResult?.ok) return false;
 
-    if (triggerResult.preset === "load_map") {
-      logDev(`Trigger ${triggerResult.triggerId} loading map ${triggerResult.nextMapId}.`);
-      loadMissionMapById(triggerResult.nextMapId)
+    const results = Array.isArray(triggerResult.results) ? triggerResult.results : [triggerResult];
+    const loadMapResult = results.find((result) => result?.preset === "load_map");
+    const endMissionResult = results.find((result) => result?.preset === "end_mission");
+
+    for (const result of results) {
+      if (result?.preset === "change_unit_stat") {
+        logDev(`Trigger ${result.triggerId} changed ${result.unitId ?? "unit"} ${result.stat} by ${result.value}.`);
+      } else if (result?.preset === "complete_objective") {
+        logDev(`Trigger ${result.triggerId} completed objective ${result.completeObjectiveId}.`);
+      }
+    }
+
+    if (endMissionResult?.missionResult) {
+      gameController.endMission(endMissionResult.missionResult);
+      return true;
+    }
+
+    if (loadMapResult) {
+      logDev(`Trigger ${loadMapResult.triggerId} loading map ${loadMapResult.nextMapId}.`);
+      loadMissionMapById(loadMapResult.nextMapId)
         .then((mapDefinition) => {
           if (!mapDefinition) {
-            logDev(`Trigger ${triggerResult.triggerId} failed: map ${triggerResult.nextMapId} could not be loaded.`);
+            logDev(`Trigger ${loadMapResult.triggerId} failed: map ${loadMapResult.nextMapId} could not be loaded.`);
             gameController.render();
             return;
           }
@@ -165,13 +182,14 @@ async function init() {
         })
         .catch((error) => {
           console.error(error);
-          logDev(`Trigger ${triggerResult.triggerId} failed while loading ${triggerResult.nextMapId}.`);
+          logDev(`Trigger ${loadMapResult.triggerId} failed while loading ${loadMapResult.nextMapId}.`);
           gameController.render();
         });
       return true;
     }
 
-    return false;
+    gameController.render();
+    return true;
   }
 
   const movementController = createMovementController({
