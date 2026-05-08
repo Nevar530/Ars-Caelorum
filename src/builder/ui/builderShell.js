@@ -1070,7 +1070,7 @@ function renderObjectiveInspectorTools(builderState, appState) {
       </label>
     ` : "";
 
-  const teamFields = tool.type !== "defeat_all" ? `
+  const teamFields = tool.type !== "defeat_all" && tool.type !== "trigger_complete" ? `
       <label class="builder-form-field builder-form-field-compact">
         <span>Owning Team</span>
         <select data-builder-field="objective-team"${editable ? "" : " disabled"}>${teamOptions}</select>
@@ -1137,7 +1137,9 @@ function renderObjectiveList(objectives, selectedIndex) {
       ? 'target: ' + (objective?.targetTeam ?? 'enemy')
       : objective?.type === 'survive_rounds'
         ? 'rounds: ' + (objective?.roundsRequired ?? objective?.rounds ?? 0)
-        : 'zone tiles: ' + tileCount + (objective?.type === 'hold_zone' ? ' · rounds: ' + (objective?.roundsRequired ?? 0) : '');
+        : objective?.type === 'trigger_complete'
+          ? 'completed by trigger'
+          : 'zone tiles: ' + tileCount + (objective?.type === 'hold_zone' ? ' · rounds: ' + (objective?.roundsRequired ?? 0) : '');
     return '<div class="builder-objective-row' + selected + '">' +
       '<button type="button" class="builder-objective-main" data-builder-action="select-objective:' + index + '">' +
         '<strong>' + escapeHtml((index + 1) + '. ' + (objective?.label ?? objective?.id ?? 'Objective')) + '</strong>' +
@@ -1166,7 +1168,10 @@ function renderTriggerInspectorTools(builderState, appState) {
   const typeOptions = buildTriggerTypeOptions(tool.type ?? "onUnitEnterZone");
   const teamOptions = buildSimpleOptions(getTriggerTeamOptions(), tool.team ?? "player");
   const nextMapOptions = buildTriggerMapOptions(mapDrafts, tool.nextMapId, activeMapId);
-  const objectiveOptions = buildTriggerObjectiveOptions(builderState?.authoring?.map?.objectives, tool.completeObjectiveId);
+  const triggerObjectiveList = Array.isArray(builderState?.authoring?.map?.objectives) && builderState.authoring.map.objectives.length
+    ? builderState.authoring.map.objectives
+    : builderState?.authoring?.mission?.objectives;
+  const objectiveOptions = buildTriggerObjectiveOptions(triggerObjectiveList, tool.completeObjectiveId);
   const selectedTrigger = Number.isInteger(Number(tool.selectedIndex)) && triggers[Number(tool.selectedIndex)]
     ? triggers[Number(tool.selectedIndex)]
     : null;
@@ -1219,7 +1224,7 @@ function renderTriggerInspectorTools(builderState, appState) {
         <button type="button" class="builder-tool-button${addActive}" data-builder-action="trigger-paint-add"${editable ? "" : " disabled"}>Paint Zone</button>
         <button type="button" class="builder-tool-button${eraseActive}" data-builder-action="trigger-paint-erase"${editable ? "" : " disabled"}>Erase Zone</button>
       </div>
-      <div class="builder-inspector-note">Select or add a trigger, then click tiles on the map. Current selected trigger has ${selectedTileCount} zone tile(s).</div>
+      <div class="builder-inspector-note">Select or add a trigger, then click tiles on the map. A load-map trigger can complete a Trigger Event objective, so you only paint this zone once. Current selected trigger has ${selectedTileCount} zone tile(s).</div>
       <div class="builder-field-label builder-section-label">Current Triggers</div>
       ${renderTriggerList(triggers, tool.selectedIndex)}
     </div>

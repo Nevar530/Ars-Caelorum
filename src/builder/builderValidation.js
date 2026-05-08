@@ -11,7 +11,7 @@ const VALID_EDGE_SIDES = new Set(["ne", "se", "sw", "nw"]);
 const VALID_TEAMS = new Set(["player", "enemy", "neutral"]);
 const VALID_CONTROL_TYPES = new Set(["PC", "CPU"]);
 const DEFAULT_BRIEFING_TEXT = "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.";
-const VALID_OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds"]);
+const VALID_OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds", "trigger_complete"]);
 const VALID_TRIGGER_TYPES = new Set(["onUnitEnterZone"]);
 const VALID_TRIGGER_PRESETS = new Set(["load_map"]);
 const VALID_TRIGGER_TEAMS = new Set(["player", "enemy", "any"]);
@@ -36,16 +36,16 @@ export function validateBuilderPackage(builderState, appState = null) {
     const height = getMapHeight(map);
     const mapLabel = cleanString(map?.id) || cleanString(map?.name) || "unnamed map";
 
-    validateMapBasics(result, map, width, height);
-    validateTiles(result, map, width, height);
-    validateSpawns(result, map, width, height);
-    validateDeployments(result, map, appState);
-    validateDeploymentCells(result, map, width, height);
-    validateStructures(result, map, width, height);
-
     const objectives = Array.isArray(map?.objectives) && map.objectives.length
       ? map.objectives
       : (map === activeMap && Array.isArray(mission?.objectives) ? mission.objectives : []);
+
+    validateMapBasics(result, map, width, height);
+    validateTiles(result, map, width, height);
+    validateSpawns(result, map, width, height);
+    validateDeployments(result, map, appState, objectives);
+    validateDeploymentCells(result, map, width, height);
+    validateStructures(result, map, width, height);
 
     if (!objectives.length) {
       addError(result, "MAP_NO_OBJECTIVES", `${mapLabel} has no authored objectives.`);
@@ -134,7 +134,7 @@ function validateSpawns(result, map, width, height) {
   }
 }
 
-function validateDeployments(result, map, appState) {
+function validateDeployments(result, map, appState, objectives = []) {
   const startState = map?.startState ?? {};
   const deployments = Array.isArray(startState.deployments) ? startState.deployments : [];
   const startMode = startState.startMode ?? "authored";
@@ -196,7 +196,16 @@ function validateDeployments(result, map, appState) {
   }
 
   if (playerPilots <= 0) addError(result, "MISSION_NO_PLAYER_PILOT", "Mission has no player-side pilot start or deployment roster entry.");
-  if (enemyPilots <= 0) addError(result, "MISSION_NO_ENEMY_PILOT", "Mission has no enemy-side pilot start. Current runtime victory still needs enemy pilots.");
+  if (requiresEnemyPilotsForObjectives(objectives) && enemyPilots <= 0) {
+    addError(result, "MISSION_NO_ENEMY_PILOT", "A defeat_all objective targets enemies, but this map has no enemy-side pilot start.");
+  }
+}
+
+function requiresEnemyPilotsForObjectives(objectives) {
+  return (Array.isArray(objectives) ? objectives : []).some((objective) => {
+    if (cleanString(objective?.type) !== "defeat_all") return false;
+    return (cleanString(objective?.targetTeam) || "enemy") === "enemy";
+  });
 }
 
 function validateDeploymentCells(result, map, width, height) {

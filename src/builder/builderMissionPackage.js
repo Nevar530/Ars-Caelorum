@@ -63,6 +63,18 @@ export const OBJECTIVE_PRESETS = [
       briefingText: "Survive for 3 rounds."
     },
     summary: "Survive for 3 rounds."
+  },
+  {
+    id: "trigger_complete",
+    label: "Trigger Event",
+    objective: {
+      id: "trigger_event",
+      type: "trigger_complete",
+      team: "player",
+      label: "Reach trigger zone",
+      briefingText: "Move a player unit into the trigger zone."
+    },
+    summary: "Complete this objective from a trigger preset."
   }
 ];
 

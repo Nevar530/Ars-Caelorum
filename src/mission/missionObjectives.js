@@ -5,7 +5,7 @@
 
 import { getControlledBodyForPilot, getPilotActors, isUnitPresentOnBoard } from "../actors/actorResolver.js";
 
-const OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds"]);
+const OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds", "trigger_complete"]);
 
 export function resetObjectiveRuntimeState(state) {
   const mission = getMissionStateObject(state);
@@ -106,6 +106,9 @@ function evaluateSingleObjective(state, objective, runtime, timing) {
     case "survive_rounds":
       if (timing !== "round_end") return false;
       return updateSurviveProgress(state, objective, runtime);
+
+    case "trigger_complete":
+      return false;
 
     default:
       return false;

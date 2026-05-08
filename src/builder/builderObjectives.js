@@ -11,7 +11,8 @@ const OBJECTIVE_TYPES = [
   { value: "defeat_all", label: "Defeat All Enemies", needsZone: false },
   { value: "reach_zone", label: "Reach Zone", needsZone: true },
   { value: "hold_zone", label: "Hold Zone for Rounds", needsZone: true },
-  { value: "survive_rounds", label: "Survive Rounds", needsZone: false }
+  { value: "survive_rounds", label: "Survive Rounds", needsZone: false },
+  { value: "trigger_complete", label: "Trigger Event", needsZone: false }
 ];
 
 const OBJECTIVE_TYPE_SET = new Set(OBJECTIVE_TYPES.map((entry) => entry.value));
@@ -308,6 +309,8 @@ function buildObjectiveFromTool(tool, id) {
   } else if (type === "survive_rounds") {
     objective.team = tool.team || "player";
     objective.roundsRequired = Math.max(1, Math.floor(Number(tool.roundsRequired) || 1));
+  } else if (type === "trigger_complete") {
+    objective.team = tool.team || "player";
   }
 
   return objective;
@@ -347,6 +350,7 @@ function getDefaultObjectiveLabel(type, targetTeam = "enemy", roundsRequired = 3
     case "reach_zone": return "Reach extraction zone";
     case "hold_zone": return `Hold zone for ${rounds} rounds`;
     case "survive_rounds": return `Survive ${rounds} rounds`;
+    case "trigger_complete": return "Reach trigger zone";
     case "defeat_all":
     default:
       return `Defeat all ${targetTeam || "enemy"} units`;
@@ -359,6 +363,7 @@ function getDefaultObjectiveBriefingText(type, targetTeam = "enemy", roundsRequi
     case "reach_zone": return "Move a player unit into the marked zone.";
     case "hold_zone": return `Hold the marked zone for ${rounds} rounds.`;
     case "survive_rounds": return `Survive for ${rounds} rounds.`;
+    case "trigger_complete": return "Move a player unit into the trigger zone.";
     case "defeat_all":
     default:
       return `Defeat all ${targetTeam || "enemy"} units.`;
