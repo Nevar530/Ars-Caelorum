@@ -56,6 +56,13 @@ import {
   objectiveTypeNeedsZone
 } from "../builderObjectives.js";
 import {
+  ensureTriggerToolSettings,
+  getTriggerDefinitions,
+  getTriggerPresetOptions,
+  getTriggerTeamOptions,
+  getTriggerTypeOptions
+} from "../builderTriggers.js";
+import {
   getBuilderMapCatalogOptions,
   getBuilderMissionCatalogOptions
 } from "../builderLoadExisting.js";
@@ -189,7 +196,7 @@ function renderTabHeader({ builderState, refs }) {
     spawns: "Spawn and deployment authoring writes existing map.spawns and map.startState truth.",
     units: "Unit start assignments write map.startState.deployments using the current runtime contract.",
     objectives: "Objective definitions are authored here. Reach/Hold objectives use map painting for zones.",
-    triggers: "Tile/zone/runtime triggers connect to Logic Chains here.",
+    triggers: "Preset triggers live here. V1 starts with on-enter-zone Load Map.",
     logic: "Mission Logic Chains: trigger → conditions → effects → follow-up.",
     dialogue: "Dialogue authoring will adapt to current missionState dialogue hooks.",
     results: "Victory/defeat result authoring belongs here.",
@@ -220,6 +227,7 @@ function renderOverlayToggles({ builderState, refs }) {
     ["spawns", "Spawns", builderState.overlays?.spawns],
     ["deployment", "Deploy", builderState.overlays?.deployment],
     ["objectives", "Objectives", builderState.overlays?.objectives],
+    ["triggers", "Triggers", builderState.overlays?.triggers],
     ["tileHeights", "Heights", builderState.overlays?.tileHeights]
   );
 
@@ -429,6 +437,9 @@ function renderInspector({ builderState, refs, appState }) {
   const objectiveTools = builderState.activeTab === "objectives"
     ? renderObjectiveInspectorTools(builderState, appState)
     : "";
+  const triggerTools = builderState.activeTab === "triggers"
+    ? renderTriggerInspectorTools(builderState, appState)
+    : "";
   const resultsTools = builderState.activeTab === "results"
     ? renderResultsInspectorTools(builderState)
     : "";
@@ -439,7 +450,7 @@ function renderInspector({ builderState, refs, appState }) {
     ? renderExportInspectorTools(builderState)
     : "";
   const note = builderState.workspaceMode === "builder-map"
-    ? "Builder-owned map. Terrain paints tile truth. Structures paint cells/edges. Spawns paints map.spawns and deployment cells. Units writes startState.deployments. Objectives writes active-map objectives."
+    ? "Builder-owned map. Terrain paints tile truth. Structures paint cells/edges. Spawns paints map.spawns and deployment cells. Units writes startState.deployments. Objectives and triggers write active-map mission scripting truth."
     : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
 
   refs.inspector.innerHTML = `
@@ -454,6 +465,7 @@ function renderInspector({ builderState, refs, appState }) {
     ${spawnTools}
     ${unitTools}
     ${objectiveTools}
+    ${triggerTools}
     ${resultsTools}
     ${validationTools}
     ${exportTools}
@@ -1140,6 +1152,131 @@ function buildObjectiveTypeOptions(selectedType = "defeat_all") {
   return getObjectiveTypeOptions().map((option) => {
     const selected = option.value === selectedType ? " selected" : "";
     return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(option.label)}</option>`;
+  }).join("");
+}
+
+
+function renderTriggerInspectorTools(builderState, appState) {
+  const tool = ensureTriggerToolSettings(builderState) ?? {};
+  const editable = builderState.workspaceMode === "builder-map";
+  const triggers = getTriggerDefinitions(builderState);
+  const mapDrafts = getMissionMapDrafts(builderState);
+  const activeMapId = String(builderState?.authoring?.map?.id ?? builderState?.authoring?.activeMapId ?? "");
+  const presetOptions = buildTriggerPresetOptions(tool.preset ?? "load_map");
+  const typeOptions = buildTriggerTypeOptions(tool.type ?? "onUnitEnterZone");
+  const teamOptions = buildSimpleOptions(getTriggerTeamOptions(), tool.team ?? "player");
+  const nextMapOptions = buildTriggerMapOptions(mapDrafts, tool.nextMapId, activeMapId);
+  const objectiveOptions = buildTriggerObjectiveOptions(builderState?.authoring?.map?.objectives, tool.completeObjectiveId);
+  const selectedTrigger = Number.isInteger(Number(tool.selectedIndex)) && triggers[Number(tool.selectedIndex)]
+    ? triggers[Number(tool.selectedIndex)]
+    : null;
+  const selectedTileCount = Array.isArray(selectedTrigger?.tiles) ? selectedTrigger.tiles.length : 0;
+  const addActive = tool.paintMode !== "erase" ? " is-active" : "";
+  const eraseActive = tool.paintMode === "erase" ? " is-active" : "";
+  const disableLoadMapFields = tool.preset !== "load_map";
+
+  return `
+    <div class="builder-inspector-card builder-trigger-tool-card">
+      <div class="builder-field-label">Triggers V1</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Trigger ID</span>
+        <input type="text" data-builder-field="trigger-id" value="${escapeHtml(tool.id ?? "")}" placeholder="auto" spellcheck="false"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Trigger Name</span>
+        <input type="text" data-builder-field="trigger-name" value="${escapeHtml(tool.name ?? "")}" spellcheck="true"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Preset</span>
+        <select data-builder-field="trigger-preset"${editable ? "" : " disabled"}>${presetOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Trigger Type</span>
+        <select data-builder-field="trigger-type"${editable ? "" : " disabled"}>${typeOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Team Filter</span>
+        <select data-builder-field="trigger-team"${editable ? "" : " disabled"}>${teamOptions}</select>
+      </label>
+      <label class="builder-form-check">
+        <input type="checkbox" data-builder-field="trigger-once"${tool.once !== false ? " checked" : ""}${editable ? "" : " disabled"}>
+        <span>Once</span>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Next Map</span>
+        <select data-builder-field="trigger-next-map-id"${editable && !disableLoadMapFields ? "" : " disabled"}>${nextMapOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Complete Objective Optional</span>
+        <select data-builder-field="trigger-complete-objective-id"${editable && !disableLoadMapFields ? "" : " disabled"}>${objectiveOptions}</select>
+      </label>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="add-trigger"${editable ? "" : " disabled"}>Add Trigger</button>
+        <button type="button" class="builder-tool-button" data-builder-action="update-trigger"${editable ? "" : " disabled"}>Update Selected</button>
+      </div>
+      <div class="builder-field-label builder-section-label">Zone Painter</div>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button${addActive}" data-builder-action="trigger-paint-add"${editable ? "" : " disabled"}>Paint Zone</button>
+        <button type="button" class="builder-tool-button${eraseActive}" data-builder-action="trigger-paint-erase"${editable ? "" : " disabled"}>Erase Zone</button>
+      </div>
+      <div class="builder-inspector-note">Select or add a trigger, then click tiles on the map. Current selected trigger has ${selectedTileCount} zone tile(s).</div>
+      <div class="builder-field-label builder-section-label">Current Triggers</div>
+      ${renderTriggerList(triggers, tool.selectedIndex)}
+    </div>
+  `;
+}
+
+function renderTriggerList(triggers, selectedIndex) {
+  const list = Array.isArray(triggers) ? triggers : [];
+  if (!list.length) return '<div class="builder-inspector-note">No authored triggers yet.</div>';
+
+  return '<div class="builder-trigger-list">' + list.map((trigger, index) => {
+    const selected = Number(selectedIndex) === index ? ' is-active' : '';
+    const tileCount = Array.isArray(trigger?.tiles) ? trigger.tiles.length : 0;
+    const sub = (trigger?.preset ?? 'trigger') + ' · ' + (trigger?.team ?? 'player') + ' · tiles: ' + tileCount + (trigger?.nextMapId ? ' · next: ' + trigger.nextMapId : '');
+    return '<div class="builder-trigger-row' + selected + '">' +
+      '<button type="button" class="builder-trigger-main" data-builder-action="select-trigger:' + index + '">' +
+        '<strong>' + escapeHtml((index + 1) + '. ' + (trigger?.name ?? trigger?.id ?? 'Trigger')) + '</strong>' +
+        '<span>' + escapeHtml(sub) + '</span>' +
+      '</button>' +
+      '<button type="button" class="builder-tool-button" data-builder-action="remove-trigger:' + index + '">Remove</button>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function buildTriggerPresetOptions(selectedPreset = "load_map") {
+  return getTriggerPresetOptions().map((option) => {
+    const selected = option.value === selectedPreset ? " selected" : "";
+    return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(option.label)}</option>`;
+  }).join("");
+}
+
+function buildTriggerTypeOptions(selectedType = "onUnitEnterZone") {
+  return getTriggerTypeOptions().map((option) => {
+    const selected = option.value === selectedType ? " selected" : "";
+    return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(option.label)}</option>`;
+  }).join("");
+}
+
+function buildTriggerMapOptions(maps, selectedMapId = "", activeMapId = "") {
+  const list = Array.isArray(maps) ? maps : [];
+  if (!list.length) return '<option value="">No mission maps</option>';
+  const cleanSelected = String(selectedMapId ?? "");
+  return '<option value="">Choose next map...</option>' + list.map((map) => {
+    const id = String(map?.id ?? "");
+    const selected = id === cleanSelected ? " selected" : "";
+    const self = id === activeMapId ? " (current)" : "";
+    return `<option value="${escapeHtml(id)}"${selected}>${escapeHtml((map?.name ?? id) + self)}</option>`;
+  }).join("");
+}
+
+function buildTriggerObjectiveOptions(objectives, selectedObjectiveId = "") {
+  const list = Array.isArray(objectives) ? objectives : [];
+  const cleanSelected = String(selectedObjectiveId ?? "");
+  return '<option value="">None</option>' + list.map((objective) => {
+    const id = String(objective?.id ?? "");
+    const selected = id === cleanSelected ? " selected" : "";
+    return `<option value="${escapeHtml(id)}"${selected}>${escapeHtml(objective?.label ?? id)}</option>`;
   }).join("");
 }
 

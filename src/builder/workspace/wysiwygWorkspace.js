@@ -39,6 +39,7 @@ import {
   getTileTruth
 } from "../builderAdapters.js";
 import { getObjectiveZoneCells } from "../builderObjectives.js";
+import { getTriggerZoneCells } from "../builderTriggers.js";
 
 const PICK_MAX_DISTANCE_PX = 44;
 
@@ -344,6 +345,7 @@ function renderBuilderWorkspaceOverlays({ previewState, appState, builderState, 
 
   if (overlayState.deployment) overlays.push(renderDeploymentOverlays(previewState));
   if (overlayState.objectives) overlays.push(renderObjectiveZoneOverlays(previewState, builderState));
+  if (overlayState.triggers) overlays.push(renderTriggerZoneOverlays(previewState, builderState));
   if (overlayState.spawns) overlays.push(renderSpawnOverlays(previewState));
   if (overlayState.rooms) overlays.push(renderRoomOverlays(previewState));
   if (overlayState.structureEdges) overlays.push(renderStructureEdgeOverlays(previewState));
@@ -456,6 +458,22 @@ function renderObjectiveZoneOverlays(previewState, builderState) {
     return `
       <polygon class="builder-overlay-objective" points="${formatPointString(points)}" pointer-events="none" />
       ${renderTileText(previewState, cell.x, cell.y, label, "builder-overlay-label builder-overlay-label-objective")}
+    `;
+  }).join("");
+}
+
+
+function renderTriggerZoneOverlays(previewState, builderState) {
+  const cells = getTriggerZoneCells(builderState);
+  if (!cells.length) return "";
+
+  return cells.map((cell) => {
+    const points = getTilePolygonPoints(previewState, cell.x, cell.y);
+    if (points.length !== 4) return "";
+    const label = cell.preset === "load_map" ? "load" : "trigger";
+    return `
+      <polygon class="builder-overlay-trigger" points="${formatPointString(points)}" pointer-events="none" />
+      ${renderTileText(previewState, cell.x, cell.y, label, "builder-overlay-label builder-overlay-label-trigger")}
     `;
   }).join("");
 }
@@ -730,11 +748,23 @@ export function buildTileInspectorHtml(appState, selection) {
       <div class="builder-field-value">${truth.deploymentCell ? escapeHtml(formatDeploymentCell(truth.deploymentCell)) : "None"}</div>
     </div>
     <div class="builder-inspector-card">
+      <div class="builder-field-label">Trigger Tiles</div>
+      <div class="builder-field-value">${formatTriggersAtTile(appState?.map, truth.x, truth.y)}</div>
+    </div>
+    <div class="builder-inspector-card">
       <div class="builder-field-label">Runtime Unit</div>
       <div class="builder-field-value">${truth.unit ? escapeHtml(truth.unit.name ?? truth.unit.instanceId ?? truth.unit.id) : "None"}</div>
     </div>
     <div class="builder-inspector-note">Inspector reads through builder adapters. Terrain, structures, and spawns mutate only builder-owned maps; current runtime maps stay read-only.</div>
   `;
+}
+
+
+function formatTriggersAtTile(map, x, y) {
+  const triggers = Array.isArray(map?.triggers) ? map.triggers : [];
+  const matches = triggers.filter((trigger) => Array.isArray(trigger?.tiles) && trigger.tiles.some((tile) => Number(tile?.x) === Number(x) && Number(tile?.y) === Number(y)));
+  if (!matches.length) return "None";
+  return escapeHtml(matches.map((trigger) => `${trigger.id ?? "trigger"}:${trigger.preset ?? "preset"}`).join(", "));
 }
 
 function formatPointString(points) {

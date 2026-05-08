@@ -52,6 +52,7 @@ export function createBlankBuilderMap(options = {}) {
     startState: { deployments: [], deploymentCells: [] },
     structures: [],
     objectives: [],
+    triggers: [],
     defaults: {
       terrainTypeId,
       elevation,

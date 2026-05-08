@@ -4,6 +4,7 @@ import {
   renderCombatTextOverlay
 } from "../combat/combatTextOverlay.js";
 import { clearDialogueState, clearMissionResult, setActiveMissionDefinition, startMissionDialogue } from "../mission/missionState.js";
+import { resetTriggerRuntimeState } from "../mission/missionTriggers.js";
 import { renderMissionOverlay } from "../ui/missionOverlay.js";
 import { renderFrontScreen } from "../ui/frontScreen.js";
 import { renderHud } from "../ui/hud.js";
@@ -102,13 +103,29 @@ export function createGameController({
     setPreviewSelectionFromFirstUnit();
   }
 
+
+  function buildRuntimeMissionDefinitionForMap(mapDefinition, missionDefinition = null) {
+    if (!missionDefinition || !mapDefinition) return missionDefinition ?? null;
+
+    return {
+      ...missionDefinition,
+      mapId: mapDefinition.id ?? missionDefinition.mapId,
+      activeMapId: mapDefinition.id ?? missionDefinition.activeMapId ?? missionDefinition.mapId,
+      mapPath: mapDefinition.id ? `./data/maps/${mapDefinition.id}.json` : missionDefinition.mapPath,
+      objectives: Array.isArray(mapDefinition.objectives) ? mapDefinition.objectives : (missionDefinition.objectives ?? []),
+      triggers: Array.isArray(mapDefinition.triggers) ? mapDefinition.triggers : (missionDefinition.triggers ?? [])
+    };
+  }
+
   function loadMapAndUnits(mapDefinition = null, missionDefinition = null) {
     const sourceMap = mapDefinition ?? state.mission?.sourceMap ?? state.content?.defaultMap ?? null;
     state.map = resetMap(sourceMap);
     const isDeploymentMap = state.map?.startState?.startMode === "deployment";
+    const runtimeMissionDefinition = buildRuntimeMissionDefinitionForMap(state.map, missionDefinition ?? state.mission?.definition ?? null);
     state.units = instantiateTestUnits(state.content, state.map, { includePlayerDeployments: !isDeploymentMap });
     state.mission.sourceMap = cloneMapDefinition(sourceMap);
-    setActiveMissionDefinition(state, missionDefinition ?? state.mission?.definition ?? null);
+    setActiveMissionDefinition(state, runtimeMissionDefinition);
+    resetTriggerRuntimeState(state);
 
     state.rotation = 0;
     state.camera.angle = 0;

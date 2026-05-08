@@ -94,6 +94,16 @@ import {
   updateObjectiveToolFromFields,
   updateSelectedObjectiveDefinition
 } from "./builderObjectives.js";
+import {
+  addTriggerDefinition,
+  applyTriggerToolAtTile,
+  isTriggerAuthoringActive,
+  removeTriggerDefinition,
+  selectTriggerDefinition,
+  setTriggerPaintMode,
+  updateSelectedTriggerDefinition,
+  updateTriggerToolFromFields
+} from "./builderTriggers.js";
 import { createBuilderShell, renderBuilderShell } from "./ui/builderShell.js";
 import {
   clearWysiwygWorkspace,
@@ -211,7 +221,7 @@ class MissionBuilder {
 
   handleWorkspaceConfirmKey(event) {
     if (event.code !== "Space" && event.key !== " ") return false;
-    if (!this.isTerrainAuthoringActive() && !this.isStructureAuthoringActive() && !this.isSpawnAuthoringActive() && !this.isObjectiveAuthoringActive()) return false;
+    if (!this.isTerrainAuthoringActive() && !this.isStructureAuthoringActive() && !this.isSpawnAuthoringActive() && !this.isObjectiveAuthoringActive() && !this.isTriggerAuthoringActive()) return false;
 
     const selected = this.builderState.selected ?? null;
     const hover = this.builderState.hover ?? null;
@@ -231,7 +241,9 @@ class MissionBuilder {
           ? this.applySpawnActionAtTile(target.x, target.y)
           : this.isObjectiveAuthoringActive()
             ? this.applyObjectiveActionAtTile(target.x, target.y)
-            : this.applyTerrainActionAtTile(target.x, target.y);
+            : this.isTriggerAuthoringActive()
+              ? this.applyTriggerActionAtTile(target.x, target.y)
+              : this.applyTerrainActionAtTile(target.x, target.y);
 
     pushBuilderLog(this.builderState, result.message);
     this.render();
@@ -319,6 +331,12 @@ class MissionBuilder {
     if (this.builderState.activeTab === "objectives") {
       updateObjectiveToolFromFields(this.builderState, this.refs.root, { changedField });
       this.render();
+      return;
+    }
+
+    if (this.builderState.activeTab === "triggers") {
+      updateTriggerToolFromFields(this.builderState, this.refs.root);
+      this.render();
     }
   }
 
@@ -401,6 +419,9 @@ class MissionBuilder {
     } else if (this.isObjectiveAuthoringActive()) {
       const result = this.applyObjectiveActionAtTile(picked.x, picked.y);
       pushBuilderLog(this.builderState, result.message);
+    } else if (this.isTriggerAuthoringActive()) {
+      const result = this.applyTriggerActionAtTile(picked.x, picked.y);
+      pushBuilderLog(this.builderState, result.message);
     } else {
       pushBuilderLog(this.builderState, "Selected tile " + picked.x + ", " + picked.y + ".");
     }
@@ -422,6 +443,10 @@ class MissionBuilder {
 
   isObjectiveAuthoringActive() {
     return isObjectiveAuthoringActive(this.builderState);
+  }
+
+  isTriggerAuthoringActive() {
+    return isTriggerAuthoringActive(this.builderState);
   }
 
   applyTerrainActionAtTile(x, y) {
@@ -456,7 +481,52 @@ class MissionBuilder {
     return applyObjectiveToolAtTile(this.builderState, this.appState, x, y);
   }
 
+  applyTriggerActionAtTile(x, y) {
+    updateTriggerToolFromFields(this.builderState, this.refs.root);
+    return applyTriggerToolAtTile(this.builderState, this.appState, x, y);
+  }
+
   async handleAction(action) {
+    if (action === "add-trigger") {
+      updateTriggerToolFromFields(this.builderState, this.refs.root);
+      const result = addTriggerDefinition(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "update-trigger") {
+      updateTriggerToolFromFields(this.builderState, this.refs.root);
+      const result = updateSelectedTriggerDefinition(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("select-trigger:")) {
+      const index = Number(action.split(":")[1]);
+      const result = selectTriggerDefinition(this.builderState, index);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("remove-trigger:")) {
+      const index = Number(action.split(":")[1]);
+      const result = removeTriggerDefinition(this.builderState, index);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "trigger-paint-add" || action === "trigger-paint-erase") {
+      updateTriggerToolFromFields(this.builderState, this.refs.root);
+      const tool = setTriggerPaintMode(this.builderState, action === "trigger-paint-erase" ? "erase" : "add");
+      pushBuilderLog(this.builderState, tool.paintMode === "erase" ? "Trigger zone erase armed." : "Trigger zone paint armed.");
+      this.render();
+      return;
+    }
+
     if (action === "add-objective") {
       updateObjectiveToolFromFields(this.builderState, this.refs.root);
       const result = addObjectiveDefinition(this.builderState);

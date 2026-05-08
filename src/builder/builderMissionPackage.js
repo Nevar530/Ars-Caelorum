@@ -596,6 +596,7 @@ function cloneBuilderMap(map) {
   if (!Array.isArray(clone.startState.deploymentCells)) clone.startState.deploymentCells = [];
   if (!Array.isArray(clone.structures)) clone.structures = [];
   if (!Array.isArray(clone.objectives)) clone.objectives = [];
+  if (!Array.isArray(clone.triggers)) clone.triggers = [];
   return clone;
 }
 

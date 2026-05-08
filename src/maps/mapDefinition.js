@@ -47,6 +47,11 @@ export function attachMapMetadata(map, metadata = {}) {
       writable: true,
       configurable: true
     },
+    triggers: {
+      value: structuredClone(metadata.triggers ?? map.triggers ?? []),
+      writable: true,
+      configurable: true
+    },
     defaults: {
       value: structuredClone(metadata.defaults ?? map.defaults ?? null),
       writable: true,
@@ -154,6 +159,7 @@ export function normalizeMapDefinition(definition) {
       startState: definition.startState,
       terrainTypes: definition.terrainTypes,
       objectives: definition.objectives,
+      triggers: definition.triggers,
       defaults: definition.defaults
     });
   }
@@ -176,6 +182,7 @@ export function cloneMapDefinition(sourceMap = null) {
       startState: sourceMap.startState,
       terrainTypes: sourceMap.terrainTypes,
       objectives: sourceMap.objectives,
+      triggers: sourceMap.triggers,
       defaults: sourceMap.defaults
     });
   }

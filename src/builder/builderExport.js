@@ -106,6 +106,7 @@ export function buildMapDefinitionForExport(map) {
     terrainTypes: normalizeTerrainTypes(map?.terrainTypes, tiles),
     defaults: normalizeMapDefaults(map),
     objectives: normalizeMissionObjectives(map?.objectives),
+    triggers: normalizeTriggers(map?.triggers),
     spawns: cloneJson(map?.spawns ?? { player: [], enemy: [], neutral: [] }),
     startState: normalizeStartState(map?.startState),
     structures: sanitizeStructuresForExport(map?.structures ?? []),
@@ -136,6 +137,7 @@ export function buildMissionDefinitionForExport(mapDefinition, mission = null, m
       objectives: normalizeBriefingObjectives(mission?.briefing?.objectives, startObjectives)
     },
     objectives: normalizeMissionObjectives(startObjectives),
+    triggers: normalizeTriggers(startMap?.triggers),
     dialogue: mission?.dialogue ?? createDefaultDialogue(),
     results: mission?.results ?? {
       victory: { title: "Victory", text: "Mission complete." },
@@ -366,6 +368,29 @@ function sanitizeStructuresForExport(structures) {
       });
     }
 
+    return clean;
+  });
+}
+
+
+function normalizeTriggers(triggers) {
+  if (!Array.isArray(triggers)) return [];
+
+  return triggers.map((trigger) => {
+    const clean = cloneJson(trigger ?? {});
+    clean.id = sanitizeId(clean.id, "trigger");
+    clean.name = sanitizeName(clean.name, clean.id);
+    clean.preset = sanitizeId(clean.preset, "load_map");
+    clean.type = sanitizeName(clean.type, "onUnitEnterZone");
+    clean.team = sanitizeId(clean.team, "player");
+    clean.once = clean.once !== false;
+    clean.tiles = Array.isArray(clean.tiles)
+      ? clean.tiles
+          .map((tile) => ({ x: Number(tile?.x), y: Number(tile?.y) }))
+          .filter((tile) => Number.isInteger(tile.x) && Number.isInteger(tile.y))
+      : [];
+    if (clean.completeObjectiveId) clean.completeObjectiveId = sanitizeId(clean.completeObjectiveId, "");
+    if (clean.nextMapId) clean.nextMapId = sanitizeId(clean.nextMapId, "");
     return clean;
   });
 }

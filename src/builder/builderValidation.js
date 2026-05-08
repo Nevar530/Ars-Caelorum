@@ -12,6 +12,9 @@ const VALID_TEAMS = new Set(["player", "enemy", "neutral"]);
 const VALID_CONTROL_TYPES = new Set(["PC", "CPU"]);
 const DEFAULT_BRIEFING_TEXT = "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.";
 const VALID_OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds"]);
+const VALID_TRIGGER_TYPES = new Set(["onUnitEnterZone"]);
+const VALID_TRIGGER_PRESETS = new Set(["load_map"]);
+const VALID_TRIGGER_TEAMS = new Set(["player", "enemy", "any"]);
 
 export function validateBuilderPackage(builderState, appState = null) {
   const result = createValidationResult();
@@ -49,6 +52,8 @@ export function validateBuilderPackage(builderState, appState = null) {
     } else {
       validateObjectives(result, map, objectives);
     }
+
+    validateTriggers(result, map, mission, objectives);
   }
 
   addSummaryInfo(result);
@@ -338,6 +343,70 @@ function validateObjectives(result, map, objectives) {
     }
   }
 }
+
+function validateTriggers(result, map, mission, objectives) {
+  const triggers = Array.isArray(map?.triggers) ? map.triggers : [];
+  if (!triggers.length) return;
+
+  const width = getMapWidth(map);
+  const height = getMapHeight(map);
+  const activeMapId = cleanString(map?.id);
+  const missionMapIds = new Set((Array.isArray(mission?.maps) ? mission.maps : [])
+    .map((entry) => cleanString(entry?.id ?? entry?.mapId))
+    .filter(Boolean));
+  if (activeMapId) missionMapIds.add(activeMapId);
+
+  const objectiveIds = new Set((Array.isArray(objectives) ? objectives : [])
+    .map((objective) => cleanString(objective?.id))
+    .filter(Boolean));
+  const ids = new Set();
+
+  for (let index = 0; index < triggers.length; index += 1) {
+    const trigger = triggers[index] ?? {};
+    const label = `trigger ${index + 1}`;
+    const id = cleanString(trigger.id);
+    const type = cleanString(trigger.type);
+    const preset = cleanString(trigger.preset);
+    const team = cleanString(trigger.team) || "player";
+
+    if (!id) addError(result, "TRIGGER_ID_MISSING", `${label} is missing an id.`);
+    else if (ids.has(id)) addError(result, "TRIGGER_ID_DUPLICATE", `${label} duplicates trigger id "${id}".`);
+    ids.add(id);
+
+    if (!VALID_TRIGGER_TYPES.has(type)) addError(result, "TRIGGER_TYPE_BAD", `${label} has unsupported type "${type}".`);
+    if (!VALID_TRIGGER_PRESETS.has(preset)) addError(result, "TRIGGER_PRESET_BAD", `${label} has unsupported preset "${preset}".`);
+    if (!VALID_TRIGGER_TEAMS.has(team)) addError(result, "TRIGGER_TEAM_BAD", `${label} has invalid team filter "${team}".`);
+
+    if (type === "onUnitEnterZone") {
+      const tiles = Array.isArray(trigger.tiles) ? trigger.tiles : [];
+      if (!tiles.length) addError(result, "TRIGGER_ZONE_EMPTY", `${label} needs at least one painted zone tile.`);
+      for (const tile of tiles) {
+        const x = Number(tile?.x);
+        const y = Number(tile?.y);
+        if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
+          addError(result, "TRIGGER_ZONE_OUT_OF_BOUNDS", `${label} has zone tile outside map bounds at ${x}, ${y}.`);
+        }
+      }
+    }
+
+    if (preset === "load_map") {
+      const nextMapId = cleanString(trigger.nextMapId);
+      if (!nextMapId) {
+        addError(result, "TRIGGER_LOAD_MAP_MISSING", `${label} load_map preset needs nextMapId.`);
+      } else if (!missionMapIds.has(nextMapId)) {
+        addError(result, "TRIGGER_LOAD_MAP_BAD", `${label} nextMapId "${nextMapId}" is not in this mission package.`);
+      } else if (nextMapId === activeMapId) {
+        addError(result, "TRIGGER_LOAD_MAP_SELF", `${label} loads the current map. V1 blocks self-load to avoid reload loops.`);
+      }
+
+      const completeObjectiveId = cleanString(trigger.completeObjectiveId);
+      if (completeObjectiveId && !objectiveIds.has(completeObjectiveId)) {
+        addError(result, "TRIGGER_COMPLETE_OBJECTIVE_BAD", `${label} completeObjectiveId "${completeObjectiveId}" does not match an objective on this map.`);
+      }
+    }
+  }
+}
+
 
 function validateSpawnReference(result, map, spawnId, label) {
   const cleanId = cleanString(spawnId);

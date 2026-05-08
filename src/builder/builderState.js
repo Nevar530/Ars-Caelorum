@@ -46,6 +46,7 @@ export function createBuilderState() {
       spawns: true,
       deployment: true,
       objectives: true,
+      triggers: true,
       tileHeights: false
     },
     terrainTool: {
@@ -106,6 +107,18 @@ export function createBuilderState() {
       team: "player",
       targetTeam: "enemy",
       roundsRequired: 3,
+      selectedIndex: -1,
+      paintMode: "add"
+    },
+    triggerTool: {
+      id: "",
+      name: "Hangar Exit",
+      preset: "load_map",
+      type: "onUnitEnterZone",
+      team: "player",
+      once: true,
+      nextMapId: "",
+      completeObjectiveId: "",
       selectedIndex: -1,
       paintMode: "add"
     },

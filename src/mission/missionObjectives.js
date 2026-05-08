@@ -57,6 +57,17 @@ export function evaluateObjectiveMissionResult(state, options = {}) {
   return null;
 }
 
+
+export function markObjectiveCompleted(state, objectiveId) {
+  const id = String(objectiveId ?? "").trim();
+  if (!id) return false;
+  const objectives = getRuntimeObjectives(state);
+  if (!objectives.some((objective) => objective?.id === id)) return false;
+  const runtime = ensureObjectiveRuntimeState(state);
+  runtime.completed[id] = true;
+  return true;
+}
+
 export function getMissionObjectiveStatus(state) {
   const objectives = getRuntimeObjectives(state);
   if (!objectives.length) return [];

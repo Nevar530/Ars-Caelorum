@@ -36,7 +36,8 @@ export function createMovementController({
   render,
   logDev,
   advanceMoveTurn,
-  advanceActionTurn
+  advanceActionTurn,
+  onUnitEnteredZone = null
 }) {
   function getDefaultFacingFromPath(path, fallbackFacing) {
     if (!path || path.length < 2) return fallbackFacing;
@@ -52,6 +53,11 @@ export function createMovementController({
     if (dx === -1 && dy === 0) return 3;
 
     return fallbackFacing;
+  }
+
+  function handleUnitEnteredZone(unit) {
+    if (!unit || typeof onUnitEnteredZone !== "function") return false;
+    return onUnitEnteredZone(unit) === true;
   }
 
   function startMove() {
@@ -167,6 +173,12 @@ export function createMovementController({
         );
       }
 
+      if (handleUnitEnteredZone(activeUnit)) {
+        clearTransientUi();
+        render();
+        return true;
+      }
+
       clearTransientUi();
       advanceMoveTurn();
       return true;
@@ -220,6 +232,12 @@ export function createMovementController({
         logDev(
           activeUnit.name + " moved from (" + fromX + "," + fromY + ") to (" + targetX + "," + targetY + ") and faced " + facingToLabel(nextFacing) + "."
         );
+      }
+
+      if (handleUnitEnteredZone(activeUnit)) {
+        clearTransientUi();
+        render();
+        return;
       }
 
       clearTransientUi();
