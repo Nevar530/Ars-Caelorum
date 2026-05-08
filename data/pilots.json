@@ -1,4 +1,44 @@
 [
+    {
+    "id": "pilot_skye",
+    "name": "Skye",
+    "role": "balanced",
+    "core": 8,
+    "shield": 2,
+    "aether": 2,
+    "move": 4,
+    "reaction": 2,
+    "targeting": 2,
+    "abilityPoints": 0,
+    "weapons": [
+      "pilot_pistol_01",
+      "pilot_rifle_01"
+    ],
+    "tabs": [],
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/pilot/skye_NE.png",
+        "NW": "art/pilot/skye_NW.png"
+      }
+    },
+    "slots": {
+      "weapon": 2,
+      "armor": 1,
+      "ability": 3
+    },
+    "loadout": {
+      "weapons": [
+        "pilot_pistol_01",
+        "pilot_rifle_01"
+      ],
+      "armor": null,
+      "abilities": []
+    },
+    "inventory": {
+      "items": []
+    }
+  },
   {
     "id": "pilot_biggs",
     "name": "Biggs",
