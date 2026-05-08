@@ -42,6 +42,11 @@ import {
   getUnitStartAssignments
 } from "../builderUnits.js";
 import {
+  ensureMissionPackageDraft,
+  getMissionPackageSummary,
+  getObjectivePresetOptions
+} from "../builderMissionPackage.js";
+import {
   ensureObjectiveToolSettings,
   getObjectiveDefinitions,
   getObjectiveTypeOptions,
@@ -379,6 +384,9 @@ function renderInspector({ builderState, refs, appState }) {
   const mission = workspaceAppState?.mission?.definition ?? null;
   const selectedTruth = buildTileInspectorHtml(workspaceAppState, selected);
   const sourceLabel = builderState.workspaceMode === "builder-map" ? "Builder-Owned Map" : "Current Runtime Map";
+  const packageTools = builderState.activeTab === "project"
+    ? renderPackageInspectorTools(builderState)
+    : "";
   const terrainTools = builderState.activeTab === "terrain"
     ? renderTerrainInspectorTools(builderState, appState)
     : "";
@@ -393,6 +401,9 @@ function renderInspector({ builderState, refs, appState }) {
     : "";
   const objectiveTools = builderState.activeTab === "objectives"
     ? renderObjectiveInspectorTools(builderState, appState)
+    : "";
+  const resultsTools = builderState.activeTab === "results"
+    ? renderResultsInspectorTools(builderState)
     : "";
   const validationTools = builderState.activeTab === "validate"
     ? renderValidationInspectorTools(builderState)
@@ -409,11 +420,13 @@ function renderInspector({ builderState, refs, appState }) {
       <div class="builder-field-label">Selected</div>
       <div class="builder-field-value">${escapeHtml(selected.label ?? selected.type ?? "None")}</div>
     </div>
+    ${packageTools}
     ${terrainTools}
     ${structureTools}
     ${spawnTools}
     ${unitTools}
     ${objectiveTools}
+    ${resultsTools}
     ${validationTools}
     ${exportTools}
     ${selectedTruth}
@@ -431,6 +444,102 @@ function renderInspector({ builderState, refs, appState }) {
     </div>
     <div class="builder-inspector-note">${escapeHtml(note)}</div>
   `;
+}
+
+
+function renderPackageInspectorTools(builderState) {
+  const mission = ensureMissionPackageDraft(builderState) ?? {};
+  const editable = builderState.workspaceMode === "builder-map";
+  const summary = getMissionPackageSummary(builderState);
+  const presetOptions = buildObjectivePresetOptions(mission.objectivePreset ?? mission.objectives?.[0]?.type ?? "defeat_all");
+  const objectiveSummary = Array.isArray(mission.briefing?.objectives) && mission.briefing.objectives.length
+    ? mission.briefing.objectives[0]
+    : mission.objectives?.[0]?.briefingText ?? mission.objectives?.[0]?.label ?? "";
+
+  return `
+    <div class="builder-inspector-card builder-package-tool-card">
+      <div class="builder-field-label">Mission Package Core V1</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Mission ID</span>
+        <input type="text" data-builder-field="package-mission-id" value="${escapeHtml(mission.id ?? "")}" spellcheck="false"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Mission Name</span>
+        <input type="text" data-builder-field="package-mission-name" value="${escapeHtml(mission.name ?? "")}" spellcheck="true"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Map ID / Reference</span>
+        <input type="text" data-builder-field="package-map-id" value="${escapeHtml(summary.mapId ?? "")}" spellcheck="false"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Briefing Title</span>
+        <input type="text" data-builder-field="package-briefing-title" value="${escapeHtml(mission.briefing?.title ?? mission.name ?? "")}" spellcheck="true"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Briefing Body</span>
+        <textarea data-builder-field="package-briefing-body" rows="5" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(mission.briefing?.text ?? "")}</textarea>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Objective Summary / Starter Text</span>
+        <textarea data-builder-field="package-objective-summary" rows="3" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(objectiveSummary)}</textarea>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Objective Preset</span>
+        <select data-builder-field="package-objective-preset"${editable ? "" : " disabled"}>${presetOptions}</select>
+      </label>
+      <div class="builder-tool-row">
+        <button type="button" class="builder-tool-button" data-builder-action="apply-objective-preset"${editable ? "" : " disabled"}>Apply Preset</button>
+      </div>
+      <div class="builder-inspector-note">Preset replaces the current objective starter with clean V1 data. Zone presets still need zone tiles painted in Objectives.</div>
+    </div>
+    ${renderCatalogPreview(summary)}
+  `;
+}
+
+function renderResultsInspectorTools(builderState) {
+  const mission = ensureMissionPackageDraft(builderState) ?? {};
+  const editable = builderState.workspaceMode === "builder-map";
+  return `
+    <div class="builder-inspector-card builder-results-tool-card">
+      <div class="builder-field-label">Mission Results</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Victory Title</span>
+        <input type="text" data-builder-field="package-victory-title" value="${escapeHtml(mission.results?.victory?.title ?? "Victory")}" spellcheck="true"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Victory Text</span>
+        <textarea data-builder-field="package-victory-text" rows="4" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(mission.results?.victory?.text ?? "Mission complete.")}</textarea>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Defeat Title</span>
+        <input type="text" data-builder-field="package-defeat-title" value="${escapeHtml(mission.results?.defeat?.title ?? "Defeat")}" spellcheck="true"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Defeat Text</span>
+        <textarea data-builder-field="package-defeat-text" rows="4" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(mission.results?.defeat?.text ?? "Mission failed.")}</textarea>
+      </label>
+      <div class="builder-inspector-note">Result text stays mission-wrapper data. Dialogue hookups belong to Dialogue/Logic later.</div>
+    </div>
+  `;
+}
+
+function renderCatalogPreview(summary) {
+  return `
+    <div class="builder-inspector-card builder-catalog-preview-card">
+      <div class="builder-field-label">Catalog Entry Preview</div>
+      <div class="builder-field-value">Mission: ${escapeHtml(summary.missionId)}</div>
+      <div class="builder-inspector-note">${escapeHtml(summary.missionPath)}</div>
+      <div class="builder-field-value">Map: ${escapeHtml(summary.mapId)}</div>
+      <div class="builder-inspector-note">${escapeHtml(summary.mapPath)}</div>
+    </div>
+  `;
+}
+
+function buildObjectivePresetOptions(selectedPreset = "defeat_all") {
+  return getObjectivePresetOptions().map((preset) => {
+    const selected = preset.id === selectedPreset ? " selected" : "";
+    return `<option value="${escapeHtml(preset.id)}"${selected}>${escapeHtml(preset.label)}</option>`;
+  }).join("");
 }
 
 function renderTerrainInspectorTools(builderState, appState) {

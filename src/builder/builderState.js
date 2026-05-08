@@ -87,6 +87,9 @@ export function createBuilderState() {
       mechSpawnId: "",
       instancePrefix: ""
     },
+    packageTool: {
+      objectivePreset: "defeat_all"
+    },
     objectiveTool: {
       type: "defeat_all",
       id: "",
@@ -246,6 +249,40 @@ export function setBuilderAuthoredMap(builderState, map, source = "new-map") {
     map,
     source
   };
+  if (!builderState.authoring.mission) {
+    const mapId = String(map?.id ?? "new_map").trim() || "new_map";
+    const mapName = String(map?.name ?? "New Map").trim() || "New Map";
+    builderState.authoring.mission = {
+      id: `${mapId}_mission`,
+      name: `${mapName} Mission`,
+      mapId,
+      mapPath: `./data/maps/${mapId}.json`,
+      objectivePreset: "defeat_all",
+      briefing: {
+        title: `${mapName} Mission`,
+        text: "Mission package created in the Mission Builder.",
+        objectives: ["Defeat all enemy units."]
+      },
+      objectives: [
+        {
+          id: "defeat_enemies",
+          type: "defeat_all",
+          targetTeam: "enemy",
+          label: "Defeat all enemy units",
+          briefingText: "Defeat all enemy units."
+        }
+      ],
+      dialogue: {
+        intro: { lines: [{ speakerId: "system", name: "Mission Control", text: "Mission loaded." }] },
+        victory: { lines: [{ speakerId: "system", name: "Mission Control", text: "Victory confirmed." }] },
+        defeat: { lines: [{ speakerId: "system", name: "Mission Control", text: "Mission failed." }] }
+      },
+      results: {
+        victory: { title: "Victory", text: "Mission complete." },
+        defeat: { title: "Defeat", text: "Mission failed." }
+      }
+    };
+  }
   builderState.workspaceMode = "builder-map";
   builderState.status = "BUILDER MAP";
   builderState.activeTab = "map";

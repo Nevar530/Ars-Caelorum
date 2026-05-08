@@ -111,10 +111,11 @@ export function buildMissionDefinitionForExport(mapDefinition, mission = null) {
     name: missionName,
     mapId: mapDefinition.id,
     mapPath: `./data/maps/${mapDefinition.id}.json`,
+    objectivePreset: mission?.objectivePreset ?? mission?.objectives?.[0]?.type ?? "defeat_all",
     briefing: {
-      title: missionName,
-      text: mission?.briefing?.text ?? "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.",
-      objectives: mission?.briefing?.objectives ?? ["Defeat all enemy pilots."]
+      title: sanitizeName(mission?.briefing?.title ?? missionName, missionName),
+      text: mission?.briefing?.text ?? "Mission package created in the Mission Builder.",
+      objectives: normalizeBriefingObjectives(mission?.briefing?.objectives, mission?.objectives)
     },
     objectives: normalizeMissionObjectives(mission?.objectives),
     dialogue: mission?.dialogue ?? {
@@ -183,6 +184,18 @@ export function buildUpdatedMissionList(existingCatalog, missionDefinition) {
   };
 }
 
+function normalizeBriefingObjectives(lines, objectives) {
+  const clean = (Array.isArray(lines) ? lines : [])
+    .map((line) => String(line ?? "").trim())
+    .filter(Boolean);
+  if (clean.length) return clean;
+
+  const fromObjectives = (Array.isArray(objectives) ? objectives : [])
+    .map((objective) => String(objective?.briefingText ?? objective?.label ?? objective?.id ?? "").trim())
+    .filter(Boolean);
+  return fromObjectives.length ? fromObjectives : ["Defeat all enemy units."];
+}
+
 function normalizeMissionObjectives(objectives) {
   if (Array.isArray(objectives) && objectives.length) return cloneJson(objectives);
 
@@ -191,8 +204,8 @@ function normalizeMissionObjectives(objectives) {
       id: "defeat_enemies",
       type: "defeat_all",
       targetTeam: "enemy",
-      label: "Defeat all enemy pilots",
-      briefingText: "Defeat all enemy pilots."
+      label: "Defeat all enemy units",
+      briefingText: "Defeat all enemy units."
     }
   ];
 }

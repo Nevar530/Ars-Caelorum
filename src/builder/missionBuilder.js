@@ -68,6 +68,11 @@ import {
   updateUnitToolFromFields
 } from "./builderUnits.js";
 import {
+  applyMissionPackagePreset,
+  ensureMissionPackageDraft,
+  readMissionPackageFields
+} from "./builderMissionPackage.js";
+import {
   addObjectiveDefinition,
   applyObjectiveToolAtTile,
   isObjectiveAuthoringActive,
@@ -273,6 +278,13 @@ class MissionBuilder {
 
     if (this.builderState.activeTab === "units") {
       updateUnitToolFromFields(this.builderState, this.refs.root, this.appState);
+      this.render();
+      return;
+    }
+
+    if (this.builderState.activeTab === "project" || this.builderState.activeTab === "results") {
+      const result = readMissionPackageFields(this.builderState, this.refs.root);
+      if (result?.mapIdChanged) syncBuilderAuthoredMap(this.builderState);
       this.render();
       return;
     }
@@ -606,7 +618,18 @@ class MissionBuilder {
     }
 
     if (action === "new-mission") {
-      pushBuilderLog(this.builderState, "New Mission Package flow comes after blank-map creation/export foundation.");
+      const map = createBlankBuilderMap({ id: "new_map", name: "New Map" });
+      setBuilderAuthoredMap(this.builderState, map, "new-mission-package");
+      ensureMissionPackageDraft(this.builderState);
+      setBuilderTab(this.builderState, "project");
+      pushBuilderLog(this.builderState, "Created new Mission Package with default blank map and defeat-all preset.");
+      this.render();
+      return;
+    }
+
+    if (action === "apply-objective-preset") {
+      const result = applyMissionPackagePreset(this.builderState, this.refs.root);
+      pushBuilderLog(this.builderState, result.message);
       this.render();
       return;
     }
