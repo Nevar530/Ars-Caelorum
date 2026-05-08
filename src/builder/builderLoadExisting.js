@@ -23,7 +23,7 @@ export function getBuilderMapCatalogOptions(appState) {
 }
 
 export async function loadExistingMapAsStandalone({ builderState, appState, root } = {}) {
-  const entry = getSelectedMapCatalogEntry({ appState, root, fieldName: "existing-map-id" });
+  const entry = getSelectedMapCatalogEntry({ builderState, appState, root, fieldName: "existing-map-id", stateKey: "standaloneMapId" });
   if (!entry) return { ok: false, message: "No existing map selected to load." };
 
   const sourceMap = await loadCatalogMap(entry);
@@ -45,7 +45,7 @@ export async function loadExistingMapAsStandalone({ builderState, appState, root
 }
 
 export async function loadExistingMapIntoMission({ builderState, appState, root } = {}) {
-  const entry = getSelectedMapCatalogEntry({ appState, root, fieldName: "package-load-map-id" });
+  const entry = getSelectedMapCatalogEntry({ builderState, appState, root, fieldName: "package-load-map-id", stateKey: "packageMapId" });
   if (!entry) return { ok: false, message: "No existing map selected to add to mission." };
 
   const sourceMap = await loadCatalogMap(entry);
@@ -54,12 +54,20 @@ export async function loadExistingMapIntoMission({ builderState, appState, root 
   return addExistingMapToMissionPackage(builderState, sourceMap, entry);
 }
 
-function getSelectedMapCatalogEntry({ appState, root, fieldName }) {
+function getSelectedMapCatalogEntry({ builderState, appState, root, fieldName, stateKey }) {
   const options = getBuilderMapCatalogOptions(appState);
   if (!options.length) return null;
 
-  const requestedId = readField(root, fieldName, options[0].id);
-  return options.find((entry) => entry.id === requestedId) ?? options[0] ?? null;
+  const stateId = stateKey ? builderState?.loadExistingTool?.[stateKey] : "";
+  const requestedId = readField(root, fieldName, stateId || options[0].id);
+  const selected = options.find((entry) => entry.id === requestedId) ?? options[0] ?? null;
+
+  if (selected && stateKey) {
+    if (!builderState.loadExistingTool) builderState.loadExistingTool = { standaloneMapId: "", packageMapId: "" };
+    builderState.loadExistingTool[stateKey] = selected.id;
+  }
+
+  return selected;
 }
 
 async function loadCatalogMap(entry) {

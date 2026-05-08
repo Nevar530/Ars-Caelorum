@@ -261,6 +261,14 @@ class MissionBuilder {
     if (!this.builderState.isOpen) return;
     if (!event.target?.closest?.("[data-builder-field]")) return;
 
+    const changedField = event.target.getAttribute("data-builder-field");
+    if (changedField === "existing-map-id" || changedField === "package-load-map-id") {
+      if (!this.builderState.loadExistingTool) this.builderState.loadExistingTool = { standaloneMapId: "", packageMapId: "" };
+      if (changedField === "existing-map-id") this.builderState.loadExistingTool.standaloneMapId = String(event.target.value ?? "");
+      if (changedField === "package-load-map-id") this.builderState.loadExistingTool.packageMapId = String(event.target.value ?? "");
+      return;
+    }
+
     if (this.builderState.activeTab === "map") {
       const result = readMapSettingsFields(this.builderState, this.refs.root, this.appState);
       if (result?.mapIdChanged) syncBuilderAuthoredMap(this.builderState);
@@ -272,7 +280,6 @@ class MissionBuilder {
       const previousTerrainTypeId = this.builderState.terrainTool?.terrainTypeId;
       updateTerrainToolFromFields(this.builderState, this.refs.root, this.appState);
 
-      const changedField = event.target.getAttribute("data-builder-field");
       if (changedField === "terrain-type" && this.builderState.terrainTool?.terrainTypeId !== previousTerrainTypeId) {
         pushBuilderLog(this.builderState, "Terrain brush set to " + this.builderState.terrainTool.terrainTypeId + "; movement default loaded.");
       }
@@ -282,7 +289,7 @@ class MissionBuilder {
     }
 
     if (this.builderState.activeTab === "structures") {
-      updateStructureToolFromFields(this.builderState, this.refs.root, this.appState, { changedField: event.target.getAttribute("data-builder-field") });
+      updateStructureToolFromFields(this.builderState, this.refs.root, this.appState, { changedField });
       this.render();
       return;
     }
@@ -307,7 +314,7 @@ class MissionBuilder {
     }
 
     if (this.builderState.activeTab === "objectives") {
-      updateObjectiveToolFromFields(this.builderState, this.refs.root, { changedField: event.target.getAttribute("data-builder-field") });
+      updateObjectiveToolFromFields(this.builderState, this.refs.root, { changedField });
       this.render();
     }
   }

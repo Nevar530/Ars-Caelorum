@@ -93,6 +93,10 @@ export function createBuilderState() {
     packageTool: {
       objectivePreset: "defeat_all"
     },
+    loadExistingTool: {
+      standaloneMapId: "",
+      packageMapId: ""
+    },
     objectiveTool: {
       type: "defeat_all",
       id: "",

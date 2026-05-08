@@ -240,14 +240,15 @@ function renderWorkspaceMode({ builderState, refs, appState }) {
 
   refs.landing.innerHTML = isBuilderNewMapForm(builderState)
     ? renderNewMapForm(appState)
-    : renderLanding(appState);
+    : renderLanding(appState, builderState);
 }
 
-function renderLanding(appState) {
+function renderLanding(appState, builderState = null) {
   const canUseCurrent = canUseCurrentRuntimeMap(appState);
   const shellScreen = appState?.ui?.shell?.screen ?? "unknown";
   const mapSummary = getMapSummary(appState);
-  const mapCatalogOptions = buildExistingMapOptions(appState);
+  const selectedMapId = builderState?.loadExistingTool?.standaloneMapId ?? "";
+  const mapCatalogOptions = buildExistingMapOptions(appState, selectedMapId);
   const hasCatalogMaps = Boolean(mapCatalogOptions);
 
   return `
@@ -475,7 +476,8 @@ function renderPackageInspectorTools(builderState, appState) {
   const presetOptions = buildObjectivePresetOptions(mission.objectivePreset ?? mission.objectives?.[0]?.type ?? "defeat_all");
   const activeMapOptions = buildMissionMapOptions(summary.maps, summary.activeMapId);
   const startMapOptions = buildMissionMapOptions(summary.maps, summary.startMapId);
-  const existingMapOptions = buildExistingMapOptions(appState);
+  const selectedExistingMapId = builderState?.loadExistingTool?.packageMapId ?? "";
+  const existingMapOptions = buildExistingMapOptions(appState, selectedExistingMapId);
   const hasCatalogMaps = Boolean(existingMapOptions);
 
   return `
