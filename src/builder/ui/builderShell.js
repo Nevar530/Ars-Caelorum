@@ -261,31 +261,26 @@ function renderLanding(appState, builderState = null) {
     <section class="builder-landing-hero">
       <div class="builder-section-kicker">MISSION BUILDER</div>
       <h3>New / Load</h3>
-      <p>Choose what the builder should author. Opening from the title or menu does not pull in the current runtime map. Opening from an active mission opens the current map for read-only inspection.</p>
+      <p>Load or create missions. Mission is the authoring unit; maps are phases inside a mission. Existing maps can still be imported into a mission as reusable bases.</p>
     </section>
 
     <section class="builder-start-grid">
       <button type="button" class="builder-start-card" data-builder-action="new-mission">
         <span>New Mission Package</span>
-        <small>Create mission metadata, map reference, objectives, results, and export package.</small>
+        <small>Create mission metadata, start map, objectives, results, and export package.</small>
       </button>
       <button type="button" class="builder-start-card" data-builder-action="new-map">
         <span>New Blank Map</span>
-        <small>Pick size, base terrain fill, and base elevation.</small>
+        <small>Create a new mission package starting from one blank map.</small>
       </button>
       <div class="builder-start-card builder-start-card-form">
-        <span>Load Existing</span>
-        <small>Load a mission package for editing, or clone a reusable map into builder memory.</small>
+        <span>Load Existing Mission</span>
+        <small>Open a mission package for editing. Loose maps are imported from inside the Mission tab.</small>
         <label class="builder-form-field builder-form-field-compact">
           <span>Mission</span>
           <select data-builder-field="existing-mission-id"${hasCatalogMissions ? "" : " disabled"}>${missionCatalogOptions || '<option value="">No catalog missions found</option>'}</select>
         </label>
         <button type="button" class="builder-tool-button" data-builder-action="load-existing-mission"${hasCatalogMissions ? "" : " disabled"}>Load Mission</button>
-        <label class="builder-form-field builder-form-field-compact">
-          <span>Map</span>
-          <select data-builder-field="existing-map-id"${hasCatalogMaps ? "" : " disabled"}>${mapCatalogOptions || '<option value="">No catalog maps found</option>'}</select>
-        </label>
-        <button type="button" class="builder-tool-button" data-builder-action="load-existing-map"${hasCatalogMaps ? "" : " disabled"}>Load Map Copy</button>
       </div>
       <button type="button" class="builder-start-card${canUseCurrent ? "" : " is-disabled"}" data-builder-action="use-current-map"${canUseCurrent ? "" : " disabled"}>
         <span>Use Current Loaded Map</span>
@@ -302,7 +297,7 @@ function renderLanding(appState, builderState = null) {
         <div class="builder-field-label">Runtime Map Available</div>
         <div class="builder-field-value">${escapeHtml(mapSummary.name)} · ${mapSummary.width}×${mapSummary.height}</div>
       </div>
-      <div class="builder-inspector-note">New Blank Map now creates a builder-owned map. It does not mutate the runtime map.</div>
+      <div class="builder-inspector-note">New Blank Map creates a mission package with one blank map. Existing maps are imported into missions from the Mission tab.</div>
     </section>
   `;
 }
@@ -314,7 +309,7 @@ function renderNewMapForm(appState) {
     <section class="builder-landing-hero">
       <div class="builder-section-kicker">MAP AUTHORING</div>
       <h3>Create New Blank Map</h3>
-      <p>This creates a builder-owned map workspace. It does not touch the currently loaded runtime mission/map.</p>
+      <p>This creates a new mission package with one builder-owned blank map. It does not touch the currently loaded runtime mission/map.</p>
     </section>
 
     <section class="builder-form-grid">
@@ -346,8 +341,8 @@ function renderNewMapForm(appState) {
 
     <section class="builder-form-actions">
       <button type="button" class="builder-start-card" data-builder-action="create-blank-map">
-        <span>Create Blank Map</span>
-        <small>Open this map in the WYSIWYG builder workspace.</small>
+        <span>Create Mission From Blank Map</span>
+        <small>Open this mission package in the WYSIWYG builder workspace.</small>
       </button>
       <button type="button" class="builder-start-card" data-builder-action="cancel-new-map">
         <span>Cancel</span>
@@ -356,7 +351,7 @@ function renderNewMapForm(appState) {
     </section>
 
     <section class="builder-landing-context">
-      <div class="builder-inspector-note">Pencil rule: this creates only the simple base map. Terrain brushes, structures, and spawns are separate later passes. Export is active for builder-owned maps.</div>
+      <div class="builder-inspector-note">Pencil rule: this creates one simple mission package with one map. Terrain brushes, structures, spawns, units, and objectives remain separate authoring passes.</div>
     </section>
   `;
 }

@@ -396,6 +396,7 @@ export function getMissionPackageSummary(builderState) {
       id: sanitizeId(map?.id, `map_${index + 1}`),
       name: sanitizeName(map?.name, `Map ${index + 1}`),
       path: `data/maps/${sanitizeId(map?.id, `map_${index + 1}`)}.json`,
+      phaseIndex: index + 1,
       objectiveCount: Array.isArray(map?.objectives) ? map.objectives.length : 0
     })),
     catalogMissionEntry: {

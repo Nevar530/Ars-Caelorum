@@ -743,7 +743,9 @@ class MissionBuilder {
         terrainTypes,
         terrainDefinitions: this.appState?.content?.terrainDefinitions ?? {}
       });
-      setBuilderAuthoredMap(this.builderState, map, "new-blank-map");
+      setBuilderAuthoredMap(this.builderState, map, "new-blank-map-mission");
+      ensureMissionPackageDraft(this.builderState);
+      pushBuilderLog(this.builderState, `Created mission package from blank map ${map.name ?? map.id}.`);
       this.render();
       return;
     }

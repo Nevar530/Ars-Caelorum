@@ -80,8 +80,9 @@ async function loadDefaultMap(mapCatalog, missionCatalog) {
   const defaultMission = getDefaultMissionEntry(missionCatalog);
   if (defaultMission?.path) {
     const missionDefinition = await loadMissionDefinitionByPath(defaultMission.path).catch(() => null);
-    if (missionDefinition?.mapPath) {
-      return loadJson(missionDefinition.mapPath);
+    const mapPath = getMissionStartMapPath(missionDefinition);
+    if (mapPath) {
+      return loadJson(mapPath);
     }
   }
 
@@ -101,4 +102,18 @@ function getDefaultMissionEntry(missionCatalog) {
 
   const defaultMissionId = missionCatalog?.defaultMissionId ?? missions[0]?.id ?? null;
   return missions.find((entry) => entry?.id === defaultMissionId) ?? missions[0] ?? null;
+}
+
+
+function getMissionStartMapPath(missionDefinition) {
+  const startMapId = missionDefinition?.startMapId ?? missionDefinition?.mapId ?? null;
+  const maps = Array.isArray(missionDefinition?.maps) ? missionDefinition.maps : [];
+  const startMap = startMapId
+    ? maps.find((map) => (map?.id ?? map?.mapId) === startMapId)
+    : maps[0];
+
+  return startMap?.mapPath
+    ?? startMap?.path
+    ?? missionDefinition?.mapPath
+    ?? null;
 }

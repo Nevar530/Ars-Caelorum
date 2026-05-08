@@ -248,7 +248,22 @@ async function init() {
   updateTitleAudioToggle();
 
 
-  function getSelectedMissionEntry() {
+  
+function getMissionStartMapPath(missionDefinition, missionEntry = null) {
+  const startMapId = missionDefinition?.startMapId ?? missionDefinition?.mapId ?? missionEntry?.mapId ?? null;
+  const maps = Array.isArray(missionDefinition?.maps) ? missionDefinition.maps : [];
+  const startMap = startMapId
+    ? maps.find((map) => (map?.id ?? map?.mapId) === startMapId)
+    : maps[0];
+
+  return startMap?.mapPath
+    ?? startMap?.path
+    ?? missionDefinition?.mapPath
+    ?? missionEntry?.mapPath
+    ?? null;
+}
+
+function getSelectedMissionEntry() {
     const missions = getMissionEntries(state);
     if (!missions.length) return null;
 
@@ -342,7 +357,7 @@ async function init() {
       if (!missionEntry) return;
 
       const missionDefinition = state.ui.shell.briefingDefinition ?? await loadMissionForEntry(missionEntry);
-      const mapPath = missionDefinition?.mapPath ?? missionEntry.mapPath ?? missionEntry.path;
+      const mapPath = getMissionStartMapPath(missionDefinition, missionEntry);
       if (!mapPath) return;
 
       const mapDefinition = await loadMapDefinitionByPath(mapPath);
@@ -534,11 +549,14 @@ async function init() {
     state,
     render: gameController.render,
     refs,
-    launchMissionFromBuilder({ mapDefinition, missionDefinition }) {
+    launchMissionFromBuilder({ mapDefinition, missionDefinition, packageDefinition }) {
       state.ui.shell.screen = "game";
       state.ui.shell.briefingMission = null;
       state.ui.shell.briefingDefinition = null;
-      gameController.loadMapAndUnits(mapDefinition, missionDefinition);
+      const runtimeMissionDefinition = packageDefinition
+        ? { ...missionDefinition, packageDefinition }
+        : missionDefinition;
+      gameController.loadMapAndUnits(mapDefinition, runtimeMissionDefinition);
     }
   });
 

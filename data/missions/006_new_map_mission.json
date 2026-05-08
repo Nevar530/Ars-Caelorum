@@ -15,7 +15,8 @@
       "id": "defeat_enemies",
       "type": "defeat_all",
       "targetTeam": "enemy",
-      "label": "Defeat all enemy pilots"
+      "label": "Defeat all enemy pilots",
+      "briefingText": "Defeat all enemy pilots"
     }
   ],
   "dialogue": {
@@ -56,5 +57,17 @@
       "title": "Defeat",
       "text": "Mission failed."
     }
-  }
+  },
+  "startMapId": "006_new_map",
+  "maps": [
+    {
+      "id": "006_new_map",
+      "name": "006 New Map",
+      "path": "./data/maps/006_new_map.json",
+      "mapPath": "./data/maps/006_new_map.json",
+      "phaseIndex": 1,
+      "objectiveSummary": "Defeat all enemy pilots",
+      "objectiveCount": 1
+    }
+  ]
 }

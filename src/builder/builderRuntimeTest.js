@@ -7,7 +7,8 @@
 
 import {
   buildMapDefinitionForExport,
-  buildMissionDefinitionForExport
+  buildMissionDefinitionForExport,
+  buildMissionPackageDefinition
 } from "./builderExport.js";
 
 export function startBuilderRuntimeTest({ builderState, appState, launchMission } = {}) {
@@ -31,6 +32,7 @@ export function startBuilderRuntimeTest({ builderState, appState, launchMission 
   const startMapId = missionDraft?.startMapId ?? builderState.authoring.activeMapId ?? mapDefinitions[0]?.id;
   const startMapDefinition = mapDefinitions.find((map) => map.id === startMapId) ?? mapDefinitions[0];
   const missionDefinition = buildMissionDefinitionForExport(startMapDefinition, missionDraft, mapDefinitions);
+  const packageDefinition = buildMissionPackageDefinition({ missionDefinition, mapDefinitions });
 
   const testPackage = {
     mapDefinition: cloneJson(startMapDefinition),
@@ -38,11 +40,7 @@ export function startBuilderRuntimeTest({ builderState, appState, launchMission 
       ...cloneJson(missionDefinition),
       testSource: "builder-memory"
     },
-    packageDefinition: {
-      id: missionDefinition.id,
-      startMapId: missionDefinition.startMapId ?? missionDefinition.mapId,
-      maps: cloneJson(mapDefinitions)
-    }
+    packageDefinition: cloneJson(packageDefinition)
   };
 
   builderState.testSession = {

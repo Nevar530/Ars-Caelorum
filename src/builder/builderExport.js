@@ -13,30 +13,39 @@ import { getMapHeight, getMapWidth, getTile } from "../map.js";
 const DEFAULT_TERRAIN_TYPES = ["grass", "rock", "sand", "water", "asphalt", "concrete"];
 
 export function exportBuilderMissionPackage({ builderState, appState } = {}) {
-  const map = builderState?.authoring?.map ?? null;
-  if (!map) {
+  const mapDrafts = getExportMapDrafts(builderState);
+  if (!mapDrafts.length) {
     return {
       ok: false,
-      message: "No builder-owned map is active. Create a New Blank Map before exporting."
+      message: "No mission package maps are active. Create or load a mission before exporting."
     };
   }
 
-  const mapDefinition = buildMapDefinitionForExport(map);
-  const missionDefinition = buildMissionDefinitionForExport(mapDefinition, builderState?.authoring?.mission);
-  const mapList = buildUpdatedMapList(appState?.content?.mapCatalog, mapDefinition);
+  const mapDefinitions = mapDrafts.map(buildMapDefinitionForExport);
+  const missionDraft = builderState?.authoring?.mission ?? null;
+  const startMapId = sanitizeId(missionDraft?.startMapId ?? builderState?.authoring?.activeMapId ?? mapDefinitions[0]?.id, mapDefinitions[0]?.id);
+  const startMapDefinition = mapDefinitions.find((map) => map.id === startMapId) ?? mapDefinitions[0];
+  const missionDefinition = buildMissionDefinitionForExport(startMapDefinition, missionDraft, mapDefinitions);
+  const packageDefinition = buildMissionPackageDefinition({ missionDefinition, mapDefinitions });
+  const mapList = buildUpdatedMapList(appState?.content?.mapCatalog, mapDefinitions);
   const missionList = buildUpdatedMissionList(appState?.content?.missionCatalog, missionDefinition);
-  const manifest = buildPackageManifest({ mapDefinition, missionDefinition, mapList, missionList });
+  const manifest = buildPackageManifest({ mapDefinitions, missionDefinition, packageDefinition, mapList, missionList });
 
   const files = [
-    {
+    ...mapDefinitions.map((mapDefinition) => ({
       filename: `${mapDefinition.id}.json`,
       repoPath: `data/maps/${mapDefinition.id}.json`,
       data: mapDefinition
-    },
+    })),
     {
       filename: `${missionDefinition.id}.json`,
       repoPath: `data/missions/${missionDefinition.id}.json`,
       data: missionDefinition
+    },
+    {
+      filename: `${missionDefinition.id}.package.json`,
+      repoPath: `data/packages/${missionDefinition.id}.package.json`,
+      data: packageDefinition
     },
     {
       filename: "mapList.json",
@@ -61,7 +70,7 @@ export function exportBuilderMissionPackage({ builderState, appState } = {}) {
 
   return {
     ok: true,
-    message: `Exported mission package zip ${missionDefinition.id}.zip with ${files.length} repo files.`,
+    message: `Exported mission package zip ${missionDefinition.id}.zip with ${mapDefinitions.length} map(s) and ${files.length} repo files.`,
     files
   };
 }
@@ -95,6 +104,8 @@ export function buildMapDefinitionForExport(map) {
     width,
     height,
     terrainTypes: normalizeTerrainTypes(map?.terrainTypes, tiles),
+    defaults: normalizeMapDefaults(map),
+    objectives: normalizeMissionObjectives(map?.objectives),
     spawns: cloneJson(map?.spawns ?? { player: [], enemy: [], neutral: [] }),
     startState: normalizeStartState(map?.startState),
     structures: sanitizeStructuresForExport(map?.structures ?? []),
@@ -102,51 +113,30 @@ export function buildMapDefinitionForExport(map) {
   };
 }
 
-export function buildMissionDefinitionForExport(mapDefinition, mission = null) {
-  const missionId = sanitizeId(mission?.id ?? `${mapDefinition.id}_mission`, `${mapDefinition.id}_mission`);
-  const missionName = sanitizeName(mission?.name ?? `${mapDefinition.name} Mission`, `${mapDefinition.name} Mission`);
+export function buildMissionDefinitionForExport(mapDefinition, mission = null, mapDefinitions = []) {
+  const maps = Array.isArray(mapDefinitions) && mapDefinitions.length ? mapDefinitions : [mapDefinition].filter(Boolean);
+  const startMapId = sanitizeId(mission?.startMapId ?? mission?.mapId ?? mapDefinition?.id, mapDefinition?.id ?? maps[0]?.id ?? "new_map");
+  const startMap = maps.find((map) => map?.id === startMapId) ?? mapDefinition ?? maps[0];
+  const missionId = sanitizeId(mission?.id ?? `${startMap.id}_mission`, `${startMap.id}_mission`);
+  const missionName = sanitizeName(mission?.name ?? `${startMap.name} Mission`, `${startMap.name} Mission`);
+  const startObjectives = getMapObjectivesForMission(startMap, mission);
 
   return {
     id: missionId,
     name: missionName,
-    mapId: mapDefinition.id,
-    mapPath: `./data/maps/${mapDefinition.id}.json`,
-    objectivePreset: mission?.objectivePreset ?? mission?.objectives?.[0]?.type ?? "defeat_all",
+    goalText: sanitizeName(mission?.goalText ?? "Complete all tactical phases.", "Complete all tactical phases."),
+    mapId: startMap.id,
+    mapPath: `./data/maps/${startMap.id}.json`,
+    startMapId: startMap.id,
+    maps: buildMissionMapEntries(maps, mission),
+    objectivePreset: mission?.objectivePreset ?? startObjectives?.[0]?.type ?? "defeat_all",
     briefing: {
       title: sanitizeName(mission?.briefing?.title ?? missionName, missionName),
       text: mission?.briefing?.text ?? "Mission package created in the Mission Builder.",
-      objectives: normalizeBriefingObjectives(mission?.briefing?.objectives, mission?.objectives)
+      objectives: normalizeBriefingObjectives(mission?.briefing?.objectives, startObjectives)
     },
-    objectives: normalizeMissionObjectives(mission?.objectives),
-    dialogue: mission?.dialogue ?? {
-      intro: {
-        lines: [
-          {
-            speakerId: "system",
-            name: "Mission Control",
-            text: "Mission package loaded through builder export."
-          }
-        ]
-      },
-      victory: {
-        lines: [
-          {
-            speakerId: "system",
-            name: "Mission Control",
-            text: "Victory confirmed."
-          }
-        ]
-      },
-      defeat: {
-        lines: [
-          {
-            speakerId: "system",
-            name: "Mission Control",
-            text: "Mission failed."
-          }
-        ]
-      }
-    },
+    objectives: normalizeMissionObjectives(startObjectives),
+    dialogue: mission?.dialogue ?? createDefaultDialogue(),
     results: mission?.results ?? {
       victory: { title: "Victory", text: "Mission complete." },
       defeat: { title: "Defeat", text: "Mission failed." }
@@ -154,18 +144,38 @@ export function buildMissionDefinitionForExport(mapDefinition, mission = null) {
   };
 }
 
-export function buildUpdatedMapList(existingCatalog, mapDefinition) {
-  const catalog = cloneJson(existingCatalog ?? {});
-  const maps = Array.isArray(catalog.maps) ? catalog.maps : [];
-  const entry = {
-    id: mapDefinition.id,
-    name: mapDefinition.name,
-    path: `./data/maps/${mapDefinition.id}.json`
+export function buildMissionPackageDefinition({ missionDefinition, mapDefinitions } = {}) {
+  const maps = Array.isArray(mapDefinitions) ? mapDefinitions : [];
+  return {
+    packageType: "ars-caelorum-mission-package",
+    packageVersion: 1,
+    id: missionDefinition?.id ?? "mission_package",
+    name: missionDefinition?.name ?? "Mission Package",
+    startMapId: missionDefinition?.startMapId ?? missionDefinition?.mapId ?? maps[0]?.id ?? null,
+    mission: cloneJson(missionDefinition ?? null),
+    maps: cloneJson(maps),
+    triggers: cloneJson(missionDefinition?.triggers ?? []),
+    logic: cloneJson(missionDefinition?.logic ?? []),
+    dialogue: cloneJson(missionDefinition?.dialogue ?? {}),
+    results: cloneJson(missionDefinition?.results ?? {})
   };
+}
+
+export function buildUpdatedMapList(existingCatalog, mapDefinitions) {
+  const catalog = cloneJson(existingCatalog ?? {});
+  const existingMaps = Array.isArray(catalog.maps) ? catalog.maps : [];
+  const definitions = Array.isArray(mapDefinitions) ? mapDefinitions : [mapDefinitions].filter(Boolean);
+  const nextMaps = definitions.reduce((entries, mapDefinition) => {
+    return upsertCatalogEntry(entries, {
+      id: mapDefinition.id,
+      name: mapDefinition.name,
+      path: `./data/maps/${mapDefinition.id}.json`
+    });
+  }, existingMaps);
 
   return {
-    defaultMapId: catalog.defaultMapId ?? maps[0]?.id ?? mapDefinition.id,
-    maps: upsertCatalogEntry(maps, entry)
+    defaultMapId: catalog.defaultMapId ?? existingMaps[0]?.id ?? definitions[0]?.id ?? null,
+    maps: nextMaps
   };
 }
 
@@ -181,6 +191,62 @@ export function buildUpdatedMissionList(existingCatalog, missionDefinition) {
   return {
     defaultMissionId: catalog.defaultMissionId ?? missions[0]?.id ?? missionDefinition.id,
     missions: upsertCatalogEntry(missions, entry)
+  };
+}
+
+function getExportMapDrafts(builderState) {
+  const authoring = builderState?.authoring ?? {};
+  const maps = Array.isArray(authoring.maps) && authoring.maps.length
+    ? [...authoring.maps]
+    : authoring.map ? [authoring.map] : [];
+
+  if (authoring.map?.id) {
+    const activeId = sanitizeId(authoring.map.id, "");
+    const index = maps.findIndex((map) => sanitizeId(map?.id, "") === activeId);
+    if (index >= 0) maps[index] = authoring.map;
+    else maps.push(authoring.map);
+  }
+
+  return maps.filter(Boolean);
+}
+
+function buildMissionMapEntries(mapDefinitions, mission) {
+  const missionMaps = Array.isArray(mission?.maps) ? mission.maps : [];
+  return mapDefinitions.map((mapDefinition, index) => {
+    const existing = missionMaps.find((entry) => sanitizeId(entry?.id ?? entry?.mapId, "") === mapDefinition.id) ?? {};
+    const objectives = normalizeMissionObjectives(mapDefinition.objectives);
+    return {
+      id: mapDefinition.id,
+      name: mapDefinition.name,
+      path: `./data/maps/${mapDefinition.id}.json`,
+      mapPath: `./data/maps/${mapDefinition.id}.json`,
+      phaseIndex: index + 1,
+      objectiveSummary: existing.objectiveSummary ?? objectives.map((objective) => objective?.briefingText || objective?.label || objective?.id).filter(Boolean).join("; "),
+      objectiveCount: objectives.length
+    };
+  });
+}
+
+function getMapObjectivesForMission(mapDefinition, mission) {
+  if (Array.isArray(mapDefinition?.objectives) && mapDefinition.objectives.length) return mapDefinition.objectives;
+  if (Array.isArray(mission?.objectives) && mission.objectives.length) return mission.objectives;
+  return null;
+}
+
+function createDefaultDialogue() {
+  return {
+    intro: { lines: [{ speakerId: "system", name: "Mission Control", text: "Mission loaded." }] },
+    victory: { lines: [{ speakerId: "system", name: "Mission Control", text: "Victory confirmed." }] },
+    defeat: { lines: [{ speakerId: "system", name: "Mission Control", text: "Mission failed." }] }
+  };
+}
+
+function normalizeMapDefaults(map) {
+  return {
+    ...(cloneJson(map?.defaults ?? {})),
+    terrainTypeId: map?.defaults?.terrainTypeId ?? map?.defaultTerrainTypeId ?? map?.terrainTypes?.[0] ?? "grass",
+    elevation: Number(map?.defaults?.elevation ?? 0),
+    movementClass: map?.defaults?.movementClass ?? "clear"
   };
 }
 
@@ -210,30 +276,34 @@ function normalizeMissionObjectives(objectives) {
   ];
 }
 
-function buildPackageManifest({ mapDefinition, missionDefinition, mapList, missionList }) {
+function buildPackageManifest({ mapDefinitions, missionDefinition, packageDefinition, mapList, missionList }) {
+  const maps = Array.isArray(mapDefinitions) ? mapDefinitions : [];
   return {
-    packageType: "ars-caelorum-mission-package",
-    packageVersion: 1,
+    packageType: "ars-caelorum-mission-package-export",
+    packageVersion: 2,
     source: "Mission Builder",
     generatedAt: new Date().toISOString(),
     missionId: missionDefinition.id,
-    mapId: mapDefinition.id,
+    startMapId: missionDefinition.startMapId ?? missionDefinition.mapId,
+    mapIds: maps.map((map) => map.id),
     files: [
-      `data/maps/${mapDefinition.id}.json`,
+      ...maps.map((map) => `data/maps/${map.id}.json`),
       `data/missions/${missionDefinition.id}.json`,
+      `data/packages/${packageDefinition.id}.package.json`,
       "data/maps/mapList.json",
       "data/missions/missionList.json"
     ],
     catalog: {
-      mapListUpdated: Boolean(mapList?.maps?.some((entry) => entry?.id === mapDefinition.id)),
+      mapListUpdated: maps.every((map) => Boolean(mapList?.maps?.some((entry) => entry?.id === map.id))),
       missionListUpdated: Boolean(missionList?.missions?.some((entry) => entry?.id === missionDefinition.id))
     },
     notes: [
-      "Copy the map file into data/maps/.",
+      "Mission is the loadable unit. Maps are mission phases or reusable imports.",
+      "Copy all data/maps/*.json files into data/maps/.",
       "Copy the mission file into data/missions/.",
-      "Replace data/maps/mapList.json with the exported mapList.json, or manually add the new map entry.",
-      "Replace data/missions/missionList.json with the exported missionList.json, or manually add the new mission entry.",
-      "Mission Select uses missionList.json. The mission file points at the exported map file."
+      "Copy the package JSON into data/packages/ for builder archive/future package loading.",
+      "Replace data/maps/mapList.json and data/missions/missionList.json, or manually merge the exported entries.",
+      "Mission Select uses missionList.json. The mission file points at the start map and lists all package maps."
     ]
   };
 }
