@@ -1,5 +1,5 @@
 import { createState } from "./src/state.js";
-import { createInitialMap } from "./src/map.js";
+import { createInitialMap, normalizeMapDefinition } from "./src/map.js";
 import {
   instantiateTestUnits,
   getUnitAt,
