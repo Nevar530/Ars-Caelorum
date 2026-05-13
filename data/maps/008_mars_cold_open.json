@@ -1,0 +1,3041 @@
+{
+  "id": "008_mars_cold_open",
+  "name": "008 Mars Cold Open - Aether Core Leak",
+  "mode": "combat",
+  "width": 14,
+  "height": 10,
+  "terrainTypes": [
+    "grass",
+    "rock",
+    "sand",
+    "water",
+    "asphalt",
+    "concrete"
+  ],
+  "spawns": {
+    "player": [
+      {
+        "x": 4,
+        "y": 5
+      }
+    ],
+    "enemy": [
+      {
+        "x": 10,
+        "y": 5
+      }
+    ],
+    "neutral": []
+  },
+  "startState": {
+    "startMode": "authored",
+    "deployments": [
+      {
+        "pilotDefinitionId": "pilot_skye",
+        "pilotInstanceId": "cold-skye",
+        "pilotSpawnId": "player_1",
+        "mechDefinitionId": "mech_a",
+        "mechInstanceId": "cold-skye-telum",
+        "mechSpawnId": "player_1",
+        "team": "player",
+        "controlType": "PC",
+        "startEmbarked": true
+      },
+      {
+        "pilotDefinitionId": "pilot_wedge",
+        "pilotInstanceId": "cold-hostile-pilot",
+        "pilotSpawnId": "enemy_1",
+        "mechDefinitionId": "mech_b",
+        "mechInstanceId": "cold-hostile-telum",
+        "mechSpawnId": "enemy_1",
+        "team": "enemy",
+        "controlType": "CPU",
+        "startEmbarked": true
+      }
+    ],
+    "deploymentCells": [],
+    "playerDeployment": {
+      "unitType": "pilot",
+      "requiredCount": 1
+    }
+  },
+  "objectives": [
+    {
+      "id": "mars_blackout",
+      "type": "trigger_complete",
+      "team": "player",
+      "label": "Silence the alarm and fire through the core leak",
+      "briefingText": "Hit the hostile Telum before Skye\u2019s Aether Core fails."
+    }
+  ],
+  "triggers": [
+    {
+      "id": "mars_alarm_brief",
+      "name": "Mars Alarm Brief",
+      "type": "onMissionStart",
+      "team": "any",
+      "once": true,
+      "preset": "start_dialogue",
+      "dialogueKey": "mars_alarm"
+    },
+    {
+      "id": "mars_hit_blackout",
+      "name": "Final Shot / Core Failure",
+      "type": "onHitTarget",
+      "team": "player",
+      "once": true,
+      "preset": "load_map",
+      "nextMapId": "009_earth_hospital",
+      "completeObjectiveId": "mars_blackout"
+    }
+  ],
+  "logic": [],
+  "structures": [],
+  "defaults": {
+    "terrainTypeId": "grass",
+    "elevation": 0,
+    "movementClass": "clear"
+  },
+  "tiles": [
+    {
+      "x": 0,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    }
+  ]
+}

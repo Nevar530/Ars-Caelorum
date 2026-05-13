@@ -40,6 +40,11 @@
       "id": "007_story_mode_demo_mission",
       "name": "007 Story Mode Demo - Talk, Mount, Move",
       "path": "./data/missions/007_story_mode_demo_mission.json"
+    },
+    {
+      "id": "008_cold_opening_flow_mission",
+      "name": "008 Cold Opening Flow - Mars to Mech Bay",
+      "path": "./data/missions/008_cold_opening_flow_mission.json"
     }
   ]
 }

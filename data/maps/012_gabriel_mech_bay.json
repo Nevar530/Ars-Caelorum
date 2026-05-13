@@ -1,0 +1,3376 @@
+{
+  "id": "012_gabriel_mech_bay",
+  "name": "012 Gabrielle Mech Bay - Mount Up",
+  "mode": "story",
+  "width": 14,
+  "height": 11,
+  "terrainTypes": [
+    "grass",
+    "rock",
+    "sand",
+    "water",
+    "asphalt",
+    "concrete"
+  ],
+  "spawns": {
+    "player": [
+      {
+        "x": 2,
+        "y": 7
+      },
+      {
+        "x": 8,
+        "y": 7
+      }
+    ],
+    "enemy": [],
+    "neutral": [
+      {
+        "x": 3,
+        "y": 7
+      },
+      {
+        "x": 5,
+        "y": 7
+      }
+    ]
+  },
+  "startState": {
+    "startMode": "authored",
+    "deployments": [
+      {
+        "pilotDefinitionId": "pilot_skye",
+        "pilotInstanceId": "bay-skye",
+        "pilotSpawnId": "player_1",
+        "team": "player",
+        "controlType": "PC",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_wedge",
+        "pilotInstanceId": "bay-eve",
+        "pilotSpawnId": "neutral_1",
+        "mechDefinitionId": "mech_d",
+        "mechInstanceId": "bay-eve-telum",
+        "mechSpawnId": "neutral_1",
+        "team": "neutral",
+        "controlType": "CPU",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_biggs",
+        "pilotInstanceId": "bay-gabe",
+        "pilotSpawnId": "neutral_2",
+        "team": "neutral",
+        "controlType": "CPU",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "",
+        "pilotInstanceId": "",
+        "pilotSpawnId": "",
+        "mechDefinitionId": "mech_a",
+        "mechInstanceId": "bay-skye-telum",
+        "mechSpawnId": "player_2",
+        "team": "player",
+        "controlType": "PC",
+        "startEmbarked": false,
+        "boardable": true,
+        "locked": false
+      }
+    ],
+    "deploymentCells": [],
+    "playerDeployment": {
+      "unitType": "pilot",
+      "requiredCount": 1
+    }
+  },
+  "objectives": [
+    {
+      "id": "move_telum_to_training_exit",
+      "type": "trigger_complete",
+      "team": "player",
+      "label": "Mount up and walk to the training bay",
+      "briefingText": "Walk to the rear hatch, enter the Telum, then move it to the exit marker."
+    }
+  ],
+  "triggers": [
+    {
+      "id": "bay_locker_dialog",
+      "name": "Locker Room / Bay Dialogue",
+      "type": "onMissionStart",
+      "team": "any",
+      "once": true,
+      "preset": "start_dialogue",
+      "dialogueKey": "bay_locker"
+    },
+    {
+      "id": "bay_enter_telum",
+      "name": "Skye Enters Telum",
+      "type": "onEnterMech",
+      "team": "player",
+      "once": true,
+      "preset": "start_dialogue",
+      "dialogueKey": "bay_entered"
+    },
+    {
+      "id": "bay_exit_to_sparring",
+      "name": "Move Telum To Sparring Bay",
+      "type": "onUnitEnterZone",
+      "team": "player",
+      "once": true,
+      "preset": "load_map",
+      "nextMapId": "013_practice_sparring",
+      "completeObjectiveId": "move_telum_to_training_exit",
+      "tiles": [
+        {
+          "x": 8,
+          "y": 9
+        }
+      ]
+    }
+  ],
+  "logic": [],
+  "structures": [],
+  "defaults": {
+    "terrainTypeId": "concrete",
+    "elevation": 0,
+    "movementClass": "clear"
+  },
+  "tiles": [
+    {
+      "x": 0,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 8,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 9,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 0,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 1,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 2,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 3,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 4,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 6,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 8,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 10,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 12,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 10,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": {
+        "subdivisions": 1,
+        "cells": [
+          [
+            {
+              "sx": 0,
+              "sy": 0,
+              "elevation": 0
+            }
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -153,8 +153,8 @@ export function createGameController({
       resetDeploymentState(state);
     }
 
-    const startOutcome = isStoryMode(state) && mapLoadedHook
-      ? mapLoadedHook({ map: state.map, missionDefinition: runtimeMissionDefinition, mode: "story" })
+    const startOutcome = mapLoadedHook
+      ? mapLoadedHook({ map: state.map, missionDefinition: runtimeMissionDefinition, mode: state.turn.mode ?? getMapMode(state.map) })
       : null;
 
     if (!state.ui?.dialogue?.active && !startOutcome?.interrupt) {

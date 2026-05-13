@@ -41,6 +41,42 @@
       "name": "007 Story Mode Demo - Talk, Mount, Move",
       "path": "./data/maps/007_story_mode_demo.json",
       "mode": "story"
+    },
+    {
+      "id": "008_mars_cold_open",
+      "name": "008 Mars Cold Open - Aether Core Leak",
+      "path": "./data/maps/008_mars_cold_open.json",
+      "mode": "combat"
+    },
+    {
+      "id": "009_earth_hospital",
+      "name": "009 Earth Hospital - Two Weeks Later",
+      "path": "./data/maps/009_earth_hospital.json",
+      "mode": "story"
+    },
+    {
+      "id": "010_hospital_garage_escape",
+      "name": "010 Underground Parking Garage Escape",
+      "path": "./data/maps/010_hospital_garage_escape.json",
+      "mode": "combat"
+    },
+    {
+      "id": "011_gabe_office",
+      "name": "011 Gabrielle Enforcement Agency - Gabe Meeting",
+      "path": "./data/maps/011_gabe_office.json",
+      "mode": "story"
+    },
+    {
+      "id": "012_gabriel_mech_bay",
+      "name": "012 Gabrielle Mech Bay - Mount Up",
+      "path": "./data/maps/012_gabriel_mech_bay.json",
+      "mode": "story"
+    },
+    {
+      "id": "013_practice_sparring",
+      "name": "013 Practice Sparring - Defeat All",
+      "path": "./data/maps/013_practice_sparring.json",
+      "mode": "combat"
     }
   ]
 }
