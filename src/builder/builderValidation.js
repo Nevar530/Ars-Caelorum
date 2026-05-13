@@ -12,7 +12,7 @@ const VALID_TEAMS = new Set(["player", "enemy", "neutral"]);
 const VALID_CONTROL_TYPES = new Set(["PC", "CPU"]);
 const DEFAULT_BRIEFING_TEXT = "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.";
 const VALID_OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds", "trigger_complete"]);
-const VALID_TRIGGER_TYPES = new Set(["onUnitEnterZone", "onInteract", "onMissionStart", "onRoundStart", "onRoundEnd", "onEnterMech", "onExitMech", "onHitTarget", "onStatChange"]);
+const VALID_TRIGGER_TYPES = new Set(["onUnitEnterZone", "onMissionStart", "onRoundStart", "onRoundEnd", "onEnterMech", "onExitMech", "onInteract", "onHitTarget", "onStatChange"]);
 const VALID_TRIGGER_PRESETS = new Set(["load_map", "change_unit_stat", "complete_objective", "end_mission", "start_dialogue", "run_logic"]);
 const VALID_TRIGGER_STATS = new Set(["core", "shield"]);
 const VALID_MISSION_RESULTS = new Set(["victory", "defeat"]);
@@ -345,12 +345,12 @@ function validateObjectives(result, map, objectives) {
       const team = cleanString(objective.team) || "player";
       if (!VALID_TEAMS.has(team)) addError(result, "OBJECTIVE_TEAM_BAD", `${label} has invalid team "${team}".`);
       const tiles = Array.isArray(objective.tiles) ? objective.tiles : [];
-      if (!tiles.length) addError(result, "OBJECTIVE_ZONE_EMPTY", `${label} needs at least one painted zone/interact tile.`);
+      if (!tiles.length) addError(result, "OBJECTIVE_ZONE_EMPTY", `${label} needs at least one painted zone tile.`);
       for (const tile of tiles) {
         const x = Number(tile?.x);
         const y = Number(tile?.y);
         if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
-          addError(result, "OBJECTIVE_ZONE_OUT_OF_BOUNDS", `${label} has zone/interact tile outside map bounds at ${x}, ${y}.`);
+          addError(result, "OBJECTIVE_ZONE_OUT_OF_BOUNDS", `${label} has zone tile outside map bounds at ${x}, ${y}.`);
         }
       }
     }
@@ -401,12 +401,12 @@ function validateTriggers(result, map, mission, objectives) {
 
     if (type === "onUnitEnterZone" || type === "onInteract") {
       const tiles = Array.isArray(trigger.tiles) ? trigger.tiles : [];
-      if (!tiles.length) addError(result, "TRIGGER_ZONE_EMPTY", `${label} needs at least one painted zone/interact tile.`);
+      if (!tiles.length) addError(result, "TRIGGER_ZONE_EMPTY", `${label} needs at least one painted zone tile.`);
       for (const tile of tiles) {
         const x = Number(tile?.x);
         const y = Number(tile?.y);
         if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
-          addError(result, "TRIGGER_ZONE_OUT_OF_BOUNDS", `${label} has zone/interact tile outside map bounds at ${x}, ${y}.`);
+          addError(result, "TRIGGER_ZONE_OUT_OF_BOUNDS", `${label} has zone tile outside map bounds at ${x}, ${y}.`);
         }
       }
     }

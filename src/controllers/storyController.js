@@ -201,13 +201,13 @@ export function createStoryController({
     const body = getStoryBody();
     if (!actor || !body) return false;
 
+    // Story interaction is data-first. If the author painted an
+    // Interact / Action Button trigger on this tile, fire that before
+    // falling back to built-in contextual vehicle actions.
     const interactOutcome = fireMissionTriggerEvent("onInteract", { unit: body, actor, body });
-    if (interactOutcome) {
+    if (interactOutcome?.handled || interactOutcome?.interrupt) {
+      syncActiveSelection(body);
       if (shouldPauseForDialogue(interactOutcome)) {
-        render();
-        return true;
-      }
-      if (didTriggerInterrupt(interactOutcome)) {
         render();
         return true;
       }
@@ -229,14 +229,12 @@ export function createStoryController({
             render();
             return true;
           }
-          if (didTriggerInterrupt(outcome)) {
-            render();
-            return true;
-          }
-          if (resolveStoryMissionResult({ timing: "after_interact" })) return true;
+          if (resolveStoryMissionResult({ timing: "after_enter_mech" })) return true;
           render();
           return true;
         }
+
+        logDev(`Story interact: ${actor.name ?? "pilot"} could not enter ${boardableMech.name ?? "mech"} (${result.reason}).`);
       }
     }
 
@@ -251,14 +249,12 @@ export function createStoryController({
           render();
           return true;
         }
-        if (didTriggerInterrupt(outcome)) {
-          render();
-          return true;
-        }
-        if (resolveStoryMissionResult({ timing: "after_interact" })) return true;
+        if (resolveStoryMissionResult({ timing: "after_exit_mech" })) return true;
         render();
         return true;
       }
+
+      logDev(`Story interact: ${actor.name ?? "pilot"} could not exit ${mech?.name ?? "mech"} (${result.reason}).`);
     }
 
     logDev("Story interact: no contextual action available.");

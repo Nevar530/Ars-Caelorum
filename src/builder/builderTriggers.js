@@ -16,12 +16,12 @@ const TRIGGER_PRESETS = [
 
 const TRIGGER_TYPES = [
   { value: "onUnitEnterZone", label: "Unit Enters Zone" },
-  { value: "onInteract", label: "Interact / Action Button" },
   { value: "onMissionStart", label: "Mission Start" },
   { value: "onRoundStart", label: "Round Start" },
   { value: "onRoundEnd", label: "Round End" },
   { value: "onEnterMech", label: "Enter Mech" },
   { value: "onExitMech", label: "Exit Mech" },
+  { value: "onInteract", label: "Interact / Action Button" },
   { value: "onHitTarget", label: "Hit Target" },
   { value: "onStatChange", label: "Stat Changed" }
 ];
@@ -225,7 +225,8 @@ export function setTriggerPaintMode(builderState, mode) {
 }
 
 export function triggerTypeNeedsZone(type) {
-  return String(type ?? "onUnitEnterZone") === "onUnitEnterZone";
+  const cleanType = String(type ?? "onUnitEnterZone");
+  return cleanType === "onUnitEnterZone" || cleanType === "onInteract";
 }
 
 export function isTriggerAuthoringActive(builderState) {
@@ -272,7 +273,7 @@ export function getTriggerZoneCells(mapOrBuilderState) {
   const cells = [];
 
   for (const trigger of triggers) {
-    if (trigger?.type !== "onUnitEnterZone") continue;
+    if (!triggerTypeNeedsZone(trigger?.type)) continue;
     for (const tile of normalizeTiles(trigger.tiles)) {
       cells.push({
         x: tile.x,

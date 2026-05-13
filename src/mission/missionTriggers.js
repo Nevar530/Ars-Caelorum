@@ -17,12 +17,12 @@ const SUPPORTED_PRESETS = new Set([
 
 const SUPPORTED_TRIGGER_TYPES = new Set([
   "onUnitEnterZone",
-  "onInteract",
   "onMissionStart",
   "onRoundStart",
   "onRoundEnd",
   "onEnterMech",
   "onExitMech",
+  "onInteract",
   "onHitTarget",
   "onStatChange"
 ]);
