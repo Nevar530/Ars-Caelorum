@@ -1277,6 +1277,7 @@ button:disabled {
   max-height: 0;
   opacity: 0;
   overflow: hidden;
+  overflow-y: hidden;
   visibility: hidden;
 
   transition:
@@ -1287,8 +1288,9 @@ button:disabled {
 }
 
 .help-drawer.is-open .help-drawer-body {
-  max-height: 520px;
+  max-height: min(680px, calc(100vh - 150px));
   opacity: 1;
+  overflow-y: auto;
   visibility: visible;
 }
 
