@@ -463,7 +463,7 @@ function renderInspector({ builderState, refs, appState }) {
     ? renderLogicInspectorTools(builderState, appState)
     : "";
   const dialogueTools = builderState.activeTab === "dialogue"
-    ? renderDialogueInspectorTools(builderState)
+    ? renderDialogueInspectorTools(builderState, appState)
     : "";
   const resultsTools = builderState.activeTab === "results"
     ? renderResultsInspectorTools(builderState)
@@ -573,10 +573,13 @@ function renderMapInspectorTools(builderState, appState) {
   const selectedTerrain = map?.defaults?.terrainTypeId ?? map?.defaultTerrainTypeId ?? map?.terrainTypes?.[0] ?? "grass";
   const terrainOptions = buildTerrainOptions(appState, builderState, selectedTerrain);
   const movementOptions = buildMovementOptions(map?.defaults?.movementClass ?? "clear");
+  const phase = map?.phaseBriefing ?? {};
+  const phaseObjectives = Array.isArray(phase.objectives) ? phase.objectives.join("\n") : "";
+  const checked = map?.showPhaseBriefing ? " checked" : "";
 
   return `
     <div class="builder-inspector-card builder-map-tool-card builder-grid-card">
-      <div class="builder-field-label">Active Map Defaults</div>
+      <div class="builder-field-label">Active Map</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Map ID</span>
         <input type="text" data-builder-field="active-map-id" value="${escapeHtml(map?.id ?? "")}" spellcheck="false"${editable ? "" : " disabled"}>
@@ -589,7 +592,18 @@ function renderMapInspectorTools(builderState, appState) {
         <span>Map Mode</span>
         <select data-builder-field="active-map-mode"${editable ? "" : " disabled"}>${buildMapModeOptions(map?.mode ?? "combat")}</select>
       </label>
-      <div class="builder-field-value">Size: ${escapeHtml(width)}×${escapeHtml(height)}</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Show Phase Briefing</span>
+        <input type="checkbox" data-builder-field="active-map-show-phase-briefing"${checked}${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Width</span>
+        <input type="number" data-builder-field="active-map-width" value="${escapeHtml(width)}" min="4" max="96" step="1"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Height</span>
+        <input type="number" data-builder-field="active-map-height" value="${escapeHtml(height)}" min="4" max="96" step="1"${editable ? "" : " disabled"}>
+      </label>
       <label class="builder-form-field builder-form-field-compact">
         <span>Default Terrain</span>
         <select data-builder-field="map-default-terrain"${editable ? "" : " disabled"}>${terrainOptions}</select>
@@ -606,22 +620,44 @@ function renderMapInspectorTools(builderState, appState) {
         <button type="button" class="builder-tool-button" data-builder-action="apply-map-settings"${editable ? "" : " disabled"}>Apply Map Settings</button>
       </div>
     </div>
+
+    <div class="builder-inspector-card builder-map-phase-card builder-grid-card">
+      <div class="builder-field-label">Phase Briefing</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Title</span>
+        <input type="text" data-builder-field="active-map-phase-title" value="${escapeHtml(phase.title ?? map?.name ?? "")}" spellcheck="true"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Subtitle / Location</span>
+        <input type="text" data-builder-field="active-map-phase-subtitle" value="${escapeHtml(phase.subtitle ?? phase.location ?? map?.id ?? "")}" spellcheck="true"${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Briefing Text</span>
+        <textarea data-builder-field="active-map-phase-text" rows="4" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(phase.text ?? "")}</textarea>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Phase Objectives One Per Line</span>
+        <textarea data-builder-field="active-map-phase-objectives" rows="4" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(phaseObjectives)}</textarea>
+      </label>
+    </div>
   `;
 }
 
 
-
-function renderDialogueInspectorTools(builderState) {
+function renderDialogueInspectorTools(builderState, appState = null) {
   const tool = ensureDialogueToolSettings(builderState) ?? {};
   const editable = builderState.workspaceMode === "builder-map";
   const blocks = getDialogueBlocks(builderState);
   const selectedBlock = blocks.find((block) => block.key === tool.selectedKey) ?? blocks[0] ?? null;
   const selectedLines = Array.isArray(selectedBlock?.lines) ? selectedBlock.lines : [];
   const blockOptions = buildDialogueBlockOptions(builderState, tool.selectedKey);
+  const speakerOptions = buildDialogueSpeakerOptions(appState, tool.speakerId);
+  const selectedLineIndex = Number.isInteger(Number(tool.selectedLineIndex)) ? Number(tool.selectedLineIndex) : -1;
+  const selectedLineLabel = selectedLineIndex >= 0 ? `Editing Line ${selectedLineIndex + 1}` : "New Line";
 
   return `
     <div class="builder-inspector-card builder-dialogue-tool-card builder-grid-card">
-      <div class="builder-field-label">Dialogue V1</div>
+      <div class="builder-field-label">Dialogue Blocks</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Selected Block</span>
         <select data-builder-field="dialogue-selected-key"${editable ? "" : " disabled"}>${blockOptions}</select>
@@ -637,33 +673,50 @@ function renderDialogueInspectorTools(builderState) {
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="save-dialogue-block"${editable ? "" : " disabled"}>Save Block</button>
       </div>
+      ${renderDialogueBlockList(blocks, tool.selectedKey)}
+    </div>
 
-      <div class="builder-field-label builder-section-label">Add Line</div>
+    <div class="builder-inspector-card builder-dialogue-tool-card builder-grid-card">
+      <div class="builder-field-label">${escapeHtml(selectedLineLabel)}</div>
+      <input type="hidden" data-builder-field="dialogue-line-index" value="${escapeHtml(selectedLineIndex)}">
       <label class="builder-form-field builder-form-field-compact">
-        <span>Speaker ID</span>
-        <input type="text" data-builder-field="dialogue-speaker-id" value="${escapeHtml(tool.speakerId ?? "system")}" spellcheck="false"${editable ? "" : " disabled"}>
+        <span>Speaker Pilot</span>
+        <select data-builder-field="dialogue-speaker-id"${editable ? "" : " disabled"}>${speakerOptions}</select>
       </label>
       <label class="builder-form-field builder-form-field-compact">
         <span>Speaker Name</span>
         <input type="text" data-builder-field="dialogue-speaker-name" value="${escapeHtml(tool.speakerName ?? "Mission Control")}" spellcheck="true"${editable ? "" : " disabled"}>
       </label>
       <label class="builder-form-field builder-form-field-compact">
-        <span>Portrait Path Optional</span>
-        <input type="text" data-builder-field="dialogue-portrait" value="${escapeHtml(tool.portrait ?? "")}" placeholder="art/pilots/skye.png" spellcheck="false"${editable ? "" : " disabled"}>
+        <span>Portrait Override</span>
+        <input type="text" data-builder-field="dialogue-portrait" value="${escapeHtml(tool.portrait ?? "")}" placeholder="auto: art/pilot/name_portrait.png" spellcheck="false"${editable ? "" : " disabled"}>
       </label>
       <label class="builder-form-field builder-form-field-compact">
         <span>Line Text</span>
         <textarea data-builder-field="dialogue-text" rows="5" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(tool.text ?? "")}</textarea>
       </label>
-      <div class="builder-tool-row">
-        <button type="button" class="builder-tool-button" data-builder-action="add-dialogue-line"${editable ? "" : " disabled"}>Add Line To Selected</button>
+      <div class="builder-tool-row builder-tool-row-three">
+        <button type="button" class="builder-tool-button" data-builder-action="add-dialogue-line"${editable ? "" : " disabled"}>Add New</button>
+        <button type="button" class="builder-tool-button" data-builder-action="update-dialogue-line"${editable && selectedLineIndex >= 0 ? "" : " disabled"}>Update Line</button>
       </div>
-      <div class="builder-field-label builder-section-label">Current Dialogue Blocks</div>
-      ${renderDialogueBlockList(blocks, tool.selectedKey)}
-      <div class="builder-field-label builder-section-label">Selected Lines</div>
-      ${renderDialogueLineList(selectedBlock, selectedLines)}
+    </div>
+
+    <div class="builder-inspector-card builder-dialogue-tool-card builder-list-card">
+      <div class="builder-field-label">Selected Lines</div>
+      ${renderDialogueLineList(selectedBlock, selectedLines, selectedLineIndex)}
     </div>
   `;
+}
+
+function buildDialogueSpeakerOptions(appState, selectedId) {
+  const pilots = getPilotOptions(appState);
+  const selected = String(selectedId ?? "system");
+  const options = [{ id: "system", label: "System / Mission Control" }, ...pilots];
+  return options.map((option) => {
+    const id = String(option.id ?? "");
+    const selectedAttr = id === selected ? " selected" : "";
+    return `<option value="${escapeHtml(id)}"${selectedAttr}>${escapeHtml(option.label ?? id)}</option>`;
+  }).join("");
 }
 
 function renderDialogueBlockList(blocks, selectedKey) {
@@ -685,16 +738,24 @@ function renderDialogueBlockList(blocks, selectedKey) {
   }).join('') + '</div>';
 }
 
-function renderDialogueLineList(block, lines) {
+function renderDialogueLineList(block, lines, selectedLineIndex = -1) {
   const key = block?.key ?? '';
   const list = Array.isArray(lines) ? lines : [];
   if (!list.length) return '<div class="builder-inspector-note">Selected dialogue block has no lines.</div>';
   return '<div class="builder-dialogue-line-list">' + list.map((line, index) => {
     const speaker = line?.name || line?.speakerId || 'Unknown';
     const text = line?.text || '';
-    return '<div class="builder-unit-start-row">' +
-      '<div><strong>' + escapeHtml((index + 1) + '. ' + speaker) + '</strong><span>' + escapeHtml(text) + '</span></div>' +
-      '<button type="button" class="builder-tool-button" data-builder-action="remove-dialogue-line:' + escapeHtml(key) + ':' + index + '">Remove</button>' +
+    const selected = Number(selectedLineIndex) === index ? ' is-active' : '';
+    return '<div class="builder-dialogue-line-row' + selected + '">' +
+      '<button type="button" class="builder-dialogue-line-main" data-builder-action="edit-dialogue-line:' + escapeHtml(key) + ':' + index + '">' +
+        '<strong>' + escapeHtml((index + 1) + '. ' + speaker) + '</strong>' +
+        '<span>' + escapeHtml(text) + '</span>' +
+      '</button>' +
+      '<div class="builder-dialogue-line-actions">' +
+        '<button type="button" class="builder-tool-button" data-builder-action="move-dialogue-line:' + escapeHtml(key) + ':' + index + ':up"' + (index <= 0 ? ' disabled' : '') + '>↑</button>' +
+        '<button type="button" class="builder-tool-button" data-builder-action="move-dialogue-line:' + escapeHtml(key) + ':' + index + ':down"' + (index >= list.length - 1 ? ' disabled' : '') + '>↓</button>' +
+        '<button type="button" class="builder-tool-button" data-builder-action="remove-dialogue-line:' + escapeHtml(key) + ':' + index + '">×</button>' +
+      '</div>' +
     '</div>';
   }).join('') + '</div>';
 }

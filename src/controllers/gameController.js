@@ -72,6 +72,43 @@ export function createGameController({
     state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase, state);
   }
 
+  function getMapObjectiveLabels(map) {
+    return Array.isArray(map?.objectives)
+      ? map.objectives.map((objective) => String(objective?.briefingText ?? objective?.label ?? objective?.id ?? "Objective").trim()).filter(Boolean)
+      : [];
+  }
+
+  function buildPhaseBriefingState(map, missionDefinition) {
+    const phase = map?.phaseBriefing ?? {};
+    const title = String(phase.title ?? map?.name ?? missionDefinition?.name ?? "Mission Update").trim();
+    const subtitle = String(phase.subtitle ?? phase.location ?? map?.id ?? missionDefinition?.id ?? "").trim();
+    const text = String(phase.text ?? "Review the current phase objectives, then continue.").trim();
+    const objectives = Array.isArray(phase.objectives) && phase.objectives.length
+      ? phase.objectives.map((item) => String(item).trim()).filter(Boolean)
+      : getMapObjectiveLabels(map);
+
+    return {
+      active: true,
+      title,
+      subtitle,
+      text,
+      objectives,
+      pending: null
+    };
+  }
+
+  function runMapStartHooks(runtimeMissionDefinition) {
+    const startOutcome = mapLoadedHook
+      ? mapLoadedHook({ map: state.map, missionDefinition: runtimeMissionDefinition, mode: state.turn.mode ?? getMapMode(state.map) })
+      : null;
+
+    if (!state.ui?.dialogue?.active && !startOutcome?.interrupt) {
+      startMissionDialogue(state, "intro");
+    }
+
+    return startOutcome;
+  }
+
   function setPreviewSelectionFromFirstUnit() {
     if (state.units.length > 0) {
       state.selection.unitId = state.units[0].instanceId;
@@ -153,16 +190,23 @@ export function createGameController({
       resetDeploymentState(state);
     }
 
-    const startOutcome = mapLoadedHook
-      ? mapLoadedHook({ map: state.map, missionDefinition: runtimeMissionDefinition, mode: state.turn.mode ?? getMapMode(state.map) })
-      : null;
-
-    if (!state.ui?.dialogue?.active && !startOutcome?.interrupt) {
-      startMissionDialogue(state, "intro");
+    if (state.map?.showPhaseBriefing) {
+      state.ui.phaseBriefing = buildPhaseBriefingState(state.map, runtimeMissionDefinition);
+      state.ui.phaseBriefing.pending = { runtimeMissionDefinition };
+    } else {
+      state.ui.phaseBriefing = { active: false, title: "", subtitle: "", text: "", objectives: [], pending: null };
+      runMapStartHooks(runtimeMissionDefinition);
     }
 
     const label = missionDefinition?.id ? ": " + missionDefinition.id : "";
     logDev("Mission runtime loaded map" + label + ".");
+    render();
+  }
+
+  function continuePhaseBriefing() {
+    const pending = state.ui?.phaseBriefing?.pending ?? null;
+    state.ui.phaseBriefing = { active: false, title: "", subtitle: "", text: "", objectives: [], pending: null };
+    runMapStartHooks(pending?.runtimeMissionDefinition ?? state.mission?.definition ?? null);
     render();
   }
 
@@ -345,6 +389,7 @@ export function createGameController({
 
   return {
     render,
+    continuePhaseBriefing,
     setMapLoadedHook,
     hideSplash,
     showSplash,

@@ -181,6 +181,10 @@ async function init() {
     if (button.dataset.combatOverlayAction === "advance-dialogue") {
       actions.advanceDialogue?.();
     }
+
+    if (button.dataset.combatOverlayAction === "continue-phase-briefing") {
+      actions.continuePhaseBriefing?.();
+    }
   });
 
   refs.titleStartButton?.addEventListener("click", () => {
@@ -511,6 +515,10 @@ function getSelectedMissionEntry() {
         return;
       }
 
+    },
+
+    continuePhaseBriefing() {
+      gameController.continuePhaseBriefing?.();
     },
 
     advanceDialogue() {

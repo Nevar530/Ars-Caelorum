@@ -107,9 +107,12 @@ import {
 import {
   addDialogueLine,
   addOrUpdateDialogueBlock,
+  moveDialogueLine,
   removeDialogueBlock,
   removeDialogueLine,
   selectDialogueBlock,
+  selectDialogueLineForEdit,
+  updateDialogueLine,
   updateDialogueToolFromFields
 } from "./builderDialogue.js";
 import {
@@ -538,6 +541,14 @@ class MissionBuilder {
       return;
     }
 
+    if (action === "update-dialogue-line") {
+      updateDialogueToolFromFields(this.builderState, this.refs.root);
+      const result = updateDialogueLine(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
     if (action && typeof action === "string" && action.startsWith("select-dialogue:")) {
       const key = action.split(":").slice(1).join(":");
       const result = selectDialogueBlock(this.builderState, key);
@@ -549,6 +560,22 @@ class MissionBuilder {
     if (action && typeof action === "string" && action.startsWith("remove-dialogue-block:")) {
       const key = action.split(":").slice(1).join(":");
       const result = removeDialogueBlock(this.builderState, key);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("edit-dialogue-line:")) {
+      const [, key, lineIndex] = action.split(":");
+      const result = selectDialogueLineForEdit(this.builderState, key, Number(lineIndex));
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("move-dialogue-line:")) {
+      const [, key, lineIndex, direction] = action.split(":");
+      const result = moveDialogueLine(this.builderState, key, Number(lineIndex), direction);
       pushBuilderLog(this.builderState, result.message);
       this.render();
       return;

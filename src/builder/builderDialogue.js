@@ -13,7 +13,8 @@ export function createDefaultDialogueTool() {
     speakerId: "system",
     speakerName: "Mission Control",
     portrait: "",
-    text: "Mission loaded."
+    text: "Mission loaded.",
+    selectedLineIndex: -1
   };
 }
 
@@ -28,6 +29,7 @@ export function ensureDialogueToolSettings(builderState) {
   tool.speakerName = String(tool.speakerName ?? "").trim() || "Mission Control";
   tool.portrait = String(tool.portrait ?? "").trim();
   tool.text = String(tool.text ?? "");
+  tool.selectedLineIndex = Number.isInteger(Number(tool.selectedLineIndex)) ? Number(tool.selectedLineIndex) : -1;
   ensureMissionDialogue(builderState);
   return tool;
 }
@@ -46,10 +48,17 @@ export function updateDialogueToolFromFields(builderState, root) {
     tool.blockKey = sanitizeDialogueKey(readField(root, "dialogue-block-key", tool.blockKey)) || tool.blockKey || tool.selectedKey || "intro";
     tool.blockName = readField(root, "dialogue-block-name", tool.blockName).trim() || labelFromKey(tool.blockKey);
   }
+  const previousSpeakerId = tool.speakerId;
   tool.speakerId = sanitizeDialogueKey(readField(root, "dialogue-speaker-id", tool.speakerId)) || "system";
-  tool.speakerName = readField(root, "dialogue-speaker-name", tool.speakerName).trim() || "Mission Control";
+  const speakerNameField = readField(root, "dialogue-speaker-name", tool.speakerName).trim();
+  const selectedSpeakerLabel = getSelectedOptionLabel(root, "dialogue-speaker-id");
+  tool.speakerName = tool.speakerId !== previousSpeakerId && selectedSpeakerLabel
+    ? cleanSpeakerLabel(selectedSpeakerLabel)
+    : speakerNameField || "Mission Control";
   tool.portrait = readField(root, "dialogue-portrait", tool.portrait).trim();
   tool.text = readField(root, "dialogue-text", tool.text);
+  tool.selectedLineIndex = Number(readField(root, "dialogue-line-index", tool.selectedLineIndex ?? -1));
+  if (!Number.isInteger(tool.selectedLineIndex)) tool.selectedLineIndex = -1;
   return tool;
 }
 
@@ -115,23 +124,105 @@ export function addDialogueLine(builderState) {
   if (!tool) return { ok: false, message: "No dialogue tool is active." };
 
   const key = sanitizeDialogueKey(tool.selectedKey || tool.blockKey);
-  const text = String(tool.text ?? "").trim();
+  const line = buildLineFromTool(tool);
   if (!key) return { ok: false, message: "Select or create a dialogue block first." };
-  if (!text) return { ok: false, message: "Dialogue line text is empty." };
+  if (!line.text) return { ok: false, message: "Dialogue line text is empty." };
 
   if (!dialogue[key]) dialogue[key] = { name: labelFromKey(key), lines: [] };
   if (!Array.isArray(dialogue[key].lines)) dialogue[key].lines = [];
 
-  const line = {
-    speakerId: sanitizeDialogueKey(tool.speakerId) || "system",
-    name: tool.speakerName || "Mission Control",
-    text
-  };
-  if (tool.portrait) line.portrait = tool.portrait;
-
   dialogue[key].lines.push(line);
+  tool.selectedLineIndex = dialogue[key].lines.length - 1;
   builderState.dirty = true;
   return { ok: true, message: `Added dialogue line to ${key}.` };
+}
+
+export function updateDialogueLine(builderState) {
+  const tool = ensureDialogueToolSettings(builderState);
+  const dialogue = ensureMissionDialogue(builderState);
+  if (!tool) return { ok: false, message: "No dialogue tool is active." };
+
+  const key = sanitizeDialogueKey(tool.selectedKey || tool.blockKey);
+  const index = Number(tool.selectedLineIndex);
+  const lines = Array.isArray(dialogue?.[key]?.lines) ? dialogue[key].lines : [];
+  if (!key || !Number.isInteger(index) || index < 0 || index >= lines.length) {
+    return { ok: false, message: "Select a dialogue line to update first." };
+  }
+
+  const line = buildLineFromTool(tool);
+  if (!line.text) return { ok: false, message: "Dialogue line text is empty." };
+
+  lines[index] = line;
+  dialogue[key].lines = lines;
+  builderState.dirty = true;
+  return { ok: true, message: `Updated dialogue line ${index + 1} in ${key}.` };
+}
+
+export function selectDialogueLineForEdit(builderState, key, lineIndex) {
+  const tool = ensureDialogueToolSettings(builderState);
+  const dialogue = ensureMissionDialogue(builderState);
+  const cleanKey = sanitizeDialogueKey(key);
+  const index = Number(lineIndex);
+  const line = Array.isArray(dialogue?.[cleanKey]?.lines) ? dialogue[cleanKey].lines[index] : null;
+  if (!tool || !cleanKey || !line || !Number.isInteger(index)) {
+    return { ok: false, message: "Dialogue line was not found." };
+  }
+
+  tool.selectedKey = cleanKey;
+  tool.blockKey = cleanKey;
+  tool.blockName = String(dialogue[cleanKey]?.name ?? labelFromKey(cleanKey));
+  tool.speakerId = sanitizeDialogueKey(line.speakerId ?? line.name ?? "system") || "system";
+  tool.speakerName = String(line.name ?? line.speakerName ?? line.speakerId ?? "Mission Control");
+  tool.portrait = String(line.portrait ?? "");
+  tool.text = String(line.text ?? "");
+  tool.selectedLineIndex = index;
+  return { ok: true, message: `Editing dialogue line ${index + 1}.` };
+}
+
+export function moveDialogueLine(builderState, key, lineIndex, direction) {
+  const tool = ensureDialogueToolSettings(builderState);
+  const dialogue = ensureMissionDialogue(builderState);
+  const cleanKey = sanitizeDialogueKey(key);
+  const index = Number(lineIndex);
+  const lines = Array.isArray(dialogue?.[cleanKey]?.lines) ? dialogue[cleanKey].lines : [];
+  const delta = direction === "up" ? -1 : 1;
+  const next = index + delta;
+  if (!cleanKey || !Number.isInteger(index) || index < 0 || index >= lines.length || next < 0 || next >= lines.length) {
+    return { ok: false, message: "Dialogue line cannot move further." };
+  }
+
+  const [line] = lines.splice(index, 1);
+  lines.splice(next, 0, line);
+  dialogue[cleanKey].lines = lines;
+  tool.selectedKey = cleanKey;
+  tool.blockKey = cleanKey;
+  tool.selectedLineIndex = next;
+  builderState.dirty = true;
+  return { ok: true, message: `Moved dialogue line ${index + 1} ${direction}.` };
+}
+
+function buildLineFromTool(tool) {
+  const speakerId = sanitizeDialogueKey(tool.speakerId) || "system";
+  const name = String(tool.speakerName ?? "").trim() || "Mission Control";
+  const text = String(tool.text ?? "").trim();
+  const portrait = String(tool.portrait ?? "").trim() || getDefaultPortraitPath(name, speakerId);
+  const line = { speakerId, name, text };
+  if (portrait) line.portrait = portrait;
+  return line;
+}
+
+function getDefaultPortraitPath(name, speakerId) {
+  const normalized = normalizePortraitName(name || speakerId);
+  if (!normalized || normalized === "system" || normalized === "mission_control") return "";
+  return `art/pilot/${normalized}_portrait.png`;
+}
+
+function normalizePortraitName(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
 export function removeDialogueLine(builderState, key, lineIndex) {
@@ -173,6 +264,18 @@ function readField(root, fieldName, fallback = "") {
   const el = root.querySelector(`[data-builder-field="${fieldName}"]`);
   if (!el) return fallback;
   return el.value ?? fallback;
+}
+
+function getSelectedOptionLabel(root, fieldName) {
+  const el = root.querySelector(`[data-builder-field="${fieldName}"]`);
+  if (!el || el.tagName !== "SELECT") return "";
+  return String(el.selectedOptions?.[0]?.textContent ?? "").trim();
+}
+
+function cleanSpeakerLabel(label) {
+  const clean = String(label ?? "").trim();
+  if (!clean || clean.toLowerCase().includes("system")) return "Mission Control";
+  return clean.replace(/\s*\/.*$/g, "").trim();
 }
 
 export function sanitizeDialogueKey(value) {

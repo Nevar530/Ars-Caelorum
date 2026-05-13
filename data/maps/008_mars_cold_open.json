@@ -3037,5 +3037,15 @@
         ]
       }
     }
-  ]
+  ],
+  "showPhaseBriefing": true,
+  "phaseBriefing": {
+    "title": "Mars Cold Open - Aether Core Leak",
+    "subtitle": "MARS / ARCADIA AGRICULTURAL BELT",
+    "text": "Alarm state. Aether Core leak detected. Silence the alarm and fire through the breach.",
+    "objectives": [
+      "Silence the alarm.",
+      "Hit the hostile Telum before the core fails."
+    ]
+  }
 }

@@ -104,6 +104,8 @@ export function buildMapDefinitionForExport(map) {
     width,
     height,
     mode: String(map?.mode ?? "combat").trim().toLowerCase() === "story" ? "story" : "combat",
+    showPhaseBriefing: Boolean(map?.showPhaseBriefing),
+    phaseBriefing: normalizePhaseBriefing(map),
     terrainTypes: normalizeTerrainTypes(map?.terrainTypes, tiles),
     defaults: normalizeMapDefaults(map),
     objectives: normalizeMissionObjectives(map?.objectives),
@@ -243,6 +245,20 @@ function createDefaultDialogue() {
     intro: { lines: [{ speakerId: "system", name: "Mission Control", text: "Mission loaded." }] },
     victory: { lines: [{ speakerId: "system", name: "Mission Control", text: "Victory confirmed." }] },
     defeat: { lines: [{ speakerId: "system", name: "Mission Control", text: "Mission failed." }] }
+  };
+}
+
+function normalizePhaseBriefing(map) {
+  const phase = map?.phaseBriefing ?? {};
+  const objectives = Array.isArray(phase.objectives) && phase.objectives.length
+    ? phase.objectives.map((item) => String(item ?? "").trim()).filter(Boolean)
+    : normalizeMissionObjectives(map?.objectives).map((objective) => String(objective?.briefingText ?? objective?.label ?? objective?.id ?? "").trim()).filter(Boolean);
+
+  return {
+    title: sanitizeName(phase.title ?? map?.name ?? "Mission Update", map?.name ?? "Mission Update"),
+    subtitle: sanitizeName(phase.subtitle ?? phase.location ?? map?.id ?? "", map?.id ?? ""),
+    text: sanitizeName(phase.text ?? "Review the current phase objectives, then continue.", "Review the current phase objectives, then continue."),
+    objectives
   };
 }
 

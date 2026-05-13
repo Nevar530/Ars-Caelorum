@@ -49,6 +49,13 @@ export function createBlankBuilderMap(options = {}) {
     width,
     height,
     mode,
+    showPhaseBriefing: false,
+    phaseBriefing: {
+      title: name,
+      subtitle: id,
+      text: "Review the current phase objectives, then continue.",
+      objectives: []
+    },
     terrainTypes,
     spawns: { player: [], enemy: [], neutral: [] },
     startState: { deployments: [], deploymentCells: [] },

@@ -5,7 +5,7 @@
 // by mirroring the active map's objective array into mission.objectives for the
 // current runtime/export contract.
 
-import { cloneMapDefinition } from "../map.js";
+import { attachMapMetadata, cloneMapDefinition, createTile } from "../map.js";
 import { createBlankBuilderMap } from "./builderMapFactory.js";
 
 const DEFAULT_BRIEFING_BODY = "Mission package created in the Mission Builder.";
@@ -201,13 +201,33 @@ export function readMapSettingsFields(builderState, root, appState = null) {
   const nextMapId = sanitizeId(readField(root, "active-map-id", map.id), previousMapId);
   const nextMapName = sanitizeName(readField(root, "active-map-name", map.name), map.name || titleFromId(nextMapId));
   const nextMapMode = normalizeMapMode(readField(root, "active-map-mode", map.mode ?? "combat"));
+  const showPhaseBriefing = readChecked(root, "active-map-show-phase-briefing", Boolean(map.showPhaseBriefing));
+  const phaseBriefingTitle = sanitizeName(readField(root, "active-map-phase-title", map.phaseBriefing?.title ?? map.name), map.name || nextMapName);
+  const phaseBriefingSubtitle = sanitizeName(readField(root, "active-map-phase-subtitle", map.phaseBriefing?.subtitle ?? map.phaseBriefing?.location ?? map.id), map.id || nextMapId);
+  const phaseBriefingText = sanitizeName(readField(root, "active-map-phase-text", map.phaseBriefing?.text ?? ""), "Review the current phase objectives, then continue.");
+  const phaseBriefingObjectives = normalizeBriefingLines(
+    String(readField(root, "active-map-phase-objectives", Array.isArray(map.phaseBriefing?.objectives) ? map.phaseBriefing.objectives.join("\n") : "")).split(/\r?\n/g),
+    map.objectives
+  );
+  const requestedWidth = clampWholeNumber(readField(root, "active-map-width", map.width ?? map[0]?.length ?? 16), map.width ?? map[0]?.length ?? 16, 4, 96);
+  const requestedHeight = clampWholeNumber(readField(root, "active-map-height", map.height ?? map.length ?? 16), map.height ?? map.length ?? 16, 4, 96);
   const defaultTerrainTypeId = sanitizeId(readField(root, "map-default-terrain", map.defaults?.terrainTypeId ?? map.defaultTerrainTypeId ?? inferFirstTerrainType(map, appState)), "grass");
   const defaultElevation = clampWholeNumber(readField(root, "map-default-elevation", map.defaults?.elevation ?? 0), 0, -8, 16);
   const defaultMovementClass = sanitizeName(readField(root, "map-default-movement", map.defaults?.movementClass ?? "clear"), "clear");
 
+  const previousWidth = Number(map.width ?? map[0]?.length ?? 0);
+  const previousHeight = Number(map.height ?? map.length ?? 0);
+
   map.id = nextMapId;
   map.name = nextMapName;
   map.mode = nextMapMode;
+  map.showPhaseBriefing = showPhaseBriefing;
+  map.phaseBriefing = {
+    title: phaseBriefingTitle,
+    subtitle: phaseBriefingSubtitle,
+    text: phaseBriefingText,
+    objectives: phaseBriefingObjectives
+  };
   map.defaults = {
     ...(map.defaults ?? {}),
     terrainTypeId: defaultTerrainTypeId,
@@ -217,6 +237,15 @@ export function readMapSettingsFields(builderState, root, appState = null) {
 
   if (!Array.isArray(map.terrainTypes)) map.terrainTypes = [];
   if (!map.terrainTypes.includes(defaultTerrainTypeId)) map.terrainTypes.push(defaultTerrainTypeId);
+
+  if (requestedWidth !== previousWidth || requestedHeight !== previousHeight) {
+    resizeBuilderMap(map, requestedWidth, requestedHeight, {
+      terrainTypeId: defaultTerrainTypeId,
+      elevation: defaultElevation,
+      movementClass: defaultMovementClass,
+      terrainDefinition: appState?.content?.terrainDefinitions?.[defaultTerrainTypeId] ?? null
+    });
+  }
 
   builderState.authoring.activeMapId = nextMapId;
   mission.activeMapId = nextMapId;
@@ -233,6 +262,92 @@ export function readMapSettingsFields(builderState, root, appState = null) {
     mapIdChanged: previousMapId !== nextMapId,
     message: `Updated map settings for ${nextMapId}.`
   };
+}
+
+function resizeBuilderMap(map, width, height, defaults = {}) {
+  if (!Array.isArray(map)) return map;
+
+  const terrainTypeId = sanitizeId(defaults.terrainTypeId, "grass");
+  const terrainDefinition = defaults.terrainDefinition ?? null;
+  const elevation = clampWholeNumber(defaults.elevation, 0, -8, 16);
+  const movementClass = sanitizeName(defaults.movementClass, terrainDefinition?.movementClass ?? "clear");
+
+  const nextRows = [];
+  for (let y = 0; y < height; y += 1) {
+    const row = [];
+    for (let x = 0; x < width; x += 1) {
+      row.push(map[y]?.[x] ?? createTile(x, y, elevation, {
+        terrainTypeId,
+        terrainSpriteId: terrainDefinition?.spriteSetId ?? `${terrainTypeId}_001`,
+        movementClass
+      }));
+    }
+    nextRows.push(row);
+  }
+
+  map.length = 0;
+  for (const row of nextRows) map.push(row);
+
+  map.spawns = cropSpawnGroups(map.spawns, width, height);
+  if (map.startState) {
+    map.startState.deploymentCells = cropCoordList(map.startState.deploymentCells, width, height);
+  }
+  map.structures = cropStructures(map.structures, width, height);
+  map.objectives = cropZoneCollections(map.objectives, width, height);
+  map.triggers = cropZoneCollections(map.triggers, width, height);
+
+  return attachMapMetadata(map, {
+    id: map.id,
+    name: map.name,
+    width,
+    height,
+    mode: map.mode,
+    showPhaseBriefing: map.showPhaseBriefing,
+    phaseBriefing: map.phaseBriefing,
+    spawns: map.spawns,
+    startState: map.startState,
+    structures: map.structures,
+    terrainTypes: map.terrainTypes,
+    objectives: map.objectives,
+    triggers: map.triggers,
+    logic: map.logic,
+    defaults: map.defaults
+  });
+}
+
+function cropSpawnGroups(spawns, width, height) {
+  const groups = spawns && typeof spawns === "object" ? structuredClone(spawns) : { player: [], enemy: [], neutral: [] };
+  for (const key of Object.keys(groups)) {
+    groups[key] = cropCoordList(groups[key], width, height);
+  }
+  return groups;
+}
+
+function cropStructures(structures, width, height) {
+  if (!Array.isArray(structures)) return [];
+  return structures.map((structure) => ({
+    ...structure,
+    cells: cropCoordList(structure?.cells, width, height),
+    edges: cropCoordList(structure?.edges, width, height)
+  })).filter((structure) => (Array.isArray(structure.cells) && structure.cells.length) || (Array.isArray(structure.edges) && structure.edges.length));
+}
+
+function cropZoneCollections(list, width, height) {
+  if (!Array.isArray(list)) return [];
+  return list.map((entry) => ({
+    ...entry,
+    tiles: cropCoordList(entry?.tiles, width, height),
+    zone: cropCoordList(entry?.zone, width, height)
+  }));
+}
+
+function cropCoordList(list, width, height) {
+  if (!Array.isArray(list)) return [];
+  return list.filter((item) => {
+    const x = Number(item?.x);
+    const y = Number(item?.y);
+    return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < width && y < height;
+  });
 }
 
 function normalizeMapMode(value) {

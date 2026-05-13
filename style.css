@@ -2766,3 +2766,161 @@ button:disabled {
   font-size: 10px;
   line-height: 1.15;
 }
+
+/* =========================================
+   PHASE BRIEFING / MISSION UPDATE OVERLAY
+========================================= */
+.combat-overlay.is-phase-briefing-visible {
+  align-items: center;
+  justify-content: center;
+}
+
+.phase-briefing-card {
+  width: min(760px, 78vw);
+  padding: 26px 32px 28px;
+  border: 1px solid rgba(103, 232, 249, 0.22);
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01)),
+    rgba(10, 16, 23, 0.97);
+  box-shadow: 0 28px 80px rgba(0,0,0,0.52), inset 0 1px 0 rgba(255,255,255,0.04);
+  text-align: left;
+}
+
+.phase-briefing-kicker,
+.phase-briefing-objectives-title {
+  color: #9bdcff;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.phase-briefing-title {
+  margin-top: 12px;
+  color: #fff6d8;
+  font-size: clamp(24px, 2vw, 32px);
+  line-height: 1.05;
+  font-weight: 950;
+  text-shadow: 0 2px 0 rgba(240,176,0,0.35);
+}
+
+.phase-briefing-subtitle {
+  margin-top: 10px;
+  color: #b9dcff;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.phase-briefing-text {
+  margin-top: 22px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.035);
+  color: #f5f7ff;
+  line-height: 1.48;
+  font-size: 14px;
+}
+
+.phase-briefing-objectives-title {
+  margin-top: 20px;
+  color: #fff6d8;
+  letter-spacing: 0.1em;
+}
+
+.phase-briefing-objectives {
+  margin: 10px 0 0 18px;
+  padding: 0;
+  color: #b9dcff;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.phase-briefing-card .combat-start-button {
+  display: block;
+  margin-left: auto;
+  margin-top: 24px;
+}
+
+/* =========================================
+   BUILDER DIALOGUE / COMPACT AUTHORING POLISH
+========================================= */
+.builder-form-field input[type="checkbox"] {
+  min-height: 18px;
+  width: 18px;
+  justify-self: start;
+  accent-color: #f0b000;
+}
+
+.builder-dialogue-line-list {
+  display: grid;
+  gap: 5px;
+}
+
+.builder-dialogue-line-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px;
+  align-items: stretch;
+}
+
+.builder-dialogue-line-main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 6px 7px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 7px;
+  background: rgba(255,255,255,0.035);
+  color: #edf4ff;
+}
+
+.builder-dialogue-line-row.is-active .builder-dialogue-line-main {
+  border-color: rgba(240,176,0,0.55);
+  background: rgba(240,176,0,0.10);
+}
+
+.builder-dialogue-line-main strong,
+.builder-dialogue-line-main span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.builder-dialogue-line-main strong {
+  font-size: 10px;
+  color: #fff6d8;
+}
+
+.builder-dialogue-line-main span {
+  font-size: 10px;
+  color: #9fb2c5;
+}
+
+.builder-dialogue-line-actions {
+  display: flex;
+  gap: 3px;
+}
+
+.builder-dialogue-line-actions .builder-tool-button {
+  min-width: 24px;
+  padding: 4px 5px;
+}
+
+.builder-tool-row-three {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.builder-form-field input,
+.builder-form-field select,
+.builder-form-field textarea {
+  font-size: 11px;
+}
+
+.builder-form-field textarea {
+  min-height: 64px;
+}

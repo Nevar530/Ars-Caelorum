@@ -3582,5 +3582,14 @@
         ]
       }
     }
-  ]
+  ],
+  "showPhaseBriefing": true,
+  "phaseBriefing": {
+    "title": "Practice Sparring",
+    "subtitle": "GABRIELLE TRAINING BAY",
+    "text": "A short systems check under live movement and weapons conditions. Gabe needs to know if Skye can still work.",
+    "objectives": [
+      "Defeat all practice mechs."
+    ]
+  }
 }

@@ -3294,5 +3294,15 @@
         ]
       }
     }
-  ]
+  ],
+  "showPhaseBriefing": true,
+  "phaseBriefing": {
+    "title": "Underground Parking Garage Escape",
+    "subtitle": "EARTH / HOSPITAL SERVICE GARAGE",
+    "text": "Skye is injured, underarmed, and wearing Eve's idea of emergency clothing. Get to the car.",
+    "objectives": [
+      "Protect Skye.",
+      "Reach Eve's car."
+    ]
+  }
 }

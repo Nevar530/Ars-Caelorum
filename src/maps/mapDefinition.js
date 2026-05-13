@@ -19,6 +19,16 @@ export function attachMapMetadata(map, metadata = {}) {
     width: { value: width, writable: true, configurable: true },
     height: { value: height, writable: true, configurable: true },
     mode: { value: normalizeMapMode(metadata.mode ?? map.mode), writable: true, configurable: true },
+    showPhaseBriefing: {
+      value: Boolean(metadata.showPhaseBriefing ?? map.showPhaseBriefing ?? false),
+      writable: true,
+      configurable: true
+    },
+    phaseBriefing: {
+      value: structuredClone(metadata.phaseBriefing ?? map.phaseBriefing ?? null),
+      writable: true,
+      configurable: true
+    },
     tiles: { value: flattenMapTiles(map), writable: true, configurable: true },
     spawns: {
       value: structuredClone(metadata.spawns ?? map.spawns ?? { player: [], enemy: [], neutral: [] }),
@@ -51,6 +61,11 @@ export function attachMapMetadata(map, metadata = {}) {
     },
     triggers: {
       value: structuredClone(metadata.triggers ?? map.triggers ?? []),
+      writable: true,
+      configurable: true
+    },
+    logic: {
+      value: structuredClone(metadata.logic ?? map.logic ?? []),
       writable: true,
       configurable: true
     },
@@ -158,11 +173,14 @@ export function normalizeMapDefinition(definition) {
       width: definition.width,
       height: definition.height,
       mode: definition.mode,
+      showPhaseBriefing: definition.showPhaseBriefing,
+      phaseBriefing: definition.phaseBriefing,
       spawns: definition.spawns,
       startState: definition.startState,
       terrainTypes: definition.terrainTypes,
       objectives: definition.objectives,
       triggers: definition.triggers,
+      logic: definition.logic,
       defaults: definition.defaults
     });
   }
@@ -182,11 +200,14 @@ export function cloneMapDefinition(sourceMap = null) {
       width: sourceMap.width,
       height: sourceMap.height,
       mode: sourceMap.mode,
+      showPhaseBriefing: sourceMap.showPhaseBriefing,
+      phaseBriefing: sourceMap.phaseBriefing,
       spawns: sourceMap.spawns,
       startState: sourceMap.startState,
       terrainTypes: sourceMap.terrainTypes,
       objectives: sourceMap.objectives,
       triggers: sourceMap.triggers,
+      logic: sourceMap.logic,
       defaults: sourceMap.defaults
     });
   }

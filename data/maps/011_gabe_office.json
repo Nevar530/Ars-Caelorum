@@ -2125,5 +2125,15 @@
         ]
       }
     }
-  ]
+  ],
+  "showPhaseBriefing": true,
+  "phaseBriefing": {
+    "title": "Gabrielle Enforcement Agency - Gabe Meeting",
+    "subtitle": "EARTH DIVISION / LATE NIGHT",
+    "text": "Gabe did not save Skye out of kindness. He moved an asset because he needs a pilot with Kholer knowledge.",
+    "objectives": [
+      "Meet Gabe.",
+      "Reach the mech bay access."
+    ]
+  }
 }

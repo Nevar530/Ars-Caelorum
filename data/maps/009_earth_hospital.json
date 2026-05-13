@@ -2125,5 +2125,15 @@
         ]
       }
     }
-  ]
+  ],
+  "showPhaseBriefing": true,
+  "phaseBriefing": {
+    "title": "Earth Hospital - Two Weeks Later",
+    "subtitle": "EARTH / PRIVATE RECOVERY WARD",
+    "text": "Skye wakes in a clean hospital room with the meter already running. Eve has arrived with a story and a ride.",
+    "objectives": [
+      "Talk through the hospital wake-up.",
+      "Reach the elevator with Eve."
+    ]
+  }
 }

@@ -3372,5 +3372,16 @@
         ]
       }
     }
-  ]
+  ],
+  "showPhaseBriefing": true,
+  "phaseBriefing": {
+    "title": "Gabrielle Mech Bay - Mount Up",
+    "subtitle": "EARTH DIVISION / MORNING",
+    "text": "Skye is hurt, angry, and back on the schedule. Walk to the Telum, mount up, and move out.",
+    "objectives": [
+      "Talk to Eve.",
+      "Enter Skye's Telum.",
+      "Move the Telum to the training bay exit."
+    ]
+  }
 }

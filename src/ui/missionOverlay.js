@@ -6,6 +6,7 @@ export function renderMissionOverlay(state, refs) {
   if (!overlay) return;
 
   const missionResult = state?.mission?.result ?? null;
+  const phaseBriefingActive = Boolean(state?.ui?.phaseBriefing?.active);
   const dialogueActive = Boolean(state?.ui?.dialogue?.active);
   const splashVisible = Boolean(state?.turn?.splashVisible);
   const splashText = String(state?.turn?.splashText ?? "").trim();
@@ -13,6 +14,13 @@ export function renderMissionOverlay(state, refs) {
 
   overlay.innerHTML = "";
   overlay.className = "combat-overlay is-clickthrough";
+
+  if (phaseBriefingActive) {
+    overlay.classList.add("is-visible", "is-phase-briefing-visible");
+    overlay.classList.remove("is-clickthrough");
+    overlay.innerHTML = renderPhaseBriefingOverlay(state);
+    return;
+  }
 
   if (missionResult && !dialogueActive) {
     const copy = getMissionResultCopy(state, missionResult);
@@ -60,6 +68,24 @@ export function renderMissionOverlay(state, refs) {
     overlay.innerHTML = renderTurnPopup(state);
     return;
   }
+}
+
+function renderPhaseBriefingOverlay(state) {
+  const briefing = state?.ui?.phaseBriefing ?? {};
+  const objectives = Array.isArray(briefing.objectives) ? briefing.objectives : [];
+  return `
+    <div class="phase-briefing-card" role="dialog" aria-modal="true" aria-label="Phase Briefing">
+      <div class="phase-briefing-kicker">Mission Update</div>
+      <div class="phase-briefing-title">${escapeHtml(briefing.title || "Mission Update")}</div>
+      ${briefing.subtitle ? `<div class="phase-briefing-subtitle">${escapeHtml(briefing.subtitle)}</div>` : ""}
+      <div class="phase-briefing-text">${escapeHtml(briefing.text || "Review the current phase objectives, then continue.")}</div>
+      <div class="phase-briefing-objectives-title">Objectives</div>
+      <ul class="phase-briefing-objectives">
+        ${objectives.length ? objectives.map((item) => `<li>${escapeHtml(item)}</li>`).join("") : `<li>Complete the current phase.</li>`}
+      </ul>
+      <button type="button" class="combat-start-button" data-combat-overlay-action="continue-phase-briefing">Continue</button>
+    </div>
+  `;
 }
 
 function renderDialogueOverlay(state) {

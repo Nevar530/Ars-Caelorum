@@ -117,6 +117,15 @@ export function createState({
         key: null,
         index: 0,
         lines: []
+      },
+
+      phaseBriefing: {
+        active: false,
+        title: "",
+        subtitle: "",
+        text: "",
+        objectives: [],
+        pending: null
       }
     },
 
