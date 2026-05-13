@@ -1,0 +1,421 @@
+{
+  "id": "000_game_state_tester_mission",
+  "name": "000 Game State Tester - Full Flow Harness",
+  "goalText": "Graybox the opening flow: Mars Telum cold open, Earth hospital, garage escape, Gabe meeting, mount-up story map, and practice sparring.",
+  "mapId": "008_mars_cold_open",
+  "mapPath": "./data/maps/008_mars_cold_open.json",
+  "startMapId": "008_mars_cold_open",
+  "maps": [
+    {
+      "id": "008_mars_cold_open",
+      "name": "008 Mars Cold Open - Aether Core Leak",
+      "path": "./data/maps/008_mars_cold_open.json",
+      "mapPath": "./data/maps/008_mars_cold_open.json",
+      "phaseIndex": 1,
+      "objectiveSummary": "Silence the alarm and fire through the core leak",
+      "objectiveCount": 1,
+      "mode": "combat"
+    },
+    {
+      "id": "009_earth_hospital",
+      "name": "009 Earth Hospital - Two Weeks Later",
+      "path": "./data/maps/009_earth_hospital.json",
+      "mapPath": "./data/maps/009_earth_hospital.json",
+      "phaseIndex": 2,
+      "objectiveSummary": "Reach the elevator with Eve",
+      "objectiveCount": 1,
+      "mode": "story"
+    },
+    {
+      "id": "010_hospital_garage_escape",
+      "name": "010 Underground Parking Garage Escape",
+      "path": "./data/maps/010_hospital_garage_escape.json",
+      "mapPath": "./data/maps/010_hospital_garage_escape.json",
+      "phaseIndex": 3,
+      "objectiveSummary": "Keep Skye alive; reach Eve\u2019s car",
+      "objectiveCount": 2,
+      "mode": "combat"
+    },
+    {
+      "id": "011_gabe_office",
+      "name": "011 Gabrielle Enforcement Agency - Gabe Meeting",
+      "path": "./data/maps/011_gabe_office.json",
+      "mapPath": "./data/maps/011_gabe_office.json",
+      "phaseIndex": 4,
+      "objectiveSummary": "Leave Gabe\u2019s office",
+      "objectiveCount": 1,
+      "mode": "story"
+    },
+    {
+      "id": "012_gabriel_mech_bay",
+      "name": "012 Gabrielle Mech Bay - Mount Up",
+      "path": "./data/maps/012_gabriel_mech_bay.json",
+      "mapPath": "./data/maps/012_gabriel_mech_bay.json",
+      "phaseIndex": 5,
+      "objectiveSummary": "Mount up and walk to the training bay",
+      "objectiveCount": 1,
+      "mode": "story"
+    },
+    {
+      "id": "013_practice_sparring",
+      "name": "013 Practice Sparring - Defeat All",
+      "path": "./data/maps/013_practice_sparring.json",
+      "mapPath": "./data/maps/013_practice_sparring.json",
+      "phaseIndex": 6,
+      "objectiveSummary": "Defeat all practice mechs",
+      "objectiveCount": 1,
+      "mode": "combat"
+    }
+  ],
+  "objectivePreset": "linked_flow",
+  "briefing": {
+    "title": "Game State Tester",
+    "text": "Internal tester mission for campaign/system passes. This is the stable harness used to prove the current runtime foundation before broader campaign progression is layered on top.",
+    "objectives": [
+      "Run the full Mars-to-sparring flow.",
+      "Confirm combat/story transitions.",
+      "Confirm dialogue, objectives, triggers, protect-unit, and enter-mech behavior."
+    ]
+  },
+  "objectives": [
+    {
+      "id": "mars_blackout",
+      "type": "trigger_complete",
+      "team": "player",
+      "label": "Silence the alarm and fire through the core leak",
+      "briefingText": "Hit the hostile Telum before Skye\u2019s Aether Core fails."
+    }
+  ],
+  "triggers": [
+    {
+      "id": "mars_alarm_brief",
+      "name": "Mars Alarm Brief",
+      "type": "onMissionStart",
+      "team": "any",
+      "once": true,
+      "preset": "start_dialogue",
+      "dialogueKey": "mars_alarm"
+    },
+    {
+      "id": "mars_hit_blackout",
+      "name": "Final Shot / Core Failure",
+      "type": "onHitTarget",
+      "team": "player",
+      "once": true,
+      "preset": "load_map",
+      "nextMapId": "009_earth_hospital",
+      "completeObjectiveId": "mars_blackout"
+    }
+  ],
+  "logic": [],
+  "dialogue": {
+    "intro": {
+      "name": "Cold Open Default",
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "System",
+          "portrait": "art/mech/hero_001_NE.png",
+          "text": "Linked cold-opening flow loaded."
+        }
+      ]
+    },
+    "mars_alarm": {
+      "name": "Mars Alarm",
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "TELUM WARNING",
+          "portrait": "art/mech/hero_001_NE.png",
+          "text": "AETHER CORE LEAK DETECTED. COCKPIT EXPOSURE RISING."
+        },
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "Yeah. I heard you the first six times. Silence alarm."
+        },
+        {
+          "speakerId": "system",
+          "name": "TELUM WARNING",
+          "portrait": "art/mech/hero_001_NE.png",
+          "text": "Manual alarm suppression accepted. Reactor containment unstable."
+        },
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "We are not done with this dance until I say we are."
+        }
+      ]
+    },
+    "hospital_wake": {
+      "name": "Earth Hospital",
+      "lines": [
+        {
+          "speakerId": "nurse",
+          "name": "Nurse",
+          "portrait": "art/pilot/pilot_NE.png",
+          "text": "Easy. Do not try to sit up."
+        },
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "How long?"
+        },
+        {
+          "speakerId": "nurse",
+          "name": "Nurse",
+          "portrait": "art/pilot/pilot_NE.png",
+          "text": "Two weeks. Aether exposure, neural shock, fractured ribs, and more paperwork than blood."
+        },
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "No. How much?"
+        },
+        {
+          "speakerId": "doctor",
+          "name": "Doctor",
+          "portrait": "art/pilot/pilot_NW.png",
+          "text": "Your account has been settled. The payer is not listed in the patient-facing record."
+        },
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "Kholer did not pay this. They do not put cash into broken parts."
+        },
+        {
+          "speakerId": "eve",
+          "name": "Eve",
+          "portrait": "art/pilot/eve_portrait.png",
+          "text": "Skye! There she is. Tragic, but alive. Gabe sends his regards."
+        },
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "...Fine. I know Gabe. I play along."
+        },
+        {
+          "speakerId": "eve",
+          "name": "Eve",
+          "portrait": "art/pilot/eve_portrait.png",
+          "text": "Good. Elevator. Try not to bleed on anything expensive. Again."
+        }
+      ]
+    },
+    "garage_start": {
+      "name": "Garage Escape",
+      "lines": [
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "If I die in this tracksuit, I am haunting you."
+        },
+        {
+          "speakerId": "eve",
+          "name": "Eve",
+          "portrait": "art/pilot/eve_portrait.png",
+          "text": "You already bled all over it. Keep moving. Car is across the garage."
+        },
+        {
+          "speakerId": "system",
+          "name": "Recovery Team",
+          "portrait": "art/mech/hero_001_NE.png",
+          "text": "Patient transfer hold. Stop where you are."
+        },
+        {
+          "speakerId": "eve",
+          "name": "Eve",
+          "portrait": "art/pilot/eve_portrait.png",
+          "text": "See? They are using their serious voices. Adorable."
+        }
+      ]
+    },
+    "gabe_meeting": {
+      "name": "Gabe Meeting",
+      "lines": [
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "Gabe. I will pay you back for the hospital. Somehow."
+        },
+        {
+          "speakerId": "gabe",
+          "name": "Gabe",
+          "portrait": "art/pilot/pilot_001_NW.png",
+          "text": "No, you will not. I did not pay your hospital bill."
+        },
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "Then who did?"
+        },
+        {
+          "speakerId": "gabe",
+          "name": "Gabe",
+          "portrait": "art/pilot/pilot_001_NW.png",
+          "text": "That is the part that should worry you. I only got you out."
+        },
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "Out of kindness? Nostalgia?"
+        },
+        {
+          "speakerId": "gabe",
+          "name": "Gabe",
+          "portrait": "art/pilot/pilot_001_NW.png",
+          "text": "Business. I need a pilot with Kholer knowledge. You are not free, Skye. Just under a different boot."
+        },
+        {
+          "speakerId": "eve",
+          "name": "Eve",
+          "portrait": "art/pilot/eve_portrait.png",
+          "text": "He says the romantic stuff first. Wait until he gets to scheduling."
+        },
+        {
+          "speakerId": "gabe",
+          "name": "Gabe",
+          "portrait": "art/pilot/pilot_001_NW.png",
+          "text": "In the morning, we get you suited up and back into a Telum. You think you can heal fast enough?"
+        }
+      ]
+    },
+    "bay_locker": {
+      "name": "Locker Room / Mech Bay",
+      "lines": [
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "Can I burn the tracksuit?"
+        },
+        {
+          "speakerId": "eve",
+          "name": "Eve",
+          "portrait": "art/pilot/eve_portrait.png",
+          "text": "Might as well. You bled all over it."
+        },
+        {
+          "speakerId": "gabe",
+          "name": "Gabe",
+          "portrait": "art/pilot/pilot_001_NW.png",
+          "text": "Your frame is the grey-and-black unit. Eve gets the white-and-gold one because subtlety died before breakfast."
+        },
+        {
+          "speakerId": "eve",
+          "name": "Eve",
+          "portrait": "art/pilot/eve_portrait.png",
+          "text": "Subtlety was boring and owed me money."
+        },
+        {
+          "speakerId": "gabe",
+          "name": "Gabe",
+          "portrait": "art/pilot/pilot_001_NW.png",
+          "text": "Walk to the rear hatch and mount up. Then move the frame to the training bay marker."
+        }
+      ]
+    },
+    "bay_entered": {
+      "name": "Mounted",
+      "lines": [
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "Back in a box with guns. Almost missed it."
+        },
+        {
+          "speakerId": "eve",
+          "name": "Eve",
+          "portrait": "art/pilot/eve_portrait.png",
+          "text": "You look better when the machine is doing the standing."
+        },
+        {
+          "speakerId": "gabe",
+          "name": "Gabe",
+          "portrait": "art/pilot/pilot_001_NW.png",
+          "text": "Move it forward. I need to know the ribs are not making you useless."
+        }
+      ]
+    },
+    "sparring_start": {
+      "name": "Practice Sparring",
+      "lines": [
+        {
+          "speakerId": "gabe",
+          "name": "Gabe",
+          "portrait": "art/pilot/pilot_001_NW.png",
+          "text": "Practice frames are live. Low charge, real targeting, no heroics."
+        },
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "You put me in a Telum with busted ribs and asked for no heroics?"
+        },
+        {
+          "speakerId": "eve",
+          "name": "Eve",
+          "portrait": "art/pilot/eve_portrait.png",
+          "text": "I heard \u201cshow off responsibly.\u201d"
+        },
+        {
+          "speakerId": "gabe",
+          "name": "Gabe",
+          "portrait": "art/pilot/pilot_001_NW.png",
+          "text": "Defeat the practice mechs. Then we talk about the job."
+        }
+      ]
+    },
+    "victory": {
+      "name": "Flow Complete",
+      "lines": [
+        {
+          "speakerId": "gabe",
+          "name": "Gabe",
+          "portrait": "art/pilot/pilot_001_NW.png",
+          "text": "Good. The flow works. You can still pilot. That makes tomorrow possible."
+        },
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "portrait": "art/pilot/skye_portrait.png",
+          "text": "Tomorrow sounds expensive."
+        }
+      ]
+    },
+    "defeat": {
+      "name": "Flow Failed",
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "System",
+          "portrait": "art/mech/hero_001_NE.png",
+          "text": "Cold-opening flow failed. Retry the graybox mission."
+        }
+      ]
+    }
+  },
+  "results": {
+    "victory": {
+      "title": "Cold Opening Flow Complete",
+      "text": "Mars combat, hospital story mode, garage escape, Gabe meeting, mount-up, and sparring combat all resolved through linked mission maps."
+    },
+    "defeat": {
+      "title": "Cold Opening Flow Failed",
+      "text": "Skye was disabled during the graybox flow."
+    }
+  },
+  "mode": "combat",
+  "summary": "Internal game-state tester mission. Exercises combat, story mode, phase briefings, dialogue, objectives, triggers, logic, protect-unit, CPU ally, enter/exit mech, and map-phase handoff."
+}

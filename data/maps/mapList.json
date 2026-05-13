@@ -1,47 +1,6 @@
 {
-  "defaultMapId": "000_test",
+  "defaultMapId": "008_mars_cold_open",
   "maps": [
-    {
-      "id": "000_test",
-      "name": "000 Test Map",
-      "path": "./data/maps/000_test.json"
-    },
-    {
-      "id": "001_test",
-      "name": "001 Test Map",
-      "path": "./data/maps/001_test.json"
-    },
-    {
-      "id": "002_test",
-      "name": "002 Test Map",
-      "path": "./data/maps/002_test.json"
-    },
-    {
-      "id": "003_test",
-      "name": "003 Test Map",
-      "path": "./data/maps/003_test.json"
-    },
-    {
-      "id": "004_structure_test",
-      "name": "004 Structure Test",
-      "path": "./data/maps/004_structure_test.json"
-    },
-    {
-      "id": "005_warehouse_district",
-      "name": "005 Warehouse District",
-      "path": "./data/maps/005_warehouse_district.json"
-    },
-    {
-      "id": "006_new_map",
-      "name": "New Map",
-      "path": "./data/maps/006_new_map.json"
-    },
-    {
-      "id": "007_story_mode_demo",
-      "name": "007 Story Mode Demo - Talk, Mount, Move",
-      "path": "./data/maps/007_story_mode_demo.json",
-      "mode": "story"
-    },
     {
       "id": "008_mars_cold_open",
       "name": "008 Mars Cold Open - Aether Core Leak",
