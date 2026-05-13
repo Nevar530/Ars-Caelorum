@@ -185,7 +185,7 @@ async function init() {
 
   refs.titleStartButton?.addEventListener("click", () => {
     startTitleThemeAudio();
-    actions.openMissionSelect();
+    actions.startDefaultMission();
   });
 
   refs.titleMissionSelectButton?.addEventListener("click", () => {
@@ -366,7 +366,7 @@ function getSelectedMissionEntry() {
         actions.openMissionSelect();
         return;
       }
-      actions.openMissionSelect();
+      actions.startDefaultMission();
     },
 
     selectMission(missionId) {
@@ -385,6 +385,19 @@ function getSelectedMissionEntry() {
       state.ui.shell.briefingDefinition = missionDefinition;
       state.ui.shell.screen = "mission-briefing";
       gameController.render();
+    },
+
+    async startDefaultMission() {
+      const missions = getMissionEntries(state);
+      const defaultMissionId = state?.content?.missionCatalog?.defaultMissionId ?? null;
+      const defaultMission = missions.find((entry) => entry?.id === defaultMissionId) ?? missions[0] ?? null;
+      if (!defaultMission) return;
+
+      state.ui.shell.selectedMissionId = defaultMission.id;
+      state.ui.shell.selectedMapId = defaultMission.id;
+      state.ui.shell.briefingMission = defaultMission;
+      state.ui.shell.briefingDefinition = await loadMissionForEntry(defaultMission);
+      await actions.startSelectedMission();
     },
 
     async startSelectedMission() {
