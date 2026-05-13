@@ -93,8 +93,8 @@ function renderActivePanel(state) {
 
   if (!activeBody) {
     return `
-      <div class="hud-section-title">Unit</div>
-      <div class="hud-mini-card">No Active Unit</div>
+      <div class="hud-card-title">Unit</div>
+      <div class="hud-empty-state">No active unit</div>
     `;
   }
 
@@ -105,81 +105,55 @@ function renderActivePanel(state) {
       ? getEmbarkedPilotForMech(state, mech)
       : null;
 
-  const name = activeBody.name;
-  const sublineParts = [activeBody.team];
-  if (activeActor?.embarked && mech && pilot) {
-    sublineParts.unshift(`Pilot: ${pilot.name}`);
-  }
+  const role = activeBody.unitType === "mech" ? "Telum" : "Pilot";
+  const sublineParts = [role, activeBody.team].filter(Boolean);
+  const disabledMech = mech && activeBody.status === "disabled";
 
-  const bodyStats = activeBody.unitType === "mech"
-    ? `
-      <div class="hud-mini-card" style="margin-bottom:8px;">
-        <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Mech</div>
-        <div class="hud-stat-row">
-          ${stat("SHD", `${activeBody.shield}/${activeBody.maxShield}`)}
-          ${stat("CORE", `${activeBody.core}/${activeBody.maxCore}`)}
-          ${stat("REACT", activeBody.reaction)}
-          ${stat("TARG", activeBody.targeting)}
-        </div>
-        <div class="hud-stat-row">
-          ${stat("MV", activeBody.move)}
-          ${stat("INIT", activeBody.initiative ?? "-")}
-          ${stat("F", facingLabel(activeBody.facing))}
-          ${stat("STAT", activeBody.status ?? "-")}
-        </div>
-      </div>
-    `
-    : `
-      <div class="hud-mini-card" style="margin-bottom:8px;">
-        <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Pilot</div>
-        <div class="hud-stat-row">
-          ${stat("SHD", `${activeBody.shield}/${activeBody.maxShield}`)}
-          ${stat("CORE", `${activeBody.core}/${activeBody.maxCore}`)}
-          ${stat("REACT", activeBody.reaction)}
-          ${stat("TARG", activeBody.targeting)}
-        </div>
-        <div class="hud-stat-row">
-          ${stat("MV", activeBody.move)}
-          ${stat("INIT", activeBody.initiative ?? "-")}
-          ${stat("F", facingLabel(activeBody.facing))}
-          ${stat("STAT", activeBody.status ?? "-")}
-        </div>
-      </div>
-    `;
-
-  const pilotStats = mech && pilot
-    ? `
-      <div class="hud-mini-card">
-        <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Embarked Pilot</div>
-        <div class="hud-stat-row">
-          ${stat("SHD", `${pilot.shield}/${pilot.maxShield}`)}
-          ${stat("CORE", `${pilot.core}/${pilot.maxCore}`)}
-          ${stat("REACT", pilot.reaction)}
-          ${stat("TARG", pilot.targeting)}
-        </div>
-        <div class="hud-stat-row">
-          ${stat("MV", pilot.move)}
-          ${stat("INIT", pilot.initiative ?? "-")}
-          ${stat("F", facingLabel(pilot.facing))}
-          ${stat("STAT", pilot.status ?? "-")}
-        </div>
-      </div>
-    `
-    : "";
+  const primaryStats = activeBody.unitType === "mech"
+    ? [
+        ["SHD", `${activeBody.shield}/${activeBody.maxShield}`],
+        ["CORE", `${activeBody.core}/${activeBody.maxCore}`],
+        ["MV", activeBody.move],
+        ["INIT", activeBody.initiative ?? "-"],
+        ["REACT", activeBody.reaction],
+        ["TARG", activeBody.targeting],
+        ["F", facingLabel(activeBody.facing)],
+        ["STAT", activeBody.status ?? "-"]
+      ]
+    : [
+        ["SHD", `${activeBody.shield}/${activeBody.maxShield}`],
+        ["CORE", `${activeBody.core}/${activeBody.maxCore}`],
+        ["MV", activeBody.move],
+        ["INIT", activeBody.initiative ?? "-"],
+        ["REACT", activeBody.reaction],
+        ["TARG", activeBody.targeting],
+        ["F", facingLabel(activeBody.facing)],
+        ["STAT", activeBody.status ?? "-"]
+      ];
 
   return `
-    <div class="hud-section-title">Unit</div>
-
-    <div class="hud-unit-row">
-      <div>
-        <div class="hud-unit-name">${name}</div>
-        <div class="hud-subline">${sublineParts.join(" · ")}</div>
+    <div class="hud-unit-compact">
+      <div class="hud-unit-head">
+        <div>
+          <div class="hud-card-title">${escapeHtml(role)}</div>
+          <div class="hud-unit-name">${escapeHtml(activeBody.name)}</div>
+          <div class="hud-subline">${escapeHtml(sublineParts.join(" · "))}</div>
+        </div>
+        <div class="hud-tag">ACTIVE</div>
       </div>
-      <div class="hud-tag">ACTIVE</div>
-    </div>
 
-    ${bodyStats}
-    ${pilotStats}
+      <div class="hud-stat-grid hud-stat-grid--wide">
+        ${primaryStats.map(([label, value]) => stat(label, value)).join("")}
+      </div>
+
+      ${mech && pilot ? `
+        <div class="hud-pilot-strip ${disabledMech ? "is-warning" : ""}">
+          <span class="hud-pilot-strip-name">Pilot: ${escapeHtml(pilot.name)}</span>
+          <span>SHD <b>${escapeHtml(`${pilot.shield}/${pilot.maxShield}`)}</b></span>
+          <span>CORE <b>${escapeHtml(`${pilot.core}/${pilot.maxCore}`)}</b></span>
+        </div>
+      ` : ""}
+    </div>
   `;
 }
 
@@ -229,11 +203,9 @@ function renderCenterPanel(state) {
     }
 
     return `
-      <div class="hud-section-title">Combat</div>
-
-      <div class="hud-mode-box">
-        <div class="hud-mode-title">Ready</div>
-        <div class="hud-mode-text">Start combat to begin initiative</div>
+      <div class="hud-flow-head">
+        <span>Combat Ready</span>
+        <b>INIT OFF</b>
       </div>
 
       <button class="hud-command-button" data-hud-action="start-combat">
@@ -296,7 +268,7 @@ function renderCenterPanel(state) {
   return `
     ${summary}
 
-    <div class="hud-section-title">Command</div>
+    <div class="hud-card-title">Command</div>
 
     <div class="hud-mode-box">
       <div class="hud-mode-title">Awaiting Command</div>
@@ -316,16 +288,9 @@ function renderStoryModePanel(state) {
   const label = activeBody?.unitType === "mech" ? "Telum" : "Pilot";
 
   return `
-    <div class="hud-section-title">Story Mode</div>
-
-    <div class="hud-mode-box">
-      <div class="hud-mode-title">Free Movement</div>
-      <div class="hud-mode-text">Move with WASD / arrows · Enter to interact</div>
-    </div>
-
-    <div class="hud-mini-card" style="margin-bottom:8px;">
-      <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Active ${label}</div>
-      <div>${escapeHtml(activeBody?.name ?? "None")}</div>
+    <div class="hud-flow-head">
+      <span>Story Mode</span>
+      <b>${escapeHtml(label)}: ${escapeHtml(activeBody?.name ?? "None")}</b>
     </div>
 
     ${objectives}
@@ -350,9 +315,9 @@ function renderTurnSummary(state) {
       : "Combat";
 
   return `
-    <div class="hud-mode-box" style="margin-bottom:8px;">
-      <div class="hud-mode-title">ROUND ${state.turn.round} · ${phaseLabel}</div>
-      <div class="hud-mode-text">Turn order shown above the HUD</div>
+    <div class="hud-flow-head">
+      <span>Round ${escapeHtml(state.turn.round)} · ${escapeHtml(phaseLabel)}</span>
+      <b>${escapeHtml(state.ui.mode ?? "idle")}</b>
     </div>
 
     ${renderObjectiveSummary(state)}
@@ -364,15 +329,14 @@ function renderObjectiveSummary(state) {
   if (!objectives.length) return "";
 
   return `
-    <div class="hud-mini-card" style="margin-bottom:8px;">
-      <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Objectives</div>
+    <div class="hud-objectives-compact">
       ${objectives.map((objective) => {
         const done = objective.completed;
         const progress = objective.required > 1 ? ` ${objective.progress}/${objective.required}` : "";
         return `
-          <div style="display:flex; justify-content:space-between; gap:8px; font-size:11px; margin-top:4px; opacity:${done ? .65 : 1};">
+          <div class="hud-objective-line ${done ? "is-done" : ""}">
             <span>${done ? "✓" : "□"} ${escapeHtml(objective.label)}</span>
-            <span>${escapeHtml(progress.trim())}</span>
+            ${progress.trim() ? `<b>${escapeHtml(progress.trim())}</b>` : ""}
           </div>
         `;
       }).join("")}
@@ -406,7 +370,7 @@ function renderContextPanel(state) {
         <div style="opacity:.7;">${focusedUnit.team}</div>
       </div>
 
-      <div class="hud-stat-row">
+      <div class="hud-stat-grid">
         ${stat("SHD", focusedUnit.shield)}
         ${stat("CORE", focusedUnit.core)}
         ${stat("REACT", focusedUnit.reaction)}
@@ -416,7 +380,7 @@ function renderContextPanel(state) {
       ${targetPilot ? `
         <div class="hud-mini-card" style="margin-top:8px;">
           <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Embarked Pilot</div>
-          <div class="hud-stat-row">
+          <div class="hud-stat-grid">
             ${stat("PSHD", targetPilot.shield)}
             ${stat("PCORE", targetPilot.core)}
             ${stat("STAT", targetPilot.status ?? "-")}
@@ -453,7 +417,7 @@ function renderContextPanel(state) {
       (${state.focus.x}, ${state.focus.y})
     </div>
 
-    <div class="hud-stat-row">
+    <div class="hud-stat-grid">
       ${stat("ELEV", elev)}
       ${stat("LOS", los)}
       ${stat(isStoryMode(state) ? "MODE" : "ROUND", isStoryMode(state) ? "Story" : state.turn.round)}
@@ -470,8 +434,8 @@ function renderCommandMenu(state) {
   const menu = state.ui.commandMenu;
 
   return `
-    <div class="hud-section-title">Command</div>
-
+    <div class="hud-card-title">Command</div>
+    <div class="hud-menu-grid">
     ${menu.items.map((item, i) => {
       const isDisabled = isCommandMenuItemDisabled(state, item);
       return `
@@ -484,6 +448,7 @@ function renderCommandMenu(state) {
       </button>
     `;
     }).join("")}
+    </div>
   `;
 }
 
@@ -491,20 +456,21 @@ function renderAbilityMenu(state) {
   const items = getSelectedAbilityMenuItems(state);
 
   return `
-    <div class="hud-section-title">Ability</div>
-
-    ${items.map((a, i) => {
-      const isSelected = i === state.ui.action.menuIndex;
-      const isDisabled = a.enabled === false;
-      return `
-        <button
-          class="hud-menu-button ${isSelected ? "is-selected" : ""} ${isDisabled ? "is-disabled" : ""}"
-          ${isDisabled ? "disabled" : ""}
-        >
-          ${isSelected ? "▶ " : ""}${a.label}
-        </button>
-      `;
-    }).join("")}
+    <div class="hud-card-title">Ability</div>
+    <div class="hud-menu-grid">
+      ${items.map((a, i) => {
+        const isSelected = i === state.ui.action.menuIndex;
+        const isDisabled = a.enabled === false;
+        return `
+          <button
+            class="hud-menu-button ${isSelected ? "is-selected" : ""} ${isDisabled ? "is-disabled" : ""}"
+            ${isDisabled ? "disabled" : ""}
+          >
+            ${isSelected ? "▶ " : ""}${escapeHtml(a.label)}
+          </button>
+        `;
+      }).join("")}
+    </div>
   `;
 }
 
@@ -512,13 +478,14 @@ function renderAttackMenu(state) {
   const items = getSelectedAttackMenuItems(state);
 
   return `
-    <div class="hud-section-title">Attack</div>
-
-    ${items.map((a, i) => `
-      <button class="hud-menu-button ${i === state.ui.action.menuIndex ? "is-selected" : ""}">
-        ${i === state.ui.action.menuIndex ? "▶ " : ""}${a.label}
-      </button>
-    `).join("")}
+    <div class="hud-card-title">Attack</div>
+    <div class="hud-menu-grid">
+      ${items.map((a, i) => `
+        <button class="hud-menu-button ${i === state.ui.action.menuIndex ? "is-selected" : ""}">
+          ${i === state.ui.action.menuIndex ? "▶ " : ""}${escapeHtml(a.label)}
+        </button>
+      `).join("")}
+    </div>
   `;
 }
 
@@ -526,41 +493,42 @@ function renderItemMenu(state) {
   const items = getSelectedItemMenuItems(state);
 
   return `
-    <div class="hud-section-title">Item</div>
-
-    ${items.map((a, i) => {
-      const isSelected = i === state.ui.action.menuIndex;
-      const isDisabled = a.enabled === false;
-      return `
-        <button
-          class="hud-menu-button ${isSelected ? "is-selected" : ""} ${isDisabled ? "is-disabled" : ""}"
-          ${isDisabled ? "disabled" : ""}
-        >
-          ${isSelected ? "▶ " : ""}${a.label}
-        </button>
-      `;
-    }).join("")}
+    <div class="hud-card-title">Item</div>
+    <div class="hud-menu-grid">
+      ${items.map((a, i) => {
+        const isSelected = i === state.ui.action.menuIndex;
+        const isDisabled = a.enabled === false;
+        return `
+          <button
+            class="hud-menu-button ${isSelected ? "is-selected" : ""} ${isDisabled ? "is-disabled" : ""}"
+            ${isDisabled ? "disabled" : ""}
+          >
+            ${isSelected ? "▶ " : ""}${escapeHtml(a.label)}
+          </button>
+        `;
+      }).join("")}
+    </div>
   `;
 }
 
 function renderTargeting() {
   return `
-    <div class="hud-section-title">Targeting</div>
-    <div class="hud-mode-box">Select target</div>
+    <div class="hud-card-title">Targeting</div>
+    <div class="hud-prompt-pill">Select target</div>
   `;
 }
 
 function renderMove() {
   return `
-    <div class="hud-section-title">Move</div>
-    <div class="hud-mode-box">Select tile</div>
+    <div class="hud-card-title">Move</div>
+    <div class="hud-prompt-pill">Select tile</div>
   `;
 }
 
 function renderFacing() {
   return `
-    <div class="hud-section-title">Facing</div>
-    <div class="hud-mode-box">Choose direction</div>
+    <div class="hud-card-title">Facing</div>
+    <div class="hud-prompt-pill">Choose direction</div>
   `;
 }
 
@@ -605,7 +573,7 @@ function renderDeploymentPanel(state) {
         <div>${placedUnit.name}</div>
         <div style="opacity:.7;">Press Esc to remove</div>
       </div>
-      <div class="hud-stat-row">
+      <div class="hud-stat-grid">
         ${stat("SHD", placedUnit.shield)}
         ${stat("CORE", placedUnit.core)}
         ${stat("MV", placedUnit.move)}

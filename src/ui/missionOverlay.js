@@ -67,21 +67,17 @@ function renderDialogueOverlay(state) {
   const dialogue = state?.ui?.dialogue ?? {};
   const lines = Array.isArray(dialogue.lines) ? dialogue.lines : [];
   const index = Math.max(0, Number(dialogue.index ?? 0));
-  const speakerId = String(line?.speakerId ?? "").toLowerCase();
   const speakerName = String(line?.name ?? "Unknown");
-  const isSkye = speakerId === "skye" || speakerName.toLowerCase().includes("skye");
-  const skyeLine = findSkyeLine(lines) ?? (isSkye ? line : null);
-  const otherLine = isSkye ? findOtherLine(lines) : line;
   const missionLabel = dialogue.key ? String(dialogue.key).replaceAll("_", " ") : "mission";
 
   return `
-    <div class="dialogue-rise" role="dialog" aria-label="Dialogue">
+    <div class="dialogue-rise dialogue-rise--active-only" role="dialog" aria-label="Dialogue">
       ${renderSpeakerCard({
         side: "left",
-        label: "Skye",
-        line: skyeLine,
-        active: isSkye,
-        fallbackName: "Skye"
+        label: speakerName,
+        line,
+        active: true,
+        fallbackName: speakerName
       })}
 
       <div class="dialogue-center-card">
@@ -93,14 +89,6 @@ function renderDialogueOverlay(state) {
           <button type="button" class="dialogue-continue-button" data-combat-overlay-action="advance-dialogue">Continue</button>
         </div>
       </div>
-
-      ${renderSpeakerCard({
-        side: "right",
-        label: otherLine?.name ?? "Speaker",
-        line: otherLine,
-        active: !isSkye,
-        fallbackName: otherLine?.name ?? "?"
-      })}
     </div>
   `;
 }
