@@ -17,6 +17,7 @@ const SUPPORTED_PRESETS = new Set([
 
 const SUPPORTED_TRIGGER_TYPES = new Set([
   "onUnitEnterZone",
+  "onInteract",
   "onMissionStart",
   "onRoundStart",
   "onRoundEnd",
@@ -26,7 +27,7 @@ const SUPPORTED_TRIGGER_TYPES = new Set([
   "onStatChange"
 ]);
 
-const ZONE_TRIGGER_TYPES = new Set(["onUnitEnterZone"]);
+const ZONE_TRIGGER_TYPES = new Set(["onUnitEnterZone", "onInteract"]);
 
 export function resetTriggerRuntimeState(state) {
   const mission = ensureMissionState(state);

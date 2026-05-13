@@ -201,6 +201,21 @@ export function createStoryController({
     const body = getStoryBody();
     if (!actor || !body) return false;
 
+    const interactOutcome = fireMissionTriggerEvent("onInteract", { unit: body, actor, body });
+    if (interactOutcome) {
+      if (shouldPauseForDialogue(interactOutcome)) {
+        render();
+        return true;
+      }
+      if (didTriggerInterrupt(interactOutcome)) {
+        render();
+        return true;
+      }
+      if (resolveStoryMissionResult({ timing: "after_interact" })) return true;
+      render();
+      return true;
+    }
+
     if (actor.unitType === "pilot" && !actor.embarked) {
       const boardableMech = (state.units ?? []).find((unit) => canPilotBoardMech(state, actor, unit));
       if (boardableMech) {
@@ -214,6 +229,11 @@ export function createStoryController({
             render();
             return true;
           }
+          if (didTriggerInterrupt(outcome)) {
+            render();
+            return true;
+          }
+          if (resolveStoryMissionResult({ timing: "after_interact" })) return true;
           render();
           return true;
         }
@@ -231,6 +251,11 @@ export function createStoryController({
           render();
           return true;
         }
+        if (didTriggerInterrupt(outcome)) {
+          render();
+          return true;
+        }
+        if (resolveStoryMissionResult({ timing: "after_interact" })) return true;
         render();
         return true;
       }

@@ -38,7 +38,7 @@
     },
     {
       "id": "007_story_mode_demo",
-      "name": "007 Story Mode Demo",
+      "name": "007 Story Mode Demo - Talk and Mount",
       "path": "./data/maps/007_story_mode_demo.json"
     }
   ]

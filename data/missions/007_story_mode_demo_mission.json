@@ -1,60 +1,66 @@
 {
   "id": "007_story_mode_demo_mission",
-  "name": "007 Story Mode Demo Mission",
-  "goalText": "Test free story movement and zone-triggered dialogue without starting combat.",
+  "name": "007 Story Mode Demo - Talk and Mount",
+  "goalText": "Test Story Mode action-to-talk and action-to-enter-mech without starting combat.",
   "mapId": "007_story_mode_demo",
   "mapPath": "./data/maps/007_story_mode_demo.json",
   "startMapId": "007_story_mode_demo",
   "maps": [
     {
       "id": "007_story_mode_demo",
-      "name": "007 Story Mode Demo",
+      "name": "007 Story Mode Demo - Talk and Mount",
       "path": "./data/maps/007_story_mode_demo.json",
       "mapPath": "./data/maps/007_story_mode_demo.json",
       "phaseIndex": 1,
-      "objectiveSummary": "Walk Skye to the exit marker",
+      "objectiveSummary": "Talk to Gabe, then mount Skye's Telum",
       "objectiveCount": 1,
       "mode": "story"
     }
   ],
-  "objectivePreset": "reach_zone",
+  "objectivePreset": "trigger_complete",
   "briefing": {
-    "title": "Story Mode Demo",
-    "text": "Free-walk test map. Move with WASD/arrows. Walk through the marked midpoint to trigger dialogue, then reach the exit marker. Combat should never start.",
+    "title": "Story Mode Demo - Talk and Mount",
+    "text": "Free-walk test map. Move with WASD/arrows. Walk Skye up to Gabe and press Action/Enter to start dialogue. After Gabe says the mech is ready, walk to the rear hatch of Skye's Telum and press Action/Enter to mount up and complete the mission.",
     "objectives": [
-      "Walk to the midpoint dialogue trigger, then reach the exit."
+      "Talk to Gabe with Action/Enter.",
+      "Walk to the rear hatch and press Action/Enter to enter the Telum."
     ]
   },
   "objectives": [
     {
-      "id": "reach_exit",
-      "type": "reach_zone",
+      "id": "mount_up",
+      "type": "trigger_complete",
       "team": "player",
-      "label": "Walk Skye to the exit marker",
-      "briefingText": "Walk Skye to the exit marker",
-      "tiles": [
-        {
-          "x": 10,
-          "y": 3
-        }
-      ]
+      "label": "Talk to Gabe, then mount Skye's Telum",
+      "briefingText": "Talk to Gabe with Action, then walk to the rear hatch and press Action to enter the Telum."
     }
   ],
   "triggers": [
     {
-      "id": "story_demo_mid_dialogue",
-      "name": "Story Demo Midpoint Dialogue",
-      "type": "onUnitEnterZone",
+      "id": "talk_to_gabe",
+      "name": "Talk to Gabe",
+      "type": "onInteract",
       "team": "player",
       "once": true,
       "preset": "start_dialogue",
-      "dialogueKey": "midpoint",
+      "dialogueKey": "gabe_mech_ready",
       "tiles": [
         {
-          "x": 5,
+          "x": 4,
           "y": 3
         }
       ]
+    },
+    {
+      "id": "mount_up_exit",
+      "name": "Mount Up Exit",
+      "type": "onEnterMech",
+      "team": "player",
+      "once": true,
+      "preset": "end_mission",
+      "missionResult": "victory",
+      "completeObjectiveId": "mount_up",
+      "tiles": []
     }
   ],
   "logic": [],
@@ -64,21 +70,26 @@
         {
           "speakerId": "system",
           "name": "Story Mode Demo",
-          "text": "Story map loaded. No rounds, no initiative, no Start Combat prompt. Move Skye freely with WASD or arrows."
+          "text": "Story map loaded. No rounds, no initiative, no Start Combat prompt. Walk Skye to Gabe and press Action/Enter."
         }
       ]
     },
-    "midpoint": {
+    "gabe_mech_ready": {
       "lines": [
         {
-          "speakerId": "eve",
-          "name": "Eve",
-          "text": "That is the trigger. Same mission dialogue system, no combat wrapper required."
+          "speakerId": "gabe",
+          "name": "Gabe",
+          "text": "Morning, Vey. The mech is ready."
         },
         {
           "speakerId": "skye",
           "name": "Skye",
-          "text": "Good. Now let me walk without a committee."
+          "text": "I can barely breathe without my ribs filing a complaint."
+        },
+        {
+          "speakerId": "gabe",
+          "name": "Gabe",
+          "text": "Then keep the breathing efficient. Mount up."
         }
       ]
     },
@@ -87,7 +98,7 @@
         {
           "speakerId": "system",
           "name": "Story Mode Demo",
-          "text": "Victory. Reach-zone objectives work from Story Mode movement."
+          "text": "Victory. Story Mode action dialogue and action-to-enter-mech both resolved without combat."
         }
       ]
     },
@@ -104,7 +115,7 @@
   "results": {
     "victory": {
       "title": "Story Demo Complete",
-      "text": "Story movement, zone dialogue, and reach-zone victory resolved without combat."
+      "text": "Skye talked to Gabe, mounted the Telum with the Action button, and completed the story map without combat."
     },
     "defeat": {
       "title": "Story Demo Failed",

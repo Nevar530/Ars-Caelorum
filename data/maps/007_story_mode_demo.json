@@ -1,6 +1,6 @@
 {
   "id": "007_story_mode_demo",
-  "name": "007 Story Mode Demo",
+  "name": "007 Story Mode Demo - Talk and Mount",
   "mode": "story",
   "width": 12,
   "height": 8,
@@ -16,11 +16,29 @@
     "player": [
       {
         "x": 2,
-        "y": 3
+        "y": 3,
+        "team": "player",
+        "controlType": "PC",
+        "unitType": "pilot"
+      },
+      {
+        "x": 9,
+        "y": 3,
+        "team": "player",
+        "controlType": "PC",
+        "unitType": "mech"
       }
     ],
     "enemy": [],
-    "neutral": []
+    "neutral": [
+      {
+        "x": 5,
+        "y": 3,
+        "team": "neutral",
+        "controlType": "CPU",
+        "unitType": "pilot"
+      }
+    ]
   },
   "startState": {
     "startMode": "authored",
@@ -32,6 +50,27 @@
         "team": "player",
         "controlType": "PC",
         "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_biggs",
+        "pilotInstanceId": "story-gabe",
+        "pilotSpawnId": "neutral_1",
+        "team": "neutral",
+        "controlType": "CPU",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "",
+        "pilotInstanceId": "",
+        "pilotSpawnId": "",
+        "mechDefinitionId": "mech_a",
+        "mechInstanceId": "story-skye-mech",
+        "mechSpawnId": "player_2",
+        "team": "player",
+        "controlType": "PC",
+        "startEmbarked": false,
+        "boardable": true,
+        "locked": false
       }
     ],
     "deploymentCells": [],
@@ -42,34 +81,39 @@
   },
   "objectives": [
     {
-      "id": "reach_exit",
-      "type": "reach_zone",
+      "id": "mount_up",
+      "type": "trigger_complete",
       "team": "player",
-      "label": "Walk Skye to the exit marker",
-      "briefingText": "Walk Skye to the exit marker",
-      "tiles": [
-        {
-          "x": 10,
-          "y": 3
-        }
-      ]
+      "label": "Talk to Gabe, then mount Skye's Telum",
+      "briefingText": "Talk to Gabe with Action, then walk to the rear hatch and press Action to enter the Telum."
     }
   ],
   "triggers": [
     {
-      "id": "story_demo_mid_dialogue",
-      "name": "Story Demo Midpoint Dialogue",
-      "type": "onUnitEnterZone",
+      "id": "talk_to_gabe",
+      "name": "Talk to Gabe",
+      "type": "onInteract",
       "team": "player",
       "once": true,
       "preset": "start_dialogue",
-      "dialogueKey": "midpoint",
+      "dialogueKey": "gabe_mech_ready",
       "tiles": [
         {
-          "x": 5,
+          "x": 4,
           "y": 3
         }
       ]
+    },
+    {
+      "id": "mount_up_exit",
+      "name": "Mount Up Exit",
+      "type": "onEnterMech",
+      "team": "player",
+      "once": true,
+      "preset": "end_mission",
+      "missionResult": "victory",
+      "completeObjectiveId": "mount_up",
+      "tiles": []
     }
   ],
   "logic": [],
@@ -885,7 +929,7 @@
       "terrainTypeId": "concrete",
       "terrainSpriteId": "concrete_001",
       "movementClass": "clear",
-      "spawnId": null,
+      "spawnId": "player_1",
       "detail": {
         "subdivisions": 1,
         "cells": [
@@ -948,7 +992,7 @@
       "terrainTypeId": "concrete",
       "terrainSpriteId": "concrete_001",
       "movementClass": "clear",
-      "spawnId": null,
+      "spawnId": "neutral_1",
       "detail": {
         "subdivisions": 1,
         "cells": [
@@ -1032,7 +1076,7 @@
       "terrainTypeId": "concrete",
       "terrainSpriteId": "concrete_001",
       "movementClass": "clear",
-      "spawnId": null,
+      "spawnId": "player_2",
       "detail": {
         "subdivisions": 1,
         "cells": [

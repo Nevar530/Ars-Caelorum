@@ -16,6 +16,7 @@ const TRIGGER_PRESETS = [
 
 const TRIGGER_TYPES = [
   { value: "onUnitEnterZone", label: "Unit Enters Zone" },
+  { value: "onInteract", label: "Interact / Action Button" },
   { value: "onMissionStart", label: "Mission Start" },
   { value: "onRoundStart", label: "Round Start" },
   { value: "onRoundEnd", label: "Round End" },
