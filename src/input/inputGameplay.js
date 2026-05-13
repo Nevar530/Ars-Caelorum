@@ -1,6 +1,14 @@
 import { clampFocusToBoard, getPathToTile } from "../movement.js";
 import { closeDeploymentList, confirmDeploymentPlacement, getDeploymentPlacedUnitAt, getDeploymentReady, isDeploymentActive, isDeploymentMenuFocused, moveDeploymentListSelection, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "../deployment/deploymentState.js";
-import { moveAbilitySelection, moveAttackSelection, moveItemSelection, updateActionTargetPreview } from "../action.js";
+import {
+  getSelectedAbilityMenuItems,
+  getSelectedAttackMenuItems,
+  getSelectedItemMenuItems,
+  moveAbilitySelection,
+  moveAttackSelection,
+  moveItemSelection,
+  updateActionTargetPreview
+} from "../action.js";
 import { isStoryMode } from "../mode/mapMode.js";
 import {
   getActiveUnit,
@@ -224,68 +232,74 @@ function handleMenuNavigationKeys(key, state, actions) {
   if (state.ui.mode === "action-exit-select") return false;
 
   if (state.ui.mode === "action-ability-select") {
-    if (key === "arrowup" || key === "w") {
-      moveAbilitySelection(state, -1);
-      actions.render();
-      return true;
-    }
-
-    if (key === "arrowdown" || key === "s") {
-      moveAbilitySelection(state, 1);
-      actions.render();
-      return true;
-    }
-
-    return false;
+    return moveActionGridSelection(key, state, actions, getSelectedAbilityMenuItems(state), moveAbilitySelection);
   }
 
   if (state.ui.mode === "action-attack-select") {
-    if (key === "arrowup" || key === "w") {
-      moveAttackSelection(state, -1);
-      actions.render();
-      return true;
-    }
-
-    if (key === "arrowdown" || key === "s") {
-      moveAttackSelection(state, 1);
-      actions.render();
-      return true;
-    }
-
-    return false;
+    return moveActionGridSelection(key, state, actions, getSelectedAttackMenuItems(state), moveAttackSelection);
   }
 
   if (state.ui.mode === "action-item-select") {
-    if (key === "arrowup" || key === "w") {
-      moveItemSelection(state, -1);
-      actions.render();
-      return true;
-    }
-
-    if (key === "arrowdown" || key === "s") {
-      moveItemSelection(state, 1);
-      actions.render();
-      return true;
-    }
-
-    return false;
+    return moveActionGridSelection(key, state, actions, getSelectedItemMenuItems(state), moveItemSelection);
   }
 
   if (!state.ui.commandMenu.open || state.ui.mode !== "idle") return false;
 
   if (key === "arrowup" || key === "w") {
-    actions.moveMenuSelection(-1);
+    if (actions.moveMenuSelectionGrid) actions.moveMenuSelectionGrid("up"); else actions.moveMenuSelection(-2);
     return true;
   }
 
   if (key === "arrowdown" || key === "s") {
-    actions.moveMenuSelection(1);
+    if (actions.moveMenuSelectionGrid) actions.moveMenuSelectionGrid("down"); else actions.moveMenuSelection(2);
+    return true;
+  }
+
+  if (key === "arrowleft" || key === "a") {
+    if (actions.moveMenuSelectionGrid) actions.moveMenuSelectionGrid("left"); else actions.moveMenuSelection(-1);
+    return true;
+  }
+
+  if (key === "arrowright" || key === "d") {
+    if (actions.moveMenuSelectionGrid) actions.moveMenuSelectionGrid("right"); else actions.moveMenuSelection(1);
     return true;
   }
 
   return false;
 }
 
+
+function moveActionGridSelection(key, state, actions, items, fallbackMover) {
+  const count = Array.isArray(items) ? items.length : 0;
+  if (!count) return false;
+
+  let direction = null;
+  if (key === "arrowup" || key === "w") direction = "up";
+  else if (key === "arrowdown" || key === "s") direction = "down";
+  else if (key === "arrowleft" || key === "a") direction = "left";
+  else if (key === "arrowright" || key === "d") direction = "right";
+  else return false;
+
+  const columns = 2;
+  const current = Math.max(0, Math.min(Number(state.ui.action.menuIndex ?? 0), count - 1));
+  let next = current;
+
+  if (direction === "left") next = current % columns === 0 ? Math.min(count - 1, current + columns - 1) : current - 1;
+  else if (direction === "right") next = current % columns === columns - 1 || current + 1 >= count ? current - (current % columns) : current + 1;
+  else if (direction === "up") next = current - columns >= 0 ? current - columns : current;
+  else if (direction === "down") next = current + columns < count ? current + columns : current;
+
+  if (next === current) {
+    // Preserve old wrap behavior for single-column or short lists at edges.
+    const delta = direction === "up" || direction === "left" ? -1 : 1;
+    fallbackMover(state, delta);
+  } else {
+    state.ui.action.menuIndex = next;
+  }
+
+  actions.render();
+  return true;
+}
 
 function handleStoryModeKeys(key, state, actions) {
   if (!isStoryMode(state)) return false;

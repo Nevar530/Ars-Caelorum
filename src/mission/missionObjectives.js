@@ -5,7 +5,7 @@
 
 import { getControlledBodyForPilot, getPilotActors, isUnitPresentOnBoard } from "../actors/actorResolver.js";
 
-const OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds", "trigger_complete"]);
+const OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds", "trigger_complete", "protect_unit"]);
 
 export function resetObjectiveRuntimeState(state) {
   const mission = getMissionStateObject(state);
@@ -36,6 +36,12 @@ export function evaluateObjectiveMissionResult(state, options = {}) {
     return evaluateFallbackPilotElimination(state, mission);
   }
 
+  const protectedUnitDefeat = evaluateProtectedUnitDefeat(state, objectives);
+  if (protectedUnitDefeat) {
+    mission.result = protectedUnitDefeat;
+    return mission.result;
+  }
+
   const runtime = ensureObjectiveRuntimeState(state);
   const timing = options?.timing ?? "any";
 
@@ -48,7 +54,7 @@ export function evaluateObjectiveMissionResult(state, options = {}) {
     }
   }
 
-  const completeObjectives = objectives.filter((objective) => objective?.id && OBJECTIVE_TYPES.has(objective.type));
+  const completeObjectives = objectives.filter((objective) => isVictoryObjective(objective));
   if (completeObjectives.length && completeObjectives.every((objective) => runtime.completed[objective.id])) {
     mission.result = "victory";
     return mission.result;
@@ -108,6 +114,7 @@ function evaluateSingleObjective(state, objective, runtime, timing) {
       return updateSurviveProgress(state, objective, runtime);
 
     case "trigger_complete":
+    case "protect_unit":
       return false;
 
     default:
@@ -152,6 +159,27 @@ function evaluateForcedDefeat(state) {
   const playerPilots = getActivePilotsForTeam(state, "player");
   if (playerPilots.length > 0 && playerPilots.every(isUnitOutOfPlay)) return "defeat";
   return null;
+}
+
+function evaluateProtectedUnitDefeat(state, objectives) {
+  for (const objective of Array.isArray(objectives) ? objectives : []) {
+    if (objective?.type !== "protect_unit") continue;
+    const targetId = String(objective?.targetUnitId ?? objective?.unitId ?? objective?.targetPilotInstanceId ?? "").trim();
+    if (!targetId) continue;
+    const unit = findUnitByInstanceId(state, targetId);
+    if (!unit || isUnitOutOfPlay(unit)) return "defeat";
+  }
+  return null;
+}
+
+function isVictoryObjective(objective) {
+  return Boolean(objective?.id && OBJECTIVE_TYPES.has(objective.type) && objective.type !== "protect_unit");
+}
+
+function findUnitByInstanceId(state, instanceId) {
+  const id = String(instanceId ?? "").trim();
+  if (!id) return null;
+  return (Array.isArray(state?.units) ? state.units : []).find((unit) => unit?.instanceId === id || unit?.id === id) ?? null;
 }
 
 function evaluateFallbackPilotElimination(state, mission) {

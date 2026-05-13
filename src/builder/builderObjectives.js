@@ -12,7 +12,8 @@ const OBJECTIVE_TYPES = [
   { value: "reach_zone", label: "Reach Zone", needsZone: true },
   { value: "hold_zone", label: "Hold Zone for Rounds", needsZone: true },
   { value: "survive_rounds", label: "Survive Rounds", needsZone: false },
-  { value: "trigger_complete", label: "Trigger Event", needsZone: false }
+  { value: "trigger_complete", label: "Trigger Event", needsZone: false },
+  { value: "protect_unit", label: "Protect Unit / Fail if Down", needsZone: false }
 ];
 
 const OBJECTIVE_TYPE_SET = new Set(OBJECTIVE_TYPES.map((entry) => entry.value));
@@ -25,6 +26,7 @@ function createDefaultObjectiveTool() {
     briefingText: getDefaultObjectiveBriefingText("defeat_all", "enemy", 3),
     team: "player",
     targetTeam: "enemy",
+    targetUnitId: "",
     roundsRequired: 3,
     selectedIndex: -1,
     paintMode: "add"
@@ -45,6 +47,7 @@ export function ensureObjectiveToolSettings(builderState) {
   if (!tool.briefingText) tool.briefingText = getDefaultObjectiveBriefingText(tool.type, tool.targetTeam, tool.roundsRequired);
   if (!tool.team) tool.team = "player";
   if (!tool.targetTeam) tool.targetTeam = "enemy";
+  tool.targetUnitId = String(tool.targetUnitId ?? "").trim();
   if (!Number.isInteger(Number(tool.roundsRequired)) || Number(tool.roundsRequired) < 1) tool.roundsRequired = 3;
   if (tool.paintMode !== "erase") tool.paintMode = "add";
   if (!Number.isInteger(Number(tool.selectedIndex))) tool.selectedIndex = -1;
@@ -60,6 +63,7 @@ export function updateObjectiveToolFromFields(builderState, root, options = {}) 
     type: tool.type ?? "defeat_all",
     targetTeam: tool.targetTeam ?? "enemy",
     team: tool.team ?? "player",
+    targetUnitId: tool.targetUnitId ?? "",
     roundsRequired: Math.max(1, Math.floor(Number(tool.roundsRequired ?? 3) || 3)),
     label: tool.label ?? "",
     briefingText: tool.briefingText ?? ""
@@ -71,6 +75,7 @@ export function updateObjectiveToolFromFields(builderState, root, options = {}) 
   tool.id = sanitizeId(readField(root, "objective-id", tool.id));
   tool.team = readField(root, "objective-team", tool.team).trim() || "player";
   tool.targetTeam = readField(root, "objective-target-team", tool.targetTeam).trim() || "enemy";
+  tool.targetUnitId = readField(root, "objective-target-unit-id", tool.targetUnitId).trim();
   tool.roundsRequired = Math.max(1, Math.floor(Number(readField(root, "objective-rounds", tool.roundsRequired)) || 1));
 
   const incomingLabel = readField(root, "objective-label", tool.label).trim();
@@ -81,7 +86,8 @@ export function updateObjectiveToolFromFields(builderState, root, options = {}) 
   const defaultDrivingFieldChanged = [
     "objective-type",
     "objective-target-team",
-    "objective-rounds"
+    "objective-rounds",
+    "objective-target-unit-id"
   ].includes(changedField);
 
   const labelWasDefault = !incomingLabel || incomingLabel === previousDefaults.label;
@@ -173,6 +179,7 @@ export function selectObjectiveDefinition(builderState, index) {
   tool.briefingText = objective.briefingText ?? objective.label ?? tool.label;
   tool.team = objective.team ?? "player";
   tool.targetTeam = objective.targetTeam ?? "enemy";
+  tool.targetUnitId = objective.targetUnitId ?? objective.unitId ?? objective.targetPilotInstanceId ?? "";
   tool.roundsRequired = objective.roundsRequired ?? objective.rounds ?? 3;
 
   return { ok: true, message: `Selected objective ${objective.id ?? cleanIndex + 1}.` };
@@ -311,6 +318,8 @@ function buildObjectiveFromTool(tool, id) {
     objective.roundsRequired = Math.max(1, Math.floor(Number(tool.roundsRequired) || 1));
   } else if (type === "trigger_complete") {
     objective.team = tool.team || "player";
+  } else if (type === "protect_unit") {
+    objective.targetUnitId = tool.targetUnitId || "";
   }
 
   return objective;
@@ -351,6 +360,7 @@ function getDefaultObjectiveLabel(type, targetTeam = "enemy", roundsRequired = 3
     case "hold_zone": return `Hold zone for ${rounds} rounds`;
     case "survive_rounds": return `Survive ${rounds} rounds`;
     case "trigger_complete": return "Reach trigger zone";
+    case "protect_unit": return "Protect selected unit";
     case "defeat_all":
     default:
       return `Defeat all ${targetTeam || "enemy"} units`;
@@ -364,6 +374,7 @@ function getDefaultObjectiveBriefingText(type, targetTeam = "enemy", roundsRequi
     case "hold_zone": return `Hold the marked zone for ${rounds} rounds.`;
     case "survive_rounds": return `Survive for ${rounds} rounds.`;
     case "trigger_complete": return "Move a player unit into the trigger zone.";
+    case "protect_unit": return "If the selected unit is disabled or destroyed, the mission fails.";
     case "defeat_all":
     default:
       return `Defeat all ${targetTeam || "enemy"} units.`;

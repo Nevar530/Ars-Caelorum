@@ -121,8 +121,8 @@ function getSetupSections() {
 function getCommandMenuSections() {
   return [
     section("Command Menu", [
-      { key: "W / S", label: "Move command selection" },
-      { key: "Arrow Up / Down", label: "Move command selection" },
+      { key: "W / A / S / D", label: "Move command selection in grid" },
+      { key: "Arrow Keys", label: "Move command selection in grid" },
       { key: "Enter / Space", label: "Confirm selected command" },
       { key: "Esc", label: "Close command menu" }
     ]),

@@ -1005,13 +1005,17 @@ function renderUnitInspectorTools(builderState, appState) {
   return `
     <div class="builder-inspector-card builder-unit-tool-card">
       <div class="builder-field-label">Unit / Start Assignment</div>
-      <div class="builder-inspector-note">Team and control are inferred from the selected spawn: player=PC, enemy=CPU, neutral=CPU. Export still writes explicit team/controlType.</div>
+      <div class="builder-inspector-note">Team is inferred from the selected spawn. Control is authorable: use PC for player-controlled allies, CPU for AI-controlled allies or enemies.</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Start Kind</span>
         <select data-builder-field="unit-start-type"${editable ? "" : " disabled"}>${startTypeOptions}</select>
       </label>
       ${pilotFields}
       ${emptyMechFields}
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Control</span>
+        <select data-builder-field="unit-control-type"${editable ? "" : " disabled"}>${controlOptions}</select>
+      </label>
       <label class="builder-form-field builder-form-field-compact">
         <span>Instance Prefix</span>
         <input type="text" data-builder-field="unit-instance-prefix" value="${escapeHtml(tool.instancePrefix ?? "")}" placeholder="auto" spellcheck="false"${editable ? "" : " disabled"}>
@@ -1180,6 +1184,28 @@ function buildNumberOptions(min, max, selectedValue, labeler = (value) => value)
 
 
 
+
+function getObjectiveTargetUnitOptions(builderState) {
+  const starts = getUnitStartAssignments(builderState);
+  const options = [];
+  for (const entry of Array.isArray(starts) ? starts : []) {
+    if (!entry) continue;
+    if (entry.pilotInstanceId) {
+      options.push({
+        id: entry.pilotInstanceId,
+        label: `${entry.pilotDefinitionId || entry.pilotInstanceId} · pilot · ${entry.team || "player"}/${entry.controlType || "PC"}`
+      });
+    }
+    if (entry.mechInstanceId) {
+      options.push({
+        id: entry.mechInstanceId,
+        label: `${entry.mechDefinitionId || entry.mechInstanceId} · mech · ${entry.team || "player"}/${entry.controlType || "PC"}`
+      });
+    }
+  }
+  return options;
+}
+
 function renderObjectiveInspectorTools(builderState, appState) {
   const tool = ensureObjectiveToolSettings(builderState) ?? {};
   const editable = builderState.workspaceMode === "builder-map";
@@ -1187,6 +1213,7 @@ function renderObjectiveInspectorTools(builderState, appState) {
   const typeOptions = buildObjectiveTypeOptions(tool.type ?? "defeat_all");
   const teamOptions = buildSimpleOptions(["player", "enemy", "neutral"], tool.team ?? "player");
   const targetTeamOptions = buildSimpleOptions(["enemy", "player", "neutral"], tool.targetTeam ?? "enemy");
+  const targetUnitOptions = buildObjectOptions(getObjectiveTargetUnitOptions(builderState), tool.targetUnitId ?? "", "No units authored", true, "Choose protected unit");
   const needsZone = objectiveTypeNeedsZone(tool.type);
   const selectedObjective = Number.isInteger(Number(tool.selectedIndex)) && objectives[Number(tool.selectedIndex)]
     ? objectives[Number(tool.selectedIndex)]
@@ -1213,6 +1240,13 @@ function renderObjectiveInspectorTools(builderState, appState) {
       <label class="builder-form-field builder-form-field-compact">
         <span>Rounds</span>
         <input type="number" data-builder-field="objective-rounds" value="${escapeHtml(tool.roundsRequired ?? 3)}" min="1" max="99" step="1"${editable ? "" : " disabled"}>
+      </label>
+    ` : "";
+
+  const targetUnitFields = tool.type === "protect_unit" ? `
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Protected Unit</span>
+        <select data-builder-field="objective-target-unit-id"${editable ? "" : " disabled"}>${targetUnitOptions}</select>
       </label>
     ` : "";
 
@@ -1246,6 +1280,7 @@ function renderObjectiveInspectorTools(builderState, appState) {
       </label>
       ${targetTeamFields}
       ${teamFields}
+      ${targetUnitFields}
       ${roundFields}
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="add-objective"${editable ? "" : " disabled"}>Add Objective</button>
@@ -1271,7 +1306,9 @@ function renderObjectiveList(objectives, selectedIndex) {
         ? 'rounds: ' + (objective?.roundsRequired ?? objective?.rounds ?? 0)
         : objective?.type === 'trigger_complete'
           ? 'completed by trigger'
-          : 'zone tiles: ' + tileCount + (objective?.type === 'hold_zone' ? ' · rounds: ' + (objective?.roundsRequired ?? 0) : '');
+          : objective?.type === 'protect_unit'
+            ? 'protect: ' + (objective?.targetUnitId || 'missing unit')
+            : 'zone tiles: ' + tileCount + (objective?.type === 'hold_zone' ? ' · rounds: ' + (objective?.roundsRequired ?? 0) : '');
     return '<div class="builder-objective-row' + selected + '">' +
       '<button type="button" class="builder-objective-main" data-builder-action="select-objective:' + index + '">' +
         '<strong>' + escapeHtml((index + 1) + '. ' + (objective?.label ?? objective?.id ?? 'Objective')) + '</strong>' +

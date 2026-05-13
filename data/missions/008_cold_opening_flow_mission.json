@@ -32,8 +32,8 @@
       "path": "./data/maps/010_hospital_garage_escape.json",
       "mapPath": "./data/maps/010_hospital_garage_escape.json",
       "phaseIndex": 3,
-      "objectiveSummary": "Reach Eve\u2019s car",
-      "objectiveCount": 1,
+      "objectiveSummary": "Keep Skye alive; reach Eve\u2019s car",
+      "objectiveCount": 2,
       "mode": "combat"
     },
     {

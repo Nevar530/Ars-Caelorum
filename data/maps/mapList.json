@@ -58,7 +58,9 @@
       "id": "010_hospital_garage_escape",
       "name": "010 Underground Parking Garage Escape",
       "path": "./data/maps/010_hospital_garage_escape.json",
-      "mode": "combat"
+      "mode": "combat",
+      "objectiveSummary": "Keep Skye alive; reach Eve\u2019s car",
+      "objectiveCount": 2
     },
     {
       "id": "011_gabe_office",

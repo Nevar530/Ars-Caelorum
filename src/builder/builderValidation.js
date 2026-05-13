@@ -11,7 +11,7 @@ const VALID_EDGE_SIDES = new Set(["ne", "se", "sw", "nw"]);
 const VALID_TEAMS = new Set(["player", "enemy", "neutral"]);
 const VALID_CONTROL_TYPES = new Set(["PC", "CPU"]);
 const DEFAULT_BRIEFING_TEXT = "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.";
-const VALID_OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds", "trigger_complete"]);
+const VALID_OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds", "trigger_complete", "protect_unit"]);
 const VALID_TRIGGER_TYPES = new Set(["onUnitEnterZone", "onMissionStart", "onRoundStart", "onRoundEnd", "onEnterMech", "onExitMech", "onInteract", "onHitTarget", "onStatChange"]);
 const VALID_TRIGGER_PRESETS = new Set(["load_map", "change_unit_stat", "complete_objective", "end_mission", "start_dialogue", "run_logic"]);
 const VALID_TRIGGER_STATS = new Set(["core", "shield"]);
@@ -315,6 +315,7 @@ function validateMissionShell(result, map, mission) {
 
 function validateObjectives(result, map, objectives) {
   const ids = new Set();
+  const deployedUnitIds = getDeploymentInstanceIds(map);
   const width = getMapWidth(map);
   const height = getMapHeight(map);
 
@@ -355,11 +356,27 @@ function validateObjectives(result, map, objectives) {
       }
     }
 
+    if (type === "protect_unit") {
+      const targetUnitId = cleanString(objective.targetUnitId ?? objective.unitId ?? objective.targetPilotInstanceId);
+      if (!targetUnitId) addError(result, "OBJECTIVE_PROTECT_UNIT_MISSING", `${label} needs a protected unit instance id.`);
+      else if (!deployedUnitIds.has(targetUnitId)) addError(result, "OBJECTIVE_PROTECT_UNIT_BAD", `${label} protects missing unit instance "${targetUnitId}".`);
+    }
+
     if (type === "hold_zone" || type === "survive_rounds") {
       const rounds = Number(objective.roundsRequired ?? objective.rounds ?? 0);
       if (!Number.isInteger(rounds) || rounds < 1) addError(result, "OBJECTIVE_ROUNDS_BAD", `${label} needs roundsRequired of 1 or more.`);
     }
   }
+}
+
+function getDeploymentInstanceIds(map) {
+  const ids = new Set();
+  const deployments = Array.isArray(map?.startState?.deployments) ? map.startState.deployments : [];
+  for (const entry of deployments) {
+    if (entry?.pilotInstanceId) ids.add(String(entry.pilotInstanceId));
+    if (entry?.mechInstanceId) ids.add(String(entry.mechInstanceId));
+  }
+  return ids;
 }
 
 function validateTriggers(result, map, mission, objectives) {

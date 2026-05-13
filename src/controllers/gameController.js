@@ -245,6 +245,26 @@ export function createGameController({
     render();
   }
 
+  function moveMenuSelectionGrid(direction) {
+    const menu = state.ui.commandMenu;
+    if (!menu.open) return;
+
+    const count = menu.items.length;
+    if (!count) return;
+
+    const columns = 2;
+    const current = Math.max(0, Math.min(Number(menu.index ?? 0), count - 1));
+    let next = current;
+
+    if (direction === "left") next = current % columns === 0 ? Math.min(count - 1, current + columns - 1) : current - 1;
+    else if (direction === "right") next = current % columns === columns - 1 || current + 1 >= count ? current - (current % columns) : current + 1;
+    else if (direction === "up") next = current - columns >= 0 ? current - columns : current;
+    else if (direction === "down") next = current + columns < count ? current + columns : current;
+
+    menu.index = Math.max(0, Math.min(next, count - 1));
+    render();
+  }
+
   function animateRotation(direction) {
     if (state.ui.viewMode !== "iso") return;
     if (state.camera.isTurning) return;
@@ -338,6 +358,7 @@ export function createGameController({
     openCommandMenu,
     closeCommandMenu,
     moveMenuSelection,
+    moveMenuSelectionGrid,
     animateRotation,
     toggleHelpDrawer,
     closeHelpDrawer,

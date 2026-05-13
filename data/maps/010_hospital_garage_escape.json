@@ -91,6 +91,13 @@
   },
   "objectives": [
     {
+      "id": "protect_skye",
+      "type": "protect_unit",
+      "targetUnitId": "garage-skye",
+      "label": "Keep Skye alive",
+      "briefingText": "If Skye is disabled, the escape fails."
+    },
+    {
       "id": "reach_eves_car",
       "type": "trigger_complete",
       "team": "player",
