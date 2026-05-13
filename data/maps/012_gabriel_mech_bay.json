@@ -47,7 +47,7 @@
         "startEmbarked": false
       },
       {
-        "pilotDefinitionId": "pilot_wedge",
+        "pilotDefinitionId": "pilot_eve",
         "pilotInstanceId": "bay-eve",
         "pilotSpawnId": "neutral_1",
         "mechDefinitionId": "mech_d",
@@ -2956,8 +2956,8 @@
       "x": 8,
       "y": 9,
       "elevation": 0,
-      "terrainTypeId": "concrete",
-      "terrainSpriteId": "concrete_001",
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
       "movementClass": "clear",
       "spawnId": null,
       "detail": {

@@ -1781,8 +1781,8 @@
       "x": 10,
       "y": 5,
       "elevation": 0,
-      "terrainTypeId": "grass",
-      "terrainSpriteId": "grass_001",
+      "terrainTypeId": "sand",
+      "terrainSpriteId": "sand_001",
       "movementClass": "clear",
       "spawnId": null,
       "detail": {

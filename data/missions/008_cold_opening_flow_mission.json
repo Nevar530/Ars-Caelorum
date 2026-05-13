@@ -194,7 +194,7 @@
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/pilot_001_NE.png",
+          "portrait": "art/pilot/eve_NE.png",
           "text": "Skye! There she is. Tragic, but alive. Gabe sends his regards."
         },
         {
@@ -206,7 +206,7 @@
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/pilot_001_NE.png",
+          "portrait": "art/pilot/eve_NE.png",
           "text": "Good. Elevator. Try not to bleed on anything expensive. Again."
         }
       ]
@@ -223,7 +223,7 @@
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/pilot_001_NE.png",
+          "portrait": "art/pilot/eve_NE.png",
           "text": "You already bled all over it. Keep moving. Car is across the garage."
         },
         {
@@ -235,7 +235,7 @@
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/pilot_001_NE.png",
+          "portrait": "art/pilot/eve_NE.png",
           "text": "See? They are using their serious voices. Adorable."
         }
       ]
@@ -282,7 +282,7 @@
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/pilot_001_NE.png",
+          "portrait": "art/pilot/eve_NE.png",
           "text": "He says the romantic stuff first. Wait until he gets to scheduling."
         },
         {
@@ -305,7 +305,7 @@
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/pilot_001_NE.png",
+          "portrait": "art/pilot/eve_NE.png",
           "text": "Might as well. You bled all over it."
         },
         {
@@ -317,7 +317,7 @@
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/pilot_001_NE.png",
+          "portrait": "art/pilot/eve_NE.png",
           "text": "Subtlety was boring and owed me money."
         },
         {
@@ -340,7 +340,7 @@
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/pilot_001_NE.png",
+          "portrait": "art/pilot/eve_NE.png",
           "text": "You look better when the machine is doing the standing."
         },
         {
@@ -369,7 +369,7 @@
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/pilot_001_NE.png",
+          "portrait": "art/pilot/eve_NE.png",
           "text": "I heard \u201cshow off responsibly.\u201d"
         },
         {

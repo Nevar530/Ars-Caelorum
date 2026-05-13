@@ -51,7 +51,7 @@
         "startEmbarked": false
       },
       {
-        "pilotDefinitionId": "pilot_wedge",
+        "pilotDefinitionId": "pilot_eve",
         "pilotInstanceId": "garage-eve",
         "pilotSpawnId": "player_2",
         "team": "player",
@@ -2304,8 +2304,8 @@
       "x": 13,
       "y": 6,
       "elevation": 0,
-      "terrainTypeId": "asphalt",
-      "terrainSpriteId": "asphalt_001",
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
       "movementClass": "clear",
       "spawnId": null,
       "detail": {
@@ -2619,8 +2619,8 @@
       "x": 13,
       "y": 7,
       "elevation": 0,
-      "terrainTypeId": "asphalt",
-      "terrainSpriteId": "asphalt_001",
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
       "movementClass": "clear",
       "spawnId": null,
       "detail": {

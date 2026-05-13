@@ -50,7 +50,7 @@
         "startEmbarked": true
       },
       {
-        "pilotDefinitionId": "pilot_wedge",
+        "pilotDefinitionId": "pilot_eve",
         "pilotInstanceId": "spar-eve",
         "pilotSpawnId": "player_2",
         "mechDefinitionId": "mech_d",
