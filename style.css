@@ -3574,3 +3574,86 @@ button:disabled {
     grid-template-columns: minmax(80px, .8fr) minmax(70px, 1fr) minmax(70px, 1fr);
   }
 }
+
+/* =========================================
+   CENTER HUD BALANCE PASS - OBJECTIVE 30 / COMMAND 70
+   Console-safe: no scrolling, no redundant mode labels.
+========================================= */
+.hud-flow-head {
+  justify-content: flex-start;
+}
+
+.hud-flow-head b {
+  display: none;
+}
+
+.hud-flow-grid {
+  grid-template-columns: minmax(150px, 0.30fr) minmax(330px, 0.70fr);
+}
+
+.hud-flow-grid--full {
+  height: 100%;
+}
+
+.hud-flow-column {
+  grid-template-rows: 12px 1fr;
+}
+
+.hud-flow-column--commands {
+  grid-template-rows: 1fr;
+}
+
+.hud-flow-column--commands .hud-column-body {
+  align-content: stretch;
+}
+
+.hud-flow-column--commands .hud-card-title {
+  display: none;
+}
+
+.hud-command-status {
+  height: 100%;
+  grid-template-rows: 1fr;
+  gap: 0;
+}
+
+.hud-command-status--single {
+  align-items: stretch;
+}
+
+.hud-command-label {
+  display: none;
+}
+
+.hud-flow-column--commands .hud-command-button,
+.hud-flow-column--commands .hud-command-button.compact {
+  min-height: 32px;
+  max-height: none;
+  height: 100%;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.hud-flow-column--commands .hud-menu-grid {
+  height: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(26px, 1fr);
+  align-content: stretch;
+}
+
+.hud-flow-column--commands .hud-menu-button {
+  min-height: 26px;
+  max-height: none;
+  height: 100%;
+}
+
+.hud-flow-column--commands .hud-prompt-pill {
+  height: 100%;
+  min-height: 44px;
+}
+
+@media (max-width: 1280px) {
+  .hud-flow-grid {
+    grid-template-columns: minmax(130px, 0.32fr) minmax(260px, 0.68fr);
+  }
+}

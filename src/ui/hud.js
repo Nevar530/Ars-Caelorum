@@ -187,7 +187,6 @@ function renderCenterPanel(state) {
 
       return renderHudFlowGrid({
         header: "Deployment",
-        status: ready ? "Ready" : "Set Units",
         objectives: objectiveHtml,
         commands: `
           ${commandHtml}
@@ -198,7 +197,6 @@ function renderCenterPanel(state) {
 
     return renderHudFlowGrid({
       header: "Combat Ready",
-      status: "Init Off",
       objectives: `<div class="hud-compact-line muted">No active combat round.</div>`,
       commands: `<button class="hud-command-button" data-hud-action="start-combat">Start Combat</button>`
     });
@@ -207,7 +205,6 @@ function renderCenterPanel(state) {
   const commandHtml = renderCombatCommandBlock(state);
   return renderHudFlowGrid({
     header: getCombatHeader(state),
-    status: String(state.ui.mode ?? "idle"),
     objectives: renderObjectiveSummary(state) || `<div class="hud-compact-line muted">No objectives.</div>`,
     commands: commandHtml
   });
@@ -223,8 +220,7 @@ function renderCombatCommandBlock(state) {
   if (state.ui.mode === "face") return renderFacing(state);
 
   return `
-    <div class="hud-command-status">
-      <div class="hud-command-label">Awaiting Command</div>
+    <div class="hud-command-status hud-command-status--single">
       <button class="hud-command-button" data-hud-action="open-menu">Open Menu</button>
     </div>
   `;
@@ -239,19 +235,19 @@ function getCombatHeader(state) {
   return `Round ${state.turn.round} · ${phaseLabel}`;
 }
 
-function renderHudFlowGrid({ header, status, objectives, commands }) {
+function renderHudFlowGrid({ header, objectives, commands }) {
+  const head = header
+    ? `<div class="hud-flow-head"><span>${escapeHtml(header)}</span></div>`
+    : "";
+
   return `
-    <div class="hud-flow-head">
-      <span>${escapeHtml(header)}</span>
-      <b>${escapeHtml(status)}</b>
-    </div>
-    <div class="hud-flow-grid">
+    ${head}
+    <div class="hud-flow-grid ${header ? "" : "hud-flow-grid--full"}">
       <div class="hud-flow-column hud-flow-column--objectives">
         <div class="hud-column-title">Objective</div>
         <div class="hud-column-body">${objectives}</div>
       </div>
       <div class="hud-flow-column hud-flow-column--commands">
-        <div class="hud-column-title">Command</div>
         <div class="hud-column-body">${commands}</div>
       </div>
     </div>
@@ -259,16 +255,11 @@ function renderHudFlowGrid({ header, status, objectives, commands }) {
 }
 
 function renderStoryModePanel(state) {
-  const activeBody = getActiveBody(state);
-  const label = activeBody?.unitType === "mech" ? "Telum" : "Pilot";
-
   return renderHudFlowGrid({
-    header: "Story Mode",
-    status: `${label}: ${activeBody?.name ?? "None"}`,
+    header: "",
     objectives: renderObjectiveSummary(state) || `<div class="hud-compact-line muted">Explore the area.</div>`,
     commands: `
-      <div class="hud-command-status">
-        <div class="hud-command-label">Action / Interact</div>
+      <div class="hud-command-status hud-command-status--single">
         <button class="hud-command-button" data-hud-action="story-interact">Interact</button>
       </div>
     `
@@ -418,7 +409,6 @@ function renderCommandMenu(state) {
   const menu = state.ui.commandMenu;
 
   return `
-    <div class="hud-card-title">Command</div>
     <div class="hud-menu-grid">
     ${menu.items.map((item, i) => {
       const isDisabled = isCommandMenuItemDisabled(state, item);
