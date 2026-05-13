@@ -68,7 +68,9 @@
       "mapPath": "./data/maps/003_test.json",
       "phaseIndex": 1,
       "objectiveSummary": "Defeat all enemy pilots",
-      "objectiveCount": 1
+      "objectiveCount": 1,
+      "mode": "combat"
     }
-  ]
+  ],
+  "mode": "combat"
 }

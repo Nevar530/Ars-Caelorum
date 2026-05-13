@@ -1,0 +1,115 @@
+{
+  "id": "007_story_mode_demo_mission",
+  "name": "007 Story Mode Demo Mission",
+  "goalText": "Test free story movement and zone-triggered dialogue without starting combat.",
+  "mapId": "007_story_mode_demo",
+  "mapPath": "./data/maps/007_story_mode_demo.json",
+  "startMapId": "007_story_mode_demo",
+  "maps": [
+    {
+      "id": "007_story_mode_demo",
+      "name": "007 Story Mode Demo",
+      "path": "./data/maps/007_story_mode_demo.json",
+      "mapPath": "./data/maps/007_story_mode_demo.json",
+      "phaseIndex": 1,
+      "objectiveSummary": "Walk Skye to the exit marker",
+      "objectiveCount": 1,
+      "mode": "story"
+    }
+  ],
+  "objectivePreset": "reach_zone",
+  "briefing": {
+    "title": "Story Mode Demo",
+    "text": "Free-walk test map. Move with WASD/arrows. Walk through the marked midpoint to trigger dialogue, then reach the exit marker. Combat should never start.",
+    "objectives": [
+      "Walk to the midpoint dialogue trigger, then reach the exit."
+    ]
+  },
+  "objectives": [
+    {
+      "id": "reach_exit",
+      "type": "reach_zone",
+      "team": "player",
+      "label": "Walk Skye to the exit marker",
+      "briefingText": "Walk Skye to the exit marker",
+      "tiles": [
+        {
+          "x": 10,
+          "y": 3
+        }
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "story_demo_mid_dialogue",
+      "name": "Story Demo Midpoint Dialogue",
+      "type": "onUnitEnterZone",
+      "team": "player",
+      "once": true,
+      "preset": "start_dialogue",
+      "dialogueKey": "midpoint",
+      "tiles": [
+        {
+          "x": 5,
+          "y": 3
+        }
+      ]
+    }
+  ],
+  "logic": [],
+  "dialogue": {
+    "intro": {
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "Story Mode Demo",
+          "text": "Story map loaded. No rounds, no initiative, no Start Combat prompt. Move Skye freely with WASD or arrows."
+        }
+      ]
+    },
+    "midpoint": {
+      "lines": [
+        {
+          "speakerId": "eve",
+          "name": "Eve",
+          "text": "That is the trigger. Same mission dialogue system, no combat wrapper required."
+        },
+        {
+          "speakerId": "skye",
+          "name": "Skye",
+          "text": "Good. Now let me walk without a committee."
+        }
+      ]
+    },
+    "victory": {
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "Story Mode Demo",
+          "text": "Victory. Reach-zone objectives work from Story Mode movement."
+        }
+      ]
+    },
+    "defeat": {
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "Story Mode Demo",
+          "text": "Defeat path is available, but this demo should not use it."
+        }
+      ]
+    }
+  },
+  "results": {
+    "victory": {
+      "title": "Story Demo Complete",
+      "text": "Story movement, zone dialogue, and reach-zone victory resolved without combat."
+    },
+    "defeat": {
+      "title": "Story Demo Failed",
+      "text": "Story demo failed."
+    }
+  },
+  "mode": "story"
+}

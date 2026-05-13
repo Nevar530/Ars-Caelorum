@@ -4498,5 +4498,6 @@
         "startEmbarked": true
       }
     ]
-  }
+  },
+  "mode": "combat"
 }

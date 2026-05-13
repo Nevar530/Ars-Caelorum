@@ -1,4 +1,5 @@
 import { MAP_CONFIG } from "../config.js";
+import { normalizeMapMode } from "../mode/mapMode.js";
 import {
   applyDetailPattern,
   createTile,
@@ -17,6 +18,7 @@ export function attachMapMetadata(map, metadata = {}) {
     name: { value: metadata.name ?? map.name ?? "Runtime Map", writable: true, configurable: true },
     width: { value: width, writable: true, configurable: true },
     height: { value: height, writable: true, configurable: true },
+    mode: { value: normalizeMapMode(metadata.mode ?? map.mode), writable: true, configurable: true },
     tiles: { value: flattenMapTiles(map), writable: true, configurable: true },
     spawns: {
       value: structuredClone(metadata.spawns ?? map.spawns ?? { player: [], enemy: [], neutral: [] }),
@@ -155,6 +157,7 @@ export function normalizeMapDefinition(definition) {
       name: definition.name,
       width: definition.width,
       height: definition.height,
+      mode: definition.mode,
       spawns: definition.spawns,
       startState: definition.startState,
       terrainTypes: definition.terrainTypes,
@@ -178,6 +181,7 @@ export function cloneMapDefinition(sourceMap = null) {
       name: sourceMap.name,
       width: sourceMap.width,
       height: sourceMap.height,
+      mode: sourceMap.mode,
       spawns: sourceMap.spawns,
       startState: sourceMap.startState,
       terrainTypes: sourceMap.terrainTypes,
@@ -258,6 +262,7 @@ export function createInitialMap() {
     name: "Legacy Default Map",
     width: MAP_CONFIG.width,
     height: MAP_CONFIG.height,
+    mode: "combat",
     spawns: { player: [], enemy: [], neutral: [] },
     startState: { deployments: [] }
   });

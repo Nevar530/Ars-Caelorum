@@ -2114,5 +2114,6 @@
       "movementClass": "clear",
       "elevation": 0
     }
-  ]
+  ],
+  "mode": "combat"
 }

@@ -1,6 +1,7 @@
 import { clampFocusToBoard, getPathToTile } from "../movement.js";
 import { closeDeploymentList, confirmDeploymentPlacement, getDeploymentPlacedUnitAt, getDeploymentReady, isDeploymentActive, isDeploymentMenuFocused, moveDeploymentListSelection, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "../deployment/deploymentState.js";
 import { moveAbilitySelection, moveAttackSelection, moveItemSelection, updateActionTargetPreview } from "../action.js";
+import { isStoryMode } from "../mode/mapMode.js";
 import {
   getActiveUnit,
   getBoardDeltaFromScreenDirection,
@@ -64,6 +65,11 @@ export function bindGameplayInput(state, refs, actions) {
     }
 
     if (handleMenuNavigationKeys(key, state, actions)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (handleStoryModeKeys(key, state, actions)) {
       event.preventDefault();
       return;
     }
@@ -280,6 +286,38 @@ function handleMenuNavigationKeys(key, state, actions) {
   return false;
 }
 
+
+function handleStoryModeKeys(key, state, actions) {
+  if (!isStoryMode(state)) return false;
+  if (state.ui.mode !== "idle") return false;
+  if (state.turn.combatStarted) return false;
+  if (state.ui.commandMenu.open) return false;
+
+  if (key === "tab") {
+    actions.snapFocusToActiveUnit?.({ resetZoom: true });
+    actions.render();
+    return true;
+  }
+
+  let direction = null;
+  if (key === "arrowup" || key === "w") direction = "up";
+  else if (key === "arrowdown" || key === "s") direction = "down";
+  else if (key === "arrowleft" || key === "a") direction = "left";
+  else if (key === "arrowright" || key === "d") direction = "right";
+
+  if (direction) {
+    actions.storyMove?.(direction);
+    return true;
+  }
+
+  if (key === "enter" || key === " ") {
+    actions.storyInteract?.();
+    return true;
+  }
+
+  return false;
+}
+
 function handleIdleKeys(key, state, actions) {
   if (state.ui.mode !== "idle") return false;
 
@@ -291,7 +329,11 @@ function handleIdleKeys(key, state, actions) {
 
   if (key === "enter" || key === " ") {
     if (!state.turn.combatStarted) {
-      actions.startCombat();
+      if (isStoryMode(state)) {
+        actions.storyInteract?.();
+      } else {
+        actions.startCombat();
+      }
       return true;
     }
 

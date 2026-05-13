@@ -26,6 +26,7 @@ export function createBlankBuilderMap(options = {}) {
   const terrainDefinition = options.terrainDefinitions?.[terrainTypeId] ?? null;
   const id = sanitizeId(options.id || "new_map", "new_map");
   const name = sanitizeName(options.name || titleFromId(id), "New Map");
+  const mode = String(options.mode ?? "combat").trim().toLowerCase() === "story" ? "story" : "combat";
   const terrainTypes = normalizeTerrainTypes(options.terrainTypes, terrainTypeId);
 
   const map = [];
@@ -47,6 +48,7 @@ export function createBlankBuilderMap(options = {}) {
     name,
     width,
     height,
+    mode,
     terrainTypes,
     spawns: { player: [], enemy: [], neutral: [] },
     startState: { deployments: [], deploymentCells: [] },
@@ -69,6 +71,7 @@ export function readBlankMapForm(root) {
     name: getValue("map-name"),
     width: getValue("map-width"),
     height: getValue("map-height"),
+    mode: getValue("map-mode"),
     terrainTypeId: getValue("base-terrain"),
     elevation: getValue("base-elevation")
   };

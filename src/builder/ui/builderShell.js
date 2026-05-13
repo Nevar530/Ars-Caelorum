@@ -354,6 +354,10 @@ function renderNewMapForm(appState) {
         <input type="number" data-builder-field="map-height" value="16" min="4" max="96" step="1">
       </label>
       <label class="builder-form-field">
+        <span>Map Mode</span>
+        <select data-builder-field="map-mode">${buildMapModeOptions("combat")}</select>
+      </label>
+      <label class="builder-form-field">
         <span>Base Terrain</span>
         <select data-builder-field="base-terrain">${terrainOptions}</select>
       </label>
@@ -599,6 +603,10 @@ function renderMapInspectorTools(builderState, appState) {
         <span>Map Name</span>
         <input type="text" data-builder-field="active-map-name" value="${escapeHtml(map?.name ?? "")}" spellcheck="true"${editable ? "" : " disabled"}>
       </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Map Mode</span>
+        <select data-builder-field="active-map-mode"${editable ? "" : " disabled"}>${buildMapModeOptions(map?.mode ?? "combat")}</select>
+      </label>
       <div class="builder-field-value">Size: ${escapeHtml(width)}×${escapeHtml(height)}</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Default Terrain</span>
@@ -775,6 +783,16 @@ function renderCatalogPreview(summary) {
       ${(summary.catalogMapEntries ?? []).map((entry) => `<div class="builder-inspector-note">${escapeHtml(entry.path)}</div>`).join("")}
     </div>
   `;
+}
+
+
+function buildMapModeOptions(selectedMode = "combat") {
+  const selected = String(selectedMode ?? "combat") === "story" ? "story" : "combat";
+  const modes = [
+    ["combat", "Combat"],
+    ["story", "Story / Exploration"]
+  ];
+  return modes.map(([value, label]) => `<option value="${value}"${value === selected ? " selected" : ""}>${label}</option>`).join("");
 }
 
 function buildExistingMapOptions(appState, selectedId = "") {

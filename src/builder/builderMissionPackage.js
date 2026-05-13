@@ -200,12 +200,14 @@ export function readMapSettingsFields(builderState, root, appState = null) {
   const previousMapId = sanitizeId(map.id, "new_map");
   const nextMapId = sanitizeId(readField(root, "active-map-id", map.id), previousMapId);
   const nextMapName = sanitizeName(readField(root, "active-map-name", map.name), map.name || titleFromId(nextMapId));
+  const nextMapMode = normalizeMapMode(readField(root, "active-map-mode", map.mode ?? "combat"));
   const defaultTerrainTypeId = sanitizeId(readField(root, "map-default-terrain", map.defaults?.terrainTypeId ?? map.defaultTerrainTypeId ?? inferFirstTerrainType(map, appState)), "grass");
   const defaultElevation = clampWholeNumber(readField(root, "map-default-elevation", map.defaults?.elevation ?? 0), 0, -8, 16);
   const defaultMovementClass = sanitizeName(readField(root, "map-default-movement", map.defaults?.movementClass ?? "clear"), "clear");
 
   map.id = nextMapId;
   map.name = nextMapName;
+  map.mode = nextMapMode;
   map.defaults = {
     ...(map.defaults ?? {}),
     terrainTypeId: defaultTerrainTypeId,
@@ -231,6 +233,10 @@ export function readMapSettingsFields(builderState, root, appState = null) {
     mapIdChanged: previousMapId !== nextMapId,
     message: `Updated map settings for ${nextMapId}.`
   };
+}
+
+function normalizeMapMode(value) {
+  return String(value ?? "combat").trim().toLowerCase() === "story" ? "story" : "combat";
 }
 
 export function applyMissionPackagePreset(builderState, root = null) {

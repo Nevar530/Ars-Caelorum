@@ -35,6 +35,11 @@
       "id": "006_new_map",
       "name": "New Map",
       "path": "./data/maps/006_new_map.json"
+    },
+    {
+      "id": "007_story_mode_demo",
+      "name": "007 Story Mode Demo",
+      "path": "./data/maps/007_story_mode_demo.json"
     }
   ]
 }

@@ -16,6 +16,7 @@ import { logDev, setDevLogSize } from "./dev/devLogger.js";
 import { createGameController } from "./src/controllers/gameController.js";
 import { createTurnController } from "./src/controllers/turnController.js";
 import { createMovementController } from "./src/controllers/movementController.js";
+import { createStoryController } from "./src/controllers/storyController.js";
 import { createCombatController } from "./src/controllers/combatController.js";
 import { createCpuTurnController } from "./src/ai/cpuTurnController.js";
 import { isCommandMenuItemDisabled } from "./src/action.js";
@@ -119,6 +120,11 @@ async function init() {
     logDev
   });
 
+  gameController.setMapLoadedHook?.(() => missionTriggerRuntime.handleMissionTriggerEvent("onMissionStart", {
+    round: state.turn?.round ?? 0,
+    mode: state.turn?.mode ?? state.map?.mode ?? "combat"
+  }));
+
   const movementController = createMovementController({
     state,
     getUnitById,
@@ -131,6 +137,16 @@ async function init() {
     advanceMoveTurn: turnController.advanceMoveTurn,
     advanceActionTurn: turnController.advanceActionTurn,
     onUnitEnteredZone: missionTriggerRuntime.handleUnitEnteredZone
+  });
+
+  const storyController = createStoryController({
+    state,
+    setUnitFacing,
+    render: gameController.render,
+    logDev,
+    onUnitEnteredZone: missionTriggerRuntime.handleUnitEnteredZone,
+    onMissionTriggerEvent: (eventType, context) => missionTriggerRuntime.handleMissionTriggerEvent(eventType, context),
+    onMissionResult: gameController.endMission
   });
 
   const combatController = createCombatController({
@@ -495,6 +511,7 @@ function getSelectedMissionEntry() {
 
     advanceDialogue() {
       if (advanceMissionDialogue(state)) {
+        if (storyController.resumePendingStoryMoveAfterDialogue?.()) return;
         if (movementController.resumePendingMoveAfterDialogue?.()) return;
         if (combatController.resumePendingActionAfterDialogue?.()) return;
         gameController.render();
@@ -544,6 +561,8 @@ function getSelectedMissionEntry() {
     toggleView: gameController.toggleView,
     zoomIn: gameController.zoomIn,
     zoomOut: gameController.zoomOut,
+    storyMove: storyController.moveStoryUnit,
+    storyInteract: storyController.storyInteract,
     startMove: movementController.startMove,
     startAttack: combatController.startAttack,
     startAbility: combatController.startAbility,

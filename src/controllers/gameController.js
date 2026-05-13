@@ -12,6 +12,8 @@ import { renderHelpDrawer } from "../ui/helpDrawer.js";
 import { renderAll } from "../render.js";
 import { cloneMapDefinition, resetMap } from "../map.js";
 import { initializeDeploymentState, resetDeploymentState } from "../deployment/deploymentState.js";
+import { initializeStoryModeState } from "./storyController.js";
+import { getMapMode, isStoryMode } from "../mode/mapMode.js";
 
 export function createGameController({
   state,
@@ -21,6 +23,11 @@ export function createGameController({
   logDev
 }) {
   let splashTimer = null;
+  let mapLoadedHook = null;
+
+  function setMapLoadedHook(callback) {
+    mapLoadedHook = typeof callback === "function" ? callback : null;
+  }
 
   function render() {
     renderAll(state, refs);
@@ -93,6 +100,7 @@ export function createGameController({
     state.turn.activeBodyId = null;
     state.turn.round = 1;
     state.turn.phase = "setup";
+    state.turn.mode = getMapMode(state.map);
     state.turn.combatStarted = false;
     state.turn.moveOrder = [];
     state.turn.actionOrder = [];
@@ -135,13 +143,23 @@ export function createGameController({
 
     resetCombatToSetup();
 
+    if (isStoryMode(state)) {
+      initializeStoryModeState(state);
+    }
+
     if (isDeploymentMap) {
       initializeDeploymentState(state);
     } else {
       resetDeploymentState(state);
     }
 
-    startMissionDialogue(state, "intro");
+    const startOutcome = isStoryMode(state) && mapLoadedHook
+      ? mapLoadedHook({ map: state.map, missionDefinition: runtimeMissionDefinition, mode: "story" })
+      : null;
+
+    if (!state.ui?.dialogue?.active && !startOutcome?.interrupt) {
+      startMissionDialogue(state, "intro");
+    }
 
     const label = missionDefinition?.id ? ": " + missionDefinition.id : "";
     logDev("Mission runtime loaded map" + label + ".");
@@ -307,6 +325,7 @@ export function createGameController({
 
   return {
     render,
+    setMapLoadedHook,
     hideSplash,
     showSplash,
     clearTransientUi,

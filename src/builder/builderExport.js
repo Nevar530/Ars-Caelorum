@@ -103,6 +103,7 @@ export function buildMapDefinitionForExport(map) {
     name: sanitizeName(map?.name ?? "New Map", "New Map"),
     width,
     height,
+    mode: String(map?.mode ?? "combat").trim().toLowerCase() === "story" ? "story" : "combat",
     terrainTypes: normalizeTerrainTypes(map?.terrainTypes, tiles),
     defaults: normalizeMapDefaults(map),
     objectives: normalizeMissionObjectives(map?.objectives),

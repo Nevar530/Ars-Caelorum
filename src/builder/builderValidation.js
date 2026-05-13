@@ -19,6 +19,7 @@ const VALID_MISSION_RESULTS = new Set(["victory", "defeat"]);
 const VALID_TRIGGER_TEAMS = new Set(["player", "enemy", "any"]);
 const VALID_LOGIC_CONDITIONS = new Set(["objective_complete", "objective_incomplete", "flag_true", "flag_false", "round_at_least"]);
 const VALID_LOGIC_ACTIONS = new Set(["complete_objective", "change_unit_stat", "load_map", "end_mission", "start_dialogue", "set_flag", "give_item", "remove_item"]);
+const VALID_MAP_MODES = new Set(["combat", "story"]);
 
 export function validateBuilderPackage(builderState, appState = null) {
   const result = createValidationResult();
@@ -99,6 +100,8 @@ function validateMapBasics(result, map, width, height) {
   if (!cleanString(map?.name)) addWarning(result, "MAP_NAME_MISSING", "Map name is missing. Export can still run, but the catalog label will be ugly.");
   if (!Number.isInteger(width) || width <= 0) addError(result, "MAP_WIDTH_BAD", "Map width is missing or invalid.");
   if (!Number.isInteger(height) || height <= 0) addError(result, "MAP_HEIGHT_BAD", "Map height is missing or invalid.");
+  const mode = cleanString(map?.mode ?? "combat").toLowerCase();
+  if (!VALID_MAP_MODES.has(mode)) addError(result, "MAP_MODE_BAD", `Map mode "${mode}" must be combat or story.`);
 }
 
 function validateTiles(result, map, width, height) {

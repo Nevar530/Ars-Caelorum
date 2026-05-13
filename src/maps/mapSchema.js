@@ -14,7 +14,7 @@ export function createDefaultTile(x, y, elevation = 0) {
   };
 }
 
-export function createBlankMapDefinition({ id = 'new_map', name = 'New Map', width = 32, height = 32 } = {}) {
+export function createBlankMapDefinition({ id = 'new_map', name = 'New Map', width = 32, height = 32, mode = 'combat' } = {}) {
   const tiles = [];
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -27,6 +27,7 @@ export function createBlankMapDefinition({ id = 'new_map', name = 'New Map', wid
     name,
     width,
     height,
+    mode: mode === 'story' ? 'story' : 'combat',
     terrainTypes: ['grass', 'rock', 'sand', 'water', 'asphalt', 'concrete'],
     spawns: {
       player: [null, null, null, null],

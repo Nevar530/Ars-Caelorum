@@ -8,6 +8,7 @@ import { getActiveActor, getActiveBody, getEmbarkedPilotForMech } from "../actor
 import { getDeploymentAvailableRoster, getDeploymentPlacedUnitAt, getDeploymentPlacementCount, getDeploymentReady, isDeploymentActive, isDeploymentMenuFocused } from "../deployment/deploymentState.js";
 import { getCurrentDialogueLine } from "../mission/missionState.js";
 import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
+import { isStoryMode } from "../mode/mapMode.js";
 
 /* =========================
    INPUT
@@ -47,6 +48,9 @@ export function bindHudInput(state, refs, actions) {
         break;
       case "start-combat":
         actions.startCombat();
+        break;
+      case "story-interact":
+        actions.storyInteract?.();
         break;
       case "open-deployment-list":
         actions.openDeploymentList?.();
@@ -229,6 +233,10 @@ function renderActivePanel(state) {
 
 function renderCenterPanel(state) {
   if (!state.turn.combatStarted) {
+    if (isStoryMode(state)) {
+      return renderStoryModePanel(state);
+    }
+
     if (isDeploymentActive(state)) {
       const placed = getDeploymentPlacementCount(state);
       const required = Number(state.ui.deployment.requiredCount ?? 0);
@@ -341,6 +349,33 @@ function renderCenterPanel(state) {
 
     <button class="hud-command-button" data-hud-action="open-menu">
       Open Menu
+    </button>
+  `;
+}
+
+
+function renderStoryModePanel(state) {
+  const objectives = renderObjectiveSummary(state);
+  const activeBody = getActiveBody(state);
+  const label = activeBody?.unitType === "mech" ? "Telum" : "Pilot";
+
+  return `
+    <div class="hud-section-title">Story Mode</div>
+
+    <div class="hud-mode-box">
+      <div class="hud-mode-title">Free Movement</div>
+      <div class="hud-mode-text">Move with WASD / arrows · Enter to interact</div>
+    </div>
+
+    <div class="hud-mini-card" style="margin-bottom:8px;">
+      <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Active ${label}</div>
+      <div>${escapeHtml(activeBody?.name ?? "None")}</div>
+    </div>
+
+    ${objectives}
+
+    <button class="hud-command-button" data-hud-action="story-interact">
+      Interact
     </button>
   `;
 }
@@ -493,7 +528,7 @@ function renderContextPanel(state) {
     <div class="hud-stat-row">
       ${stat("ELEV", elev)}
       ${stat("LOS", los)}
-      ${stat("ROUND", state.turn.round)}
+      ${stat(isStoryMode(state) ? "MODE" : "ROUND", isStoryMode(state) ? "Story" : state.turn.round)}
       ${stat("PHASE", state.turn.phase)}
     </div>
   `;
