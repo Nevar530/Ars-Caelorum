@@ -135,7 +135,7 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "Yeah. I heard you the first six times. Silence alarm."
         },
         {
@@ -147,7 +147,7 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "We are not done with this dance until I say we are."
         }
       ]
@@ -164,7 +164,7 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "How long?"
         },
         {
@@ -176,7 +176,7 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "No. How much?"
         },
         {
@@ -188,25 +188,25 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "Kholer did not pay this. They do not put cash into broken parts."
         },
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/eve_NE.png",
+          "portrait": "art/pilot/eve_portrait.png",
           "text": "Skye! There she is. Tragic, but alive. Gabe sends his regards."
         },
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "...Fine. I know Gabe. I play along."
         },
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/eve_NE.png",
+          "portrait": "art/pilot/eve_portrait.png",
           "text": "Good. Elevator. Try not to bleed on anything expensive. Again."
         }
       ]
@@ -217,13 +217,13 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "If I die in this tracksuit, I am haunting you."
         },
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/eve_NE.png",
+          "portrait": "art/pilot/eve_portrait.png",
           "text": "You already bled all over it. Keep moving. Car is across the garage."
         },
         {
@@ -235,7 +235,7 @@
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/eve_NE.png",
+          "portrait": "art/pilot/eve_portrait.png",
           "text": "See? They are using their serious voices. Adorable."
         }
       ]
@@ -246,7 +246,7 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "Gabe. I will pay you back for the hospital. Somehow."
         },
         {
@@ -258,7 +258,7 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "Then who did?"
         },
         {
@@ -270,7 +270,7 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "Out of kindness? Nostalgia?"
         },
         {
@@ -282,7 +282,7 @@
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/eve_NE.png",
+          "portrait": "art/pilot/eve_portrait.png",
           "text": "He says the romantic stuff first. Wait until he gets to scheduling."
         },
         {
@@ -299,13 +299,13 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "Can I burn the tracksuit?"
         },
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/eve_NE.png",
+          "portrait": "art/pilot/eve_portrait.png",
           "text": "Might as well. You bled all over it."
         },
         {
@@ -317,7 +317,7 @@
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/eve_NE.png",
+          "portrait": "art/pilot/eve_portrait.png",
           "text": "Subtlety was boring and owed me money."
         },
         {
@@ -334,13 +334,13 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "Back in a box with guns. Almost missed it."
         },
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/eve_NE.png",
+          "portrait": "art/pilot/eve_portrait.png",
           "text": "You look better when the machine is doing the standing."
         },
         {
@@ -363,13 +363,13 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "You put me in a Telum with busted ribs and asked for no heroics?"
         },
         {
           "speakerId": "eve",
           "name": "Eve",
-          "portrait": "art/pilot/eve_NE.png",
+          "portrait": "art/pilot/eve_portrait.png",
           "text": "I heard \u201cshow off responsibly.\u201d"
         },
         {
@@ -392,7 +392,7 @@
         {
           "speakerId": "skye",
           "name": "Skye",
-          "portrait": "art/pilot/skye_NE.png",
+          "portrait": "art/pilot/skye_portrait.png",
           "text": "Tomorrow sounds expensive."
         }
       ]
