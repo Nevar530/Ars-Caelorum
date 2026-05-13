@@ -1,4 +1,5 @@
-import { getMissionResultCopy } from "../mission/missionState.js";
+import { getCurrentDialogueLine, getMissionResultCopy } from "../mission/missionState.js";
+import { getUnitById } from "../mechs.js";
 
 export function renderMissionOverlay(state, refs) {
   const overlay = refs?.combatOverlay;
@@ -11,12 +12,13 @@ export function renderMissionOverlay(state, refs) {
   const splashKind = state?.turn?.splashKind ?? null;
 
   overlay.innerHTML = "";
-  overlay.classList.remove("is-visible", "is-clickthrough", "is-splash-visible");
+  overlay.className = "combat-overlay is-clickthrough";
 
   if (missionResult && !dialogueActive) {
     const copy = getMissionResultCopy(state, missionResult);
 
     overlay.classList.add("is-visible");
+    overlay.classList.remove("is-clickthrough");
 
     overlay.innerHTML = `
       <div class="combat-overlay-card" role="dialog" aria-modal="true" aria-label="Mission Result">
@@ -34,7 +36,14 @@ export function renderMissionOverlay(state, refs) {
     return;
   }
 
-  if (splashVisible && splashText && !dialogueActive) {
+  if (dialogueActive) {
+    overlay.classList.add("is-visible", "is-dialogue-visible");
+    overlay.classList.remove("is-clickthrough");
+    overlay.innerHTML = renderDialogueOverlay(state);
+    return;
+  }
+
+  if (splashVisible && splashText) {
     const splash = getSplashParts(splashText, splashKind);
     overlay.classList.add("is-visible", "is-clickthrough", "is-splash-visible");
     overlay.innerHTML = `
@@ -46,7 +55,149 @@ export function renderMissionOverlay(state, refs) {
     return;
   }
 
-  overlay.classList.add("is-clickthrough");
+  if (shouldShowTurnPopup(state)) {
+    overlay.classList.add("is-visible", "is-clickthrough", "is-turn-visible");
+    overlay.innerHTML = renderTurnPopup(state);
+    return;
+  }
+}
+
+function renderDialogueOverlay(state) {
+  const line = getCurrentDialogueLine(state);
+  const dialogue = state?.ui?.dialogue ?? {};
+  const lines = Array.isArray(dialogue.lines) ? dialogue.lines : [];
+  const index = Math.max(0, Number(dialogue.index ?? 0));
+  const speakerId = String(line?.speakerId ?? "").toLowerCase();
+  const speakerName = String(line?.name ?? "Unknown");
+  const isSkye = speakerId === "skye" || speakerName.toLowerCase().includes("skye");
+  const skyeLine = findSkyeLine(lines) ?? (isSkye ? line : null);
+  const otherLine = isSkye ? findOtherLine(lines) : line;
+  const missionLabel = dialogue.key ? String(dialogue.key).replaceAll("_", " ") : "mission";
+
+  return `
+    <div class="dialogue-rise" role="dialog" aria-label="Dialogue">
+      ${renderSpeakerCard({
+        side: "left",
+        label: "Skye",
+        line: skyeLine,
+        active: isSkye,
+        fallbackName: "Skye"
+      })}
+
+      <div class="dialogue-center-card">
+        <div class="dialogue-kicker">${escapeHtml(missionLabel)}</div>
+        <div class="dialogue-speaker-name">${escapeHtml(speakerName)}</div>
+        <div class="dialogue-line-text">${escapeHtml(line?.text || "")}</div>
+        <div class="dialogue-footer">
+          <span>Line ${Math.min(index + 1, lines.length)} / ${lines.length}</span>
+          <button type="button" class="dialogue-continue-button" data-combat-overlay-action="advance-dialogue">Continue</button>
+        </div>
+      </div>
+
+      ${renderSpeakerCard({
+        side: "right",
+        label: otherLine?.name ?? "Speaker",
+        line: otherLine,
+        active: !isSkye,
+        fallbackName: otherLine?.name ?? "?"
+      })}
+    </div>
+  `;
+}
+
+function renderSpeakerCard({ side, label, line, active, fallbackName }) {
+  const name = line?.name || fallbackName || label || "?";
+  const initial = String(name).trim().charAt(0).toUpperCase() || "?";
+  const portrait = line?.portrait
+    ? `<img src="${escapeHtml(line.portrait)}" alt="${escapeHtml(name)} portrait" />`
+    : escapeHtml(initial);
+
+  return `
+    <div class="dialogue-speaker-card dialogue-speaker-card--${escapeClassToken(side)} ${active ? "is-active" : "is-muted"}">
+      <div class="dialogue-speaker-portrait">${portrait}</div>
+      <div class="dialogue-speaker-label">${escapeHtml(name)}</div>
+    </div>
+  `;
+}
+
+function findSkyeLine(lines) {
+  return lines.find((entry) => {
+    const id = String(entry?.speakerId ?? "").toLowerCase();
+    const name = String(entry?.name ?? "").toLowerCase();
+    return id === "skye" || name.includes("skye");
+  }) ?? null;
+}
+
+function findOtherLine(lines) {
+  return lines.find((entry) => {
+    const id = String(entry?.speakerId ?? "").toLowerCase();
+    const name = String(entry?.name ?? "").toLowerCase();
+    return id !== "skye" && !name.includes("skye");
+  }) ?? null;
+}
+
+function shouldShowTurnPopup(state) {
+  if (!state?.turn?.combatStarted) return false;
+  if (state?.mission?.result) return false;
+  const phase = String(state?.turn?.phase ?? "");
+  return phase === "move" || phase === "action";
+}
+
+function renderTurnPopup(state) {
+  const isMove = state.turn.phase === "move";
+  const order = isMove ? state.turn.moveOrder : state.turn.actionOrder;
+  const index = isMove ? state.turn.moveIndex : state.turn.actionIndex;
+  const activeId = Array.isArray(order) && index >= 0 ? order[index] : null;
+  const activeUnit = activeId ? getUnitById(state.units, activeId) : null;
+  const next = getNextTurnEntries(state, order, index, 3);
+  const initText = activeUnit ? getInitiativeText(state, activeUnit.instanceId) : "-";
+
+  return `
+    <div class="turn-rise" aria-live="polite">
+      <div class="turn-rise-topline">Round ${escapeHtml(state.turn.round)} · ${isMove ? "Move Phase" : "Action Phase"}</div>
+      <div class="turn-rise-active">
+        <span>${escapeHtml(activeUnit?.name ?? "No Active Unit")}</span>
+        <b>INIT ${escapeHtml(initText)}</b>
+      </div>
+      <div class="turn-rise-next">
+        <span>${isMove ? "Next to move" : "Next to act"}</span>
+        ${next.length ? next.map((entry) => `
+          <div class="turn-rise-next-row">
+            <span>${escapeHtml(entry.name)}</span>
+            <b>${escapeHtml(entry.init)}</b>
+          </div>
+        `).join("") : `<div class="turn-rise-next-row"><span>Phase ending</span><b>-</b></div>`}
+      </div>
+    </div>
+  `;
+}
+
+function getNextTurnEntries(state, order, index, count) {
+  if (!Array.isArray(order)) return [];
+  const entries = [];
+  for (let i = index + 1; i < order.length && entries.length < count; i += 1) {
+    const unit = getUnitById(state.units, order[i]);
+    if (!unit || unit.status === "disabled") continue;
+    entries.push({
+      name: unit.name,
+      init: getInitiativeText(state, unit.instanceId)
+    });
+  }
+  return entries;
+}
+
+function getInitiativeText(state, instanceId) {
+  const roll = Array.isArray(state?.turn?.lastInitiativeRolls)
+    ? state.turn.lastInitiativeRolls.find((entry) => entry.instanceId === instanceId)
+    : null;
+  if (!roll) {
+    const unit = getUnitById(state.units, instanceId);
+    return unit?.initiative ?? "-";
+  }
+  const dice = Array.isArray(roll.dice) && roll.dice.length === 2
+    ? `${roll.dice[0]}+${roll.dice[1]}+${roll.reaction}`
+    : `${roll.initiative}`;
+  return `${roll.initiative} (${dice})`;
 }
 
 function getSplashParts(text, kind) {

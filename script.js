@@ -177,6 +177,10 @@ async function init() {
     if (button.dataset.combatOverlayAction === "return-title") {
       actions.showTitleScreen();
     }
+
+    if (button.dataset.combatOverlayAction === "advance-dialogue") {
+      actions.advanceDialogue?.();
+    }
   });
 
   refs.titleStartButton?.addEventListener("click", () => {

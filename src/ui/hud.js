@@ -6,7 +6,6 @@ import { getSelectedAbilityMenuItems, getSelectedAttackMenuItems, getSelectedIte
 import { getLineOfSightResult } from "../los.js";
 import { getActiveActor, getActiveBody, getEmbarkedPilotForMech } from "../actors/actorResolver.js";
 import { getDeploymentAvailableRoster, getDeploymentPlacedUnitAt, getDeploymentPlacementCount, getDeploymentReady, isDeploymentActive, isDeploymentMenuFocused } from "../deployment/deploymentState.js";
-import { getCurrentDialogueLine } from "../mission/missionState.js";
 import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
 import { isStoryMode } from "../mode/mapMode.js";
 
@@ -79,52 +78,9 @@ export function bindHudInput(state, refs, actions) {
 ========================= */
 
 export function renderHud(state, refs) {
-  if (state?.ui?.dialogue?.active) {
-    renderDialogueHud(state, refs);
-    return;
-  }
-
   refs.hudLeft.innerHTML = renderActivePanel(state);
   refs.hudCenter.innerHTML = renderCenterPanel(state);
   refs.hudRight.innerHTML = renderContextPanel(state);
-}
-
-function renderDialogueHud(state, refs) {
-  const line = getCurrentDialogueLine(state);
-  const dialogue = state?.ui?.dialogue ?? {};
-  const lines = Array.isArray(dialogue.lines) ? dialogue.lines : [];
-  const index = Math.max(0, Number(dialogue.index ?? 0));
-  const name = line?.name || "Unknown";
-  const initial = name.trim().charAt(0).toUpperCase() || "?";
-  const portrait = line?.portrait
-    ? '<img src="' + escapeHtml(line.portrait) + '" alt="' + escapeHtml(name) + ' portrait" />'
-    : escapeHtml(initial);
-
-  refs.hudLeft.innerHTML = [
-    '<div class="hud-section-title">Dialogue</div>',
-    '<div class="hud-dialogue-portrait-wrap">',
-    '<div class="hud-dialogue-portrait">' + portrait + '</div>',
-    '<div>',
-    '<div class="hud-dialogue-name">' + escapeHtml(name) + '</div>',
-    '<div class="hud-dialogue-sub">' + escapeHtml(dialogue.key || "mission") + '</div>',
-    '</div>',
-    '</div>'
-  ].join('');
-
-  refs.hudCenter.innerHTML = [
-    '<div class="hud-section-title">Transmission</div>',
-    '<div class="hud-dialogue-text">' + escapeHtml(line?.text || "") + '</div>',
-    '<div class="hud-dialogue-progress">Line ' + Math.min(index + 1, lines.length) + ' / ' + lines.length + '</div>'
-  ].join('');
-
-  refs.hudRight.innerHTML = [
-    '<div class="hud-section-title">Advance</div>',
-    '<div class="hud-mode-box">',
-    '<div class="hud-mode-title">Press Enter</div>',
-    '<div class="hud-mode-text">Advance dialogue with Enter or Space</div>',
-    '</div>',
-    '<button class="hud-command-button compact" data-hud-action="advance-dialogue">Continue</button>'
-  ].join('');
 }
 
 /* =========================
@@ -385,46 +341,18 @@ function renderStoryModePanel(state) {
 ========================= */
 
 function renderTurnSummary(state) {
-  const isMove = state.turn.phase === "move";
-  const order = isMove ? state.turn.moveOrder : state.turn.actionOrder;
-  const index = isMove ? state.turn.moveIndex : state.turn.actionIndex;
+  if (!state.turn.combatStarted) return "";
+
+  const phaseLabel = state.turn.phase === "move"
+    ? "Move"
+    : state.turn.phase === "action"
+      ? "Action"
+      : "Combat";
 
   return `
     <div class="hud-mode-box" style="margin-bottom:8px;">
-      <div class="hud-mode-title">
-        ROUND ${state.turn.round} — ${state.turn.phase.toUpperCase()}
-      </div>
-    </div>
-
-    <div class="hud-mini-card" style="margin-bottom:8px;">
-      <div style="font-size:11px; opacity:.7; margin-bottom:4px;">
-        ${isMove ? "Move Order" : "Action Order"}
-      </div>
-
-      <div style="display:flex; gap:6px; flex-wrap:wrap;">
-        ${order.map((id, i) => {
-          const unit = getUnitById(state.units, id);
-          if (!unit) return "";
-
-          const isActive = i === index;
-          const isDone = i < index;
-
-          return `
-            <div style="
-              padding:4px 8px;
-              border-radius:6px;
-              font-size:11px;
-              font-weight:700;
-              border:1px solid rgba(255,255,255,0.1);
-              background:${isActive ? "rgba(240,176,0,.25)" : "rgba(255,255,255,.05)"};
-              color:${isActive ? "#f0b000" : "#ddd"};
-              opacity:${isDone ? .4 : 1};
-            ">
-              ${unit.name}
-            </div>
-          `;
-        }).join("")}
-      </div>
+      <div class="hud-mode-title">ROUND ${state.turn.round} · ${phaseLabel}</div>
+      <div class="hud-mode-text">Turn order shown above the HUD</div>
     </div>
 
     ${renderObjectiveSummary(state)}
