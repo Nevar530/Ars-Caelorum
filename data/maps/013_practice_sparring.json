@@ -57,7 +57,7 @@
         "mechInstanceId": "spar-eve-telum",
         "mechSpawnId": "player_2",
         "team": "player",
-        "controlType": "CPU",
+        "controlType": "PC",
         "startEmbarked": true
       },
       {
