@@ -276,9 +276,15 @@ class MissionBuilder {
 
     const tabButton = event.target.closest("[data-builder-tab]");
     if (tabButton) {
-      setBuilderTab(this.builderState, tabButton.dataset.builderTab);
+      const previousTab = this.builderState.activeTab;
+      const nextTab = tabButton.dataset.builderTab;
+      setBuilderTab(this.builderState, nextTab);
       pushBuilderLog(this.builderState, `Opened ${tabButton.textContent.trim()} tab.`);
       this.render();
+      if (previousTab !== nextTab) {
+        const inspectorScroller = this.refs?.inspector?.closest?.(".builder-inspector");
+        if (inspectorScroller) inspectorScroller.scrollTop = 0;
+      }
       return;
     }
 

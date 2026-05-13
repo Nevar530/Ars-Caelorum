@@ -435,7 +435,6 @@ function renderInspector({ builderState, refs, appState }) {
   const map = workspaceAppState?.map ?? null;
   const mission = workspaceAppState?.mission?.definition ?? null;
   const selectedTruth = buildTileInspectorHtml(workspaceAppState, selected);
-  const sourceLabel = builderState.workspaceMode === "builder-map" ? "Builder-Owned Map" : "Current Runtime Map";
   const packageTools = builderState.activeTab === "project"
     ? renderPackageInspectorTools(builderState, appState)
     : "";
@@ -475,15 +474,12 @@ function renderInspector({ builderState, refs, appState }) {
   const exportTools = builderState.activeTab === "export"
     ? renderExportInspectorTools(builderState)
     : "";
-  const note = builderState.workspaceMode === "builder-map"
-    ? "Builder-owned map. Terrain paints tile truth. Structures paint cells/edges. Spawns paints map.spawns and deployment cells. Units writes startState.deployments. Objectives and triggers write active-map mission scripting truth."
-    : "Current loaded runtime map is read-only in the builder. Use New/Load for authored package work.";
+  const selectedSummary = selected?.label || selected?.type
+    ? `<div class="builder-inspector-card builder-selected-card"><div class="builder-field-label">Selected</div><div class="builder-field-value">${escapeHtml(selected.label ?? selected.type)}</div></div>`
+    : "";
 
   refs.inspector.innerHTML = `
-    <div class="builder-inspector-card">
-      <div class="builder-field-label">Selected</div>
-      <div class="builder-field-value">${escapeHtml(selected.label ?? selected.type ?? "None")}</div>
-    </div>
+    ${selectedSummary}
     ${packageTools}
     ${mapTools}
     ${terrainTools}
@@ -498,19 +494,6 @@ function renderInspector({ builderState, refs, appState }) {
     ${validationTools}
     ${exportTools}
     ${selectedTruth}
-    <div class="builder-inspector-card">
-      <div class="builder-field-label">Map Source</div>
-      <div class="builder-field-value">${escapeHtml(sourceLabel)}</div>
-    </div>
-    <div class="builder-inspector-card">
-      <div class="builder-field-label">Map</div>
-      <div class="builder-field-value">${escapeHtml(map?.name ?? map?.id ?? "unknown")}</div>
-    </div>
-    <div class="builder-inspector-card">
-      <div class="builder-field-label">Mission</div>
-      <div class="builder-field-value">${escapeHtml(mission?.name ?? mission?.id ?? "No active mission definition")}</div>
-    </div>
-    <div class="builder-inspector-note">${escapeHtml(note)}</div>
   `;
 }
 
@@ -527,7 +510,7 @@ function renderPackageInspectorTools(builderState, appState) {
   const hasCatalogMaps = Boolean(existingMapOptions);
 
   return `
-    <div class="builder-inspector-card builder-package-tool-card">
+    <div class="builder-inspector-card builder-package-tool-card builder-grid-card">
       <div class="builder-field-label">Mission Package Core</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Mission ID</span>
@@ -576,7 +559,6 @@ function renderPackageInspectorTools(builderState, appState) {
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="apply-objective-preset"${editable ? "" : " disabled"}>Apply Preset</button>
       </div>
-      <div class="builder-inspector-note">Mission owns the goal and map list. Objectives are scoped to the active map/phase.</div>
     </div>
     ${renderMissionMapList(summary)}
     ${renderCatalogPreview(summary)}
@@ -593,7 +575,7 @@ function renderMapInspectorTools(builderState, appState) {
   const movementOptions = buildMovementOptions(map?.defaults?.movementClass ?? "clear");
 
   return `
-    <div class="builder-inspector-card builder-map-tool-card">
+    <div class="builder-inspector-card builder-map-tool-card builder-grid-card">
       <div class="builder-field-label">Active Map Defaults</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Map ID</span>
@@ -623,7 +605,6 @@ function renderMapInspectorTools(builderState, appState) {
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="apply-map-settings"${editable ? "" : " disabled"}>Apply Map Settings</button>
       </div>
-      <div class="builder-inspector-note">This edits active map metadata/defaults. It does not repaint existing tiles; terrain painting remains on the Terrain tab.</div>
     </div>
   `;
 }
@@ -639,7 +620,7 @@ function renderDialogueInspectorTools(builderState) {
   const blockOptions = buildDialogueBlockOptions(builderState, tool.selectedKey);
 
   return `
-    <div class="builder-inspector-card builder-dialogue-tool-card">
+    <div class="builder-inspector-card builder-dialogue-tool-card builder-grid-card">
       <div class="builder-field-label">Dialogue V1</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Selected Block</span>
@@ -677,7 +658,6 @@ function renderDialogueInspectorTools(builderState) {
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="add-dialogue-line"${editable ? "" : " disabled"}>Add Line To Selected</button>
       </div>
-      <div class="builder-inspector-note">Core blocks intro/victory/defeat still work. Custom blocks can be started by Trigger or Logic. This is keyed dialogue, not raw trigger text.</div>
       <div class="builder-field-label builder-section-label">Current Dialogue Blocks</div>
       ${renderDialogueBlockList(blocks, tool.selectedKey)}
       <div class="builder-field-label builder-section-label">Selected Lines</div>
@@ -723,7 +703,7 @@ function renderResultsInspectorTools(builderState) {
   const mission = ensureMissionPackageDraft(builderState) ?? {};
   const editable = builderState.workspaceMode === "builder-map";
   return `
-    <div class="builder-inspector-card builder-results-tool-card">
+    <div class="builder-inspector-card builder-results-tool-card builder-grid-card">
       <div class="builder-field-label">Mission Results</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Victory Title</span>
@@ -741,7 +721,6 @@ function renderResultsInspectorTools(builderState) {
         <span>Defeat Text</span>
         <textarea data-builder-field="package-defeat-text" rows="4" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(mission.results?.defeat?.text ?? "Mission failed.")}</textarea>
       </label>
-      <div class="builder-inspector-note">Result text stays mission-wrapper data. Dialogue hookups belong to Dialogue/Logic later.</div>
     </div>
   `;
 }
@@ -752,35 +731,43 @@ function renderMissionMapList(summary) {
   const canRemove = maps.length > 1;
 
   return `
-    <div class="builder-inspector-card builder-mission-map-list-card">
+    <div class="builder-inspector-card builder-mission-map-list-card builder-list-card">
       <div class="builder-field-label">Maps In Mission</div>
-      ${maps.map((map) => {
-        const active = map.id === summary.activeMapId ? " · ACTIVE" : "";
-        const start = map.id === summary.startMapId ? " · START" : "";
-        const removeDisabled = canRemove ? "" : " disabled";
-        const removeTitle = canRemove ? "Remove this map from the mission" : "Mission package must keep at least one map";
-        return `
-          <div class="builder-tool-row">
-            <div class="builder-field-value">${escapeHtml(map.phaseIndex ?? "")}. ${escapeHtml(map.name)}${escapeHtml(active)}${escapeHtml(start)}</div>
-            <button type="button" class="builder-tool-button" data-builder-action="remove-package-map:${escapeHtml(map.id)}" title="${escapeHtml(removeTitle)}" aria-label="Remove ${escapeHtml(map.name)} from mission"${removeDisabled}>✕</button>
-          </div>
-          <div class="builder-inspector-note">${escapeHtml(map.id)} · ${escapeHtml(map.objectiveCount)} objective(s)</div>
-        `;
-      }).join("")}
+      <div class="builder-map-list-compact">
+        ${maps.map((map) => {
+          const active = map.id === summary.activeMapId ? "ACTIVE" : "";
+          const start = map.id === summary.startMapId ? "START" : "";
+          const badges = [active, start].filter(Boolean).map((badge) => `<span class="builder-mini-badge">${badge}</span>`).join("");
+          const removeDisabled = canRemove ? "" : " disabled";
+          const removeTitle = canRemove ? "Remove this map from the mission" : "Mission package must keep at least one map";
+          return `
+            <div class="builder-map-row-compact${active ? " is-active" : ""}">
+              <div class="builder-map-select-compact" title="${escapeHtml(map.name)}">
+                <span class="builder-map-index">${escapeHtml(map.phaseIndex ?? "")}</span>
+                <span class="builder-map-text">
+                  <strong>${escapeHtml(map.name)}</strong>
+                  <small>${escapeHtml(map.id)} · ${escapeHtml(map.objectiveCount)} obj</small>
+                </span>
+                <span class="builder-map-badges">${badges}</span>
+              </div>
+              <button type="button" class="builder-map-remove-compact" data-builder-action="remove-package-map:${escapeHtml(map.id)}" title="${escapeHtml(removeTitle)}" aria-label="Remove ${escapeHtml(map.name)} from mission"${removeDisabled}>×</button>
+            </div>
+          `;
+        }).join("")}
+      </div>
     </div>
   `;
 }
-
 function renderCatalogPreview(summary) {
+  const mapCount = summary.maps?.length ?? 0;
   return `
-    <div class="builder-inspector-card builder-catalog-preview-card">
-      <div class="builder-field-label">Catalog Entry Preview</div>
-      <div class="builder-field-value">Mission: ${escapeHtml(summary.missionId)}</div>
-      <div class="builder-inspector-note">${escapeHtml(summary.missionPath)}</div>
-      <div class="builder-field-value">Complete Package</div>
-      <div class="builder-inspector-note">${escapeHtml(summary.packagePath)}</div>
-      <div class="builder-field-value">Maps: ${escapeHtml(summary.maps?.length ?? 0)}</div>
-      ${(summary.catalogMapEntries ?? []).map((entry) => `<div class="builder-inspector-note">${escapeHtml(entry.path)}</div>`).join("")}
+    <div class="builder-inspector-card builder-catalog-preview-card builder-list-card">
+      <div class="builder-field-label">Export Preview</div>
+      <div class="builder-export-preview-grid">
+        <span>Mission</span><strong>${escapeHtml(summary.missionId)}</strong>
+        <span>Maps</span><strong>${escapeHtml(mapCount)}</strong>
+        <span>Package</span><strong>${escapeHtml(summary.packagePath)}</strong>
+      </div>
     </div>
   `;
 }
@@ -828,7 +815,7 @@ function renderTerrainInspectorTools(builderState, appState) {
   const eyedropperActive = tool.eyedropper ? " is-active" : "";
 
   return `
-    <div class="builder-inspector-card builder-terrain-tool-card">
+    <div class="builder-inspector-card builder-terrain-tool-card builder-grid-card">
       <div class="builder-field-label">Terrain Brush</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Terrain Type</span>
@@ -850,7 +837,6 @@ function renderTerrainInspectorTools(builderState, appState) {
         <button type="button" class="builder-tool-button${eyedropperActive}" data-builder-action="terrain-eyedropper"${editable ? "" : " disabled"}>Eyedropper</button>
         <button type="button" class="builder-tool-button" data-builder-action="reset-terrain-brush"${editable ? "" : " disabled"}>Reset Brush</button>
       </div>
-      <div class="builder-inspector-note">Select brush settings, then click the map. The centered brush paints terrain type, height, and movement together. Hazards/traps belong in Triggers later.</div>
     </div>
   `;
 }
@@ -870,7 +856,7 @@ function renderStructureInspectorTools(builderState, appState) {
   const roofPreview = renderStructureSpritePreview(tool.roofSprite, "Roof Preview");
   const edgePreview = renderStructureSpritePreview(tool.edgeSpriteId, "Edge Preview");
 
-  return '<div class="builder-inspector-card builder-structure-tool-card">' +
+  return '<div class="builder-inspector-card builder-structure-tool-card builder-grid-card">' +
       '<div class="builder-field-label">Structure Room Brush</div>' +
       '<label class="builder-form-field builder-form-field-compact">' +
         '<span>Structure ID</span>' +
@@ -987,7 +973,6 @@ function renderUnitInspectorTools(builderState, appState) {
         <span>Pilot Spawn</span>
         <select data-builder-field="unit-pilot-spawn-id"${editable ? "" : " disabled"}>${pilotSpawnOptions}</select>
       </label>
-      <div class="builder-inspector-note">Pilot with no mech starts on foot. Pilot with a mech starts embarked at the pilot spawn/deployment slot. Separate parked vehicles use Empty Mech.</div>
     ` : "";
 
   const emptyMechFields = isEmptyMech ? `
@@ -999,23 +984,17 @@ function renderUnitInspectorTools(builderState, appState) {
         <span>Mech Spawn</span>
         <select data-builder-field="unit-mech-spawn-id"${editable ? "" : " disabled"}>${mechSpawnOptions}</select>
       </label>
-      <div class="builder-inspector-note">Empty Mech is a fixed vehicle start. It has no pilot and must use a Mech Spawn. It is not a deployment roster type.</div>
     ` : "";
 
   return `
-    <div class="builder-inspector-card builder-unit-tool-card">
+    <div class="builder-inspector-card builder-unit-tool-card builder-grid-card">
       <div class="builder-field-label">Unit / Start Assignment</div>
-      <div class="builder-inspector-note">Team is inferred from the selected spawn. Control is authorable: use PC for player-controlled allies, CPU for AI-controlled allies or enemies.</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Start Kind</span>
         <select data-builder-field="unit-start-type"${editable ? "" : " disabled"}>${startTypeOptions}</select>
       </label>
       ${pilotFields}
       ${emptyMechFields}
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Control</span>
-        <select data-builder-field="unit-control-type"${editable ? "" : " disabled"}>${controlOptions}</select>
-      </label>
       <label class="builder-form-field builder-form-field-compact">
         <span>Instance Prefix</span>
         <input type="text" data-builder-field="unit-instance-prefix" value="${escapeHtml(tool.instancePrefix ?? "")}" placeholder="auto" spellcheck="false"${editable ? "" : " disabled"}>
@@ -1118,7 +1097,7 @@ function renderSpawnInspectorTools(builderState, appState) {
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button${spawnEraseActive}" data-builder-action="spawn-erase"${editable ? "" : " disabled"}>Erase Spawn</button>
       </div>
-      <div class="builder-inspector-note">Click a tile to place the selected fixed spawn. This writes map.spawns plus the tile spawnId used by the runtime.</div>
+
     ` : "";
 
   const deploymentPanel = mode === "deployment" ? `
@@ -1146,11 +1125,11 @@ function renderSpawnInspectorTools(builderState, appState) {
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="apply-deployment-settings"${editable ? "" : " disabled"}>Apply Start Mode</button>
       </div>
-      <div class="builder-inspector-note">Click tiles to paint deployment cells. This writes map.startState.deploymentCells and playerDeployment using the runtime data shape.</div>
+
     ` : "";
 
   return `
-    <div class="builder-inspector-card builder-spawn-tool-card">
+    <div class="builder-inspector-card builder-spawn-tool-card builder-grid-card">
       <div class="builder-field-label">Spawns</div>
       <div class="builder-tool-row" role="tablist" aria-label="Spawn authoring sections">
         <button type="button" class="builder-tool-button${fixedTabActive}" data-builder-action="spawn-tab-fixed"${editable ? "" : " disabled"}>Fixed Spawns</button>
@@ -1184,28 +1163,6 @@ function buildNumberOptions(min, max, selectedValue, labeler = (value) => value)
 
 
 
-
-function getObjectiveTargetUnitOptions(builderState) {
-  const starts = getUnitStartAssignments(builderState);
-  const options = [];
-  for (const entry of Array.isArray(starts) ? starts : []) {
-    if (!entry) continue;
-    if (entry.pilotInstanceId) {
-      options.push({
-        id: entry.pilotInstanceId,
-        label: `${entry.pilotDefinitionId || entry.pilotInstanceId} · pilot · ${entry.team || "player"}/${entry.controlType || "PC"}`
-      });
-    }
-    if (entry.mechInstanceId) {
-      options.push({
-        id: entry.mechInstanceId,
-        label: `${entry.mechDefinitionId || entry.mechInstanceId} · mech · ${entry.team || "player"}/${entry.controlType || "PC"}`
-      });
-    }
-  }
-  return options;
-}
-
 function renderObjectiveInspectorTools(builderState, appState) {
   const tool = ensureObjectiveToolSettings(builderState) ?? {};
   const editable = builderState.workspaceMode === "builder-map";
@@ -1213,7 +1170,6 @@ function renderObjectiveInspectorTools(builderState, appState) {
   const typeOptions = buildObjectiveTypeOptions(tool.type ?? "defeat_all");
   const teamOptions = buildSimpleOptions(["player", "enemy", "neutral"], tool.team ?? "player");
   const targetTeamOptions = buildSimpleOptions(["enemy", "player", "neutral"], tool.targetTeam ?? "enemy");
-  const targetUnitOptions = buildObjectOptions(getObjectiveTargetUnitOptions(builderState), tool.targetUnitId ?? "", "No units authored", true, "Choose protected unit");
   const needsZone = objectiveTypeNeedsZone(tool.type);
   const selectedObjective = Number.isInteger(Number(tool.selectedIndex)) && objectives[Number(tool.selectedIndex)]
     ? objectives[Number(tool.selectedIndex)]
@@ -1243,24 +1199,17 @@ function renderObjectiveInspectorTools(builderState, appState) {
       </label>
     ` : "";
 
-  const targetUnitFields = tool.type === "protect_unit" ? `
-      <label class="builder-form-field builder-form-field-compact">
-        <span>Protected Unit</span>
-        <select data-builder-field="objective-target-unit-id"${editable ? "" : " disabled"}>${targetUnitOptions}</select>
-      </label>
-    ` : "";
-
   const zoneTools = needsZone ? `
       <div class="builder-field-label builder-section-label">Zone Painter</div>
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button${addActive}" data-builder-action="objective-paint-add"${editable ? "" : " disabled"}>Paint Zone</button>
         <button type="button" class="builder-tool-button${eraseActive}" data-builder-action="objective-paint-erase"${editable ? "" : " disabled"}>Erase Zone</button>
       </div>
-      <div class="builder-inspector-note">Select an objective below, then click tiles on the map. Current selected objective has ${selectedTileCount} zone tile(s).</div>
-    ` : `<div class="builder-inspector-note">This objective type does not use a painted zone.</div>`;
+      <div class="builder-inspector-note builder-note-compact">Zone tiles: ${selectedTileCount}</div>
+    ` : ``;
 
   return `
-    <div class="builder-inspector-card builder-objective-tool-card">
+    <div class="builder-inspector-card builder-objective-tool-card builder-grid-card">
       <div class="builder-field-label">Objectives V1</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Mission Type</span>
@@ -1280,7 +1229,6 @@ function renderObjectiveInspectorTools(builderState, appState) {
       </label>
       ${targetTeamFields}
       ${teamFields}
-      ${targetUnitFields}
       ${roundFields}
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="add-objective"${editable ? "" : " disabled"}>Add Objective</button>
@@ -1306,9 +1254,7 @@ function renderObjectiveList(objectives, selectedIndex) {
         ? 'rounds: ' + (objective?.roundsRequired ?? objective?.rounds ?? 0)
         : objective?.type === 'trigger_complete'
           ? 'completed by trigger'
-          : objective?.type === 'protect_unit'
-            ? 'protect: ' + (objective?.targetUnitId || 'missing unit')
-            : 'zone tiles: ' + tileCount + (objective?.type === 'hold_zone' ? ' · rounds: ' + (objective?.roundsRequired ?? 0) : '');
+          : 'zone tiles: ' + tileCount + (objective?.type === 'hold_zone' ? ' · rounds: ' + (objective?.roundsRequired ?? 0) : '');
     return '<div class="builder-objective-row' + selected + '">' +
       '<button type="button" class="builder-objective-main" data-builder-action="select-objective:' + index + '">' +
         '<strong>' + escapeHtml((index + 1) + '. ' + (objective?.label ?? objective?.id ?? 'Objective')) + '</strong>' +
@@ -1360,7 +1306,7 @@ function renderTriggerInspectorTools(builderState, appState) {
   const needsZone = triggerTypeNeedsZone(tool.type);
 
   return `
-    <div class="builder-inspector-card builder-trigger-tool-card builder-compact-card">
+    <div class="builder-inspector-card builder-trigger-tool-card builder-compact-card builder-grid-card">
       <div class="builder-field-label">Triggers V1</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Trigger ID</span>
@@ -1510,7 +1456,7 @@ function renderLogicInspectorTools(builderState, appState) {
   const showActionItem = tool.actionType === "give_item" || tool.actionType === "remove_item";
 
   return `
-    <div class="builder-inspector-card builder-logic-tool-card builder-compact-card">
+    <div class="builder-inspector-card builder-logic-tool-card builder-compact-card builder-grid-card">
       <div class="builder-field-label">Logic V1</div>
       <label class="builder-form-field builder-form-field-compact">
         <span>Logic ID</span>
@@ -1614,7 +1560,7 @@ function renderLogicInspectorTools(builderState, appState) {
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="add-logic-action"${editable ? "" : " disabled"}>Add Action To Selected</button>
       </div>
-      <div class="builder-inspector-note">Triggers call logic with the Run Logic Chain preset. Logic chains are optional condition + ordered actions. Current selected chain has ${actionCount} action(s).</div>
+      <div class="builder-inspector-note builder-note-compact">Actions: ${actionCount}</div>
       <div class="builder-field-label builder-section-label">Current Logic Chains</div>
       ${renderLogicList(logic, tool.selectedIndex)}
     </div>
