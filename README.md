@@ -4,24 +4,24 @@
 
 **Ars Caelorum** is an in-browser 2:1 isometric tactics RPG / tactics-engine prototype built with HTML, CSS, JavaScript, and SVG rendering.
 
-The project is inspired by tactical RPGs, mech combat games, and board-game-style systems. The core design goal is a deterministic, readable battlefield where pilots and mechs operate in the same rules space, maps are authored as data, and combat logic comes from board truth rather than visual tricks.
+The project is built around a deterministic, readable tactical battlefield where pilots and Telum operate in the same rules space, maps are authored as data, and mission flow comes from board truth rather than hidden scripting.
 
 ---
 
 ## Current Live Direction
 
-Ars Caelorum now has a real playable shell and a functional fullscreen Mission Builder V1 foundation.
+Ars Caelorum now has a real playable shell, functional mission package loading, a fullscreen Mission Builder, combat maps, story/exploration maps, and a graybox cold-opening mission chain.
 
-Current game flow:
+Current game flow now supports:
 
 ```txt
 TITLE
 -> MISSION SELECT
--> BRIEFING
--> MAP LOAD
--> DEPLOYMENT / AUTHORED START
--> COMBAT
--> MISSION END
+-> MISSION BRIEFING
+-> MAP / PHASE BRIEFING
+-> STORY OR COMBAT MAP
+-> OBJECTIVES / TRIGGERS / DIALOGUE
+-> NEXT MAP PHASE OR MISSION RESULT
 -> RETURN TO TITLE
 ```
 
@@ -31,6 +31,8 @@ Current builder flow:
 MISSION BUILDER
 -> MISSION PACKAGE DRAFT
 -> MAP PHASES
+-> MAP MODE / PHASE BRIEFING
+-> STARTS / DEPLOYMENTS
 -> OBJECTIVES / TRIGGERS / LOGIC / DIALOGUE
 -> VALIDATE
 -> TEST MISSION
@@ -38,7 +40,7 @@ MISSION BUILDER
 -> REAL RUNTIME LOADER
 ```
 
-The project has crossed from engine-only testing into mission-authoring territory. The builder is not final UI, but it is functional enough to build real mission sets.
+The project has crossed from engine-only testing into mission-authoring and opening-sequence grayboxing.
 
 ---
 
@@ -49,13 +51,60 @@ The project has crossed from engine-only testing into mission-authoring territor
 - Title screen
 - Mission select screen
 - Mission briefing screen
+- Full-screen map phase briefing screen
 - Mission catalog loading from `data/missions/missionList.json`
 - Map catalog support from `data/maps/mapList.json`
 - Mission-first loading
 - Maps as phases inside missions
-- Mission end / return-to-title flow
-- Intro / victory / defeat dialogue hooks
+- Combat mode maps
+- Story / Exploration mode maps
+- Mission result / return-to-title flow
 - Keyboard-first shell navigation
+
+### Story / Exploration Mode
+
+Story Mode is a map-level mode, not a separate game.
+
+Maps can use:
+
+```json
+"mode": "story"
+```
+
+Story Mode supports:
+
+- free movement
+- no initiative
+- no rounds
+- no move/action phase split
+- no enemy turns unless the map is intentionally combat
+- Action / Enter interaction
+- authored interact triggers
+- dialogue triggers
+- zone triggers
+- reach/trigger objectives
+- enter/exit mech
+- load next map
+
+Story Mode uses the same mission package, map data, objectives, triggers, logic, dialogue, validation, and export paths as Combat Mode.
+
+### Phase Briefings
+
+Each map can optionally show a full-screen phase briefing before player control.
+
+Maps can use:
+
+```json
+"showPhaseBriefing": true,
+"phaseBriefing": {
+  "title": "Earth Hospital - Two Weeks Later",
+  "subtitle": "EARTH / PRIVATE RECOVERY WARD",
+  "text": "Skye wakes in a clean hospital room with the meter already running.",
+  "objectives": ["Reach the elevator with Eve."]
+}
+```
+
+Phase briefings are used as map-to-map interstitials / loading-screen style story cards.
 
 ### Core Combat / Battlefield
 
@@ -64,6 +113,8 @@ The project has crossed from engine-only testing into mission-authoring territor
 - Mechs as controlled bodies, not initiative actors
 - Pilot and mech deployment
 - Authored starts through map `startState.deployments`
+- PC or CPU control per authored unit start
+- CPU player-team allies can fight opposing teams
 - Embark / disembark
 - Empty mech boarding marker on the rear boarding tile
 - Occupied mech damage cascade:
@@ -75,6 +126,20 @@ The project has crossed from engine-only testing into mission-authoring territor
 - Move / brace / attack / ability / item / end turn command buckets
 - Baseline CPU movement and attacks
 - CPU exit from disabled occupied mechs
+- Grid-style command menu navigation for two-column command layouts
+
+### Tactical HUD
+
+The HUD now uses a tactical RPG layout:
+
+```txt
+LEFT: active unit / Telum readout
+CENTER: objective + command grid
+RIGHT: target readout
+ABOVE HUD: turn / initiative popup
+```
+
+The active unit and target panels use compact SHD/CORE bars and one-row stat strips. Embarked pilot info is reduced to the vitals needed during mounted play.
 
 ### Targeting / LOS
 
@@ -82,7 +147,7 @@ The project has crossed from engine-only testing into mission-authoring territor
 - Direct targeting is unit-based
 - Mech direct targeting resolves to the mech center/focus tile
 - 3x3 mech footprint still matters for occupancy and arc checks
-- Missile targeting can still target open tiles
+- Missile targeting can target open tiles
 - Missile target LOS snaps to occupied unit focus/center when relevant
 - Disabled/destroyed units are filtered from direct targeting
 - Terrain height and structure edge height feed LOS and movement truth
@@ -122,30 +187,6 @@ The fullscreen Mission Builder lives under:
 src/builder/
 ```
 
-Important modules:
-
-```txt
-src/builder/missionBuilder.js
-src/builder/builderState.js
-src/builder/builderAdapters.js
-src/builder/builderMissionPackage.js
-src/builder/builderLoadExisting.js
-src/builder/builderMapFactory.js
-src/builder/builderTerrain.js
-src/builder/builderStructures.js
-src/builder/builderSpawns.js
-src/builder/builderUnits.js
-src/builder/builderObjectives.js
-src/builder/builderTriggers.js
-src/builder/builderLogic.js
-src/builder/builderDialogue.js
-src/builder/builderValidation.js
-src/builder/builderExport.js
-src/builder/builderRuntimeTest.js
-src/builder/ui/builderShell.js
-src/builder/workspace/wysiwygWorkspace.js
-```
-
 Current builder tabs:
 
 - Mission
@@ -167,12 +208,18 @@ Current builder tabs:
 The builder currently supports:
 
 - Fullscreen builder shell opened with backtick
+- Compact right-side inspector
+- Right inspector scroll reset when switching tabs
 - Mission package drafting
 - Multiple maps/phases inside one mission package
 - Active map switching
 - Existing mission/package loading
 - Existing map import into a mission package
 - Blank map creation
+- Existing map resize from Map tab
+- Shrinking a map crops data outside the new grid
+- Map mode selection: Combat or Story / Exploration
+- Per-map phase briefing fields
 - Map duplication/removal
 - Engine-backed WYSIWYG map preview
 - Tile selection
@@ -183,10 +230,13 @@ The builder currently supports:
 - Spawn placement
 - Deployment zone painting
 - Unit/start assignment authoring
+- Unit control authoring: PC or CPU
 - Objective authoring
 - Trigger authoring
 - Logic chain authoring
 - Dialogue block authoring
+- Dialogue line editing, deletion, and reordering
+- Dialogue speaker/portrait authoring
 - Result text authoring
 - Real validation
 - Validation-gated Test Mission
@@ -202,6 +252,8 @@ The builder now has a practical mission grammar:
 ```txt
 Mission = package wrapper
 Map = mission phase
+Map Mode = combat or story pacing
+Phase Briefing = optional map-load story card
 Objective = why the map matters
 Trigger = when something happens
 Logic = optional ordered action recipe
@@ -216,12 +268,16 @@ Results = victory/defeat presentation
 - Hold Zone
 - Survive Rounds
 - Trigger Event
+- Protect Unit / Fail if Down
+
+Protect Unit is used for Skye-must-survive, escort, VIP, convoy-pilot, and rescue maps.
 
 ### Triggers Available
 
 Trigger types / timing moments:
 
 - Unit Enters Zone
+- Interact / Action Button
 - Mission Start
 - Round Start
 - Round End
@@ -240,6 +296,8 @@ Trigger presets / effects:
 - Run Logic Chain
 
 Zone triggers fire when a unit moves through a zone, not only when it stops on the final destination tile.
+
+Mission Start triggers can fire for both combat and story maps after any phase briefing is dismissed.
 
 ### Logic Available
 
@@ -275,44 +333,13 @@ Dialogue is mission-level keyed data. Core blocks:
 - `victory`
 - `defeat`
 
-Custom blocks can be called by triggers or logic, for example:
+Custom blocks can be called by triggers or logic.
+
+The builder supports editing, deleting, and reordering dialogue lines. Portraits can be manually overridden. Future portrait convention should default to:
 
 ```txt
-hangar_warning
-first_contact
-skye_mech_reveal
+art/pilot/[lowercase_pilot_name]_portrait.png
 ```
-
-Current note: mission intro is still mission-level. For multi-map missions, use custom dialogue triggers/logic for map-specific story beats.
-
----
-
-## Validation
-
-Validation now protects the builder from broken runtime data.
-
-Validation checks include:
-
-- Mission id/start map
-- Duplicate map ids
-- Map dimensions
-- Missing/invalid tiles
-- Spawn bounds
-- Deployment/start assignment errors
-- Player pilot presence
-- Enemy pilot presence only when a `defeat_all` objective requires enemies
-- Deployment cell size/count
-- Mech deployment 3x3 fit
-- Structure edge/cell bounds
-- Duplicate structure edges
-- Objective data
-- Trigger data
-- Logic chain data
-- Dialogue data
-- Export/test blocking errors
-- Warnings for placeholder/default text and suspicious authoring choices
-
-Warnings do not block. Errors block Test Mission and Export.
 
 ---
 
@@ -348,44 +375,91 @@ Interior structure / room cutaway receipt map.
 
 Builder export receipt.
 
-### Cold Opening Trigger Receipt
+### `007_story_mode_demo` / `007_story_mode_demo_mission`
 
-A working two-map mission pattern has been proven:
+Story Mode receipt:
 
 ```txt
-Map 1:
-- Skye starts on foot
-- Objective: trigger event / reach hangar
-- Trigger: load next map
-
-Map 2:
-- Skye starts from authored Map 2 start truth
-- Objective: reach zone or defeat enemy
-- Mission ends normally
+Talk to NPC
+-> Action Button dialogue
+-> walk to rear hatch
+-> enter Telum
+-> move Telum to exit marker
+-> mission complete
 ```
+
+### `008_cold_opening_flow_mission`
+
+Current graybox opening flow receipt:
+
+```txt
+008 Mars Cold Open
+-> 009 Earth Hospital
+-> 010 Underground Parking Garage Escape
+-> 011 Gabrielle Enforcement Agency / Gabe Meeting
+-> 012 Gabrielle Mech Bay
+-> 013 Practice Sparring
+```
+
+This proves the core campaign rhythm:
+
+```txt
+combat -> story -> combat -> story -> story/mount -> combat
+```
+
+---
+
+## Validation
+
+Validation protects the builder from broken runtime data.
+
+Validation checks include:
+
+- Mission id/start map
+- Duplicate map ids
+- Map dimensions
+- Missing/invalid tiles
+- Spawn bounds
+- Deployment/start assignment errors
+- Player pilot presence
+- Enemy pilot presence only when a `defeat_all` objective requires enemies
+- Deployment cell size/count
+- Mech deployment 3x3 fit
+- Structure edge/cell bounds
+- Duplicate structure edges
+- Objective data
+- Protect Unit target references
+- Trigger data
+- Logic chain data
+- Dialogue data
+- Export/test blocking errors
+- Warnings for placeholder/default text and suspicious authoring choices
+
+Warnings do not block. Errors block Test Mission and Export.
 
 ---
 
 ## Current In Progress
 
-The engine and builder function well enough to author missions. The next work is not broad new systems. The next work is mission content and small comfort passes discovered through use.
+The engine and builder now function well enough to author the opening mission chain.
 
 Active practical focus:
 
-- Build small mission sets
-- Find real authoring pain
-- Compact the right-side builder UI
-- Move repeated tab help text into better places
-- Improve result/map/mission summary presentation
-- Keep validation useful but not noisy
+- Build and polish the real cold-opening maps
+- Replace graybox terrain with readable environments
+- Use phase briefings for map-to-map story flow
+- Use Story Mode for hospital / Gabe / locker room / mech bay beats
+- Use Combat Mode for Mars, garage escape, and sparring
+- Find real authoring pain while building the opening
+- Keep HUD and builder UI compact and console-friendly
 
 Known roughness:
 
-- Builder right-side UI is functional but chunky
-- Bottom help/status text repeats too much
-- Some text explains architecture instead of helping author missions
-- Mission intro is mission-level, not map-phase-specific
-- Flags are currently best treated as map/phase memory unless explicitly carried later
+- Loading transitions beyond phase briefings are not final
+- AI is functional but not objective-smart
+- Builder typography can tighten a little more
+- Dialogue authoring needs real writing stress-test
+- Map/file id `012_gabriel_mech_bay` should eventually be corrected to `012_gabrielle_mech_bay` with references updated
 - Item logic is an early mission hook, not a full inventory/equipment system
 
 ---
@@ -394,16 +468,16 @@ Known roughness:
 
 Near-term:
 
-- Builder UI compression / readability pass
-- More mission authoring receipts
+- Real cold-opening map authoring
+- Phase briefing polish
+- Dialogue authoring polish after real script work
+- Builder compact typography pass
 - Map/mission summary improvements
-- Result/export information cleanup
-- Dialogue/result polish
-- More content data as missions require it
+- More mission receipts based on real opening needs
 
 Later:
 
-- Stronger AI objective awareness
+- Objective-aware AI
 - Structure/door/interior-aware AI
 - Ability/item system expansion
 - Equipment/frame authority
@@ -432,18 +506,19 @@ These are locked unless deliberately redesigned:
 11. Mission select is catalog-driven.
 12. Mission is the primary load unit.
 13. Maps are phases inside missions.
-14. CPU uses real gameplay rules, not cheat rules.
-15. Builder writes truth.
-16. Engine runs truth.
-17. Export packages truth.
-18. Validation protects truth.
-19. Simple before clever.
-20. No bloated rewrites.
+14. Story Mode is a map pacing mode, not a separate mission system.
+15. CPU uses real gameplay rules, not cheat rules.
+16. Builder writes truth.
+17. Engine runs truth.
+18. Export packages truth.
+19. Validation protects truth.
+20. Simple before clever.
+21. No bloated rewrites.
 
 ---
 
 ## Final Current Verdict
 
-Ars Caelorum currently has a real game shell, real mission package loading, real authored map starts, real deployment, real objectives, real triggers, real logic chains, real dialogue authoring, real validation, and a real fullscreen Mission Builder.
+Ars Caelorum currently has a real game shell, real mission package loading, real authored map starts, real deployment, combat maps, story maps, phase briefings, objectives, triggers, logic chains, dialogue authoring, protect-unit fail objectives, validation, and a real fullscreen Mission Builder.
 
-The builder is functionally ready to design missions. It needs UI love, not a foundation rescue.
+The foundation is ready for opening-sequence mission design. The next work is content, polish, and targeted authoring comfort—not a foundation rescue.
