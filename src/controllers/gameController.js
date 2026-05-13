@@ -72,6 +72,7 @@ export function createGameController({
     state.ui.commandMenu.items = getCommandMenuItemsForPhase(state.turn.phase, state);
   }
 
+
   function getMapObjectiveLabels(map) {
     return Array.isArray(map?.objectives)
       ? map.objectives.map((objective) => String(objective?.briefingText ?? objective?.label ?? objective?.id ?? "Objective").trim()).filter(Boolean)
@@ -193,8 +194,10 @@ export function createGameController({
     if (state.map?.showPhaseBriefing) {
       state.ui.phaseBriefing = buildPhaseBriefingState(state.map, runtimeMissionDefinition);
       state.ui.phaseBriefing.pending = { runtimeMissionDefinition };
+      state.ui.shell.screen = "phase-briefing";
     } else {
       state.ui.phaseBriefing = { active: false, title: "", subtitle: "", text: "", objectives: [], pending: null };
+      state.ui.shell.screen = "game";
       runMapStartHooks(runtimeMissionDefinition);
     }
 
@@ -206,6 +209,7 @@ export function createGameController({
   function continuePhaseBriefing() {
     const pending = state.ui?.phaseBriefing?.pending ?? null;
     state.ui.phaseBriefing = { active: false, title: "", subtitle: "", text: "", objectives: [], pending: null };
+    state.ui.shell.screen = "game";
     runMapStartHooks(pending?.runtimeMissionDefinition ?? state.mission?.definition ?? null);
     render();
   }

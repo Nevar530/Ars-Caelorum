@@ -35,14 +35,6 @@ export function bindGameplayInput(state, refs, actions) {
 
     const key = event.key.toLowerCase();
 
-    if (state?.ui?.phaseBriefing?.active) {
-      if (key === "enter" || key === " " || key === "spacebar") {
-        actions.continuePhaseBriefing?.();
-        event.preventDefault();
-      }
-      return;
-    }
-
     if (state?.ui?.dialogue?.active) {
       if (key === "enter" || key === " " || key === "spacebar") {
         actions.advanceDialogue?.();
@@ -522,6 +514,13 @@ function handleShellKeys(event, state, actions) {
 
     if (key === "enter" || key === " ") {
       actions.startSelectedMission?.();
+      return true;
+    }
+  }
+
+  if (screen === "phase-briefing") {
+    if (key === "enter" || key === " ") {
+      actions.continuePhaseBriefing?.();
       return true;
     }
   }

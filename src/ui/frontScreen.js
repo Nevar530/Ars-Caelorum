@@ -31,14 +31,15 @@ export function renderFrontScreen(state, refs) {
   main.classList.toggle("is-hidden", screen !== "game");
   titleScreen.classList.toggle("is-hidden", screen !== "title");
   missionSelectScreen.classList.toggle("is-hidden", screen !== "mission-select");
-  missionBriefingScreen?.classList.toggle("is-hidden", screen !== "mission-briefing");
+  missionBriefingScreen?.classList.toggle("is-hidden", screen !== "mission-briefing" && screen !== "phase-briefing");
 
   if (missionBackButton) {
     missionBackButton.disabled = false;
   }
 
   if (briefingBackButton) {
-    briefingBackButton.disabled = false;
+    briefingBackButton.disabled = screen === "phase-briefing";
+    briefingBackButton.hidden = screen === "phase-briefing";
   }
 
   if (titleStartButton) {
@@ -90,17 +91,23 @@ export function renderFrontScreen(state, refs) {
     missionStartButton.disabled = !selectedMission;
   }
 
+  const isPhaseBriefing = screen === "phase-briefing";
   const briefingMission = state?.ui?.shell?.briefingMission ?? selectedMission ?? null;
-  const briefing = state?.ui?.shell?.briefingDefinition?.briefing ?? null;
-  const objectiveLabels = getBriefingObjectiveLabels(state?.ui?.shell?.briefingDefinition, briefing);
+  const phaseBriefing = state?.ui?.phaseBriefing ?? null;
+  const briefing = isPhaseBriefing ? phaseBriefing : (state?.ui?.shell?.briefingDefinition?.briefing ?? null);
+  const objectiveLabels = isPhaseBriefing
+    ? (Array.isArray(phaseBriefing?.objectives) ? phaseBriefing.objectives : [])
+    : getBriefingObjectiveLabels(state?.ui?.shell?.briefingDefinition, briefing);
 
   if (briefingTitle) {
     briefingTitle.textContent = briefing?.title || briefingMission?.name || briefingMission?.id || "Mission Briefing";
   }
 
   if (briefingMap) {
-    const mapId = state?.ui?.shell?.briefingDefinition?.mapId || briefingMission?.mapId || "unknown_map";
-    briefingMap.textContent = `MAP: ${mapId}`;
+    const mapId = isPhaseBriefing
+      ? (briefing?.subtitle || state?.map?.id || "unknown_map")
+      : (state?.ui?.shell?.briefingDefinition?.mapId || briefingMission?.mapId || "unknown_map");
+    briefingMap.textContent = isPhaseBriefing ? String(mapId) : `MAP: ${mapId}`;
   }
 
   if (briefingText) {
@@ -110,11 +117,12 @@ export function renderFrontScreen(state, refs) {
   if (briefingObjectives) {
     briefingObjectives.innerHTML = objectiveLabels.length
       ? objectiveLabels.map((label) => `<li>${escapeHtml(label)}</li>`).join("")
-      : `<li>Defeat all enemy pilots.</li>`;
+      : `<li>Complete the current phase.</li>`;
   }
 
   if (briefingStartButton) {
-    briefingStartButton.disabled = !briefingMission;
+    briefingStartButton.disabled = isPhaseBriefing ? false : !briefingMission;
+    briefingStartButton.textContent = isPhaseBriefing ? "Continue" : "Launch Mission";
   }
 }
 

@@ -181,10 +181,6 @@ async function init() {
     if (button.dataset.combatOverlayAction === "advance-dialogue") {
       actions.advanceDialogue?.();
     }
-
-    if (button.dataset.combatOverlayAction === "continue-phase-briefing") {
-      actions.continuePhaseBriefing?.();
-    }
   });
 
   refs.titleStartButton?.addEventListener("click", () => {
@@ -216,6 +212,10 @@ async function init() {
   });
 
   refs.briefingStartButton?.addEventListener("click", () => {
+    if (state.ui?.shell?.screen === "phase-briefing") {
+      actions.continuePhaseBriefing?.();
+      return;
+    }
     actions.startSelectedMission();
   });
 
