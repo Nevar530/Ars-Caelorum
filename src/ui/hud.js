@@ -93,8 +93,10 @@ function renderActivePanel(state) {
 
   if (!activeBody) {
     return `
-      <div class="hud-card-title">Unit</div>
-      <div class="hud-empty-state">No active unit</div>
+      <div class="hud-readout-empty">
+        <div class="hud-card-title">Unit</div>
+        <div class="hud-empty-state">No active unit</div>
+      </div>
     `;
   }
 
@@ -109,48 +111,43 @@ function renderActivePanel(state) {
   const sublineParts = [role, activeBody.team].filter(Boolean);
   const disabledMech = mech && activeBody.status === "disabled";
 
-  const primaryStats = activeBody.unitType === "mech"
-    ? [
-        ["SHD", `${activeBody.shield}/${activeBody.maxShield}`],
-        ["CORE", `${activeBody.core}/${activeBody.maxCore}`],
-        ["MV", activeBody.move],
-        ["INIT", activeBody.initiative ?? "-"],
-        ["REACT", activeBody.reaction],
-        ["TARG", activeBody.targeting],
-        ["F", facingLabel(activeBody.facing)],
-        ["STAT", activeBody.status ?? "-"]
-      ]
-    : [
-        ["SHD", `${activeBody.shield}/${activeBody.maxShield}`],
-        ["CORE", `${activeBody.core}/${activeBody.maxCore}`],
-        ["MV", activeBody.move],
-        ["INIT", activeBody.initiative ?? "-"],
-        ["REACT", activeBody.reaction],
-        ["TARG", activeBody.targeting],
-        ["F", facingLabel(activeBody.facing)],
-        ["STAT", activeBody.status ?? "-"]
-      ];
+  const stats = [
+    ["MV", activeBody.move],
+    ["INIT", activeBody.initiative ?? "-"],
+    ["REACT", activeBody.reaction],
+    ["TARG", activeBody.targeting],
+    ["F", facingLabel(activeBody.facing)],
+    ["STAT", activeBody.status ?? "-"]
+  ];
 
   return `
-    <div class="hud-unit-compact">
-      <div class="hud-unit-head">
-        <div>
+    <div class="hud-unit-readout">
+      <div class="hud-unit-topline">
+        <div class="hud-unit-titleblock">
           <div class="hud-card-title">${escapeHtml(role)}</div>
-          <div class="hud-unit-name">${escapeHtml(activeBody.name)}</div>
-          <div class="hud-subline">${escapeHtml(sublineParts.join(" · "))}</div>
+          <div class="hud-unit-name-row">
+            <div class="hud-unit-name-stack">
+              <div class="hud-unit-name">${escapeHtml(activeBody.name)}</div>
+              <div class="hud-subline">${escapeHtml(sublineParts.join(" · "))}</div>
+            </div>
+            <div class="hud-active-vitals">
+              ${vitalBar("SHD", activeBody.shield, activeBody.maxShield, "shield")}
+              ${vitalBar("CORE", activeBody.core, activeBody.maxCore, "core")}
+            </div>
+          </div>
         </div>
         <div class="hud-tag">ACTIVE</div>
       </div>
 
-      <div class="hud-stat-grid hud-stat-grid--wide">
-        ${primaryStats.map(([label, value]) => stat(label, value)).join("")}
+      <div class="hud-stat-strip">
+        ${stats.map(([label, value]) => compactStat(label, value)).join("")}
       </div>
 
       ${mech && pilot ? `
-        <div class="hud-pilot-strip ${disabledMech ? "is-warning" : ""}">
-          <span class="hud-pilot-strip-name">Pilot: ${escapeHtml(pilot.name)}</span>
-          <span>SHD <b>${escapeHtml(`${pilot.shield}/${pilot.maxShield}`)}</b></span>
-          <span>CORE <b>${escapeHtml(`${pilot.core}/${pilot.maxCore}`)}</b></span>
+        <div class="hud-embarked-strip ${disabledMech ? "is-warning" : ""}">
+          <div class="hud-embarked-name">Pilot: ${escapeHtml(pilot.name)}</div>
+          ${vitalBar("P-SHD", pilot.shield, pilot.maxShield, "shield")}
+          ${vitalBar("P-CORE", pilot.core, pilot.maxCore, "core")}
         </div>
       ` : ""}
     </div>
@@ -174,131 +171,108 @@ function renderCenterPanel(state) {
       const listOpen = Boolean(state.ui.deployment.listOpen);
       const placedUnit = getDeploymentPlacedUnitAt(state, state.focus.x, state.focus.y);
 
-      return `
-        <div class="hud-section-title">Deployment</div>
-
-        <div class="hud-mode-box">
-          <div class="hud-mode-title">Place Units</div>
-          <div class="hud-mode-text">${placed}/${required} placed · Cursor to legal cell · Enter to assign</div>
-        </div>
-
-        ${listOpen ? `
-          <button class="hud-command-button compact" data-hud-action="confirm-deployment-placement">
-            Confirm Unit
-          </button>
-        ` : placedUnit ? `
-          <button class="hud-command-button compact" data-hud-action="remove-deployment-placement">
-            Remove Unit
-          </button>
-        ` : `
-          <button class="hud-command-button compact" data-hud-action="open-deployment-list">
-            Open Unit List
-          </button>
-        `}
-
-        <button class="hud-command-button compact ${isDeploymentMenuFocused(state) ? 'is-selected' : ''}" data-hud-action="start-combat" ${ready ? '' : 'disabled'}>
-          Begin Mission
-        </button>
+      const objectiveHtml = `
+        <div class="hud-column-title">Deployment</div>
+        <div class="hud-compact-line">${placed}/${required} placed</div>
+        <div class="hud-compact-line muted">Cursor to legal cell</div>
       `;
+
+      const commandHtml = listOpen ? `
+        <button class="hud-command-button compact" data-hud-action="confirm-deployment-placement">Confirm Unit</button>
+      ` : placedUnit ? `
+        <button class="hud-command-button compact" data-hud-action="remove-deployment-placement">Remove Unit</button>
+      ` : `
+        <button class="hud-command-button compact" data-hud-action="open-deployment-list">Open Unit List</button>
+      `;
+
+      return renderHudFlowGrid({
+        header: "Deployment",
+        status: ready ? "Ready" : "Set Units",
+        objectives: objectiveHtml,
+        commands: `
+          ${commandHtml}
+          <button class="hud-command-button compact ${isDeploymentMenuFocused(state) ? 'is-selected' : ''}" data-hud-action="start-combat" ${ready ? '' : 'disabled'}>Begin Mission</button>
+        `
+      });
     }
 
-    return `
-      <div class="hud-flow-head">
-        <span>Combat Ready</span>
-        <b>INIT OFF</b>
-      </div>
-
-      <button class="hud-command-button" data-hud-action="start-combat">
-        Start Combat
-      </button>
-    `;
+    return renderHudFlowGrid({
+      header: "Combat Ready",
+      status: "Init Off",
+      objectives: `<div class="hud-compact-line muted">No active combat round.</div>`,
+      commands: `<button class="hud-command-button" data-hud-action="start-combat">Start Combat</button>`
+    });
   }
 
-  const summary = renderTurnSummary(state);
+  const commandHtml = renderCombatCommandBlock(state);
+  return renderHudFlowGrid({
+    header: getCombatHeader(state),
+    status: String(state.ui.mode ?? "idle"),
+    objectives: renderObjectiveSummary(state) || `<div class="hud-compact-line muted">No objectives.</div>`,
+    commands: commandHtml
+  });
+}
 
-  if (state.ui.mode === "idle" && state.ui.commandMenu.open) {
-    return `
-      ${summary}
-      ${renderCommandMenu(state)}
-    `;
-  }
-
-  if (state.ui.mode === "action-ability-select") {
-    return `
-      ${summary}
-      ${renderAbilityMenu(state)}
-    `;
-  }
-
-  if (state.ui.mode === "action-attack-select") {
-    return `
-      ${summary}
-      ${renderAttackMenu(state)}
-    `;
-  }
-
-  if (state.ui.mode === "action-item-select") {
-    return `
-      ${summary}
-      ${renderItemMenu(state)}
-    `;
-  }
-
-  if (state.ui.mode === "action-target") {
-    return `
-      ${summary}
-      ${renderTargeting(state)}
-    `;
-  }
-
-  if (state.ui.mode === "move") {
-    return `
-      ${summary}
-      ${renderMove(state)}
-    `;
-  }
-
-  if (state.ui.mode === "face") {
-    return `
-      ${summary}
-      ${renderFacing(state)}
-    `;
-  }
+function renderCombatCommandBlock(state) {
+  if (state.ui.mode === "idle" && state.ui.commandMenu.open) return renderCommandMenu(state);
+  if (state.ui.mode === "action-ability-select") return renderAbilityMenu(state);
+  if (state.ui.mode === "action-attack-select") return renderAttackMenu(state);
+  if (state.ui.mode === "action-item-select") return renderItemMenu(state);
+  if (state.ui.mode === "action-target") return renderTargeting(state);
+  if (state.ui.mode === "move") return renderMove(state);
+  if (state.ui.mode === "face") return renderFacing(state);
 
   return `
-    ${summary}
-
-    <div class="hud-card-title">Command</div>
-
-    <div class="hud-mode-box">
-      <div class="hud-mode-title">Awaiting Command</div>
-      <div class="hud-mode-text">Press Enter</div>
+    <div class="hud-command-status">
+      <div class="hud-command-label">Awaiting Command</div>
+      <button class="hud-command-button" data-hud-action="open-menu">Open Menu</button>
     </div>
-
-    <button class="hud-command-button" data-hud-action="open-menu">
-      Open Menu
-    </button>
   `;
 }
 
+function getCombatHeader(state) {
+  const phaseLabel = state.turn.phase === "move"
+    ? "Move"
+    : state.turn.phase === "action"
+      ? "Action"
+      : "Combat";
+  return `Round ${state.turn.round} · ${phaseLabel}`;
+}
+
+function renderHudFlowGrid({ header, status, objectives, commands }) {
+  return `
+    <div class="hud-flow-head">
+      <span>${escapeHtml(header)}</span>
+      <b>${escapeHtml(status)}</b>
+    </div>
+    <div class="hud-flow-grid">
+      <div class="hud-flow-column hud-flow-column--objectives">
+        <div class="hud-column-title">Objective</div>
+        <div class="hud-column-body">${objectives}</div>
+      </div>
+      <div class="hud-flow-column hud-flow-column--commands">
+        <div class="hud-column-title">Command</div>
+        <div class="hud-column-body">${commands}</div>
+      </div>
+    </div>
+  `;
+}
 
 function renderStoryModePanel(state) {
-  const objectives = renderObjectiveSummary(state);
   const activeBody = getActiveBody(state);
   const label = activeBody?.unitType === "mech" ? "Telum" : "Pilot";
 
-  return `
-    <div class="hud-flow-head">
-      <span>Story Mode</span>
-      <b>${escapeHtml(label)}: ${escapeHtml(activeBody?.name ?? "None")}</b>
-    </div>
-
-    ${objectives}
-
-    <button class="hud-command-button" data-hud-action="story-interact">
-      Interact
-    </button>
-  `;
+  return renderHudFlowGrid({
+    header: "Story Mode",
+    status: `${label}: ${activeBody?.name ?? "None"}`,
+    objectives: renderObjectiveSummary(state) || `<div class="hud-compact-line muted">Explore the area.</div>`,
+    commands: `
+      <div class="hud-command-status">
+        <div class="hud-command-label">Action / Interact</div>
+        <button class="hud-command-button" data-hud-action="story-interact">Interact</button>
+      </div>
+    `
+  });
 }
 
 /* =========================
@@ -362,32 +336,44 @@ function renderContextPanel(state) {
       ? getEmbarkedPilotForMech(state, focusedUnit)
       : null;
 
+    const role = focusedUnit.unitType === "mech" ? "Target Telum" : "Target Pilot";
+    const stats = [
+      ["MV", focusedUnit.move],
+      ["INIT", focusedUnit.initiative ?? "-"],
+      ["REACT", focusedUnit.reaction],
+      ["TARG", focusedUnit.targeting],
+      ["F", facingLabel(focusedUnit.facing)],
+      ["STAT", focusedUnit.status ?? "-"]
+    ];
+
     return `
-      <div class="hud-section-title">Target</div>
-
-      <div class="hud-mini-card">
-        <div>${focusedUnit.name}</div>
-        <div style="opacity:.7;">${focusedUnit.team}</div>
-      </div>
-
-      <div class="hud-stat-grid">
-        ${stat("SHD", focusedUnit.shield)}
-        ${stat("CORE", focusedUnit.core)}
-        ${stat("REACT", focusedUnit.reaction)}
-        ${stat("TARG", focusedUnit.targeting)}
-      </div>
-
-      ${targetPilot ? `
-        <div class="hud-mini-card" style="margin-top:8px;">
-          <div style="font-size:11px; opacity:.7; margin-bottom:4px;">Embarked Pilot</div>
-          <div class="hud-stat-grid">
-            ${stat("PSHD", targetPilot.shield)}
-            ${stat("PCORE", targetPilot.core)}
-            ${stat("STAT", targetPilot.status ?? "-")}
-            ${stat("INIT", targetPilot.initiative ?? "-")}
+      <div class="hud-target-readout">
+        <div class="hud-target-topline">
+          <div class="hud-card-title">${escapeHtml(role)}</div>
+          <div class="hud-target-name-row">
+            <div class="hud-unit-name-stack">
+              <div class="hud-unit-name">${escapeHtml(focusedUnit.name)}</div>
+              <div class="hud-subline">${escapeHtml(focusedUnit.team ?? "")}</div>
+            </div>
+            <div class="hud-active-vitals">
+              ${vitalBar("SHD", focusedUnit.shield, focusedUnit.maxShield, "shield")}
+              ${vitalBar("CORE", focusedUnit.core, focusedUnit.maxCore, "core")}
+            </div>
           </div>
         </div>
-      ` : ""}
+
+        <div class="hud-stat-strip">
+          ${stats.map(([label, value]) => compactStat(label, value)).join("")}
+        </div>
+
+        ${targetPilot ? `
+          <div class="hud-embarked-strip">
+            <div class="hud-embarked-name">Pilot: ${escapeHtml(targetPilot.name)}</div>
+            ${vitalBar("P-SHD", targetPilot.shield, targetPilot.maxShield, "shield")}
+            ${vitalBar("P-CORE", targetPilot.core, targetPilot.maxCore, "core")}
+          </div>
+        ` : ""}
+      </div>
     `;
   }
 
@@ -411,17 +397,15 @@ function renderContextPanel(state) {
   }
 
   return `
-    <div class="hud-section-title">Tile</div>
-
-    <div class="hud-mini-card">
-      (${state.focus.x}, ${state.focus.y})
-    </div>
-
-    <div class="hud-stat-grid">
-      ${stat("ELEV", elev)}
-      ${stat("LOS", los)}
-      ${stat(isStoryMode(state) ? "MODE" : "ROUND", isStoryMode(state) ? "Story" : state.turn.round)}
-      ${stat("PHASE", state.turn.phase)}
+    <div class="hud-tile-readout">
+      <div class="hud-card-title">Tile</div>
+      <div class="hud-tile-focus">(${state.focus.x}, ${state.focus.y})</div>
+      <div class="hud-stat-strip hud-stat-strip--tile">
+        ${compactStat("ELEV", elev)}
+        ${compactStat("LOS", los)}
+        ${compactStat(isStoryMode(state) ? "MODE" : "ROUND", isStoryMode(state) ? "Story" : state.turn.round)}
+        ${compactStat("PHASE", state.turn.phase)}
+      </div>
     </div>
   `;
 }
@@ -539,8 +523,29 @@ function renderFacing() {
 function stat(label, value) {
   return `
     <div class="hud-inline-stat">
-      <div class="hud-inline-stat-label">${label}</div>
-      <div class="hud-inline-stat-value">${value}</div>
+      <div class="hud-inline-stat-label">${escapeHtml(label)}</div>
+      <div class="hud-inline-stat-value">${escapeHtml(value)}</div>
+    </div>
+  `;
+}
+
+function compactStat(label, value) {
+  return `
+    <div class="hud-compact-stat">
+      <span>${escapeHtml(label)}</span>
+      <b>${escapeHtml(value)}</b>
+    </div>
+  `;
+}
+
+function vitalBar(label, value, maxValue, kind) {
+  const current = Number(value ?? 0);
+  const max = Math.max(1, Number(maxValue ?? value ?? 1));
+  const percent = Math.max(0, Math.min(100, Math.round((current / max) * 100)));
+  return `
+    <div class="hud-vital hud-vital--${escapeClassToken(kind || label)}">
+      <div class="hud-vital-top"><span>${escapeHtml(label)}</span><b>${escapeHtml(`${current}/${max}`)}</b></div>
+      <div class="hud-vital-track"><i style="width:${percent}%"></i></div>
     </div>
   `;
 }
@@ -600,4 +605,11 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function escapeClassToken(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "default";
 }

@@ -3137,3 +3137,440 @@ button:disabled {
     max-height: 56px;
   }
 }
+
+/* =========================================
+   TACTICAL HUD READOUT PASS - ONE ROW / NO SCROLL
+   Final override for console-safe bottom HUD.
+========================================= */
+.hud {
+  grid-template-columns: minmax(430px, 0.98fr) minmax(520px, 1.18fr) minmax(400px, 0.9fr);
+  gap: 7px;
+  height: 126px;
+  min-height: 126px;
+  max-height: 126px;
+  padding: 6px 8px;
+  align-items: stretch;
+  overflow: visible;
+}
+
+.hud-panel {
+  height: 114px;
+  min-height: 114px;
+  max-height: 114px;
+  padding: 6px 8px;
+  gap: 4px;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.hud-panel-center {
+  min-width: 0;
+}
+
+.hud-unit-readout,
+.hud-target-readout,
+.hud-tile-readout {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.hud-card-title,
+.hud-section-title,
+.hud-column-title {
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  font-weight: 900;
+  color: var(--muted);
+}
+
+.hud-unit-topline,
+.hud-target-topline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  min-height: 0;
+}
+
+.hud-unit-titleblock {
+  min-width: 0;
+}
+
+.hud-unit-name-row,
+.hud-target-name-row {
+  display: grid;
+  grid-template-columns: minmax(112px, 0.8fr) minmax(190px, 1.2fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 2px;
+}
+
+.hud-unit-name-stack {
+  min-width: 0;
+}
+
+.hud-unit-name {
+  font-size: 15px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud-subline {
+  font-size: 9px;
+  line-height: 1;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud-tag {
+  padding: 3px 7px;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.hud-active-vitals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(82px, 1fr));
+  gap: 5px;
+  min-width: 0;
+}
+
+.hud-vital {
+  min-width: 0;
+  height: 28px;
+  padding: 4px 5px;
+  border-radius: 5px;
+  border: 1px solid rgba(119, 209, 255, .24);
+  background: rgba(255,255,255,.025);
+  overflow: hidden;
+}
+
+.hud-vital-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 3px;
+  font-size: 8px;
+  line-height: 1;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hud-vital-top b {
+  color: var(--text);
+  font-size: 9px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.hud-vital-track {
+  height: 5px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(0,0,0,.45);
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+.hud-vital-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(119,209,255,.65), rgba(119,209,255,.95));
+}
+
+.hud-vital--core .hud-vital-track i,
+.hud-vital--p-core .hud-vital-track i {
+  background: linear-gradient(90deg, rgba(240,176,0,.65), rgba(240,176,0,.95));
+}
+
+.hud-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  min-height: 0;
+}
+
+.hud-stat-strip--tile {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.hud-compact-stat {
+  height: 24px;
+  min-width: 0;
+  padding: 4px 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  background: var(--panel-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.hud-compact-stat span {
+  flex: 0 0 auto;
+  font-size: 8px;
+  line-height: 1;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hud-compact-stat b {
+  min-width: 0;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hud-embarked-strip {
+  display: grid;
+  grid-template-columns: minmax(100px, .9fr) minmax(90px, 1fr) minmax(90px, 1fr);
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  min-height: 30px;
+  padding: 3px 5px;
+  border-radius: 5px;
+  border: 1px solid rgba(119, 209, 255, .22);
+  background: rgba(119,209,255,.045);
+  overflow: hidden;
+}
+
+.hud-embarked-strip.is-warning {
+  border-color: rgba(200,77,77,.58);
+  background: rgba(200,77,77,.10);
+}
+
+.hud-embarked-name {
+  min-width: 0;
+  font-size: 9px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud-embarked-strip .hud-vital {
+  height: 22px;
+  padding: 3px 4px;
+}
+
+.hud-embarked-strip .hud-vital-top {
+  margin-bottom: 2px;
+  font-size: 7px;
+}
+
+.hud-embarked-strip .hud-vital-top b {
+  font-size: 8px;
+}
+
+.hud-embarked-strip .hud-vital-track {
+  height: 4px;
+}
+
+.hud-flow-head {
+  height: 22px;
+  min-height: 22px;
+  max-height: 22px;
+  padding: 4px 7px;
+  margin: 0;
+  border-radius: 5px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.hud-flow-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, .82fr);
+  gap: 6px;
+  overflow: hidden;
+}
+
+.hud-flow-column {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 12px 1fr;
+  gap: 4px;
+  padding: 5px 6px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: rgba(255,255,255,.018);
+  overflow: hidden;
+}
+
+.hud-column-title {
+  border: 0;
+  padding: 0;
+  color: var(--muted);
+}
+
+.hud-column-body {
+  min-height: 0;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  overflow: hidden;
+}
+
+.hud-objectives-compact {
+  display: grid;
+  gap: 4px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hud-objective-line {
+  min-height: 23px;
+  height: 23px;
+  padding: 4px 6px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.hud-compact-line {
+  min-height: 20px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel-3);
+  color: var(--text);
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud-compact-line.muted {
+  color: var(--muted);
+}
+
+.hud-command-status {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 5px;
+  min-height: 0;
+}
+
+.hud-command-label {
+  min-height: 22px;
+  padding: 5px 6px;
+  border-radius: 5px;
+  background: var(--panel-3);
+  border: 1px solid var(--line-soft);
+  color: #f6f1d5;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.hud-command-button,
+.hud-command-button.compact {
+  min-height: 27px;
+  max-height: 30px;
+  padding: 5px 8px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.hud-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hud-menu-button {
+  min-height: 24px;
+  max-height: 26px;
+  padding: 4px 7px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.hud-prompt-pill {
+  min-height: 46px;
+  height: 46px;
+  font-size: 12px;
+}
+
+.hud-tile-focus {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel-3);
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.hud-mode-box,
+.hud-mini-card,
+.hud-stat-grid,
+.hud-inline-stat {
+  overflow: hidden;
+}
+
+/* Keep dialogue/turn popups clear of the fixed HUD. */
+.combat-overlay.is-dialogue-visible,
+.combat-overlay.is-turn-visible {
+  padding-bottom: 138px;
+  z-index: 55;
+}
+
+.dialogue-rise.dialogue-rise--active-only {
+  transform: translateY(-8px);
+}
+
+@media (max-width: 1280px) {
+  .hud {
+    grid-template-columns: minmax(360px, .95fr) minmax(440px, 1.12fr) minmax(330px, .86fr);
+  }
+
+  .hud-unit-name-row,
+  .hud-target-name-row {
+    grid-template-columns: minmax(88px, .7fr) minmax(150px, 1.3fr);
+  }
+
+  .hud-active-vitals {
+    grid-template-columns: repeat(2, minmax(68px, 1fr));
+  }
+
+  .hud-stat-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .hud-embarked-strip {
+    grid-template-columns: minmax(80px, .8fr) minmax(70px, 1fr) minmax(70px, 1fr);
+  }
+}
