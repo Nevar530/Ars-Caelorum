@@ -31,18 +31,17 @@ export function buildMissionResultReceipt(state, result) {
     roundsTaken: Math.max(0, Math.trunc(Number(state?.turn?.round ?? 0) || 0)),
     objectivesCompleted,
     objectivesFailed,
-    deployedPilots: getPlayerPilotDefinitionIds(state),
     survivingUnits: getUnitsByStatus(state, false),
     disabledUnits: getUnitsByStatus(state, true),
+    deployedPlayerPilotIds: getDeployedPlayerPilotIds(state),
     flagsSet: { ...(mission.triggerRuntime?.flags ?? {}) }
   };
 }
 
-function getPlayerPilotDefinitionIds(state) {
+function getDeployedPlayerPilotIds(state) {
   return [...new Set((Array.isArray(state?.units) ? state.units : [])
-    .filter((unit) => unit?.unitType === "pilot")
-    .filter((unit) => unit?.team === "player")
-    .map((unit) => unit?.definitionId)
+    .filter((unit) => unit?.unitType === "pilot" && unit?.team === "player")
+    .map((unit) => unit?.definitionId ?? unit?.pilotId ?? null)
     .filter(Boolean))];
 }
 

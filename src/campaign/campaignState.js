@@ -4,15 +4,12 @@
 // Campaign state is progression/save truth, not runtime map truth.
 
 export const CAMPAIGN_VERSION = 2;
-export const MAX_PILOT_LEVEL = 20;
-
-export const PILOT_STAT_KEYS = [
-  "core",
-  "abilityPoints",
-  "targeting",
-  "reaction",
-  "movement"
-];
+export const PILOT_LEVEL_CAP = 20;
+export const PILOT_STAT_CAPS = Object.freeze({
+  targeting: 5,
+  reaction: 5
+});
+export const PILOT_STAT_KEYS = Object.freeze(["core", "abilityPoints", "targeting", "reaction"]);
 
 export function createInitialCampaignState({ defaultMissionId = "000_game_state_tester_mission" } = {}) {
   const missionId = cleanId(defaultMissionId) || "000_game_state_tester_mission";
@@ -50,7 +47,7 @@ export function normalizeCampaignState(rawState, options = {}) {
     currentMissionId,
     completedMissions,
     unlockedMissions: unlockedMissions.length ? unlockedMissions : [currentMissionId],
-    pilots: normalizePilotProgressRecord(source.pilots),
+    pilots: normalizePilots(source.pilots),
     inventory: normalizeInventory(source.inventory),
     flags: normalizeRecord(source.flags),
     claimedRewards: normalizeRecord(source.claimedRewards)
@@ -89,18 +86,7 @@ export function setCurrentMission(campaignState, missionId) {
   return true;
 }
 
-export function createPilotProgress({ level = 1, statPoints = 0, recruited = true } = {}) {
-  return {
-    level: clampPilotLevel(level),
-    statPoints: Math.max(0, Math.trunc(Number(statPoints ?? 0) || 0)),
-    statBonuses: createEmptyStatBonuses(),
-    learnedAbilities: [],
-    activeAbilities: [],
-    recruited: Boolean(recruited)
-  };
-}
-
-export function ensurePilotProgress(campaignState, pilotId, options = {}) {
+export function ensurePilotProgress(campaignState, pilotId, defaults = {}) {
   const id = cleanId(pilotId);
   if (!campaignState || !id) return null;
   if (!campaignState.pilots || typeof campaignState.pilots !== "object" || Array.isArray(campaignState.pilots)) {
@@ -108,64 +94,69 @@ export function ensurePilotProgress(campaignState, pilotId, options = {}) {
   }
 
   const existing = campaignState.pilots[id];
-  const normalized = normalizePilotProgress(existing, options);
-  normalized.recruited = options.recruited === false ? false : true;
-  campaignState.pilots[id] = normalized;
-  return normalized;
-}
-
-export function getRecruitedPilotIds(campaignState) {
-  const pilots = campaignState?.pilots;
-  if (!pilots || typeof pilots !== "object" || Array.isArray(pilots)) return [];
-  return Object.keys(pilots).filter((pilotId) => pilots[pilotId]?.recruited !== false);
-}
-
-export function clampPilotLevel(value) {
-  return Math.min(MAX_PILOT_LEVEL, Math.max(1, Math.trunc(Number(value ?? 1) || 1)));
-}
-
-function normalizePilotProgressRecord(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-
-  const result = {};
-  for (const [pilotId, progress] of Object.entries(value)) {
-    const id = cleanId(pilotId);
-    if (!id) continue;
-    result[id] = normalizePilotProgress(progress);
-  }
-  return result;
-}
-
-function normalizePilotProgress(value, options = {}) {
-  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
-  const fallbackLevel = options.level ?? 1;
-  const normalized = createPilotProgress({
-    level: source.level ?? fallbackLevel,
-    statPoints: source.statPoints ?? 0,
-    recruited: source.recruited !== false
+  campaignState.pilots[id] = normalizePilotProgress({
+    ...defaults,
+    ...(existing && typeof existing === "object" ? existing : {}),
+    recruited: existing?.recruited ?? defaults.recruited ?? true
   });
 
-  normalized.statBonuses = normalizeStatBonuses(source.statBonuses);
-  normalized.learnedAbilities = uniqueIds(source.learnedAbilities);
-  normalized.activeAbilities = uniqueIds(source.activeAbilities);
-  normalized.recruited = source.recruited !== false;
-  return normalized;
+  return campaignState.pilots[id];
 }
 
-function normalizeStatBonuses(value) {
-  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
-  const result = createEmptyStatBonuses();
-  for (const key of PILOT_STAT_KEYS) {
-    result[key] = Math.max(0, Math.trunc(Number(source[key] ?? 0) || 0));
-  }
-  return result;
+export function recruitPilot(campaignState, pilotId, defaults = {}) {
+  const progress = ensurePilotProgress(campaignState, pilotId, { ...defaults, recruited: true });
+  if (progress) progress.recruited = true;
+  return progress;
 }
 
-function createEmptyStatBonuses() {
-  return PILOT_STAT_KEYS.reduce((result, key) => {
-    result[key] = 0;
-    return result;
-  }, {});
+export function addPilotLevels(campaignState, pilotId, levels = 1) {
+  const progress = ensurePilotProgress(campaignState, pilotId, { recruited: true });
+  if (!progress) return null;
+
+  const amount = Math.max(0, Math.trunc(Number(levels ?? 0) || 0));
+  if (!amount) return { pilotId: cleanId(pilotId), fromLevel: progress.level, toLevel: progress.level, gained: 0 };
+
+  const fromLevel = progress.level;
+  const toLevel = Math.min(PILOT_LEVEL_CAP, fromLevel + amount);
+  const gained = Math.max(0, toLevel - fromLevel);
+
+  progress.level = toLevel;
+  progress.statPoints += gained;
+
+  return { pilotId: cleanId(pilotId), fromLevel, toLevel, gained };
+}
+
+export function setPilotLevelFloor(campaignState, pilotId, floorLevel = 1) {
+  const progress = ensurePilotProgress(campaignState, pilotId, { recruited: true });
+  if (!progress) return null;
+
+  const targetLevel = clampLevel(floorLevel);
+  const fromLevel = progress.level;
+  if (fromLevel >= targetLevel) return { pilotId: cleanId(pilotId), fromLevel, toLevel: fromLevel, gained: 0 };
+
+  progress.level = targetLevel;
+  const gained = Math.max(0, targetLevel - fromLevel);
+  progress.statPoints += gained;
+
+  return { pilotId: cleanId(pilotId), fromLevel, toLevel: targetLevel, gained };
+}
+
+export function getRecruitedPilotEntries(campaignState) {
+  const pilots = campaignState?.pilots && typeof campaignState.pilots === "object" ? campaignState.pilots : {};
+  return Object.entries(pilots)
+    .filter(([, progress]) => progress?.recruited !== false)
+    .map(([pilotId, progress]) => [pilotId, normalizePilotProgress(progress)]);
+}
+
+export function getRecruitedPilotAverageLevel(campaignState) {
+  const entries = getRecruitedPilotEntries(campaignState);
+  if (!entries.length) return 1;
+  const total = entries.reduce((sum, [, progress]) => sum + Math.max(1, Number(progress.level ?? 1) || 1), 0);
+  return total / entries.length;
+}
+
+export function getRecruitedPilotFloorLevel(campaignState) {
+  return clampLevel(Math.floor(getRecruitedPilotAverageLevel(campaignState)));
 }
 
 function normalizeInventory(inventory) {
@@ -176,6 +167,38 @@ function normalizeInventory(inventory) {
     armor: uniqueIds(source.armor),
     items: uniqueIds(source.items)
   };
+}
+
+function normalizePilots(pilots) {
+  const source = pilots && typeof pilots === "object" && !Array.isArray(pilots) ? pilots : {};
+  return Object.fromEntries(
+    Object.entries(source)
+      .map(([pilotId, progress]) => [cleanId(pilotId), normalizePilotProgress(progress)])
+      .filter(([pilotId]) => Boolean(pilotId))
+  );
+}
+
+export function normalizePilotProgress(progress) {
+  const source = progress && typeof progress === "object" ? progress : {};
+  return {
+    level: clampLevel(source.level ?? 1),
+    statPoints: Math.max(0, Math.trunc(Number(source.statPoints ?? 0) || 0)),
+    statBonuses: normalizeStatBonuses(source.statBonuses),
+    learnedAbilities: uniqueIds(source.learnedAbilities),
+    activeAbilities: uniqueIds(source.activeAbilities),
+    recruited: source.recruited !== false
+  };
+}
+
+function normalizeStatBonuses(value) {
+  const source = value && typeof value === "object" ? value : {};
+  const bonuses = {};
+  for (const key of PILOT_STAT_KEYS) {
+    let amount = Math.max(0, Math.trunc(Number(source[key] ?? 0) || 0));
+    if (Number.isFinite(PILOT_STAT_CAPS[key])) amount = Math.min(PILOT_STAT_CAPS[key], amount);
+    bonuses[key] = amount;
+  }
+  return bonuses;
 }
 
 function normalizeRecord(value) {
@@ -190,6 +213,10 @@ function uniqueIds(value) {
 
 function ensureArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function clampLevel(value) {
+  return Math.max(1, Math.min(PILOT_LEVEL_CAP, Math.trunc(Number(value ?? 1) || 1)));
 }
 
 function cleanId(value) {

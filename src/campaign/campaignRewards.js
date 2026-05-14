@@ -5,11 +5,12 @@
 // Progression uses milestone levels, not XP.
 
 import {
-  clampPilotLevel,
-  ensurePilotProgress,
-  getRecruitedPilotIds,
+  addPilotLevels,
+  getRecruitedPilotFloorLevel,
   markMissionCompleted,
+  recruitPilot,
   setCurrentMission,
+  setPilotLevelFloor,
   unlockMission
 } from "./campaignState.js";
 
@@ -34,18 +35,36 @@ export function applyMissionRewards(campaignState, missionDefinition, missionRes
 
   ensureInventory(campaignState);
 
-  const currency = Math.max(0, Math.trunc(Number(reward.currency ?? reward.credits ?? 0) || 0));
+  const currency = Math.max(0, Math.trunc(Number(reward.currency ?? 0) || 0));
   const items = normalizeIds(reward.items);
   const unlocks = normalizeIds(reward.unlocks);
-  const recruitedPilots = normalizeIds(reward.recruits ?? reward.recruitedPilots);
+  const recruits = uniqueIds([
+    ...normalizeIds(missionResult.deployedPlayerPilotIds),
+    ...normalizeIds(reward.recruits)
+  ]);
+  const levelMilestone = result === "victory"
+    ? Math.max(0, Math.trunc(Number(reward.levelMilestone ?? 0) || 0))
+    : 0;
 
   campaignState.inventory.currency += currency;
-  for (const itemId of items) campaignState.inventory.items.push(itemId);
-  for (const pilotId of recruitedPilots) ensurePilotProgress(campaignState, pilotId, { recruited: true });
+  for (const itemId of items) {
+    campaignState.inventory.items.push(itemId);
+  }
 
-  const progression = result === "victory"
-    ? applyMilestoneLevelReward(campaignState, reward, missionResult)
-    : buildEmptyProgressionOutcome();
+  for (const pilotId of recruits) {
+    recruitPilot(campaignState, pilotId);
+  }
+
+  let levelOutcome = {
+    levelMilestone,
+    activeLevelUps: [],
+    reserveCatchUps: [],
+    reserveFloor: null
+  };
+
+  if (levelMilestone > 0) {
+    levelOutcome = applyLevelMilestone(campaignState, missionResult, levelMilestone);
+  }
 
   if (result === "victory") {
     markMissionCompleted(campaignState, missionResult.missionId);
@@ -61,89 +80,36 @@ export function applyMissionRewards(campaignState, missionDefinition, missionRes
     currency,
     items,
     unlocks,
-    recruitedPilots,
-    progression
+    recruits,
+    ...levelOutcome
   });
 }
 
-function applyMilestoneLevelReward(campaignState, reward, missionResult) {
-  const deployedPilotIds = normalizeIds(missionResult.deployedPilots);
-  const milestoneLevels = getMilestoneLevels(reward);
-
-  for (const pilotId of deployedPilotIds) ensurePilotProgress(campaignState, pilotId, { recruited: true });
-
+function applyLevelMilestone(campaignState, missionResult, levelMilestone) {
+  const deployedPilotIds = uniqueIds(missionResult?.deployedPlayerPilotIds);
   const activeLevelUps = [];
-  if (milestoneLevels > 0) {
-    for (const pilotId of deployedPilotIds) {
-      const progress = ensurePilotProgress(campaignState, pilotId, { recruited: true });
-      if (!progress) continue;
 
-      const before = progress.level;
-      const after = clampPilotLevel(before + milestoneLevels);
-      progress.level = after;
-      progress.statPoints = Math.max(0, Math.trunc(Number(progress.statPoints ?? 0) || 0)) + Math.max(0, after - before);
-
-      if (after > before) {
-        activeLevelUps.push({ pilotId, from: before, to: after, statPointsGained: after - before });
-      }
-    }
+  for (const pilotId of deployedPilotIds) {
+    const outcome = addPilotLevels(campaignState, pilotId, levelMilestone);
+    if (outcome?.gained) activeLevelUps.push(outcome);
   }
 
-  const reserveOutcome = applyReserveAverageCatchUp(campaignState, deployedPilotIds);
-
-  return {
-    milestoneLevels,
-    deployedPilots: deployedPilotIds,
-    activeLevelUps,
-    reserveCatchUps: reserveOutcome.catchUps,
-    reserveFloor: reserveOutcome.floor
-  };
-}
-
-function applyReserveAverageCatchUp(campaignState, deployedPilotIds) {
+  const reserveFloor = getRecruitedPilotFloorLevel(campaignState);
+  const reserveCatchUps = [];
   const deployedSet = new Set(deployedPilotIds);
-  const floor = calculateRosterAverageFloor(campaignState);
-  if (floor <= 1) return { floor, catchUps: [] };
+  const pilots = campaignState?.pilots && typeof campaignState.pilots === "object" ? campaignState.pilots : {};
 
-  const catchUps = [];
-  for (const pilotId of getRecruitedPilotIds(campaignState)) {
-    if (deployedSet.has(pilotId)) continue;
-    const progress = ensurePilotProgress(campaignState, pilotId, { recruited: true });
-    if (!progress || progress.level >= floor) continue;
-
-    const before = progress.level;
-    progress.level = floor;
-    progress.statPoints = Math.max(0, Math.trunc(Number(progress.statPoints ?? 0) || 0)) + Math.max(0, floor - before);
-    catchUps.push({ pilotId, from: before, to: floor, statPointsGained: floor - before });
+  for (const [pilotId, progress] of Object.entries(pilots)) {
+    if (!pilotId || deployedSet.has(pilotId) || progress?.recruited === false) continue;
+    const outcome = setPilotLevelFloor(campaignState, pilotId, reserveFloor);
+    if (outcome?.gained) reserveCatchUps.push(outcome);
   }
 
-  return { floor, catchUps };
-}
-
-function calculateRosterAverageFloor(campaignState) {
-  const recruitedIds = getRecruitedPilotIds(campaignState);
-  if (!recruitedIds.length) return 1;
-
-  const total = recruitedIds.reduce((sum, pilotId) => {
-    const level = clampPilotLevel(campaignState?.pilots?.[pilotId]?.level ?? 1);
-    return sum + level;
-  }, 0);
-
-  return clampPilotLevel(Math.floor(total / recruitedIds.length));
-}
-
-function getMilestoneLevels(reward) {
-  if (reward?.levelMilestone === true || reward?.milestoneLevel === true) return 1;
-  return Math.max(0, Math.trunc(Number(reward?.levelMilestone ?? reward?.milestoneLevel ?? reward?.levels ?? 0) || 0));
-}
-
-function buildEmptyProgressionOutcome() {
   return {
-    milestoneLevels: 0,
-    deployedPilots: [],
-    activeLevelUps: [],
-    reserveCatchUps: [],
-    reserveFloor: 1
+    levelMilestone,
+    activeLevelUps,
+    reserveCatchUps,
+    reserveFloor
   };
 }
 
@@ -155,18 +121,24 @@ function buildRewardOutcome({
   currency = 0,
   items = [],
   unlocks = [],
-  recruitedPilots = [],
-  progression = null
+  recruits = [],
+  levelMilestone = 0,
+  activeLevelUps = [],
+  reserveCatchUps = [],
+  reserveFloor = null
 }) {
   return {
     applied,
     reason,
     result,
-    currency: Math.max(0, Math.trunc(Number(currency ?? reward?.currency ?? reward?.credits ?? 0) || 0)),
+    currency: Math.max(0, Math.trunc(Number(currency ?? reward?.currency ?? 0) || 0)),
     items: normalizeIds(items.length ? items : reward?.items),
     unlocks: normalizeIds(unlocks.length ? unlocks : reward?.unlocks),
-    recruitedPilots: normalizeIds(recruitedPilots.length ? recruitedPilots : (reward?.recruits ?? reward?.recruitedPilots)),
-    progression: progression ?? buildEmptyProgressionOutcome()
+    recruits: uniqueIds(recruits.length ? recruits : reward?.recruits),
+    levelMilestone: Math.max(0, Math.trunc(Number(levelMilestone ?? reward?.levelMilestone ?? 0) || 0)),
+    activeLevelUps: Array.isArray(activeLevelUps) ? activeLevelUps : [],
+    reserveCatchUps: Array.isArray(reserveCatchUps) ? reserveCatchUps : [],
+    reserveFloor
   };
 }
 
@@ -180,6 +152,10 @@ function ensureInventory(campaignState) {
 
 function normalizeIds(value) {
   return Array.isArray(value)
-    ? [...new Set(value.map((entry) => String(entry ?? "").trim()).filter(Boolean))]
+    ? value.map((entry) => String(entry ?? "").trim()).filter(Boolean)
     : [];
+}
+
+function uniqueIds(value) {
+  return [...new Set(normalizeIds(value))];
 }

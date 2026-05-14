@@ -1,15 +1,16 @@
 [
-    {
+  {
     "id": "pilot_skye",
     "name": "Skye",
     "role": "balanced",
-    "core": 15,
-    "shield": 10,
-    "aether": 2,
+    "level": 1,
+    "core": 2,
+    "shield": 5,
+    "aether": 0,
     "move": 4,
-    "reaction": 3,
-    "targeting": 3,
-    "abilityPoints": 0,
+    "reaction": 1,
+    "targeting": 1,
+    "abilityPoints": 1,
     "weapons": [
       "pilot_pistol_01",
       "pilot_rifle_01"
@@ -42,14 +43,15 @@
   {
     "id": "pilot_eve",
     "name": "Eve",
-    "role": "balanced",
-    "core": 15,
-    "shield": 10,
-    "aether": 2,
+    "role": "ace",
+    "level": 1,
+    "core": 2,
+    "shield": 5,
+    "aether": 0,
     "move": 5,
-    "reaction": 4,
-    "targeting": 4,
-    "abilityPoints": 0,
+    "reaction": 2,
+    "targeting": 2,
+    "abilityPoints": 1,
     "weapons": [
       "pilot_pistol_01",
       "pilot_rifle_01"
@@ -80,16 +82,222 @@
     }
   },
   {
+    "id": "pilot_theo",
+    "name": "Theo",
+    "role": "drop_pilot",
+    "level": 1,
+    "core": 3,
+    "shield": 6,
+    "aether": 0,
+    "move": 4,
+    "reaction": 1,
+    "targeting": 1,
+    "abilityPoints": 1,
+    "weapons": [
+      "pilot_pistol_01",
+      "pilot_rifle_01"
+    ],
+    "tabs": [],
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/pilot/theo_NE.png",
+        "NW": "art/pilot/theo_NW.png"
+      }
+    },
+    "slots": {
+      "weapon": 2,
+      "armor": 1,
+      "ability": 3
+    },
+    "loadout": {
+      "weapons": [
+        "pilot_pistol_01",
+        "pilot_rifle_01"
+      ],
+      "armor": null,
+      "abilities": []
+    },
+    "inventory": {
+      "items": []
+    }
+  },
+  {
+    "id": "pilot_pax",
+    "name": "Pax",
+    "role": "technician",
+    "level": 1,
+    "core": 1,
+    "shield": 4,
+    "aether": 0,
+    "move": 4,
+    "reaction": 2,
+    "targeting": 1,
+    "abilityPoints": 2,
+    "weapons": [
+      "pilot_pistol_01",
+      "pilot_rifle_01"
+    ],
+    "tabs": [],
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/pilot/pax_NE.png",
+        "NW": "art/pilot/pax_NW.png"
+      }
+    },
+    "slots": {
+      "weapon": 2,
+      "armor": 1,
+      "ability": 3
+    },
+    "loadout": {
+      "weapons": [
+        "pilot_pistol_01",
+        "pilot_rifle_01"
+      ],
+      "armor": null,
+      "abilities": []
+    },
+    "inventory": {
+      "items": []
+    }
+  },
+  {
+    "id": "pilot_quinn",
+    "name": "Quinn",
+    "role": "med_tech",
+    "level": 1,
+    "core": 1,
+    "shield": 4,
+    "aether": 0,
+    "move": 4,
+    "reaction": 1,
+    "targeting": 0,
+    "abilityPoints": 2,
+    "weapons": [
+      "pilot_pistol_01",
+      "pilot_rifle_01"
+    ],
+    "tabs": [],
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/pilot/quinn_NE.png",
+        "NW": "art/pilot/quinn_NW.png"
+      }
+    },
+    "slots": {
+      "weapon": 2,
+      "armor": 1,
+      "ability": 3
+    },
+    "loadout": {
+      "weapons": [
+        "pilot_pistol_01",
+        "pilot_rifle_01"
+      ],
+      "armor": null,
+      "abilities": []
+    },
+    "inventory": {
+      "items": []
+    }
+  },
+  {
+    "id": "pilot_revaele",
+    "name": "Revaele",
+    "role": "magi",
+    "level": 1,
+    "core": 2,
+    "shield": 4,
+    "aether": 0,
+    "move": 4,
+    "reaction": 1,
+    "targeting": 0,
+    "abilityPoints": 3,
+    "weapons": [
+      "pilot_pistol_01",
+      "pilot_rifle_01"
+    ],
+    "tabs": [],
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/pilot/revaele_NE.png",
+        "NW": "art/pilot/revaele_NW.png"
+      }
+    },
+    "slots": {
+      "weapon": 2,
+      "armor": 1,
+      "ability": 3
+    },
+    "loadout": {
+      "weapons": [
+        "pilot_pistol_01",
+        "pilot_rifle_01"
+      ],
+      "armor": null,
+      "abilities": []
+    },
+    "inventory": {
+      "items": []
+    }
+  },
+  {
+    "id": "pilot_axis",
+    "name": "AX-15",
+    "role": "security_bot",
+    "level": 1,
+    "core": 3,
+    "shield": 6,
+    "aether": 0,
+    "move": 4,
+    "reaction": 1,
+    "targeting": 1,
+    "abilityPoints": 1,
+    "weapons": [
+      "pilot_pistol_01",
+      "pilot_rifle_01"
+    ],
+    "tabs": [],
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/pilot/axis_NE.png",
+        "NW": "art/pilot/axis_NW.png"
+      }
+    },
+    "slots": {
+      "weapon": 2,
+      "armor": 1,
+      "ability": 3
+    },
+    "loadout": {
+      "weapons": [
+        "pilot_pistol_01",
+        "pilot_rifle_01"
+      ],
+      "armor": null,
+      "abilities": []
+    },
+    "inventory": {
+      "items": []
+    }
+  },
+  {
     "id": "pilot_biggs",
     "name": "Biggs",
     "role": "balanced",
-    "core": 8,
-    "shield": 2,
-    "aether": 2,
+    "level": 1,
+    "core": 2,
+    "shield": 3,
+    "aether": 0,
     "move": 4,
-    "reaction": 2,
-    "targeting": 2,
-    "abilityPoints": 0,
+    "reaction": 1,
+    "targeting": 1,
+    "abilityPoints": 1,
     "weapons": [
       "pilot_pistol_01",
       "pilot_rifle_01"
@@ -123,13 +331,14 @@
     "id": "pilot_wedge",
     "name": "Wedge",
     "role": "shooter",
-    "core": 7,
-    "shield": 1,
-    "aether": 2,
+    "level": 1,
+    "core": 2,
+    "shield": 3,
+    "aether": 0,
     "move": 4,
-    "reaction": 2,
-    "targeting": 3,
-    "abilityPoints": 0,
+    "reaction": 1,
+    "targeting": 2,
+    "abilityPoints": 1,
     "weapons": [
       "pilot_pistol_01",
       "pilot_rifle_01"
@@ -163,13 +372,14 @@
     "id": "pilot_tom",
     "name": "Tom",
     "role": "reactive",
-    "core": 7,
-    "shield": 1,
-    "aether": 3,
+    "level": 1,
+    "core": 2,
+    "shield": 3,
+    "aether": 0,
     "move": 5,
-    "reaction": 3,
+    "reaction": 2,
     "targeting": 1,
-    "abilityPoints": 0,
+    "abilityPoints": 1,
     "weapons": [
       "pilot_pistol_01",
       "pilot_rifle_01"
@@ -203,13 +413,14 @@
     "id": "pilot_jerri",
     "name": "Jerri",
     "role": "support",
-    "core": 6,
-    "shield": 2,
-    "aether": 4,
+    "level": 1,
+    "core": 1,
+    "shield": 3,
+    "aether": 0,
     "move": 4,
     "reaction": 1,
-    "targeting": 2,
-    "abilityPoints": 0,
+    "targeting": 1,
+    "abilityPoints": 2,
     "weapons": [
       "pilot_pistol_01",
       "pilot_rifle_01"
@@ -233,15 +444,10 @@
         "pilot_rifle_01"
       ],
       "armor": null,
-      "abilities": [
-        "pilot_heal_01"
-      ]
+      "abilities": []
     },
     "inventory": {
-      "items": [
-        "nano_heal_spray",
-        "test_spray"
-      ]
+      "items": []
     }
   }
 ]

@@ -84,8 +84,12 @@ function renderCampaignRewardSummary(state) {
 
   if (reward) {
     if (reward.applied) {
-      rows.push(`<div><strong>XP:</strong> ${escapeHtml(reward.xp)}</div>`);
+      if (reward.levelMilestone) rows.push(`<div><strong>Level Milestone:</strong> +${escapeHtml(reward.levelMilestone)}</div>`);
       rows.push(`<div><strong>Credits:</strong> ${escapeHtml(reward.currency)}</div>`);
+      if (reward.activeLevelUps?.length) rows.push(`<div><strong>Active Level Ups:</strong> ${escapeHtml(formatPilotLevelChanges(reward.activeLevelUps))}</div>`);
+      if (Number.isFinite(Number(reward.reserveFloor))) rows.push(`<div><strong>Reserve Floor:</strong> ${escapeHtml(reward.reserveFloor)}</div>`);
+      if (reward.reserveCatchUps?.length) rows.push(`<div><strong>Reserve Catch-Up:</strong> ${escapeHtml(formatPilotLevelChanges(reward.reserveCatchUps))}</div>`);
+      if (reward.recruits?.length) rows.push(`<div><strong>Recruited:</strong> ${escapeHtml(reward.recruits.join(", "))}</div>`);
       if (reward.items?.length) rows.push(`<div><strong>Items:</strong> ${escapeHtml(reward.items.join(", "))}</div>`);
       if (reward.unlocks?.length) rows.push(`<div><strong>Unlocked:</strong> ${escapeHtml(reward.unlocks.join(", "))}</div>`);
     } else if (reward.reason === "already_claimed") {
@@ -98,6 +102,13 @@ function renderCampaignRewardSummary(state) {
   return rows.length
     ? `<div class="combat-overlay-text combat-overlay-reward-summary">${rows.join("")}</div>`
     : "";
+}
+
+function formatPilotLevelChanges(changes = []) {
+  return (Array.isArray(changes) ? changes : [])
+    .filter((entry) => entry?.gained)
+    .map((entry) => `${entry.pilotId} ${entry.fromLevel}->${entry.toLevel}`)
+    .join(", ");
 }
 
 function renderPhaseBriefingOverlay(state) {

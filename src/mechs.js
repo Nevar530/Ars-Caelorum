@@ -3,6 +3,10 @@
 import { getMapSpawns, getMapStartState } from "./map.js";
 import { buildRuntimeInventory, buildRuntimeLoadout, getDefaultSlotsForUnit } from "./content/unitLoadout.js";
 
+const PILOT_CORE_MULTIPLIER = 5;
+const PILOT_TARGETING_CAP = 5;
+const PILOT_REACTION_CAP = 5;
+
 const DEFAULT_ATTACK_PROFILE_MAP = {
   melee_01: "melee_cardinal_01",
   missile_01: "missile_aoe_01",
@@ -37,8 +41,11 @@ function getDefinitionById(items, id, fallbackIndex = 0) {
 
 function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
   const isPilot = unitType === "pilot";
-  const shield = Number(definition?.shield ?? definition?.armor ?? (isPilot ? 1 : 10));
-  const core = Number(definition?.core ?? definition?.structure ?? (isPilot ? 6 : 6));
+  const shield = Number(overrides.shield ?? definition?.shield ?? definition?.armor ?? (isPilot ? 0 : 10));
+  const coreStat = Math.max(1, Math.trunc(Number(overrides.coreStat ?? definition?.core ?? (isPilot ? 1 : 6)) || (isPilot ? 1 : 6)));
+  const core = Number(overrides.core ?? (isPilot
+    ? coreStat * PILOT_CORE_MULTIPLIER
+    : (definition?.core ?? definition?.structure ?? 6)));
   const weaponIds = Array.isArray(definition?.weapons) ? [...definition.weapons] : [];
   const slots = getDefaultSlotsForUnit(unitType, definition);
   const loadout = buildRuntimeLoadout(unitType, definition, overrides);
@@ -64,12 +71,14 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
     footprintHeight: isPilot ? 1 : 3,
     scale: unitType,
 
-    move: Number(definition.move ?? (isPilot ? 6 : 4)),
+    move: Number(overrides.move ?? definition.move ?? (isPilot ? 4 : 4)),
     slots,
     loadout,
     inventory,
     armor: shield,
     structure: core,
+    coreStat: isPilot ? coreStat : null,
+    coreMultiplier: isPilot ? PILOT_CORE_MULTIPLIER : null,
     shield,
     maxShield: shield,
     core,
@@ -88,9 +97,10 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
 
     pilotId: overrides.pilotId ?? null,
     pilotName: overrides.pilotName ?? null,
-    reaction: Number(overrides.reaction ?? definition.reaction ?? 0),
-    targeting: Number(overrides.targeting ?? definition.targeting ?? 0),
-    abilityPoints: Number(overrides.abilityPoints ?? definition.abilityPoints ?? 0),
+    level: Math.max(1, Math.trunc(Number(overrides.level ?? definition.level ?? 1) || 1)),
+    reaction: clampStat(Number(overrides.reaction ?? definition.reaction ?? 0), isPilot ? PILOT_REACTION_CAP : null),
+    targeting: clampStat(Number(overrides.targeting ?? definition.targeting ?? 0), isPilot ? PILOT_TARGETING_CAP : null),
+    abilityPoints: Math.max(0, Math.trunc(Number(overrides.abilityPoints ?? definition.abilityPoints ?? 0) || 0)),
 
     team: overrides.team ?? "player",
     controlType: normalizeControlType(overrides.controlType, overrides.team ?? "player"),
@@ -168,6 +178,30 @@ function normalizeTeam(value) {
   return "player";
 }
 
+function clampStat(value, cap = null) {
+  const amount = Math.max(0, Math.trunc(Number(value ?? 0) || 0));
+  return Number.isFinite(cap) ? Math.min(cap, amount) : amount;
+}
+
+function getPilotCampaignProgress(campaignState, pilotId) {
+  if (!campaignState?.pilots || !pilotId) return null;
+  const progress = campaignState.pilots[pilotId];
+  return progress && typeof progress === "object" ? progress : null;
+}
+
+function buildPilotRuntimeOverrides(pilotDefinition, campaignState) {
+  const progress = getPilotCampaignProgress(campaignState, pilotDefinition?.id);
+  const bonuses = progress?.statBonuses && typeof progress.statBonuses === "object" ? progress.statBonuses : {};
+
+  return {
+    level: Math.max(1, Math.trunc(Number(progress?.level ?? pilotDefinition?.level ?? 1) || 1)),
+    coreStat: Math.max(1, Math.trunc(Number(pilotDefinition?.core ?? 1) || 1)) + Math.max(0, Math.trunc(Number(bonuses.core ?? 0) || 0)),
+    abilityPoints: Math.max(0, Math.trunc(Number(pilotDefinition?.abilityPoints ?? 0) || 0)) + Math.max(0, Math.trunc(Number(bonuses.abilityPoints ?? 0) || 0)),
+    targeting: clampStat((Number(pilotDefinition?.targeting ?? 0) || 0) + (Number(bonuses.targeting ?? 0) || 0), PILOT_TARGETING_CAP),
+    reaction: clampStat((Number(pilotDefinition?.reaction ?? 0) || 0) + (Number(bonuses.reaction ?? 0) || 0), PILOT_REACTION_CAP)
+  };
+}
+
 function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
   const mechDefinitions = Array.isArray(content?.mechs) ? content.mechs : [];
   const pilotDefinitions = Array.isArray(content?.pilots) ? content.pilots : [];
@@ -191,6 +225,7 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
   };
 
   const includePlayerDeployments = options.includePlayerDeployments !== false;
+  const campaignState = options.campaignState ?? null;
 
   for (const deployment of deployments) {
     const team = normalizeTeam(deployment?.team);
@@ -207,6 +242,8 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
       : null;
 
     if (!pilot && !mech) continue;
+
+    const pilotRuntimeOverrides = pilot ? buildPilotRuntimeOverrides(pilot, campaignState) : {};
 
     const pilotInstanceId = pilot
       ? (deployment?.pilotInstanceId ?? `${team}-pilot-${pilot.id}`)
@@ -258,6 +295,7 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
 
     if (!mech) {
       const pilotUnit = createPilotInstance(pilot, {
+        ...pilotRuntimeOverrides,
         instanceId: pilotInstanceId,
         x: pilotPos.x,
         y: pilotPos.y,
@@ -283,6 +321,7 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
     }
 
     const mechUnit = createMechInstance(mech, {
+      ...pilotRuntimeOverrides,
       instanceId: mechInstanceId,
       x: mechPos.x,
       y: mechPos.y,
@@ -296,6 +335,7 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
     });
 
     const pilotUnit = createPilotInstance(pilot, {
+      ...pilotRuntimeOverrides,
       instanceId: pilotInstanceId,
       x: startEmbarked ? mechPos.x : pilotPos.x,
       y: startEmbarked ? mechPos.y : pilotPos.y,
