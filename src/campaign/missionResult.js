@@ -1,6 +1,6 @@
 // src/campaign/missionResult.js
 //
-// Mission result receipt V1.
+// Mission result receipt V2.
 // Captures a small summary at mission end so campaign rewards do not read half-reset runtime state.
 
 export function buildMissionResultReceipt(state, result) {
@@ -31,10 +31,19 @@ export function buildMissionResultReceipt(state, result) {
     roundsTaken: Math.max(0, Math.trunc(Number(state?.turn?.round ?? 0) || 0)),
     objectivesCompleted,
     objectivesFailed,
+    deployedPilots: getPlayerPilotDefinitionIds(state),
     survivingUnits: getUnitsByStatus(state, false),
     disabledUnits: getUnitsByStatus(state, true),
     flagsSet: { ...(mission.triggerRuntime?.flags ?? {}) }
   };
+}
+
+function getPlayerPilotDefinitionIds(state) {
+  return [...new Set((Array.isArray(state?.units) ? state.units : [])
+    .filter((unit) => unit?.unitType === "pilot")
+    .filter((unit) => unit?.team === "player")
+    .map((unit) => unit?.definitionId)
+    .filter(Boolean))];
 }
 
 function getUnitsByStatus(state, disabled) {
