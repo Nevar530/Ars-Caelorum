@@ -311,6 +311,12 @@ class MissionBuilder {
     }
 
     if (this.builderState.activeTab === "map") {
+      // New Blank Map setup uses the Map tab shell, but it is still a form,
+      // not an active builder map. Do not run live map-setting sync while the
+      // user is typing width/height/id values, or the form re-renders back to
+      // its defaults before Create Mission From Blank Map can read it.
+      if (this.builderState.workspaceMode !== "builder-map") return;
+
       const result = readMapSettingsFields(this.builderState, this.refs.root, this.appState);
       if (result?.mapIdChanged) syncBuilderAuthoredMap(this.builderState);
       this.render();
