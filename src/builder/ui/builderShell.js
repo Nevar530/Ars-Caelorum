@@ -83,6 +83,7 @@ import {
   getBuilderMissionCatalogOptions
 } from "../builderLoadExisting.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
+import { getMapHeight, getMapWidth } from "../../map.js";
 
 export function createBuilderShell() {
   const root = document.createElement("section");
@@ -307,8 +308,8 @@ function renderLanding(appState, builderState = null) {
         <button type="button" class="builder-tool-button" data-builder-action="load-existing-mission"${hasCatalogMissions ? "" : " disabled"}>Load Mission</button>
       </div>
       <button type="button" class="builder-start-card${canUseCurrent ? "" : " is-disabled"}" data-builder-action="use-current-map"${canUseCurrent ? "" : " disabled"}>
-        <span>Edit Current Loaded Map Copy</span>
-        <small>${canUseCurrent ? "Copies the active mission map into an editable export draft." : "Only available while a mission map is active."}</small>
+        <span>Use Current Loaded Map</span>
+        <small>${canUseCurrent ? "Inspect the active mission map." : "Only available while a mission map is active."}</small>
       </button>
     </section>
 

@@ -5,7 +5,7 @@
 // by mirroring the active map's objective array into mission.objectives for the
 // current runtime/export contract.
 
-import { attachMapMetadata, cloneMapDefinition, createTile, normalizeMapDefinition } from "../map.js";
+import { attachMapMetadata, cloneMapDefinition, createTile, getMapHeight, getMapWidth } from "../map.js";
 import { createBlankBuilderMap } from "./builderMapFactory.js";
 
 const DEFAULT_BRIEFING_BODY = "Mission package created in the Mission Builder.";
@@ -209,14 +209,16 @@ export function readMapSettingsFields(builderState, root, appState = null) {
     String(readField(root, "active-map-phase-objectives", Array.isArray(map.phaseBriefing?.objectives) ? map.phaseBriefing.objectives.join("\n") : "")).split(/\r?\n/g),
     map.objectives
   );
-  const requestedWidth = clampWholeNumber(readField(root, "active-map-width", map.width ?? map[0]?.length ?? 16), map.width ?? map[0]?.length ?? 16, 4, 96);
-  const requestedHeight = clampWholeNumber(readField(root, "active-map-height", map.height ?? map.length ?? 16), map.height ?? map.length ?? 16, 4, 96);
+  const currentWidth = getMapWidth(map) || 16;
+  const currentHeight = getMapHeight(map) || 16;
+  const requestedWidth = clampWholeNumber(readField(root, "active-map-width", currentWidth), currentWidth, 4, 96);
+  const requestedHeight = clampWholeNumber(readField(root, "active-map-height", currentHeight), currentHeight, 4, 96);
   const defaultTerrainTypeId = sanitizeId(readField(root, "map-default-terrain", map.defaults?.terrainTypeId ?? map.defaultTerrainTypeId ?? inferFirstTerrainType(map, appState)), "grass");
   const defaultElevation = clampWholeNumber(readField(root, "map-default-elevation", map.defaults?.elevation ?? 0), 0, -8, 16);
   const defaultMovementClass = sanitizeName(readField(root, "map-default-movement", map.defaults?.movementClass ?? "clear"), "clear");
 
-  const previousWidth = Number(map.width ?? map[0]?.length ?? 0);
-  const previousHeight = Number(map.height ?? map.length ?? 0);
+  const previousWidth = getMapWidth(map);
+  const previousHeight = getMapHeight(map);
 
   map.id = nextMapId;
   map.name = nextMapName;
@@ -727,7 +729,7 @@ function clampWholeNumber(value, fallback, min, max) {
 }
 
 function cloneBuilderMap(map) {
-  const clone = Array.isArray(map) ? cloneMapDefinition(map) : normalizeMapDefinition(map ?? {});
+  const clone = cloneMapDefinition(map);
   if (!clone.spawns || typeof clone.spawns !== "object") clone.spawns = { player: [], enemy: [], neutral: [] };
   if (!clone.startState || typeof clone.startState !== "object") clone.startState = { deployments: [], deploymentCells: [] };
   if (!Array.isArray(clone.startState.deployments)) clone.startState.deployments = [];

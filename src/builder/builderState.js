@@ -1,5 +1,5 @@
+import { cloneMapDefinition } from "../map.js";
 // src/builder/builderState.js
-import { cloneMapDefinition, normalizeMapDefinition } from "../map.js";
 //
 // Mission Builder state container.
 // This belongs to the new fullscreen WYSIWYG Mission Builder system.
@@ -193,10 +193,7 @@ export function prepareBuilderLaunch(builderState, appState) {
   }
 
   if (canUseCurrentRuntimeMap(appState)) {
-    setBuilderAuthoredMap(builderState, createEditableRuntimeMapDraft(appState), "current-map-copy");
-    builderState.status = "BUILDER MAP";
-    builderState.activeTab = "map";
-    builderState.dirty = false;
+    useCurrentRuntimeMapAsEditableDraft(builderState, appState);
     pushBuilderLog(builderState, "Opened current loaded map as an editable export draft.");
     return;
   }
@@ -211,6 +208,29 @@ export function prepareBuilderLaunch(builderState, appState) {
     label: "New / Load"
   };
   pushBuilderLog(builderState, "Opened builder New / Load menu.");
+}
+
+function useCurrentRuntimeMapAsEditableDraft(builderState, appState) {
+  const sourceMap = appState?.map ?? null;
+  if (!builderState || !sourceMap) return false;
+
+  const map = cloneMapDefinition(sourceMap);
+  if (!map) return false;
+
+  const mapId = String(map.id ?? "runtime_map").trim() || "runtime_map";
+  const mapName = String(map.name ?? mapId).trim() || mapId;
+  map.id = mapId;
+  map.name = mapName;
+
+  builderState.authoring = {
+    map: null,
+    maps: [],
+    activeMapId: null,
+    mission: null,
+    source: "current-map-copy"
+  };
+  setBuilderAuthoredMap(builderState, map, "current-map-copy");
+  return true;
 }
 
 export function setBuilderWorkspaceMode(builderState, mode, appState = null) {
@@ -240,11 +260,8 @@ export function setBuilderWorkspaceMode(builderState, mode, appState = null) {
   }
 
   if (mode === "current-map" && canUseCurrentRuntimeMap(appState)) {
-    setBuilderAuthoredMap(builderState, createEditableRuntimeMapDraft(appState), "current-map-copy");
-    builderState.status = "BUILDER MAP";
-    builderState.activeTab = "map";
-    builderState.dirty = false;
-    pushBuilderLog(builderState, "Copied current loaded map into an editable export draft.");
+    useCurrentRuntimeMapAsEditableDraft(builderState, appState);
+    pushBuilderLog(builderState, "Copied current loaded map into an editable builder draft.");
     return;
   }
 
@@ -405,23 +422,6 @@ export function getBuilderWorkspaceAppState(builderState, appState) {
       definition: mission
     }
   };
-}
-
-function createEditableRuntimeMapDraft(appState) {
-  const sourceMap = appState?.map ?? null;
-  const map = Array.isArray(sourceMap)
-    ? cloneMapDefinition(sourceMap)
-    : normalizeMapDefinition(sourceMap ?? {});
-
-  if (map && !map.defaults) {
-    map.defaults = {
-      terrainTypeId: map.terrainTypes?.[0] ?? "grass",
-      elevation: 0,
-      movementClass: "clear"
-    };
-  }
-
-  return map;
 }
 
 export function syncBuilderRuntimeMap(builderState, appState) {
