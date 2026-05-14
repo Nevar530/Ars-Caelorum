@@ -26,11 +26,11 @@
     "enemy": [],
     "neutral": [
       {
-        "x": 3,
+        "x": 5,
         "y": 7
       },
       {
-        "x": 5,
+        "x": 3,
         "y": 7
       }
     ]
@@ -55,7 +55,7 @@
         "mechSpawnId": "neutral_1",
         "team": "neutral",
         "controlType": "CPU",
-        "startEmbarked": false
+        "startEmbarked": true
       },
       {
         "pilotDefinitionId": "pilot_biggs",
