@@ -2860,9 +2860,9 @@ button:disabled {
    PATCH FIX — RESTORE TACTICAL HUD + DIALOGUE OVERLAY STYLES
    Re-applies the console-safe HUD/readout/dialogue CSS after
    phase briefing patch so current JS classes are styled again.
-========================================================= */
+
    HUD RISING DIALOGUE / TURN INFO PASS
-========================================= */
+========================================================= */
 
 .combat-overlay.is-dialogue-visible,
 .combat-overlay.is-turn-visible {
