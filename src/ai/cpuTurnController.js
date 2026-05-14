@@ -30,6 +30,7 @@ export function createCpuTurnController({
     if (!state.turn?.combatStarted) return false;
     if (isDeploymentActive(state)) return false;
     if (state.mission?.result) return false;
+    if (state.ui?.gameMenu?.open) return false;
     if (state.ui?.shell?.screen !== "game") return false;
 
     const activeActor = getActiveActor(state);

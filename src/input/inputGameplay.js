@@ -26,14 +26,19 @@ export function bindGameplayInput(state, refs, actions) {
   resetMapButton.addEventListener("click", () => actions.resetMap());
 
   window.addEventListener("keydown", (event) => {
+    const key = event.key.toLowerCase();
+
+    if (handleGameMenuKeys(event, key, state, actions)) {
+      event.preventDefault();
+      return;
+    }
+
     if (state?.ui?.shell?.screen && state.ui.shell.screen !== "game") {
       if (handleShellKeys(event, state, actions)) {
         event.preventDefault();
       }
       return;
     }
-
-    const key = event.key.toLowerCase();
 
     if (state?.ui?.dialogue?.active) {
       if (key === "enter" || key === " " || key === "spacebar") {
@@ -101,6 +106,41 @@ export function bindGameplayInput(state, refs, actions) {
       event.preventDefault();
     }
   });
+}
+
+function handleGameMenuKeys(event, key, state, actions) {
+  const screen = state?.ui?.shell?.screen ?? "game";
+  const canOpenInScreen = screen === "game" || screen === "phase-briefing";
+
+  if (key === "i" && canOpenInScreen) {
+    actions.toggleGameMenu?.();
+    return true;
+  }
+
+  if (!state?.ui?.gameMenu?.open) return false;
+
+  if (key === "arrowleft" || key === "a") {
+    actions.moveGameMenuTab?.(-1);
+    return true;
+  }
+
+  if (key === "arrowright" || key === "d") {
+    actions.moveGameMenuTab?.(1);
+    return true;
+  }
+
+  if (key === "q") {
+    actions.moveGameMenuTab?.(-1);
+    return true;
+  }
+
+  if (key === "e") {
+    actions.moveGameMenuTab?.(1);
+    return true;
+  }
+
+  // While the menu is open, gameplay is paused and all other controls are swallowed.
+  return true;
 }
 
 function handleHelpKeys(event, actions) {

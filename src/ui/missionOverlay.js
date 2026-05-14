@@ -1,5 +1,6 @@
 import { getCurrentDialogueLine, getMissionResultCopy } from "../mission/missionState.js";
 import { getUnitById } from "../mechs.js";
+import { renderGameMenu } from "./gameMenu.js";
 
 export function renderMissionOverlay(state, refs) {
   const overlay = refs?.combatOverlay;
@@ -14,6 +15,13 @@ export function renderMissionOverlay(state, refs) {
 
   overlay.innerHTML = "";
   overlay.className = "combat-overlay is-clickthrough";
+
+  if (state?.ui?.gameMenu?.open) {
+    overlay.classList.add("is-visible", "is-game-menu-visible");
+    overlay.classList.remove("is-clickthrough");
+    overlay.innerHTML = renderGameMenu(state);
+    return;
+  }
 
   if (phaseBriefingActive) {
     overlay.classList.add("is-visible", "is-phase-briefing-visible");
@@ -87,8 +95,8 @@ function renderCampaignRewardSummary(state) {
       if (reward.levelMilestone) rows.push(`<div><strong>Level Milestone:</strong> +${escapeHtml(reward.levelMilestone)}</div>`);
       rows.push(`<div><strong>Credits:</strong> ${escapeHtml(reward.currency)}</div>`);
       if (reward.activeLevelUps?.length) rows.push(`<div><strong>Active Level Ups:</strong> ${escapeHtml(formatPilotLevelChanges(reward.activeLevelUps))}</div>`);
-      if (Number.isFinite(Number(reward.reserveFloor))) rows.push(`<div><strong>Reserve Floor:</strong> ${escapeHtml(reward.reserveFloor)}</div>`);
-      if (reward.reserveCatchUps?.length) rows.push(`<div><strong>Reserve Catch-Up:</strong> ${escapeHtml(formatPilotLevelChanges(reward.reserveCatchUps))}</div>`);
+      if (Number.isFinite(Number(reward.reserveFloor))) rows.push(`<div><strong>Reserve Training:</strong> Pilots below Level ${escapeHtml(reward.reserveFloor)} trained up</div>`);
+      if (reward.reserveCatchUps?.length) rows.push(`<div><strong>Reserve Level Gains:</strong> ${escapeHtml(formatPilotLevelChanges(reward.reserveCatchUps))}</div>`);
       if (reward.recruits?.length) rows.push(`<div><strong>Recruited:</strong> ${escapeHtml(reward.recruits.join(", "))}</div>`);
       if (reward.items?.length) rows.push(`<div><strong>Items:</strong> ${escapeHtml(reward.items.join(", "))}</div>`);
       if (reward.unlocks?.length) rows.push(`<div><strong>Unlocked:</strong> ${escapeHtml(reward.unlocks.join(", "))}</div>`);

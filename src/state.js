@@ -131,6 +131,12 @@ export function createState({
         text: "",
         objectives: [],
         pending: null
+      },
+
+      gameMenu: {
+        open: false,
+        activeTab: "characters",
+        selectedPilotId: ""
       }
     },
 
