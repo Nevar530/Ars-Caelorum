@@ -8,7 +8,7 @@ import {
   loadMapDefinitionByPath,
   loadMissionDefinitionByPath
 } from "../dataLoader.js";
-import { cloneMapDefinition } from "../map.js";
+import { cloneMapDefinition, normalizeMapDefinition } from "../map.js";
 import {
   pushBuilderLog,
   setBuilderAuthoredMap,
@@ -237,7 +237,13 @@ function cloneMapForMissionDraft(sourceMap, sourceEntry) {
 }
 
 function cloneMapWithMetadata(sourceMap) {
-  const map = cloneMapDefinition(sourceMap);
+  // Catalog maps are usually exported as flat JSON objects. Builder editing expects
+  // the same 2D, metadata-attached map shape used by live runtime maps. Normalize
+  // first so loaded copies can be resized, painted, validated, and exported like
+  // freshly-created builder maps.
+  const map = Array.isArray(sourceMap)
+    ? cloneMapDefinition(sourceMap)
+    : normalizeMapDefinition(sourceMap ?? {});
   normalizeBuilderMapMetadata(map);
   return map;
 }

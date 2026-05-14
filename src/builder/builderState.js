@@ -1,4 +1,5 @@
 // src/builder/builderState.js
+import { cloneMapDefinition, normalizeMapDefinition } from "../map.js";
 //
 // Mission Builder state container.
 // This belongs to the new fullscreen WYSIWYG Mission Builder system.
@@ -192,11 +193,11 @@ export function prepareBuilderLaunch(builderState, appState) {
   }
 
   if (canUseCurrentRuntimeMap(appState)) {
-    builderState.workspaceMode = "current-map";
-    builderState.status = "READ ONLY";
+    setBuilderAuthoredMap(builderState, createEditableRuntimeMapDraft(appState), "current-map-copy");
+    builderState.status = "BUILDER MAP";
     builderState.activeTab = "map";
-    syncBuilderRuntimeMap(builderState, appState);
-    pushBuilderLog(builderState, "Opened current loaded map in read-only builder workspace.");
+    builderState.dirty = false;
+    pushBuilderLog(builderState, "Opened current loaded map as an editable export draft.");
     return;
   }
 
@@ -239,11 +240,11 @@ export function setBuilderWorkspaceMode(builderState, mode, appState = null) {
   }
 
   if (mode === "current-map" && canUseCurrentRuntimeMap(appState)) {
-    builderState.workspaceMode = "current-map";
-    builderState.status = "READ ONLY";
+    setBuilderAuthoredMap(builderState, createEditableRuntimeMapDraft(appState), "current-map-copy");
+    builderState.status = "BUILDER MAP";
     builderState.activeTab = "map";
-    syncBuilderRuntimeMap(builderState, appState);
-    pushBuilderLog(builderState, "Using current loaded map for read-only inspection.");
+    builderState.dirty = false;
+    pushBuilderLog(builderState, "Copied current loaded map into an editable export draft.");
     return;
   }
 
@@ -404,6 +405,23 @@ export function getBuilderWorkspaceAppState(builderState, appState) {
       definition: mission
     }
   };
+}
+
+function createEditableRuntimeMapDraft(appState) {
+  const sourceMap = appState?.map ?? null;
+  const map = Array.isArray(sourceMap)
+    ? cloneMapDefinition(sourceMap)
+    : normalizeMapDefinition(sourceMap ?? {});
+
+  if (map && !map.defaults) {
+    map.defaults = {
+      terrainTypeId: map.terrainTypes?.[0] ?? "grass",
+      elevation: 0,
+      movementClass: "clear"
+    };
+  }
+
+  return map;
 }
 
 export function syncBuilderRuntimeMap(builderState, appState) {

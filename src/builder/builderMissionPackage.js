@@ -5,7 +5,7 @@
 // by mirroring the active map's objective array into mission.objectives for the
 // current runtime/export contract.
 
-import { attachMapMetadata, cloneMapDefinition, createTile } from "../map.js";
+import { attachMapMetadata, cloneMapDefinition, createTile, normalizeMapDefinition } from "../map.js";
 import { createBlankBuilderMap } from "./builderMapFactory.js";
 
 const DEFAULT_BRIEFING_BODY = "Mission package created in the Mission Builder.";
@@ -715,6 +715,11 @@ function readField(root, fieldName, fallback = "") {
   return node ? String(node.value ?? "") : String(fallback ?? "");
 }
 
+function readChecked(root, fieldName, fallback = false) {
+  const node = root?.querySelector?.(`[data-builder-field="${fieldName}"]`);
+  return node ? Boolean(node.checked) : Boolean(fallback);
+}
+
 function clampWholeNumber(value, fallback, min, max) {
   const number = Math.trunc(Number(value));
   if (!Number.isFinite(number)) return fallback;
@@ -722,7 +727,7 @@ function clampWholeNumber(value, fallback, min, max) {
 }
 
 function cloneBuilderMap(map) {
-  const clone = cloneMapDefinition(map);
+  const clone = Array.isArray(map) ? cloneMapDefinition(map) : normalizeMapDefinition(map ?? {});
   if (!clone.spawns || typeof clone.spawns !== "object") clone.spawns = { player: [], enemy: [], neutral: [] };
   if (!clone.startState || typeof clone.startState !== "object") clone.startState = { deployments: [], deploymentCells: [] };
   if (!Array.isArray(clone.startState.deployments)) clone.startState.deployments = [];

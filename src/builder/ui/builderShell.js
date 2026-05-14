@@ -307,8 +307,8 @@ function renderLanding(appState, builderState = null) {
         <button type="button" class="builder-tool-button" data-builder-action="load-existing-mission"${hasCatalogMissions ? "" : " disabled"}>Load Mission</button>
       </div>
       <button type="button" class="builder-start-card${canUseCurrent ? "" : " is-disabled"}" data-builder-action="use-current-map"${canUseCurrent ? "" : " disabled"}>
-        <span>Use Current Loaded Map</span>
-        <small>${canUseCurrent ? "Inspect the active mission map." : "Only available while a mission map is active."}</small>
+        <span>Edit Current Loaded Map Copy</span>
+        <small>${canUseCurrent ? "Copies the active mission map into an editable export draft." : "Only available while a mission map is active."}</small>
       </button>
     </section>
 
@@ -568,8 +568,8 @@ function renderPackageInspectorTools(builderState, appState) {
 function renderMapInspectorTools(builderState, appState) {
   const map = builderState?.authoring?.map ?? null;
   const editable = builderState.workspaceMode === "builder-map";
-  const width = Array.isArray(map) ? map[0]?.length ?? 0 : 0;
-  const height = Array.isArray(map) ? map.length : 0;
+  const width = getMapWidth(map);
+  const height = getMapHeight(map);
   const selectedTerrain = map?.defaults?.terrainTypeId ?? map?.defaultTerrainTypeId ?? map?.terrainTypes?.[0] ?? "grass";
   const terrainOptions = buildTerrainOptions(appState, builderState, selectedTerrain);
   const movementOptions = buildMovementOptions(map?.defaults?.movementClass ?? "clear");
