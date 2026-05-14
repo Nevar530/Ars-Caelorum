@@ -8,6 +8,9 @@ const LEVEL_CAP = 20;
 const TARGETING_CAP = 5;
 const REACTION_CAP = 5;
 
+const PLAYER_PC_WEIGHT = 1;
+const PLAYER_CPU_ALLY_WEIGHT = 0.5;
+
 const DEFAULT_SCALING = Object.freeze({
   enabled: true,
   mode: "partyAverage",
@@ -44,11 +47,14 @@ export function buildEnemyScalingContext({ content, map, campaignState } = {}) {
   const deployments = Array.isArray(map?.startState?.deployments) ? map.startState.deployments : [];
   const partyStats = collectPartyStats({ pilotDefinitions, deployments, campaignState });
   const difficulty = normalizeDifficulty(campaignState?.difficulty);
+  const forceBalance = calculateForceBalance(deployments);
 
   return {
     enabled: true,
     difficulty,
     difficultyModifier: DIFFICULTY_MODIFIERS[difficulty] ?? DIFFICULTY_MODIFIERS.normal,
+    forceBalance,
+    encounterModifier: calculateEncounterModifier(forceBalance),
     party: averageStats(partyStats)
   };
 }
@@ -72,6 +78,8 @@ export function buildEnemyPilotRuntimeOverrides({
 
   const party = scalingContext?.party ?? averageStats([]);
   const difficulty = scalingContext?.difficultyModifier ?? DIFFICULTY_MODIFIERS.normal;
+  const encounter = scalingContext?.encounterModifier ?? calculateEncounterModifier(null);
+  const forceBalance = scalingContext?.forceBalance ?? calculateForceBalance([]);
   const role = normalizeRole(deployment?.enemyRole ?? pilotDefinition?.enemyRole ?? pilotDefinition?.role);
   const roleModifier = ROLE_MODIFIERS[role] ?? ROLE_MODIFIERS.balanced;
 
@@ -81,15 +89,15 @@ export function buildEnemyPilotRuntimeOverrides({
     scaling.maxLevel
   );
 
-  const coreStat = Math.max(1, Math.floor(party.core) + scaling.coreOffset + roleModifier.core + difficulty.core);
-  const abilityPoints = Math.max(0, Math.floor(party.abilityPoints) + scaling.abilityPointsOffset + roleModifier.abilityPoints + difficulty.abilityPoints);
+  const coreStat = Math.max(1, Math.floor(party.core) + scaling.coreOffset + roleModifier.core + difficulty.core + encounter.core);
+  const abilityPoints = Math.max(0, Math.floor(party.abilityPoints) + scaling.abilityPointsOffset + roleModifier.abilityPoints + difficulty.abilityPoints + encounter.abilityPoints);
   const targeting = clamp(
-    Math.floor(party.targeting) + scaling.targetingOffset + roleModifier.targeting + difficulty.targeting,
+    Math.floor(party.targeting) + scaling.targetingOffset + roleModifier.targeting + difficulty.targeting + encounter.targeting,
     0,
     TARGETING_CAP
   );
   const reaction = clamp(
-    Math.floor(party.reaction) + scaling.reactionOffset + roleModifier.reaction + difficulty.reaction,
+    Math.floor(party.reaction) + scaling.reactionOffset + roleModifier.reaction + difficulty.reaction + encounter.reaction,
     0,
     REACTION_CAP
   );
@@ -108,7 +116,13 @@ export function buildEnemyPilotRuntimeOverrides({
       partyAverageCore: party.core,
       partyAverageAbilityPoints: party.abilityPoints,
       partyAverageTargeting: party.targeting,
-      partyAverageReaction: party.reaction
+      partyAverageReaction: party.reaction,
+      playerPcUnits: forceBalance.playerPcUnits,
+      playerCpuAllyUnits: forceBalance.playerCpuAllyUnits,
+      effectivePlayerUnits: forceBalance.effectivePlayerUnits,
+      enemyUnits: forceBalance.enemyUnits,
+      enemyPressureRatio: forceBalance.enemyPressureRatio,
+      encounterModifier: encounter
     }
   };
 }
@@ -143,6 +157,65 @@ function collectPartyStats({ pilotDefinitions, deployments, campaignState }) {
       reaction: clamp(numberStat(definition?.reaction, 0) + numberStat(bonuses.reaction, 0), 0, REACTION_CAP)
     };
   });
+}
+
+function calculateForceBalance(deployments) {
+  const list = Array.isArray(deployments) ? deployments : [];
+  const counts = list.reduce((sum, deployment) => {
+    if (!deployment?.pilotDefinitionId) return sum;
+    const team = normalizeTeam(deployment?.team);
+    const controlType = normalizeControlType(deployment?.controlType, team);
+
+    if (team === "enemy") {
+      sum.enemyUnits += 1;
+      return sum;
+    }
+
+    if (team === "player" && controlType === "CPU") {
+      sum.playerCpuAllyUnits += 1;
+      sum.effectivePlayerUnits += PLAYER_CPU_ALLY_WEIGHT;
+      return sum;
+    }
+
+    if (team === "player") {
+      sum.playerPcUnits += 1;
+      sum.effectivePlayerUnits += PLAYER_PC_WEIGHT;
+    }
+
+    return sum;
+  }, {
+    playerPcUnits: 0,
+    playerCpuAllyUnits: 0,
+    enemyUnits: 0,
+    effectivePlayerUnits: 0
+  });
+
+  const safeEffectivePlayers = Math.max(1, counts.effectivePlayerUnits);
+  const enemyPressureRatio = counts.enemyUnits / safeEffectivePlayers;
+
+  return {
+    ...counts,
+    effectivePlayerUnits: safeEffectivePlayers,
+    enemyPressureRatio
+  };
+}
+
+function calculateEncounterModifier(forceBalance) {
+  const ratio = Number(forceBalance?.enemyPressureRatio ?? 0) || 0;
+
+  if (ratio >= 3) {
+    return { core: -2, abilityPoints: -1, targeting: -2, reaction: -2 };
+  }
+
+  if (ratio >= 2) {
+    return { core: -1, abilityPoints: 0, targeting: -1, reaction: -1 };
+  }
+
+  if (ratio >= 1.5) {
+    return { core: 0, abilityPoints: 0, targeting: -1, reaction: -1 };
+  }
+
+  return { core: 0, abilityPoints: 0, targeting: 0, reaction: 0 };
 }
 
 function averageStats(entries) {
@@ -193,6 +266,12 @@ function normalizeTeam(value) {
   if (value === "enemy") return "enemy";
   if (value === "neutral") return "neutral";
   return "player";
+}
+
+function normalizeControlType(value, team = "player") {
+  if (value === "CPU") return "CPU";
+  if (value === "PC") return "PC";
+  return team === "player" ? "PC" : "CPU";
 }
 
 function numberStat(value, fallback = 0) {
