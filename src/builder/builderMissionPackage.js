@@ -5,7 +5,15 @@
 // by mirroring the active map's objective array into mission.objectives for the
 // current runtime/export contract.
 
-import { attachMapMetadata, cloneMapDefinition, createTile, getMapHeight, getMapWidth } from "../map.js";
+import {
+  attachMapMetadata,
+  cloneMapDefinition,
+  createDetailGridForElevation,
+  createTile,
+  getMapHeight,
+  getMapWidth,
+  refreshTileSummary
+} from "../map.js";
 import { createBlankBuilderMap } from "./builderMapFactory.js";
 
 const DEFAULT_BRIEFING_BODY = "Mission package created in the Mission Builder.";
@@ -213,9 +221,21 @@ export function readMapSettingsFields(builderState, root, appState = null) {
   const currentHeight = getMapHeight(map) || 16;
   const requestedWidth = clampWholeNumber(readField(root, "active-map-width", currentWidth), currentWidth, 4, 96);
   const requestedHeight = clampWholeNumber(readField(root, "active-map-height", currentHeight), currentHeight, 4, 96);
-  const defaultTerrainTypeId = sanitizeId(readField(root, "map-default-terrain", map.defaults?.terrainTypeId ?? map.defaultTerrainTypeId ?? inferFirstTerrainType(map, appState)), "grass");
-  const defaultElevation = clampWholeNumber(readField(root, "map-default-elevation", map.defaults?.elevation ?? 0), 0, -8, 16);
-  const defaultMovementClass = sanitizeName(readField(root, "map-default-movement", map.defaults?.movementClass ?? "clear"), "clear");
+
+  const previousDefaults = {
+    terrainTypeId: sanitizeId(map.defaults?.terrainTypeId ?? map.defaultTerrainTypeId ?? inferFirstTerrainType(map, appState), "grass"),
+    elevation: clampWholeNumber(map.defaults?.elevation ?? 0, 0, -8, 16),
+    movementClass: sanitizeName(map.defaults?.movementClass ?? "clear", "clear")
+  };
+  const defaultTerrainTypeId = sanitizeId(readField(root, "map-default-terrain", previousDefaults.terrainTypeId), "grass");
+  const defaultElevation = clampWholeNumber(readField(root, "map-default-elevation", previousDefaults.elevation), previousDefaults.elevation, -8, 16);
+  const defaultMovementClass = sanitizeName(readField(root, "map-default-movement", previousDefaults.movementClass), "clear");
+  const nextDefaults = {
+    terrainTypeId: defaultTerrainTypeId,
+    elevation: defaultElevation,
+    movementClass: defaultMovementClass,
+    terrainDefinition: appState?.content?.terrainDefinitions?.[defaultTerrainTypeId] ?? null
+  };
 
   const previousWidth = getMapWidth(map);
   const previousHeight = getMapHeight(map);
@@ -240,13 +260,10 @@ export function readMapSettingsFields(builderState, root, appState = null) {
   if (!Array.isArray(map.terrainTypes)) map.terrainTypes = [];
   if (!map.terrainTypes.includes(defaultTerrainTypeId)) map.terrainTypes.push(defaultTerrainTypeId);
 
+  const defaultTileChangeCount = applyMapDefaultTileChanges(map, previousDefaults, nextDefaults);
+
   if (requestedWidth !== previousWidth || requestedHeight !== previousHeight) {
-    resizeBuilderMap(map, requestedWidth, requestedHeight, {
-      terrainTypeId: defaultTerrainTypeId,
-      elevation: defaultElevation,
-      movementClass: defaultMovementClass,
-      terrainDefinition: appState?.content?.terrainDefinitions?.[defaultTerrainTypeId] ?? null
-    });
+    resizeBuilderMap(map, requestedWidth, requestedHeight, nextDefaults);
   }
 
   builderState.authoring.activeMapId = nextMapId;
@@ -259,11 +276,62 @@ export function readMapSettingsFields(builderState, root, appState = null) {
   syncActiveMapObjectivesToMission(builderState);
   builderState.dirty = true;
 
+  const sizeChanged = requestedWidth !== previousWidth || requestedHeight !== previousHeight;
+  const defaultText = defaultTileChangeCount > 0
+    ? ` Rebased ${defaultTileChangeCount} base tile${defaultTileChangeCount === 1 ? "" : "s"}.`
+    : "";
+
   return {
     ok: true,
     mapIdChanged: previousMapId !== nextMapId,
-    message: `Updated map settings for ${nextMapId}.`
+    message: `Updated map settings for ${nextMapId}${sizeChanged ? ` (${requestedWidth}×${requestedHeight})` : ""}.${defaultText}`
   };
+}
+
+function applyMapDefaultTileChanges(map, previousDefaults = {}, nextDefaults = {}) {
+  if (!Array.isArray(map)) return 0;
+
+  const previousTerrainTypeId = sanitizeId(previousDefaults.terrainTypeId, "grass");
+  const previousElevation = clampWholeNumber(previousDefaults.elevation, 0, -8, 16);
+  const previousMovementClass = sanitizeName(previousDefaults.movementClass, "clear");
+
+  const nextTerrainTypeId = sanitizeId(nextDefaults.terrainTypeId, previousTerrainTypeId);
+  const nextElevation = clampWholeNumber(nextDefaults.elevation, previousElevation, -8, 16);
+  const nextTerrainDefinition = nextDefaults.terrainDefinition ?? null;
+  const nextMovementClass = sanitizeName(nextDefaults.movementClass, nextTerrainDefinition?.movementClass ?? previousMovementClass);
+
+  const defaultsChanged = previousTerrainTypeId !== nextTerrainTypeId
+    || previousElevation !== nextElevation
+    || previousMovementClass !== nextMovementClass;
+  if (!defaultsChanged) return 0;
+
+  let changed = 0;
+  for (const row of map) {
+    if (!Array.isArray(row)) continue;
+    for (const tile of row) {
+      if (!tile) continue;
+
+      const isBaseTile = sanitizeId(tile.terrainTypeId, previousTerrainTypeId) === previousTerrainTypeId
+        && clampWholeNumber(tile.elevation, previousElevation, -8, 16) === previousElevation
+        && sanitizeName(tile.movementClass, previousMovementClass) === previousMovementClass;
+
+      if (!isBaseTile) continue;
+
+      tile.terrainTypeId = nextTerrainTypeId;
+      tile.terrainSpriteId = nextTerrainDefinition?.spriteSetId ?? `${nextTerrainTypeId}_001`;
+      tile.movementClass = nextMovementClass;
+      tile.elevation = nextElevation;
+      tile.detail = createDetailGridForElevation(nextElevation);
+      refreshTileSummary(tile);
+      changed += 1;
+    }
+  }
+
+  if (Array.isArray(map.tiles)) {
+    map.tiles = map.flatMap((row) => Array.isArray(row) ? row.filter(Boolean) : []);
+  }
+
+  return changed;
 }
 
 function resizeBuilderMap(map, width, height, defaults = {}) {
