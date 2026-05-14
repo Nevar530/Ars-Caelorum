@@ -9,6 +9,7 @@ import { parseSpawnId, SPAWN_TEAMS } from "../maps/mapSpawns.js";
 import { getDefaultControlTypeForSpawnTeam } from "./builderSpawns.js";
 
 const START_TYPES = ["pilot", "emptyMech"];
+const CONTROL_TYPES = ["PC", "CPU"];
 
 export function createDefaultUnitTool() {
   return {
@@ -32,6 +33,8 @@ export function ensureUnitToolSettings(builderState, appState = null) {
   const mechs = getMechOptions(appState);
 
   tool.startType = START_TYPES.includes(tool.startType) ? tool.startType : "pilot";
+  tool.team = SPAWN_TEAMS.includes(tool.team) ? tool.team : "player";
+  tool.controlType = CONTROL_TYPES.includes(tool.controlType) ? tool.controlType : getDefaultControlTypeForSpawnTeam(tool.team);
 
   if (tool.startType === "emptyMech") {
     tool.pilotDefinitionId = "";
@@ -48,14 +51,10 @@ export function ensureUnitToolSettings(builderState, appState = null) {
   tool.startEmbarked = tool.startType === "pilot" && Boolean(tool.mechDefinitionId);
   tool.instancePrefix = sanitizeInstancePrefix(tool.instancePrefix);
 
-  const inferred = inferTeamControlFromTool(builderState, tool);
-  tool.team = inferred.team;
-  tool.controlType = tool.controlType === "CPU" ? "CPU" : "PC";
-
   return tool;
 }
 
-export function updateUnitToolFromFields(builderState, root, appState = null) {
+export function updateUnitToolFromFields(builderState, root, appState = null, options = {}) {
   const tool = ensureUnitToolSettings(builderState, appState);
   if (!tool || !root) return tool;
 
@@ -64,6 +63,7 @@ export function updateUnitToolFromFields(builderState, root, appState = null) {
   const mechDefinitionId = readField(root, "unit-mech-id");
   const pilotSpawnId = readField(root, "unit-pilot-spawn-id");
   const mechSpawnId = readField(root, "unit-mech-spawn-id");
+  const team = readField(root, "unit-team");
   const controlType = readField(root, "unit-control-type");
   const instancePrefix = readField(root, "unit-instance-prefix");
 
@@ -72,8 +72,18 @@ export function updateUnitToolFromFields(builderState, root, appState = null) {
   if (mechDefinitionId !== undefined) tool.mechDefinitionId = mechDefinitionId;
   if (pilotSpawnId !== undefined) tool.pilotSpawnId = pilotSpawnId;
   if (mechSpawnId !== undefined) tool.mechSpawnId = mechSpawnId;
+  if (team !== undefined && SPAWN_TEAMS.includes(team)) tool.team = team;
   if (controlType !== undefined) tool.controlType = controlType === "CPU" ? "CPU" : "PC";
   if (instancePrefix !== undefined) tool.instancePrefix = instancePrefix;
+
+  const changedField = options?.changedField ?? "";
+  if (changedField === "unit-pilot-spawn-id" || changedField === "unit-mech-spawn-id") {
+    const inferred = inferTeamControlFromTool(builderState, tool);
+    tool.team = inferred.team;
+    tool.controlType = inferred.controlType;
+  } else if (changedField === "unit-team") {
+    tool.controlType = getDefaultControlTypeForSpawnTeam(tool.team);
+  }
 
   return ensureUnitToolSettings(builderState, appState);
 }
@@ -93,8 +103,7 @@ export function addUnitStartAssignment(builderState, appState = null) {
   const deployments = Array.isArray(startState.deployments) ? startState.deployments : [];
   const isEmptyMech = tool.startType === "emptyMech";
   const hasMech = Boolean(tool.mechDefinitionId);
-  const inferred = inferTeamControlFromTool(builderState, tool);
-  const team = inferred.team;
+  const team = SPAWN_TEAMS.includes(tool.team) ? tool.team : "player";
   const controlType = tool.controlType === "CPU" ? "CPU" : "PC";
   const prefix = makeUniqueInstancePrefix(deployments, tool.instancePrefix || makeNextAutoInstancePrefix(deployments, team));
   const deploymentMode = startState.startMode === "deployment";

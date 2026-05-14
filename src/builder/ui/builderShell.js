@@ -1021,6 +1021,8 @@ function renderUnitInspectorTools(builderState, appState) {
     { value: "pilot", label: "Pilot / Pilot + Mech" },
     { value: "emptyMech", label: "Empty Mech" }
   ], tool.startType ?? "pilot");
+  const teamOptions = buildSimpleOptions(["player", "enemy", "neutral"], tool.team ?? "player");
+  const controlOptions = buildSimpleOptions(["PC", "CPU"], tool.controlType ?? "PC");
 
   const pilotFields = !isEmptyMech ? `
       <label class="builder-form-field builder-form-field-compact">
@@ -1057,6 +1059,14 @@ function renderUnitInspectorTools(builderState, appState) {
       </label>
       ${pilotFields}
       ${emptyMechFields}
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Team</span>
+        <select data-builder-field="unit-team"${editable ? "" : " disabled"}>${teamOptions}</select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Controller</span>
+        <select data-builder-field="unit-control-type"${editable ? "" : " disabled"}>${controlOptions}</select>
+      </label>
       <label class="builder-form-field builder-form-field-compact">
         <span>Instance Prefix</span>
         <input type="text" data-builder-field="unit-instance-prefix" value="${escapeHtml(tool.instancePrefix ?? "")}" placeholder="auto" spellcheck="false"${editable ? "" : " disabled"}>

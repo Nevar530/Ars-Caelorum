@@ -348,7 +348,7 @@ class MissionBuilder {
     }
 
     if (this.builderState.activeTab === "units") {
-      updateUnitToolFromFields(this.builderState, this.refs.root, this.appState);
+      updateUnitToolFromFields(this.builderState, this.refs.root, this.appState, { changedField });
       this.render();
       return;
     }
