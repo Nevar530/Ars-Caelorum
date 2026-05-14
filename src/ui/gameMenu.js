@@ -28,6 +28,7 @@ export function normalizeGameMenuState(state) {
   state.ui.gameMenu.open = Boolean(state.ui.gameMenu.open);
   state.ui.gameMenu.activeTab = normalizeTab(state.ui.gameMenu.activeTab);
   state.ui.gameMenu.selectedPilotId = String(state.ui.gameMenu.selectedPilotId ?? "").trim();
+  state.ui.gameMenu.selectedStatKey = normalizeStatKey(state.ui.gameMenu.selectedStatKey);
 
   return state.ui.gameMenu;
 }
@@ -67,6 +68,35 @@ export function moveGameMenuTab(state, delta) {
   const index = Math.max(0, TABS.findIndex((tab) => tab.id === menu.activeTab));
   const nextIndex = (index + delta + TABS.length) % TABS.length;
   menu.activeTab = TABS[nextIndex].id;
+}
+
+export function moveGameMenuSelection(state, delta) {
+  const menu = normalizeGameMenuState(state);
+  if (menu.activeTab !== "characters") return false;
+
+  const pilots = getVisiblePilotEntries(state);
+  if (!pilots.length) return false;
+
+  const currentIndex = Math.max(0, pilots.findIndex((pilot) => pilot.id === menu.selectedPilotId));
+  const nextIndex = (currentIndex + Math.sign(delta || 0) + pilots.length) % pilots.length;
+  menu.selectedPilotId = pilots[nextIndex].id;
+  return true;
+}
+
+export function moveGameMenuStatSelection(state, delta) {
+  const menu = normalizeGameMenuState(state);
+  if (menu.activeTab !== "characters") return false;
+
+  const currentIndex = Math.max(0, PILOT_STAT_KEYS.findIndex((key) => key === menu.selectedStatKey));
+  const nextIndex = (currentIndex + Math.sign(delta || 0) + PILOT_STAT_KEYS.length) % PILOT_STAT_KEYS.length;
+  menu.selectedStatKey = PILOT_STAT_KEYS[nextIndex];
+  return true;
+}
+
+export function confirmGameMenuSelection(state) {
+  const menu = normalizeGameMenuState(state);
+  if (menu.activeTab !== "characters") return { ok: false, reason: "no_confirm_action" };
+  return spendPilotStatPoint(state, menu.selectedPilotId, menu.selectedStatKey);
 }
 
 export function selectGameMenuPilot(state, pilotId) {
@@ -129,7 +159,7 @@ export function renderGameMenu(state) {
           ${renderActiveTab(state, menu.activeTab)}
         </div>
         <footer class="game-menu-footer">
-          <span>I closes menu · Arrow Left/Right switches tabs</span>
+          <span>I closes menu · Q/E switches tabs · Arrows navigate current tab</span>
           <span>Stat changes apply when a mission/map loads.</span>
         </footer>
       </section>
@@ -180,7 +210,7 @@ function renderCharactersTab(state) {
         </div>
         <div class="game-menu-stat-points">Unspent Stat Points: <strong>${escapeHtml(selected.statPoints)}</strong></div>
         <div class="game-menu-stat-grid">
-          ${PILOT_STAT_KEYS.map((statKey) => renderStatRow(selected, statKey)).join("")}
+          ${PILOT_STAT_KEYS.map((statKey) => renderStatRow(selected, statKey, menu.selectedStatKey)).join("")}
         </div>
         <div class="game-menu-subpanel">
           <h4>Abilities</h4>
@@ -191,7 +221,7 @@ function renderCharactersTab(state) {
   `;
 }
 
-function renderStatRow(pilot, statKey) {
+function renderStatRow(pilot, statKey, selectedStatKey) {
   const base = pilot.baseStats[statKey] ?? 0;
   const bonus = pilot.statBonuses[statKey] ?? 0;
   const total = pilot.totalStats[statKey] ?? (base + bonus);
@@ -205,7 +235,7 @@ function renderStatRow(pilot, statKey) {
       : "Direct value";
 
   return `
-    <div class="game-menu-stat-row">
+    <div class="game-menu-stat-row ${statKey === selectedStatKey ? "is-selected" : ""}">
       <div>
         <div class="game-menu-stat-name">${escapeHtml(STAT_LABELS[statKey] ?? statKey)}</div>
         <div class="game-menu-stat-help">Base ${escapeHtml(base)} + Bonus ${escapeHtml(bonus)} · ${escapeHtml(helper)}</div>
@@ -316,6 +346,11 @@ function renderIdList(items, emptyText) {
   const list = Array.isArray(items) ? items.filter(Boolean) : [];
   if (!list.length) return `<p>${escapeHtml(emptyText)}</p>`;
   return `<ul class="game-menu-id-list">${list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+}
+
+function normalizeStatKey(statKey) {
+  const key = String(statKey ?? "core").trim();
+  return PILOT_STAT_KEYS.includes(key) ? key : PILOT_STAT_KEYS[0];
 }
 
 function normalizeTab(tabId) {

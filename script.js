@@ -28,7 +28,7 @@ import { isMissionUnlocked } from "./src/campaign/campaignState.js";
 import { loadCampaignState, resetStoredCampaignState, saveCampaignState } from "./src/campaign/campaignStorage.js";
 import { applyMissionRewards } from "./src/campaign/campaignRewards.js";
 import { getCurrentMissionEntry } from "./src/campaign/campaignProgression.js";
-import { closeGameMenu, moveGameMenuTab, selectGameMenuPilot, setGameMenuTab, spendPilotStatPoint, toggleGameMenu } from "./src/ui/gameMenu.js";
+import { createGameMenuController } from "./src/controllers/gameMenuController.js";
 
 const refs = {
   frontScreen: document.getElementById("frontScreen"),
@@ -366,6 +366,18 @@ function getSelectedMissionEntry() {
     return Array.isArray(state?.campaign?.completedMissions) && state.campaign.completedMissions.length > 0 ? 3 : 2;
   }
 
+  function saveCampaign() {
+    state.campaign = saveCampaignState(state.campaign, { defaultMissionId });
+  }
+
+  const gameMenuController = createGameMenuController({
+    state,
+    render: gameController.render,
+    saveCampaign,
+    getCpuTurnController: () => cpuTurnController,
+    returnToTitle: () => actions.showTitleScreen()
+  });
+
   const actions = {
     render: gameController.render,
     snapFocusToActiveUnit,
@@ -578,61 +590,13 @@ function getSelectedMissionEntry() {
 
     },
 
-    toggleGameMenu() {
-      const opened = toggleGameMenu(state);
-      if (opened) {
-        cpuTurnController?.clearPendingTurn?.();
-      } else {
-        cpuTurnController?.scheduleForCurrentTurn?.();
-      }
-      gameController.render();
-    },
-
-    closeGameMenu() {
-      closeGameMenu(state);
-      gameController.render();
-      cpuTurnController?.scheduleForCurrentTurn?.();
-    },
-
-    moveGameMenuTab(delta) {
-      moveGameMenuTab(state, delta);
-      gameController.render();
-    },
-
-    handleGameMenuClick(button) {
-      const action = button?.dataset?.gameMenuAction ?? "";
-
-      if (action === "close") {
-        actions.closeGameMenu();
-        return;
-      }
-
-      if (action === "tab") {
-        setGameMenuTab(state, button.dataset.gameMenuTab);
-        gameController.render();
-        return;
-      }
-
-      if (action === "select-pilot") {
-        selectGameMenuPilot(state, button.dataset.pilotId);
-        gameController.render();
-        return;
-      }
-
-      if (action === "spend-stat") {
-        const result = spendPilotStatPoint(state, button.dataset.pilotId, button.dataset.statKey);
-        if (result?.ok) {
-          state.campaign = saveCampaignState(state.campaign, { defaultMissionId });
-        }
-        gameController.render();
-        return;
-      }
-
-      if (action === "return-title") {
-        closeGameMenu(state);
-        actions.showTitleScreen();
-      }
-    },
+    toggleGameMenu: gameMenuController.toggle,
+    closeGameMenu: gameMenuController.close,
+    moveGameMenuTab: gameMenuController.moveTab,
+    moveGameMenuSelection: gameMenuController.moveSelection,
+    moveGameMenuStat: gameMenuController.moveStat,
+    confirmGameMenuSelection: gameMenuController.confirmSelection,
+    handleGameMenuClick: gameMenuController.handleClick,
 
     continuePhaseBriefing() {
       gameController.continuePhaseBriefing?.();

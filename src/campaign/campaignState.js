@@ -10,6 +10,7 @@ export const PILOT_STAT_CAPS = Object.freeze({
   reaction: 5
 });
 export const PILOT_STAT_KEYS = Object.freeze(["core", "abilityPoints", "targeting", "reaction"]);
+export const STARTING_RECRUIT_IDS = Object.freeze(["pilot_skye"]);
 
 export function createInitialCampaignState({ defaultMissionId = "000_game_state_tester_mission" } = {}) {
   const missionId = cleanId(defaultMissionId) || "000_game_state_tester_mission";
@@ -19,7 +20,7 @@ export function createInitialCampaignState({ defaultMissionId = "000_game_state_
     currentMissionId: missionId,
     completedMissions: [],
     unlockedMissions: [missionId],
-    pilots: {},
+    pilots: buildStartingPilots(),
     difficulty: "normal",
     inventory: {
       currency: 0,
@@ -48,7 +49,7 @@ export function normalizeCampaignState(rawState, options = {}) {
     currentMissionId,
     completedMissions,
     unlockedMissions: unlockedMissions.length ? unlockedMissions : [currentMissionId],
-    pilots: normalizePilots(source.pilots),
+    pilots: normalizePilots({ ...buildStartingPilots(), ...(source.pilots && typeof source.pilots === "object" ? source.pilots : {}) }),
     difficulty: normalizeDifficulty(source.difficulty),
     inventory: normalizeInventory(source.inventory),
     flags: normalizeRecord(source.flags),
@@ -159,6 +160,10 @@ export function getRecruitedPilotAverageLevel(campaignState) {
 
 export function getRecruitedPilotFloorLevel(campaignState) {
   return clampLevel(Math.floor(getRecruitedPilotAverageLevel(campaignState)));
+}
+
+function buildStartingPilots() {
+  return Object.fromEntries(STARTING_RECRUIT_IDS.map((pilotId) => [pilotId, normalizePilotProgress({ recruited: true })]));
 }
 
 function normalizeDifficulty(value) {

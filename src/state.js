@@ -136,7 +136,8 @@ export function createState({
       gameMenu: {
         open: false,
         activeTab: "characters",
-        selectedPilotId: ""
+        selectedPilotId: "",
+        selectedStatKey: "core"
       }
     },
 

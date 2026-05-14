@@ -119,16 +119,6 @@ function handleGameMenuKeys(event, key, state, actions) {
 
   if (!state?.ui?.gameMenu?.open) return false;
 
-  if (key === "arrowleft" || key === "a") {
-    actions.moveGameMenuTab?.(-1);
-    return true;
-  }
-
-  if (key === "arrowright" || key === "d") {
-    actions.moveGameMenuTab?.(1);
-    return true;
-  }
-
   if (key === "q") {
     actions.moveGameMenuTab?.(-1);
     return true;
@@ -136,6 +126,31 @@ function handleGameMenuKeys(event, key, state, actions) {
 
   if (key === "e") {
     actions.moveGameMenuTab?.(1);
+    return true;
+  }
+
+  if (key === "arrowup" || key === "w") {
+    actions.moveGameMenuSelection?.(-1);
+    return true;
+  }
+
+  if (key === "arrowdown" || key === "s") {
+    actions.moveGameMenuSelection?.(1);
+    return true;
+  }
+
+  if (key === "arrowleft" || key === "a") {
+    actions.moveGameMenuStat?.(-1);
+    return true;
+  }
+
+  if (key === "arrowright" || key === "d") {
+    actions.moveGameMenuStat?.(1);
+    return true;
+  }
+
+  if (key === "enter" || key === " " || key === "spacebar") {
+    actions.confirmGameMenuSelection?.();
     return true;
   }
 
