@@ -340,7 +340,7 @@ function renderNewMapForm(appState) {
     <section class="builder-form-grid">
       <label class="builder-form-field">
         <span>Map ID</span>
-        <input type="text" data-builder-field="map-id" value="006_new_map" spellcheck="false">
+        <input type="text" data-builder-field="map-id" value="new_map" spellcheck="false">
       </label>
       <label class="builder-form-field">
         <span>Map Name</span>

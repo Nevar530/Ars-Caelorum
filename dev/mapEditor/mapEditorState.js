@@ -29,7 +29,7 @@ export const DEFAULT_TERRAIN_PRESETS = Object.freeze([
 
 export const DEFAULT_MAP_EDITOR_STATE = Object.freeze({
   isEnabled: false,
-  activeMapId: '000_test',
+  activeMapId: '008_mars_cold_open',
   mode: MAP_EDITOR_MODES.HEIGHT,
   brushSize: 1,
   selectedHeight: 0,

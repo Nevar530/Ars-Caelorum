@@ -112,8 +112,8 @@ export function createState({
 
       shell: {
         screen: "title",
-        selectedMapId: content?.mapCatalog?.defaultMapId ?? "000_test",
-        selectedMissionId: content?.missionCatalog?.defaultMissionId ?? content?.mapCatalog?.defaultMapId ?? "000_test",
+        selectedMapId: content?.mapCatalog?.defaultMapId ?? "008_mars_cold_open",
+        selectedMissionId: content?.missionCatalog?.defaultMissionId ?? "000_game_state_tester_mission",
         titleMenuIndex: 0
       },
 
