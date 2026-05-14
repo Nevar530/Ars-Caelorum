@@ -173,7 +173,8 @@ export function createGameController({
     const runtimeMissionDefinition = buildRuntimeMissionDefinitionForMap(state.map, missionDefinition ?? state.mission?.definition ?? null);
     state.units = instantiateTestUnits(state.content, state.map, {
       includePlayerDeployments: !isDeploymentMap,
-      campaignState: state.campaign
+      campaignState: state.campaign,
+      missionDefinition: runtimeMissionDefinition
     });
     state.mission.sourceMap = cloneMapDefinition(sourceMap);
     setActiveMissionDefinition(state, runtimeMissionDefinition);

@@ -2,6 +2,7 @@
 
 import { getMapSpawns, getMapStartState } from "./map.js";
 import { buildRuntimeInventory, buildRuntimeLoadout, getDefaultSlotsForUnit } from "./content/unitLoadout.js";
+import { buildEnemyPilotRuntimeOverrides, buildEnemyScalingContext } from "./campaign/enemyScaling.js";
 
 const PILOT_CORE_MULTIPLIER = 5;
 const PILOT_TARGETING_CAP = 5;
@@ -122,7 +123,8 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
     status: overrides.status ?? "operational",
 
     image: definition.image ?? null,
-    render: definition.render ?? {}
+    render: definition.render ?? {},
+    enemyScaling: overrides.enemyScaling ?? null
   };
 }
 
@@ -226,6 +228,8 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
 
   const includePlayerDeployments = options.includePlayerDeployments !== false;
   const campaignState = options.campaignState ?? null;
+  const enemyScalingContext = buildEnemyScalingContext({ content, map, campaignState });
+  const mapScaling = map?.enemyScaling ?? options.missionDefinition?.enemyScaling ?? null;
 
   for (const deployment of deployments) {
     const team = normalizeTeam(deployment?.team);
@@ -243,7 +247,14 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
 
     if (!pilot && !mech) continue;
 
-    const pilotRuntimeOverrides = pilot ? buildPilotRuntimeOverrides(pilot, campaignState) : {};
+    const playerPilotRuntimeOverrides = pilot ? buildPilotRuntimeOverrides(pilot, campaignState) : {};
+    const enemyPilotRuntimeOverrides = pilot ? buildEnemyPilotRuntimeOverrides({
+      pilotDefinition: pilot,
+      deployment,
+      scalingContext: enemyScalingContext,
+      mapScaling
+    }) : null;
+    const pilotRuntimeOverrides = enemyPilotRuntimeOverrides ?? playerPilotRuntimeOverrides;
 
     const pilotInstanceId = pilot
       ? (deployment?.pilotInstanceId ?? `${team}-pilot-${pilot.id}`)

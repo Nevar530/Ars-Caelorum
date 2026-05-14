@@ -20,6 +20,7 @@ export function createInitialCampaignState({ defaultMissionId = "000_game_state_
     completedMissions: [],
     unlockedMissions: [missionId],
     pilots: {},
+    difficulty: "normal",
     inventory: {
       currency: 0,
       weapons: [],
@@ -48,6 +49,7 @@ export function normalizeCampaignState(rawState, options = {}) {
     completedMissions,
     unlockedMissions: unlockedMissions.length ? unlockedMissions : [currentMissionId],
     pilots: normalizePilots(source.pilots),
+    difficulty: normalizeDifficulty(source.difficulty),
     inventory: normalizeInventory(source.inventory),
     flags: normalizeRecord(source.flags),
     claimedRewards: normalizeRecord(source.claimedRewards)
@@ -157,6 +159,11 @@ export function getRecruitedPilotAverageLevel(campaignState) {
 
 export function getRecruitedPilotFloorLevel(campaignState) {
   return clampLevel(Math.floor(getRecruitedPilotAverageLevel(campaignState)));
+}
+
+function normalizeDifficulty(value) {
+  const key = String(value ?? "normal").trim().toLowerCase();
+  return ["story", "normal", "hard", "brutal"].includes(key) ? key : "normal";
 }
 
 function normalizeInventory(inventory) {
