@@ -5,7 +5,9 @@ export function getMissionState(state) {
     state.mission = {
       sourceMap: null,
       definition: null,
-      result: null
+      result: null,
+      resultReceipt: null,
+      campaignReward: null
     };
   }
 
@@ -16,12 +18,16 @@ export function setActiveMissionDefinition(state, missionDefinition = null) {
   const mission = getMissionState(state);
   mission.definition = missionDefinition ?? null;
   mission.result = null;
+  mission.resultReceipt = null;
+  mission.campaignReward = null;
   resetObjectiveRuntimeState(state);
 }
 
 export function clearMissionResult(state) {
   const mission = getMissionState(state);
   mission.result = null;
+  mission.resultReceipt = null;
+  mission.campaignReward = null;
   resetObjectiveRuntimeState(state);
 }
 
@@ -132,6 +138,6 @@ function defaultResultTitle(result) {
 
 function defaultResultText(result) {
   return result === "victory"
-    ? "Mission complete. Return to the title screen to choose another mission."
+    ? "Mission complete. Return to the title screen to continue."
     : "Mission failed. Return to the title screen to try again.";
 }

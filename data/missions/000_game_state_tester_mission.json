@@ -417,5 +417,13 @@
     }
   },
   "mode": "combat",
-  "summary": "Internal game-state tester mission. Exercises combat, story mode, phase briefings, dialogue, objectives, triggers, logic, protect-unit, CPU ally, enter/exit mech, and map-phase handoff."
+  "summary": "Internal game-state tester mission. Exercises combat, story mode, phase briefings, dialogue, objectives, triggers, logic, protect-unit, CPU ally, enter/exit mech, and map-phase handoff.",
+  "rewards": {
+    "victory": {
+      "xp": 100,
+      "currency": 250,
+      "items": [],
+      "unlocks": []
+    }
+  }
 }

@@ -24,6 +24,10 @@ import { getMissionEntries } from "./src/ui/frontScreen.js";
 import { confirmDeploymentPlacement, getDeploymentReady, isDeploymentActive, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "./src/deployment/deploymentState.js";
 import { advanceMissionDialogue } from "./src/mission/missionState.js";
 import { createMissionTriggerRuntime } from "./src/mission/missionTriggerRuntime.js";
+import { isMissionUnlocked } from "./src/campaign/campaignState.js";
+import { loadCampaignState, resetStoredCampaignState, saveCampaignState } from "./src/campaign/campaignStorage.js";
+import { applyMissionRewards } from "./src/campaign/campaignRewards.js";
+import { getCurrentMissionEntry } from "./src/campaign/campaignProgression.js";
 
 const refs = {
   frontScreen: document.getElementById("frontScreen"),
@@ -31,6 +35,7 @@ const refs = {
   missionSelectScreen: document.getElementById("missionSelectScreen"),
   titleStartButton: document.getElementById("titleStartButton"),
   titleMissionSelectButton: document.getElementById("titleMissionSelectButton"),
+  titleResetCampaignButton: document.getElementById("titleResetCampaignButton"),
   titleAudioToggle: document.getElementById("titleAudioToggle"),
   titleThemeAudio: document.getElementById("titleThemeAudio"),
   missionList: document.getElementById("missionList"),
@@ -68,6 +73,8 @@ const refs = {
 
 async function init() {
   const content = await loadGameData();
+  const defaultMissionId = content?.missionCatalog?.defaultMissionId ?? content?.mapCatalog?.defaultMapId ?? "000_game_state_tester_mission";
+  const campaign = loadCampaignState({ defaultMissionId });
 
   const initialMap = content.defaultMap ? normalizeMapDefinition(content.defaultMap) : createInitialMap();
 
@@ -75,7 +82,8 @@ async function init() {
     map: initialMap,
     units: [],
     rotation: 0,
-    content
+    content,
+    campaign
   });
 
   setDevLogSize(25);
@@ -89,7 +97,12 @@ async function init() {
     refs,
     instantiateTestUnits,
     snapFocusToActiveUnit,
-    logDev
+    logDev,
+    onMissionEnded(missionResult, missionDefinition) {
+      const rewardOutcome = applyMissionRewards(state.campaign, missionDefinition, missionResult);
+      state.campaign = saveCampaignState(state.campaign, { defaultMissionId });
+      return rewardOutcome;
+    }
   });
 
   function clearTransientUi() {
@@ -191,6 +204,10 @@ async function init() {
   refs.titleMissionSelectButton?.addEventListener("click", () => {
     startTitleThemeAudio();
     actions.openMissionSelect();
+  });
+
+  refs.titleResetCampaignButton?.addEventListener("click", () => {
+    actions.resetCampaign();
   });
 
   refs.missionBackButton?.addEventListener("click", () => {
@@ -335,6 +352,10 @@ function getSelectedMissionEntry() {
     return loadMissionDefinitionByPath(entry.path);
   }
 
+  function getTitleMenuCount() {
+    return Array.isArray(state?.campaign?.completedMissions) && state.campaign.completedMissions.length > 0 ? 3 : 2;
+  }
+
   const actions = {
     render: gameController.render,
     snapFocusToActiveUnit,
@@ -353,7 +374,7 @@ function getSelectedMissionEntry() {
     },
 
     moveTitleSelection(delta) {
-      const count = 2;
+      const count = getTitleMenuCount();
       const current = Number.isFinite(Number(state.ui.shell.titleMenuIndex))
         ? Number(state.ui.shell.titleMenuIndex)
         : 0;
@@ -362,8 +383,13 @@ function getSelectedMissionEntry() {
     },
 
     confirmTitleSelection() {
-      if ((state.ui.shell.titleMenuIndex ?? 0) === 1) {
+      const index = state.ui.shell.titleMenuIndex ?? 0;
+      if (index === 1) {
         actions.openMissionSelect();
+        return;
+      }
+      if (index === 2) {
+        actions.resetCampaign();
         return;
       }
       actions.startDefaultMission();
@@ -379,6 +405,7 @@ function getSelectedMissionEntry() {
     async openSelectedMissionBriefing() {
       const missionEntry = getSelectedMissionEntry();
       if (!missionEntry) return;
+      if (!isMissionUnlocked(state.campaign, missionEntry.id)) return;
 
       const missionDefinition = await loadMissionForEntry(missionEntry);
       state.ui.shell.briefingMission = missionEntry;
@@ -389,8 +416,8 @@ function getSelectedMissionEntry() {
 
     async startDefaultMission() {
       const missions = getMissionEntries(state);
-      const defaultMissionId = state?.content?.missionCatalog?.defaultMissionId ?? null;
-      const defaultMission = missions.find((entry) => entry?.id === defaultMissionId) ?? missions[0] ?? null;
+      const currentMission = getCurrentMissionEntry(state.campaign, missions);
+      const defaultMission = currentMission ?? missions[0] ?? null;
       if (!defaultMission) return;
 
       state.ui.shell.selectedMissionId = defaultMission.id;
@@ -400,10 +427,21 @@ function getSelectedMissionEntry() {
       await actions.startSelectedMission();
     },
 
+    resetCampaign() {
+      state.campaign = resetStoredCampaignState({ defaultMissionId });
+      state.ui.shell.selectedMissionId = state.campaign.currentMissionId;
+      state.ui.shell.selectedMapId = state.campaign.currentMissionId;
+      state.ui.shell.briefingMission = null;
+      state.ui.shell.briefingDefinition = null;
+      state.ui.shell.titleMenuIndex = 0;
+      gameController.showTitleScreen();
+    },
+
     async startSelectedMission() {
       pauseTitleThemeAudio();
       const missionEntry = state.ui.shell.briefingMission ?? getSelectedMissionEntry();
       if (!missionEntry) return;
+      if (!isMissionUnlocked(state.campaign, missionEntry.id)) return;
 
       const missionDefinition = state.ui.shell.briefingDefinition ?? await loadMissionForEntry(missionEntry);
       const mapPath = getMissionStartMapPath(missionDefinition, missionEntry);

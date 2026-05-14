@@ -1,3 +1,4 @@
+import { isMissionUnlocked } from "../campaign/campaignState.js";
 export function renderFrontScreen(state, refs) {
   const frontScreen = refs?.frontScreen;
   const main = refs?.main;
@@ -6,6 +7,7 @@ export function renderFrontScreen(state, refs) {
   const missionBriefingScreen = refs?.missionBriefingScreen;
   const titleStartButton = refs?.titleStartButton;
   const titleMissionSelectButton = refs?.titleMissionSelectButton;
+  const titleResetCampaignButton = refs?.titleResetCampaignButton;
   const missionList = refs?.missionList;
   const missionDescription = refs?.missionDescription;
   const missionStartButton = refs?.missionStartButton;
@@ -50,18 +52,29 @@ export function renderFrontScreen(state, refs) {
     titleMissionSelectButton.classList.toggle("is-selected", screen === "title" && titleMenuIndex === 1);
   }
 
+  if (titleStartButton) {
+    const hasProgress = Array.isArray(state?.campaign?.completedMissions) && state.campaign.completedMissions.length > 0;
+    titleStartButton.textContent = hasProgress ? "Continue" : "Start Game";
+  }
+
+  if (titleResetCampaignButton) {
+    titleResetCampaignButton.hidden = !(Array.isArray(state?.campaign?.completedMissions) && state.campaign.completedMissions.length > 0);
+    titleResetCampaignButton.classList.toggle("is-selected", screen === "title" && titleMenuIndex === 2);
+  }
+
   if (missionList) {
     missionList.innerHTML = missions
       .map((entry) => {
         const isSelected = entry.id === selectedMission?.id;
+        const locked = isMissionLocked(state, entry.id);
         return `
           <button
             type="button"
-            class="front-screen-list-button${isSelected ? " is-selected" : ""}"
+            class="front-screen-list-button${isSelected ? " is-selected" : ""}${locked ? " is-locked" : ""}"
             data-front-screen-mission-id="${escapeHtml(entry.id)}"
           >
             <span class="front-screen-list-title">${escapeHtml(entry.name || entry.id)}</span>
-            <span class="front-screen-list-sub">${escapeHtml(entry.id)}</span>
+            <span class="front-screen-list-sub">${escapeHtml(entry.id)}${locked ? " · LOCKED" : ""}</span>
           </button>
         `;
       })
@@ -78,6 +91,10 @@ export function renderFrontScreen(state, refs) {
         <div class="front-screen-card-text" style="margin-top:10px;">
           Mission file: <strong>${escapeHtml(selectedMission.path || "fallback map wrapper")}</strong>
         </div>
+        <div class="front-screen-card-text" style="margin-top:10px;">
+          Campaign: <strong>${isMissionLocked(state, selectedMission.id) ? "Locked" : "Unlocked"}</strong>
+          · Current credits: <strong>${escapeHtml(state?.campaign?.inventory?.currency ?? 0)}</strong>
+        </div>
       `;
     } else {
       missionDescription.innerHTML = `
@@ -88,7 +105,7 @@ export function renderFrontScreen(state, refs) {
   }
 
   if (missionStartButton) {
-    missionStartButton.disabled = !selectedMission;
+    missionStartButton.disabled = !selectedMission || isMissionLocked(state, selectedMission?.id);
   }
 
   const isPhaseBriefing = screen === "phase-briefing";
@@ -121,7 +138,7 @@ export function renderFrontScreen(state, refs) {
   }
 
   if (briefingStartButton) {
-    briefingStartButton.disabled = isPhaseBriefing ? false : !briefingMission;
+    briefingStartButton.disabled = isPhaseBriefing ? false : (!briefingMission || isMissionLocked(state, briefingMission?.id));
     briefingStartButton.textContent = isPhaseBriefing ? "Continue" : "Launch Mission";
   }
 }
@@ -164,6 +181,11 @@ function getBriefingObjectiveLabels(missionDefinition, briefing) {
   return objectives
     .map((objective) => objective?.label || objective?.id || objective?.type)
     .filter(Boolean);
+}
+
+function isMissionLocked(state, missionId) {
+  if (!state?.campaign) return false;
+  return !isMissionUnlocked(state.campaign, missionId);
 }
 
 function compareMissionEntries(a, b) {

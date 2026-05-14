@@ -14,13 +14,15 @@ import { cloneMapDefinition, resetMap } from "../map.js";
 import { initializeDeploymentState, resetDeploymentState } from "../deployment/deploymentState.js";
 import { initializeStoryModeState } from "./storyController.js";
 import { getMapMode, isStoryMode } from "../mode/mapMode.js";
+import { buildMissionResultReceipt } from "../campaign/missionResult.js";
 
 export function createGameController({
   state,
   refs,
   instantiateTestUnits,
   snapFocusToActiveUnit,
-  logDev
+  logDev,
+  onMissionEnded = null
 }) {
   let splashTimer = null;
   let mapLoadedHook = null;
@@ -234,9 +236,16 @@ export function createGameController({
     state.turn.activeUnitId = null;
     state.turn.activeActorId = null;
     state.turn.activeBodyId = null;
-    state.mission.result = result;
-    startMissionDialogue(state, result);
-    logDev(result === "victory" ? "Mission ended: Victory." : "Mission ended: Defeat.");
+
+    const finalResult = result === "defeat" ? "defeat" : "victory";
+    state.mission.result = finalResult;
+    state.mission.resultReceipt = buildMissionResultReceipt(state, finalResult);
+    state.mission.campaignReward = typeof onMissionEnded === "function"
+      ? onMissionEnded(state.mission.resultReceipt, state.mission.definition)
+      : null;
+
+    startMissionDialogue(state, finalResult);
+    logDev(finalResult === "victory" ? "Mission ended: Victory." : "Mission ended: Defeat.");
     render();
   }
 

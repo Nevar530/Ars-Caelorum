@@ -200,6 +200,14 @@ body {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px rgba(240, 176, 0, 0.28), 0 0 0 3px rgba(240, 176, 0, 0.12);
 }
+.front-screen-list-button.is-locked {
+  opacity: 0.55;
+}
+
+.front-screen-list-button.is-locked .front-screen-list-sub {
+  color: rgba(255, 210, 160, 0.72);
+}
+
 
 .front-screen-select-layout {
   display: grid;
@@ -3993,4 +4001,11 @@ button:disabled {
   .hud-flow-grid {
     grid-template-columns: minmax(130px, 0.32fr) minmax(260px, 0.68fr);
   }
+}
+
+.combat-overlay-reward-summary {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  text-align: left;
 }

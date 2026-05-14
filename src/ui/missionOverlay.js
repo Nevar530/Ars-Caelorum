@@ -32,6 +32,7 @@ export function renderMissionOverlay(state, refs) {
       <div class="combat-overlay-card" role="dialog" aria-modal="true" aria-label="Mission Result">
         <div class="combat-overlay-title">${escapeHtml(copy.title)}</div>
         <div class="combat-overlay-text">${escapeHtml(copy.text)}</div>
+        ${renderCampaignRewardSummary(state)}
         <button
           type="button"
           class="combat-start-button"
@@ -68,6 +69,35 @@ export function renderMissionOverlay(state, refs) {
     overlay.innerHTML = renderTurnPopup(state);
     return;
   }
+}
+
+function renderCampaignRewardSummary(state) {
+  const reward = state?.mission?.campaignReward ?? null;
+  const receipt = state?.mission?.resultReceipt ?? null;
+  if (!reward && !receipt) return "";
+
+  const rows = [];
+  if (receipt) {
+    rows.push(`<div><strong>Mission:</strong> ${escapeHtml(receipt.missionId)}</div>`);
+    rows.push(`<div><strong>Rounds:</strong> ${escapeHtml(receipt.roundsTaken)}</div>`);
+  }
+
+  if (reward) {
+    if (reward.applied) {
+      rows.push(`<div><strong>XP:</strong> ${escapeHtml(reward.xp)}</div>`);
+      rows.push(`<div><strong>Credits:</strong> ${escapeHtml(reward.currency)}</div>`);
+      if (reward.items?.length) rows.push(`<div><strong>Items:</strong> ${escapeHtml(reward.items.join(", "))}</div>`);
+      if (reward.unlocks?.length) rows.push(`<div><strong>Unlocked:</strong> ${escapeHtml(reward.unlocks.join(", "))}</div>`);
+    } else if (reward.reason === "already_claimed") {
+      rows.push(`<div><strong>Rewards:</strong> Already claimed</div>`);
+    } else {
+      rows.push(`<div><strong>Rewards:</strong> None</div>`);
+    }
+  }
+
+  return rows.length
+    ? `<div class="combat-overlay-text combat-overlay-reward-summary">${rows.join("")}</div>`
+    : "";
 }
 
 function renderPhaseBriefingOverlay(state) {
