@@ -461,7 +461,7 @@ function handleFocusKeys(key, state, actions) {
     state.focus.x + delta.dx,
     state.focus.y + delta.dy,
     state.focus.scale ?? activeUnit?.scale ?? "mech",
-    activeUnit
+    state
   );
 
   state.focus.x = next.x;

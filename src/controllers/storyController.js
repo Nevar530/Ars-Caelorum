@@ -177,7 +177,8 @@ export function createStoryController({
     const target = clampFocusToBoard(
       Number(unit.x ?? 0) + Number(delta.dx ?? 0),
       Number(unit.y ?? 0) + Number(delta.dy ?? 0),
-      unit.scale ?? unit.unitType ?? "pilot"
+      unit.scale ?? unit.unitType ?? "pilot",
+      state
     );
 
     if (target.x === unit.x && target.y === unit.y) return true;

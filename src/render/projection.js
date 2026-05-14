@@ -5,8 +5,8 @@ import {
   MAP_CONFIG,
   RENDER_CONFIG
 } from "../config.js";
-import { getTile, getTileFootElevation } from "../map.js";
-import { normalizeScale, getResolutionBoardSize } from "../scale/scaleMath.js";
+import { getMapHeight, getMapWidth, getTile, getTileFootElevation } from "../map.js";
+import { normalizeScale } from "../scale/scaleMath.js";
 
 export const TOPDOWN_CONFIG = {
   minCellSize: 10,
@@ -94,8 +94,19 @@ export function updateCameraFraming(state, refs) {
   applySvgViewBox(svg, bounds.minX, bounds.minY, bounds.width, bounds.height);
 }
 
+function getRuntimeBoardSize(state) {
+  const map = state?.map ?? null;
+  const fallbackWidth = Number(MAP_CONFIG.width ?? 40);
+  const fallbackHeight = Number(MAP_CONFIG.height ?? 40);
+
+  return {
+    width: Math.max(1, Number(getMapWidth(map) || fallbackWidth)),
+    height: Math.max(1, Number(getMapHeight(map) || fallbackHeight))
+  };
+}
+
 function updateTopdownFraming(state, viewport, zoomLevel) {
-  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const board = getRuntimeBoardSize(state);
   const preset = CAMERA_ZOOM_CONFIG.topdown?.[zoomLevel] ?? CAMERA_ZOOM_CONFIG.topdown.map;
 
   if (!preset || preset.cols == null || preset.rows == null) {
@@ -160,19 +171,21 @@ function getIsoTargetFrameBounds(state, zoomLevel) {
 
   const tile = getTile(state.map, focus.x, focus.y);
   const supportElevation = tile ? getTileFootElevation(tile) : 0;
+  const board = getRuntimeBoardSize(state);
 
   const center = projectIsoRaw(
     focus.x + 0.5,
     focus.y + 0.5,
     supportElevation + liftTiles,
     state.rotation,
-    1
+    1,
+    board
   );
 
-  const xNeg = projectIsoRaw(focus.x + 0.5 - spanX, focus.y + 0.5, supportElevation, state.rotation, 1);
-  const xPos = projectIsoRaw(focus.x + 0.5 + spanX, focus.y + 0.5, supportElevation, state.rotation, 1);
-  const yNeg = projectIsoRaw(focus.x + 0.5, focus.y + 0.5 - spanY, supportElevation, state.rotation, 1);
-  const yPos = projectIsoRaw(focus.x + 0.5, focus.y + 0.5 + spanY, supportElevation, state.rotation, 1);
+  const xNeg = projectIsoRaw(focus.x + 0.5 - spanX, focus.y + 0.5, supportElevation, state.rotation, 1, board);
+  const xPos = projectIsoRaw(focus.x + 0.5 + spanX, focus.y + 0.5, supportElevation, state.rotation, 1, board);
+  const yNeg = projectIsoRaw(focus.x + 0.5, focus.y + 0.5 - spanY, supportElevation, state.rotation, 1, board);
+  const yPos = projectIsoRaw(focus.x + 0.5, focus.y + 0.5 + spanY, supportElevation, state.rotation, 1, board);
 
   const halfWidth =
     Math.max(
@@ -315,7 +328,7 @@ export function getCameraOffsetLimits(_rawBounds, _viewport) {
 }
 
 export function getMapScreenBoundsRaw(state) {
-  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const board = getRuntimeBoardSize(state);
 
   if (state.ui?.viewMode === "top") {
     const corners = [
@@ -343,8 +356,8 @@ export function getMapScreenBoundsRaw(state) {
   const points = [];
 
   for (const corner of corners) {
-    points.push(projectIsoRaw(corner.x, corner.y, 0, state.rotation, 1));
-    points.push(projectIsoRaw(corner.x, corner.y, MAP_CONFIG.maxElevation + 4, state.rotation, 1));
+    points.push(projectIsoRaw(corner.x, corner.y, 0, state.rotation, 1, board));
+    points.push(projectIsoRaw(corner.x, corner.y, MAP_CONFIG.maxElevation + 4, state.rotation, 1, board));
   }
 
   return {
@@ -364,7 +377,7 @@ export function projectScene(state, x, y, elevation = 0, size = 1) {
 }
 
 export function projectIso(state, x, y, elevation = 0, size = 1) {
-  const raw = projectIsoRaw(x, y, elevation, state.rotation, size);
+  const raw = projectIsoRaw(x, y, elevation, state.rotation, size, getRuntimeBoardSize(state));
 
   return {
     x: raw.x + (state.camera?.offsetX ?? 0),
@@ -372,8 +385,11 @@ export function projectIso(state, x, y, elevation = 0, size = 1) {
   };
 }
 
-export function projectIsoRaw(x, y, elevation = 0, rotation = 0, _size = 1) {
-  const board = getResolutionBoardSize("base", MAP_CONFIG);
+export function projectIsoRaw(x, y, elevation = 0, rotation = 0, _size = 1, boardSize = null) {
+  const board = {
+    width: Math.max(1, Number(boardSize?.width ?? MAP_CONFIG.width ?? 40)),
+    height: Math.max(1, Number(boardSize?.height ?? MAP_CONFIG.height ?? 40))
+  };
   const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, rotation);
 
   const isoX =
@@ -402,7 +418,7 @@ export function projectTopDown(state, x, y) {
 }
 
 export function getSceneSortKey(state, x, y, elevation = 0) {
-  const board = getResolutionBoardSize("base", MAP_CONFIG);
+  const board = getRuntimeBoardSize(state);
   const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
 
   if (state.ui?.viewMode === "top") {

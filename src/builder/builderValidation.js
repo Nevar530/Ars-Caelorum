@@ -204,6 +204,8 @@ function validateDeployments(result, map, appState, objectives = []) {
     addUniqueInstance(result, instanceIds, entry.mechInstanceId, `${label} mechInstanceId`);
   }
 
+  validateDeploymentFootprints(result, map, appState, deployments, startMode);
+
   if (playerPilots <= 0) addError(result, "MISSION_NO_PLAYER_PILOT", "Mission has no player-side pilot start or deployment roster entry.");
   if (requiresEnemyPilotsForObjectives(objectives) && enemyPilots <= 0) {
     addError(result, "MISSION_NO_ENEMY_PILOT", "A defeat_all objective targets enemies, but this map has no enemy-side pilot start.");
@@ -215,6 +217,115 @@ function requiresEnemyPilotsForObjectives(objectives) {
     if (cleanString(objective?.type) !== "defeat_all") return false;
     return (cleanString(objective?.targetTeam) || "enemy") === "enemy";
   });
+}
+
+
+function validateDeploymentFootprints(result, map, appState, deployments, startMode) {
+  if (startMode === "deployment") return;
+
+  const width = getMapWidth(map);
+  const height = getMapHeight(map);
+  const bodies = [];
+
+  for (let index = 0; index < deployments.length; index += 1) {
+    const entry = deployments[index] ?? {};
+    const label = `deployment ${index + 1}`;
+    const hasPilot = Boolean(cleanString(entry.pilotDefinitionId));
+    const hasMech = Boolean(cleanString(entry.mechDefinitionId));
+    const startsEmbarked = entry.startEmbarked === true;
+
+    if (hasMech && cleanString(entry.mechSpawnId)) {
+      const spawn = getSpawnForId(map, entry.mechSpawnId);
+      const footprint = getDefinitionFootprint(appState?.content?.mechs, entry.mechDefinitionId, 3, 3);
+      bodies.push(makeDeploymentBody(label, "mech", entry.mechInstanceId, spawn, footprint));
+    }
+
+    if (hasPilot && !startsEmbarked && cleanString(entry.pilotSpawnId)) {
+      const spawn = getSpawnForId(map, entry.pilotSpawnId);
+      const footprint = getDefinitionFootprint(appState?.content?.pilots, entry.pilotDefinitionId, 1, 1);
+      bodies.push(makeDeploymentBody(label, "pilot", entry.pilotInstanceId, spawn, footprint));
+    }
+  }
+
+  const occupied = new Map();
+
+  for (const body of bodies) {
+    if (!body.spawn) continue;
+
+    for (const cell of getFootprintCells(body.spawn.x, body.spawn.y, body.footprint.width, body.footprint.height)) {
+      const key = `${cell.x},${cell.y}`;
+      if (cell.x < 0 || cell.y < 0 || cell.x >= width || cell.y >= height) {
+        addError(
+          result,
+          "DEPLOYMENT_FOOTPRINT_OUT_OF_BOUNDS",
+          `${body.label} ${body.kind} footprint extends outside map bounds at ${key}.`
+        );
+        continue;
+      }
+
+      const previous = occupied.get(key);
+      if (previous) {
+        addError(
+          result,
+          "DEPLOYMENT_FOOTPRINT_OVERLAP",
+          `${body.label} ${body.kind} footprint overlaps ${previous.label} ${previous.kind} at ${key}.`
+        );
+      } else {
+        occupied.set(key, body);
+      }
+    }
+  }
+}
+
+function makeDeploymentBody(label, kind, instanceId, spawn, footprint) {
+  return {
+    label: cleanString(instanceId) || label,
+    kind,
+    spawn,
+    footprint
+  };
+}
+
+function getDefinitionFootprint(values, id, defaultWidth, defaultHeight) {
+  const cleanId = cleanString(id);
+  const list = Array.isArray(values) ? values : [];
+  const definition = list.find((value) => cleanString(value?.id) === cleanId) ?? null;
+
+  return {
+    width: Math.max(1, Number(definition?.footprintWidth ?? defaultWidth)),
+    height: Math.max(1, Number(definition?.footprintHeight ?? defaultHeight))
+  };
+}
+
+function getFootprintCells(centerX, centerY, width, height) {
+  const cx = Number(centerX);
+  const cy = Number(centerY);
+  const w = Math.max(1, Number(width ?? 1));
+  const h = Math.max(1, Number(height ?? 1));
+  const halfW = Math.floor(w / 2);
+  const halfH = Math.floor(h / 2);
+  const cells = [];
+
+  for (let y = cy - halfH; y <= cy - halfH + h - 1; y += 1) {
+    for (let x = cx - halfW; x <= cx - halfW + w - 1; x += 1) {
+      cells.push({ x, y });
+    }
+  }
+
+  return cells;
+}
+
+function getSpawnForId(map, spawnId) {
+  const parsed = parseSpawnId(cleanString(spawnId));
+  if (!parsed) return null;
+  const list = map?.spawns?.[parsed.team];
+  const spawn = Array.isArray(list) ? list[parsed.index] : null;
+  if (!spawn) return null;
+
+  return {
+    x: Number(spawn.x),
+    y: Number(spawn.y)
+  };
 }
 
 function validateDeploymentCells(result, map, width, height) {

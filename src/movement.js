@@ -2,6 +2,8 @@
 
 import { MAP_CONFIG } from "./config.js";
 import {
+  getMapHeight,
+  getMapWidth,
   getTile,
   getTileFootElevation,
   isTileMechEnterable
@@ -57,8 +59,19 @@ function getUnitStride(unit) {
   return { x: 1, y: 1 };
 }
 
-function isFootprintInsideBoard(unit) {
-  const board = getResolutionBoardSize("base", MAP_CONFIG);
+function getRuntimeBoardSize(map = null, scale = "base") {
+  if (map) {
+    return {
+      width: Math.max(1, Number(getMapWidth(map) || MAP_CONFIG.width || 40)),
+      height: Math.max(1, Number(getMapHeight(map) || MAP_CONFIG.height || 40))
+    };
+  }
+
+  return getResolutionBoardSize(scale, MAP_CONFIG);
+}
+
+function isFootprintInsideBoard(unit, map = null) {
+  const board = getRuntimeBoardSize(map);
   const bounds = getUnitFootprintBounds(unit);
 
   return (
@@ -167,7 +180,7 @@ function canCrossStructureEdgesForMove(state, fromUnit, toUnit) {
 function canUnitOccupyOrigin(state, unit, x, y) {
   const previewUnit = makePreviewUnit(unit, x, y);
 
-  if (!isFootprintInsideBoard(previewUnit)) {
+  if (!isFootprintInsideBoard(previewUnit, state.map)) {
     return false;
   }
 
@@ -220,8 +233,8 @@ function buildPath(previous, startKey, endKey) {
   return path;
 }
 
-export function clampFocusToBoard(x, y, scale = "base") {
-  const board = getResolutionBoardSize(scale, MAP_CONFIG);
+export function clampFocusToBoard(x, y, scale = "base", state = null) {
+  const board = getRuntimeBoardSize(state?.map ?? null, scale);
 
   return {
     x: Math.max(0, Math.min(board.width - 1, Number(x ?? 0))),
@@ -238,8 +251,8 @@ export function parseCoordKey(key) {
   return { x, y };
 }
 
-export function isWithinBoard(x, y, scale = "base") {
-  const board = getResolutionBoardSize(scale, MAP_CONFIG);
+export function isWithinBoard(x, y, scale = "base", state = null) {
+  const board = getRuntimeBoardSize(state?.map ?? null, scale);
 
   return (
     x >= 0 &&
@@ -247,6 +260,23 @@ export function isWithinBoard(x, y, scale = "base") {
     x < board.width &&
     y < board.height
   );
+}
+
+function getNeighborsForState(state, x, y, unitOrScale = "base") {
+  if (typeof unitOrScale === "string") {
+    return CARDINAL_DIRECTIONS
+      .map((step) => ({ x: x + step.dx, y: y + step.dy }))
+      .filter((pos) => isWithinBoard(pos.x, pos.y, "base", state));
+  }
+
+  const stride = getUnitStride(unitOrScale);
+
+  return CARDINAL_DIRECTIONS
+    .map((step) => ({
+      x: x + (step.dx * stride.x),
+      y: y + (step.dy * stride.y)
+    }))
+    .filter((pos) => isWithinBoard(pos.x, pos.y, "base", state));
 }
 
 export function getNeighbors(x, y, unitOrScale = "base") {
@@ -333,7 +363,7 @@ export function getReachableTileMap(state) {
     const currentKey = coordKey(current.x, current.y);
     const currentCost = costs.get(currentKey) ?? 0;
 
-    for (const next of getNeighbors(current.x, current.y, activeUnit)) {
+    for (const next of getNeighborsForState(state, current.x, current.y, activeUnit)) {
       if (!canTraverseBetweenOrigins(state, activeUnit, current.x, current.y, next.x, next.y)) {
         continue;
       }
