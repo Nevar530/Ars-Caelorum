@@ -643,8 +643,8 @@ function getImageMappingPoints(points, layerName, mirrorX = false) {
 
 function getEdgeVisualHeightPx(edgePart, structure) {
   const explicit = Number(edgePart?.visualHeightPx ?? edgePart?.heightPx);
-  if (Number.isFinite(explicit)) return Math.max(0, explicit);
-  return Math.max(1, Number(structure?.heightPx ?? 64));
+  if (Number.isFinite(explicit) && explicit > 0) return Math.max(0, explicit);
+  return Math.max(1, Number(structure?.visualHeightPx ?? structure?.heightPx ?? 64));
 }
 
 function offsetPoints(points, offsetX = 0, offsetY = 0) {

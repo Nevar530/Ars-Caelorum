@@ -40,8 +40,9 @@ export function normalizeStructureForMap(state, raw) {
   if (!tile) return null;
 
   const elevation = Number(raw?.elevation ?? getTileRenderElevation(tile) ?? 0);
-  const heightPx = Math.max(1, Number(raw?.heightPx ?? DEFAULT_STRUCTURE_HEIGHT_PX));
-  const heightLevels = Number(raw?.heightLevels ?? (heightPx / RENDER_CONFIG.elevationStepPx));
+  const visualHeightPx = Math.max(1, Number(raw?.visualHeightPx ?? raw?.heightPx ?? DEFAULT_STRUCTURE_HEIGHT_PX));
+  const heightPx = visualHeightPx;
+  const heightLevels = Number(raw?.heightLevels ?? (visualHeightPx / RENDER_CONFIG.elevationStepPx));
   const id = String(raw?.id ?? `structure_${firstCell.x}_${firstCell.y}`);
 
   return {
@@ -53,6 +54,7 @@ export function normalizeStructureForMap(state, raw) {
     roomIds: new Set(cells.map((cell) => cell.roomId).filter(Boolean)),
     edgeParts: normalizeStructureEdges(raw, cells),
     elevation,
+    visualHeightPx,
     heightPx,
     heightLevels,
     drawFallbackFaces: raw?.drawFallbackFaces === true,

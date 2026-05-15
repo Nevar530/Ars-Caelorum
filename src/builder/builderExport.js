@@ -377,6 +377,11 @@ function sanitizeStructuresForExport(structures) {
     delete clean.blocksMove;
     delete clean.blocksLOS;
 
+    if (clean.visualHeightPx != null || clean.heightPx != null) {
+      clean.visualHeightPx = Math.max(1, Number(clean.visualHeightPx ?? clean.heightPx ?? 64));
+      clean.heightPx = clean.visualHeightPx;
+    }
+
     if (Array.isArray(clean.edges)) {
       clean.edges = clean.edges.map((edge) => {
         const cleanEdge = cloneJson(edge ?? {});

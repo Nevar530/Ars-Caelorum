@@ -388,11 +388,17 @@ class MissionBuilder {
     if (!this.builderState.isOpen || !isBuilderWorkspaceMap(this.builderState)) return;
 
     const workspaceAppState = getBuilderWorkspaceAppState(this.builderState, this.appState);
-    const picked = pickWorkspaceTileFromEvent({
-      event,
-      appState: workspaceAppState,
-      board: this.refs.board
-    });
+    const picked = this.isStructureAuthoringActive() && event.shiftKey
+      ? pickWorkspaceEdgeFromEvent({
+          event,
+          appState: workspaceAppState,
+          board: this.refs.board
+        })
+      : pickWorkspaceTileFromEvent({
+          event,
+          appState: workspaceAppState,
+          board: this.refs.board
+        });
 
     if (!picked) {
       if (this.builderState.hover) {
@@ -402,16 +408,27 @@ class MissionBuilder {
       return;
     }
 
-    const current = this.builderState.hover;
-    if (current?.type === "tile" && current.x === picked.x && current.y === picked.y) return;
+    const nextHover = picked.edge
+      ? {
+          type: "edge",
+          id: `${picked.x},${picked.y},${picked.edge}`,
+          label: `Edge ${picked.x}, ${picked.y} ${String(picked.edge).toUpperCase()}`,
+          x: picked.x,
+          y: picked.y,
+          edge: picked.edge
+        }
+      : {
+          type: "tile",
+          id: `${picked.x},${picked.y}`,
+          label: `Tile ${picked.x}, ${picked.y}`,
+          x: picked.x,
+          y: picked.y
+        };
 
-    setBuilderHover(this.builderState, {
-      type: "tile",
-      id: `${picked.x},${picked.y}`,
-      label: `Tile ${picked.x}, ${picked.y}`,
-      x: picked.x,
-      y: picked.y
-    });
+    const current = this.builderState.hover;
+    if (current?.type === nextHover.type && current.x === nextHover.x && current.y === nextHover.y && current.edge === nextHover.edge) return;
+
+    setBuilderHover(this.builderState, nextHover);
     this.render();
   }
 

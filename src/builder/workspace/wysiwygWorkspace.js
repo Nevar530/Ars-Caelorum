@@ -363,13 +363,18 @@ function renderBuilderWorkspaceOverlays({ previewState, appState, builderState, 
     overlays.push(renderTileMarker(previewState, hover.x, hover.y, "hover"));
   }
 
+  if (hover?.type === "edge") {
+    overlays.push(renderTileMarker(previewState, hover.x, hover.y, "hover"));
+    overlays.push(renderEdgeMarker(previewState, hover.x, hover.y, hover.edge, "hover"));
+  }
+
   if (selected?.type === "tile") {
     overlays.push(renderTileMarker(previewState, selected.x, selected.y, "selected"));
   }
 
   if (selected?.type === "edge") {
     overlays.push(renderTileMarker(previewState, selected.x, selected.y, "selected"));
-    overlays.push(renderEdgeMarker(previewState, selected.x, selected.y, selected.edge));
+    overlays.push(renderEdgeMarker(previewState, selected.x, selected.y, selected.edge, "selected"));
   }
 
   ui.insertAdjacentHTML("beforeend", `<g class="builder-workspace-overlays">${overlays.filter(Boolean).join("")}</g>`);
@@ -571,14 +576,16 @@ function renderTileMarker(previewState, x, y, tone) {
   return `<polygon points="${pointString}" fill="${fill}" stroke="${stroke}" stroke-width="${width}" vector-effect="non-scaling-stroke" pointer-events="none" />`;
 }
 
-function renderEdgeMarker(previewState, x, y, edge) {
+function renderEdgeMarker(previewState, x, y, edge, tone = "selected") {
   const segment = getTileEdgeSegments(previewState, x, y)
     .find((candidate) => candidate.id === String(edge ?? "").toLowerCase());
 
   if (!segment) return "";
 
   const { a, b } = segment;
-  return `<line x1="${round(a.x)}" y1="${round(a.y)}" x2="${round(b.x)}" y2="${round(b.y)}" stroke="#ff7ab6" stroke-width="5" stroke-linecap="round" vector-effect="non-scaling-stroke" pointer-events="none" />`;
+  const stroke = tone === "hover" ? "#f2d16b" : "#ff7ab6";
+  const width = tone === "hover" ? 7 : 5;
+  return `<line x1="${round(a.x)}" y1="${round(a.y)}" x2="${round(b.x)}" y2="${round(b.y)}" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" vector-effect="non-scaling-stroke" pointer-events="none" />`;
 }
 
 function getTilePolygonPoints(previewState, x, y) {

@@ -369,6 +369,10 @@ function validateStructures(result, map, width, height) {
     const structureId = cleanString(structure?.id) || "unnamed-structure";
     const cells = Array.isArray(structure?.cells) ? structure.cells : [];
     const edges = Array.isArray(structure?.edges) ? structure.edges : [];
+    const structureVisualHeightPx = structure?.visualHeightPx == null ? null : Number(structure.visualHeightPx);
+    if (structureVisualHeightPx != null && (!Number.isFinite(structureVisualHeightPx) || structureVisualHeightPx <= 0)) {
+      addError(result, "STRUCTURE_BAD_VISUAL_HEIGHT", `${structureId} has invalid visualHeightPx.`);
+    }
 
     for (const cell of cells) {
       const x = Number(cell?.x);

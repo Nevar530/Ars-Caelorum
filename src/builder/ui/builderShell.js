@@ -934,6 +934,10 @@ function renderStructureInspectorTools(builderState, appState) {
       '</label>' +
       roofPreview +
       '<label class="builder-form-field builder-form-field-compact">' +
+        '<span>Room Visual Height px</span>' +
+        '<input type="number" data-builder-field="structure-visual-height" value="' + escapeHtml(tool.structureVisualHeightPx ?? 64) + '" min="1" max="512" step="1"' + (editable ? '' : ' disabled') + '>' +
+      '</label>' +
+      '<label class="builder-form-field builder-form-field-compact">' +
         '<span>Brush Size</span>' +
         '<select data-builder-field="structure-brush-size"' + (editable ? '' : ' disabled') + '>' + brushSizeOptions + '</select>' +
       '</label>' +
@@ -960,8 +964,8 @@ function renderStructureInspectorTools(builderState, appState) {
         '<input type="number" data-builder-field="structure-edge-height" value="' + escapeHtml(tool.edgeHeight ?? getStructureEdgeTypeDefaults(tool.edgeType).edgeHeight) + '" min="0" max="99" step="1"' + (editable ? '' : ' disabled') + '>' +
       '</label>' +
       '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Visual Height px</span>' +
-        '<input type="number" data-builder-field="structure-edge-visual-height" value="' + escapeHtml(tool.visualHeightPx ?? getStructureEdgeTypeDefaults(tool.edgeType).visualHeightPx ?? 64) + '" min="0" max="512" step="1"' + (editable ? '' : ' disabled') + '>' +
+        '<span>Wall Visual Override px</span>' +
+        '<input type="number" data-builder-field="structure-edge-visual-height" value="' + escapeHtml(tool.visualHeightPx ?? getStructureEdgeTypeDefaults(tool.edgeType).visualHeightPx ?? 0) + '" min="0" max="512" step="1"' + (editable ? '' : ' disabled') + '>' +
       '</label>' +
       '<label class="builder-form-field builder-form-field-compact">' +
         '<span>Offset X px</span>' +
@@ -979,7 +983,7 @@ function renderStructureInspectorTools(builderState, appState) {
         '<button type="button" class="builder-tool-button' + edgeEyedropperActive + '" data-builder-action="structure-edge-eyedropper"' + (editable ? '' : ' disabled') + '>Edge Eyedropper</button>' +
         '<button type="button" class="builder-tool-button' + edgeEraseActive + '" data-builder-action="structure-edge-erase"' + (editable ? '' : ' disabled') + '>Erase Edge</button>' +
       '</div>' +
-      '<div class="builder-inspector-note">Click to paint room/roof cells. Shift-click an edge to place wall/door art. Edge Height / LOS is gameplay truth; Visual Height, Mirror, and Offset only change art placement.</div>' +
+      '<div class="builder-inspector-note">Click to paint room/roof cells. Shift-hover shows the edge target; Shift-click paints wall/door art. Room Visual Height sets the roof and default wall height. Wall Visual Override uses 0 for room default. Edge Height / LOS is gameplay truth.</div>' +
     '</div>';
 }
 

@@ -19,13 +19,13 @@ const EDGE_TYPE_DEFAULTS = {
     type: "wall",
     spriteId: "wall_metal_001.png",
     edgeHeight: 2,
-    visualHeightPx: 64
+    visualHeightPx: 0
   },
   door: {
     type: "door",
     spriteId: "door_security_001.png",
     edgeHeight: 0,
-    visualHeightPx: 64
+    visualHeightPx: 0
   },
   opening: {
     type: "open",
@@ -46,6 +46,7 @@ export function ensureStructureToolSettings(builderState, appState = null) {
   tool.structureId = sanitizeId(tool.structureId, "structure_01");
   tool.roomId = sanitizeId(tool.roomId, "room_01");
   tool.roofSprite = sanitizeSprite(tool.roofSprite, getBuilderRoofSpriteOptions(appState, builderState)[0] ?? "roof_metal_001.png");
+  tool.structureVisualHeightPx = clampWholeNumber(tool.structureVisualHeightPx, 64, 1, 512);
   tool.brushSize = clampWholeNumber(tool.brushSize, 1, BRUSH_SIZE_MIN, BRUSH_SIZE_MAX);
   tool.eyedropper = Boolean(tool.eyedropper);
   tool.erase = Boolean(tool.erase);
@@ -56,7 +57,7 @@ export function ensureStructureToolSettings(builderState, appState = null) {
   const defaults = getStructureEdgeTypeDefaults(cleanEdgeType);
   tool.edgeSpriteId = sanitizeSprite(tool.edgeSpriteId, defaults.spriteId);
   tool.edgeHeight = clampWholeNumber(tool.edgeHeight, defaults.edgeHeight, 0, 99);
-  tool.visualHeightPx = clampWholeNumber(tool.visualHeightPx, defaults.visualHeightPx ?? 64, 0, 512);
+  tool.visualHeightPx = clampWholeNumber(tool.visualHeightPx, defaults.visualHeightPx ?? 0, 0, 512);
   tool.mirrorX = Boolean(tool.mirrorX);
   tool.offsetX = clampWholeNumber(tool.offsetX, 0, -512, 512);
   tool.offsetY = clampWholeNumber(tool.offsetY, 0, -512, 512);
@@ -73,6 +74,7 @@ export function updateStructureToolFromFields(builderState, root, appState = nul
   const structureId = root.querySelector('[data-builder-field="structure-id"]')?.value;
   const roomId = root.querySelector('[data-builder-field="structure-room-id"]')?.value;
   const roofSprite = root.querySelector('[data-builder-field="structure-roof-sprite"]')?.value;
+  const structureVisualHeightPx = root.querySelector('[data-builder-field="structure-visual-height"]')?.value;
   const brushSize = root.querySelector('[data-builder-field="structure-brush-size"]')?.value;
   const edgeType = root.querySelector('[data-builder-field="structure-edge-type"]')?.value;
   const edgeSpriteId = root.querySelector('[data-builder-field="structure-edge-sprite"]')?.value;
@@ -85,6 +87,7 @@ export function updateStructureToolFromFields(builderState, root, appState = nul
   if (structureId !== undefined) tool.structureId = sanitizeId(structureId, tool.structureId ?? "structure_01");
   if (roomId !== undefined) tool.roomId = sanitizeId(roomId, tool.roomId ?? "room_01");
   if (roofSprite !== undefined) tool.roofSprite = sanitizeSprite(roofSprite, tool.roofSprite ?? "roof_metal_001.png");
+  if (structureVisualHeightPx !== undefined) tool.structureVisualHeightPx = clampWholeNumber(structureVisualHeightPx, tool.structureVisualHeightPx ?? 64, 1, 512);
   if (brushSize !== undefined) tool.brushSize = clampWholeNumber(brushSize, tool.brushSize ?? 1, BRUSH_SIZE_MIN, BRUSH_SIZE_MAX);
 
   if (edgeType !== undefined) {
@@ -96,7 +99,7 @@ export function updateStructureToolFromFields(builderState, root, appState = nul
     if (options.changedField === "structure-edge-type" && nextType !== previousType) {
       tool.edgeSpriteId = defaults.spriteId;
       tool.edgeHeight = defaults.edgeHeight;
-      tool.visualHeightPx = defaults.visualHeightPx ?? tool.visualHeightPx ?? 64;
+      tool.visualHeightPx = defaults.visualHeightPx ?? tool.visualHeightPx ?? 0;
     }
   }
 
@@ -109,7 +112,7 @@ export function updateStructureToolFromFields(builderState, root, appState = nul
   }
 
   if (visualHeightPx !== undefined && options.changedField !== "structure-edge-type") {
-    tool.visualHeightPx = clampWholeNumber(visualHeightPx, tool.visualHeightPx ?? getStructureEdgeTypeDefaults(tool.edgeType).visualHeightPx ?? 64, 0, 512);
+    tool.visualHeightPx = clampWholeNumber(visualHeightPx, tool.visualHeightPx ?? getStructureEdgeTypeDefaults(tool.edgeType).visualHeightPx ?? 0, 0, 512);
   }
 
   if (mirrorX !== undefined) tool.mirrorX = Boolean(mirrorX);
@@ -261,6 +264,7 @@ export function sampleStructureToolAtTile(builderState, appState, x, y) {
     structureId: sanitizeId(hit.structure?.id, current?.structureId ?? "structure_01"),
     roomId: sanitizeId(hit.cell?.roomId, current?.roomId ?? "room_01"),
     roofSprite: sanitizeSprite(hit.structure?.roof ?? hit.structure?.roofSprite, current?.roofSprite ?? "roof_metal_001.png"),
+    structureVisualHeightPx: clampWholeNumber(hit.structure?.visualHeightPx ?? hit.structure?.heightPx, current?.structureVisualHeightPx ?? 64, 1, 512),
     brushSize: clampWholeNumber(current?.brushSize, 1, BRUSH_SIZE_MIN, BRUSH_SIZE_MAX),
     eyedropper: false,
     erase: false,
@@ -290,7 +294,7 @@ export function sampleStructureEdgeToolAtEdge(builderState, appState, x, y, edge
     edgeType: type,
     edgeSpriteId: sanitizeSprite(hit.edgePart?.spriteId ?? hit.edgePart?.sprite ?? hit.edgePart?.image ?? "", getStructureEdgeTypeDefaults(type).spriteId),
     edgeHeight: clampWholeNumber(hit.edgePart?.edgeHeight, getStructureEdgeTypeDefaults(type).edgeHeight, 0, 99),
-    visualHeightPx: clampWholeNumber(hit.edgePart?.visualHeightPx ?? hit.edgePart?.heightPx, getStructureEdgeTypeDefaults(type).visualHeightPx ?? 64, 0, 512),
+    visualHeightPx: clampWholeNumber(hit.edgePart?.visualHeightPx ?? hit.edgePart?.heightPx, 0, 0, 512),
     mirrorX: Boolean(hit.edgePart?.mirrorX),
     offsetX: clampWholeNumber(hit.edgePart?.offsetX, 0, -512, 512),
     offsetY: clampWholeNumber(hit.edgePart?.offsetY, 0, -512, 512),
@@ -339,9 +343,10 @@ export function applyStructureToolAtTile(builderState, appState, x, y) {
 
   const structure = ensureStructure(map, tool.structureId, tool.roofSprite);
   structure.roof = tool.roofSprite;
+  structure.visualHeightPx = clampWholeNumber(tool.structureVisualHeightPx, 64, 1, 512);
+  structure.heightPx = structure.visualHeightPx;
   if (!Array.isArray(structure.cells)) structure.cells = [];
   if (!Array.isArray(structure.edges)) structure.edges = [];
-  if (structure.heightPx == null) structure.heightPx = 64;
 
   for (const cell of cells) {
     structure.cells.push({
@@ -401,7 +406,7 @@ export function applyStructureEdgeToolAtEdge(builderState, appState, x, y, edge)
   const cleanType = normalizeEdgeType(tool.edgeType);
   const cleanSprite = sanitizeSprite(tool.edgeSpriteId, getStructureEdgeTypeDefaults(cleanType).spriteId);
   const cleanHeight = clampWholeNumber(tool.edgeHeight, getStructureEdgeTypeDefaults(cleanType).edgeHeight, 0, 99);
-  const visualHeightPx = clampWholeNumber(tool.visualHeightPx, getStructureEdgeTypeDefaults(cleanType).visualHeightPx ?? 64, 0, 512);
+  const visualHeightPx = clampWholeNumber(tool.visualHeightPx, 0, 0, 512);
   const offsetX = clampWholeNumber(tool.offsetX, 0, -512, 512);
   const offsetY = clampWholeNumber(tool.offsetY, 0, -512, 512);
   const edgePart = {
@@ -451,6 +456,7 @@ function createDefaultStructureTool(appState, builderState) {
     edgeType: "wall",
     edgeSpriteId: EDGE_TYPE_DEFAULTS.wall.spriteId,
     edgeHeight: EDGE_TYPE_DEFAULTS.wall.edgeHeight,
+    structureVisualHeightPx: 64,
     visualHeightPx: EDGE_TYPE_DEFAULTS.wall.visualHeightPx,
     mirrorX: false,
     offsetX: 0,
@@ -479,6 +485,7 @@ function ensureStructure(map, structureId, roofSprite) {
     structure = {
       id,
       cells: [],
+      visualHeightPx: 64,
       heightPx: 64,
       roof: sanitizeSprite(roofSprite, "roof_metal_001.png"),
       floor: null,
