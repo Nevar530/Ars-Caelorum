@@ -68,6 +68,10 @@ export function createBuilderState() {
       edgeType: "wall",
       edgeSpriteId: "wall_metal_001.png",
       edgeHeight: 2,
+      visualHeightPx: 64,
+      mirrorX: false,
+      offsetX: 0,
+      offsetY: 0,
       edgeEyedropper: false,
       edgeErase: false
     },

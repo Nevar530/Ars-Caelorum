@@ -525,7 +525,9 @@ function renderStructureEdgeOverlays(previewState) {
     const cls = height > 0 ? "builder-overlay-structure-edge is-blocking" : "builder-overlay-structure-edge is-open";
     const mx = (segment.a.x + segment.b.x) / 2;
     const my = (segment.a.y + segment.b.y) / 2;
-    const label = `${edge.type ?? "edge"}:${height}`;
+    const visual = edge.visualHeightPx != null ? `/${edge.visualHeightPx}px` : "";
+    const mirror = edge.mirrorX ? "↔" : "";
+    const label = `${edge.type ?? "edge"}:${height}${visual}${mirror}`;
 
     return `
       <line class="${cls}" x1="${round(segment.a.x)}" y1="${round(segment.a.y)}" x2="${round(segment.b.x)}" y2="${round(segment.b.y)}" pointer-events="none" />

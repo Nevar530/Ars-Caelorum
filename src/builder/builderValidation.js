@@ -389,6 +389,9 @@ function validateStructures(result, map, width, height) {
       const y = Number(edge?.y);
       const side = cleanString(edge?.edge).toLowerCase();
       const edgeHeight = Number(edge?.edgeHeight ?? 0);
+      const visualHeightPx = edge?.visualHeightPx == null ? null : Number(edge.visualHeightPx);
+      const offsetX = edge?.offsetX == null ? null : Number(edge.offsetX);
+      const offsetY = edge?.offsetY == null ? null : Number(edge.offsetY);
       const key = `${structureId}:${x},${y}:${side}`;
 
       if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
@@ -396,6 +399,9 @@ function validateStructures(result, map, width, height) {
       }
       if (!VALID_EDGE_SIDES.has(side)) addError(result, "STRUCTURE_EDGE_BAD_SIDE", `${structureId} has invalid edge side "${side}" at ${x}, ${y}.`);
       if (!Number.isFinite(edgeHeight) || edgeHeight < 0) addError(result, "STRUCTURE_EDGE_BAD_HEIGHT", `${structureId} has invalid edgeHeight at ${x}, ${y} ${side}.`);
+      if (visualHeightPx != null && (!Number.isFinite(visualHeightPx) || visualHeightPx < 0)) addError(result, "STRUCTURE_EDGE_BAD_VISUAL_HEIGHT", `${structureId} has invalid visualHeightPx at ${x}, ${y} ${side}.`);
+      if (offsetX != null && !Number.isFinite(offsetX)) addError(result, "STRUCTURE_EDGE_BAD_OFFSET", `${structureId} has invalid offsetX at ${x}, ${y} ${side}.`);
+      if (offsetY != null && !Number.isFinite(offsetY)) addError(result, "STRUCTURE_EDGE_BAD_OFFSET", `${structureId} has invalid offsetY at ${x}, ${y} ${side}.`);
       if (edgeKeys.has(key)) addError(result, "STRUCTURE_DUPLICATE_EDGE", `${structureId} has duplicate edge at ${x}, ${y} ${side}.`);
       edgeKeys.add(key);
 

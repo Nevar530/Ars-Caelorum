@@ -259,15 +259,25 @@ function normalizeEdgePart(edge) {
   const type = normalizeEdgeType(edge?.type ?? edge?.kind);
   const spriteId = edge?.spriteId ?? edge?.sprite ?? edge?.image ?? edge?.faceSprite ?? inferSpriteForType(type);
   const edgeHeight = normalizeEdgeHeight(edge?.edgeHeight ?? edge?.height ?? edge?.heightLevels);
+  const visualHeightPx = normalizeVisualHeight(edge?.visualHeightPx ?? edge?.heightPx);
+  const offsetX = normalizeOffsetPx(edge?.offsetX);
+  const offsetY = normalizeOffsetPx(edge?.offsetY);
 
-  return {
+  const normalized = {
     x,
     y,
     edge: worldEdge,
     type,
     edgeHeight,
-    sprite: resolveStructureSpritePath(spriteId)
+    sprite: resolveStructureSpritePath(spriteId),
+    mirrorX: edge?.mirrorX === true
   };
+
+  if (visualHeightPx != null) normalized.visualHeightPx = visualHeightPx;
+  if (offsetX !== 0) normalized.offsetX = offsetX;
+  if (offsetY !== 0) normalized.offsetY = offsetY;
+
+  return normalized;
 }
 
 function normalizeEdgeFromKey(key, value) {
@@ -339,6 +349,17 @@ function normalizeEdgeType(type) {
 function normalizeEdgeHeight(value) {
   const explicit = Number(value);
   return Number.isFinite(explicit) ? Math.max(0, explicit) : 0;
+}
+
+function normalizeVisualHeight(value) {
+  const explicit = Number(value);
+  if (!Number.isFinite(explicit)) return null;
+  return Math.max(0, explicit);
+}
+
+function normalizeOffsetPx(value) {
+  const explicit = Number(value);
+  return Number.isFinite(explicit) ? explicit : 0;
 }
 
 function inferSpriteForType(type) {

@@ -121,14 +121,14 @@ function makeEdgeItems(state, structure) {
   for (const edgePart of getStructureEdgeParts(structure)) {
     if (!edgePart?.sprite && edgePart?.type === "open") continue;
 
-    const points = getEdgePlanePoints(
+    const points = offsetPoints(getEdgePlanePoints(
       state,
       edgePart.x,
       edgePart.y,
       edgePart.edge,
       structure.elevation,
-      structure.heightPx
-    );
+      getEdgeVisualHeightPx(edgePart, structure)
+    ), edgePart.offsetX, edgePart.offsetY);
 
     if (!points) continue;
 
@@ -402,7 +402,7 @@ function drawEdge(item, parent) {
   }
 
   if (item.imagePath) {
-    appendProjectedImage(group, item.points, item.imagePath, "edge", 32, 64);
+    appendProjectedImage(group, item.points, item.imagePath, "edge", 32, 64, item.edgePart?.mirrorX === true);
   }
 
   const outline = makePolygon(item.points, "structure-edge-outline", "none");
@@ -585,7 +585,7 @@ function getFixedTextureRotation(_unusedTextureRotation = 0) {
   return 0;
 }
 
-function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight) {
+function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight, mirrorX = false) {
   const id = `structure-${layerName}-clip-${clipId += 1}`;
   const clip = svgEl("clipPath");
   clip.setAttribute("id", id);
@@ -606,7 +606,7 @@ function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceW
   image.setAttribute("href", imagePath);
   image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
 
-  const imagePoints = getImageMappingPoints(points, layerName);
+  const imagePoints = getImageMappingPoints(points, layerName, mirrorX);
   const topStart = imagePoints[0];
   const topEnd = imagePoints[1];
   const bottomStart = imagePoints[3];
@@ -625,16 +625,37 @@ function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceW
   parentGroup.appendChild(group);
 }
 
-function getImageMappingPoints(points, layerName) {
+function getImageMappingPoints(points, layerName, mirrorX = false) {
   // Edge geometry order is locked to fixed authored iso world-face placement.
   // Texture mapping can be re-ordered independently so wall/door art is not
   // horizontally mirrored on edges whose projected top segment runs right-to-left.
   if (layerName !== "edge") return points;
 
   const [topA, topB, bottomB, bottomA] = points;
-  if (topA.x <= topB.x) return points;
+  const base = topA.x <= topB.x
+    ? points
+    : [topB, topA, bottomA, bottomB];
 
-  return [topB, topA, bottomA, bottomB];
+  if (!mirrorX) return base;
+
+  return [base[1], base[0], base[3], base[2]];
+}
+
+function getEdgeVisualHeightPx(edgePart, structure) {
+  const explicit = Number(edgePart?.visualHeightPx ?? edgePart?.heightPx);
+  if (Number.isFinite(explicit)) return Math.max(0, explicit);
+  return Math.max(1, Number(structure?.heightPx ?? 64));
+}
+
+function offsetPoints(points, offsetX = 0, offsetY = 0) {
+  if (!Array.isArray(points)) return points;
+  const dx = Number(offsetX ?? 0);
+  const dy = Number(offsetY ?? 0);
+  if (!Number.isFinite(dx) && !Number.isFinite(dy)) return points;
+  const safeDx = Number.isFinite(dx) ? dx : 0;
+  const safeDy = Number.isFinite(dy) ? dy : 0;
+  if (safeDx === 0 && safeDy === 0) return points;
+  return points.map((point) => ({ ...point, x: point.x + safeDx, y: point.y + safeDy }));
 }
 
 function edgeSortBias(edge) {

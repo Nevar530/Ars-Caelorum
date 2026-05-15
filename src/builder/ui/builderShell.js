@@ -919,7 +919,7 @@ function renderStructureInspectorTools(builderState, appState) {
   const edgePreview = renderStructureSpritePreview(tool.edgeSpriteId, "Edge Preview");
 
   return '<div class="builder-inspector-card builder-structure-tool-card builder-grid-card">' +
-      '<div class="builder-field-label">Structure Room Brush</div>' +
+      '<div class="builder-field-label">Room / Roof Brush</div>' +
       '<label class="builder-form-field builder-form-field-compact">' +
         '<span>Structure ID</span>' +
         '<input type="text" data-builder-field="structure-id" value="' + escapeHtml(tool.structureId ?? "structure_01") + '" spellcheck="false"' + (editable ? '' : ' disabled') + '>' +
@@ -945,25 +945,41 @@ function renderStructureInspectorTools(builderState, appState) {
         '<button type="button" class="builder-tool-button" data-builder-action="reset-structure-brush"' + (editable ? '' : ' disabled') + '>Reset Brush</button>' +
         '<button type="button" class="builder-tool-button' + (roofsVisible ? ' is-active' : '') + '" data-builder-action="toggle-structure-roofs">' + (roofsVisible ? 'Roofs Shown' : 'Roofs Hidden') + '</button>' +
       '</div>' +
-      '<div class="builder-field-label builder-section-label">Structure Edge Brush</div>' +
+      '<div class="builder-field-label builder-section-label">Wall / Door Edge Brush</div>' +
       '<label class="builder-form-field builder-form-field-compact">' +
         '<span>Edge Type</span>' +
         '<select data-builder-field="structure-edge-type"' + (editable ? '' : ' disabled') + '>' + edgeTypeOptions + '</select>' +
       '</label>' +
       '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Edge Sprite</span>' +
+        '<span>Wall / Door Art</span>' +
         '<select data-builder-field="structure-edge-sprite"' + (editable ? '' : ' disabled') + '>' + edgeSpriteOptions + '</select>' +
       '</label>' +
       edgePreview +
       '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Edge Height</span>' +
+        '<span>Edge Height / LOS</span>' +
         '<input type="number" data-builder-field="structure-edge-height" value="' + escapeHtml(tool.edgeHeight ?? getStructureEdgeTypeDefaults(tool.edgeType).edgeHeight) + '" min="0" max="99" step="1"' + (editable ? '' : ' disabled') + '>' +
+      '</label>' +
+      '<label class="builder-form-field builder-form-field-compact">' +
+        '<span>Visual Height px</span>' +
+        '<input type="number" data-builder-field="structure-edge-visual-height" value="' + escapeHtml(tool.visualHeightPx ?? getStructureEdgeTypeDefaults(tool.edgeType).visualHeightPx ?? 64) + '" min="0" max="512" step="1"' + (editable ? '' : ' disabled') + '>' +
+      '</label>' +
+      '<label class="builder-form-field builder-form-field-compact">' +
+        '<span>Offset X px</span>' +
+        '<input type="number" data-builder-field="structure-edge-offset-x" value="' + escapeHtml(tool.offsetX ?? 0) + '" min="-512" max="512" step="1"' + (editable ? '' : ' disabled') + '>' +
+      '</label>' +
+      '<label class="builder-form-field builder-form-field-compact">' +
+        '<span>Offset Y px</span>' +
+        '<input type="number" data-builder-field="structure-edge-offset-y" value="' + escapeHtml(tool.offsetY ?? 0) + '" min="-512" max="512" step="1"' + (editable ? '' : ' disabled') + '>' +
+      '</label>' +
+      '<label class="builder-form-field builder-form-field-compact builder-checkbox-field">' +
+        '<span>Mirror Art X</span>' +
+        '<input type="checkbox" data-builder-field="structure-edge-mirror-x"' + (tool.mirrorX ? ' checked' : '') + (editable ? '' : ' disabled') + '>' +
       '</label>' +
       '<div class="builder-tool-row">' +
         '<button type="button" class="builder-tool-button' + edgeEyedropperActive + '" data-builder-action="structure-edge-eyedropper"' + (editable ? '' : ' disabled') + '>Edge Eyedropper</button>' +
         '<button type="button" class="builder-tool-button' + edgeEraseActive + '" data-builder-action="structure-edge-erase"' + (editable ? '' : ' disabled') + '>Erase Edge</button>' +
       '</div>' +
-      '<div class="builder-inspector-note">Paint rooms/cells with normal click. Shift-click an edge to paint the selected wall/door/opening. Edge height is board truth; type/sprite are art/editor labels.</div>' +
+      '<div class="builder-inspector-note">Click to paint room/roof cells. Shift-click an edge to place wall/door art. Edge Height / LOS is gameplay truth; Visual Height, Mirror, and Offset only change art placement.</div>' +
     '</div>';
 }
 

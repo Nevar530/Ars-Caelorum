@@ -180,7 +180,11 @@ export function formatStructureCells(cells) {
 }
 
 export function formatEdges(edges) {
-  return edges.map((edge) => `${edge.edge}:${edge.edgeHeight ?? 0} ${edge.type ?? "wall"}`).join("; ");
+  return edges.map((edge) => {
+    const visual = edge.visualHeightPx != null ? ` / ${edge.visualHeightPx}px` : "";
+    const mirror = edge.mirrorX ? " / mirror" : "";
+    return `${edge.edge}:${edge.edgeHeight ?? 0} ${edge.type ?? "wall"}${visual}${mirror}`;
+  }).join("; ");
 }
 
 export function formatDeploymentCell(cell) {

@@ -383,6 +383,13 @@ function sanitizeStructuresForExport(structures) {
         delete cleanEdge.blocksMove;
         delete cleanEdge.blocksLOS;
         cleanEdge.edgeHeight = Math.max(0, Number(cleanEdge.edgeHeight ?? cleanEdge.height ?? cleanEdge.heightLevels ?? 0));
+        if (cleanEdge.visualHeightPx != null || cleanEdge.heightPx != null) {
+          cleanEdge.visualHeightPx = Math.max(0, Number(cleanEdge.visualHeightPx ?? cleanEdge.heightPx ?? 64));
+          delete cleanEdge.heightPx;
+        }
+        if (cleanEdge.offsetX != null) cleanEdge.offsetX = Number(cleanEdge.offsetX) || 0;
+        if (cleanEdge.offsetY != null) cleanEdge.offsetY = Number(cleanEdge.offsetY) || 0;
+        if (cleanEdge.mirrorX !== true) delete cleanEdge.mirrorX;
         return cleanEdge;
       });
     }
