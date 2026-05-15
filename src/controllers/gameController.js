@@ -377,7 +377,6 @@ export function createGameController({
     closeCommandMenu,
     moveMenuSelection,
     moveMenuSelectionGrid,
-    animateRotation,
     toggleHelpDrawer,
     closeHelpDrawer,
     toggleView,
