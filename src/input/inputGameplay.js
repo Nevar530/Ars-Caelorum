@@ -18,10 +18,8 @@ import {
 } from "./inputFocus.js";
 
 export function bindGameplayInput(state, refs, actions) {
-  const { rotateLeftButton, rotateRightButton, toggleViewButton, resetMapButton } = refs;
+  const { toggleViewButton, resetMapButton } = refs;
 
-  rotateLeftButton.addEventListener("click", () => actions.rotateLeft());
-  rotateRightButton.addEventListener("click", () => actions.rotateRight());
   toggleViewButton.addEventListener("click", () => actions.toggleView());
   resetMapButton.addEventListener("click", () => actions.resetMap());
 
@@ -57,10 +55,6 @@ export function bindGameplayInput(state, refs, actions) {
       return;
     }
 
-    if (handleRotationKeys(key, actions)) {
-      event.preventDefault();
-      return;
-    }
 
     if (handleZoomKeys(event, key, actions)) {
       event.preventDefault();
@@ -168,20 +162,6 @@ function handleHelpKeys(event, actions) {
 
   if (key === "escape") {
     actions.closeHelpDrawer?.();
-  }
-
-  return false;
-}
-
-function handleRotationKeys(key, actions) {
-  if (key === "q") {
-    actions.rotateLeft();
-    return true;
-  }
-
-  if (key === "e") {
-    actions.rotateRight();
-    return true;
   }
 
   return false;
@@ -429,7 +409,7 @@ function handleFacingKeys(key, state, actions) {
   else if (key === "arrowright" || key === "d") direction = "right";
   else return false;
 
-  const facing = getWorldFacingFromScreenDirection(state.rotation, direction);
+  const facing = getWorldFacingFromScreenDirection(direction);
 
   if (facing === null) return true;
 
@@ -454,7 +434,7 @@ function handleFocusKeys(key, state, actions) {
   else return false;
 
   const step = getFocusStep(state);
-  const delta = getBoardDeltaFromScreenDirection(state.rotation, direction, step);
+  const delta = getBoardDeltaFromScreenDirection(direction, step);
   const activeUnit = state.ui.mode === "move" ? getActiveUnit(state) : null;
 
   const next = clampFocusToBoard(

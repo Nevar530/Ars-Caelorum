@@ -111,20 +111,6 @@ export function tileTypeFromElevation(elevation) {
   return "ground";
 }
 
-export function rotateCoord(x, y, width, height, rotation) {
-  switch (rotation % 4) {
-    case 0:
-      return { x, y };
-    case 1:
-      return { x: height - 1 - y, y: x };
-    case 2:
-      return { x: width - 1 - x, y: height - 1 - y };
-    case 3:
-      return { x: y, y: width - 1 - x };
-    default:
-      return { x, y };
-  }
-}
 
 export function getDetailCell(map, mechX, mechY, subX, subY) {
   return getDetailCellAt(map, mechX, mechY, subX, subY);

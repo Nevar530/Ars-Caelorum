@@ -109,8 +109,6 @@ export function createDevMenuDom() {
       <div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
         <div style="font-weight:bold; margin-bottom:8px;">Map Controls</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button id="ac-dev-map-rotate-left" type="button">⟲ Rotate Left</button>
-          <button id="ac-dev-map-rotate-right" type="button">⟳ Rotate Right</button>
           <button id="ac-dev-map-toggle-view" type="button">Toggle Tactical (R)</button>
           <button id="ac-dev-map-reset" type="button">Reset Map</button>
         </div>
@@ -142,8 +140,6 @@ export function createDevMenuDom() {
       spawnSelectEl: panel.querySelector("#ac-dev-spawn-select"),
       controlSelectEl: panel.querySelector("#ac-dev-control-select"),
       teamSelectEl: panel.querySelector("#ac-dev-team-select"),
-      mapRotateLeftEl: panel.querySelector("#ac-dev-map-rotate-left"),
-      mapRotateRightEl: panel.querySelector("#ac-dev-map-rotate-right"),
       mapToggleViewEl: panel.querySelector("#ac-dev-map-toggle-view"),
       mapResetEl: panel.querySelector("#ac-dev-map-reset"),
       mapEditorHostEl: panel.querySelector("#ac-dev-map-editor-host")

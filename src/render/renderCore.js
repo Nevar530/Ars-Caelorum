@@ -153,24 +153,20 @@ function renderEditorUi(state, refs) {
   const editorState = state.ui?.mapEditor ?? {};
   const hoverCount = Array.isArray(editorState.hoverTiles) ? editorState.hoverTiles.length : 0;
   refs.editorModeLabel.textContent =
-    `Map Editor · Rot ${((state.rotation ?? 0) * 90) % 360}° · Tile ${state.ui.editor.selectedTile.x},${state.ui.editor.selectedTile.y} · Brush ${editorState.brushSize ?? 1}x${editorState.brushSize ?? 1} · Preview ${hoverCount}`;
+    `Map Editor · Tile ${state.ui.editor.selectedTile.x},${state.ui.editor.selectedTile.y} · Brush ${editorState.brushSize ?? 1}x${editorState.brushSize ?? 1} · Preview ${hoverCount}`;
 }
 
 function buildEditorLayout(state, mapWidth, mapHeight) {
   const pad = RENDER_CONFIG.editorPadding;
   const full = RENDER_CONFIG.editorSize;
   const inner = full - (pad * 2);
-  const rotation = normalizeRotation(state.rotation ?? 0);
-  const rotatedWidth = rotation % 2 === 0 ? mapWidth : mapHeight;
-  const rotatedHeight = rotation % 2 === 0 ? mapHeight : mapWidth;
-  const cellSize = inner / Math.max(rotatedWidth, rotatedHeight, 1);
-  const boardPixelWidth = rotatedWidth * cellSize;
-  const boardPixelHeight = rotatedHeight * cellSize;
+  const cellSize = inner / Math.max(mapWidth, mapHeight, 1);
+  const boardPixelWidth = mapWidth * cellSize;
+  const boardPixelHeight = mapHeight * cellSize;
 
   return {
     mapWidth,
     mapHeight,
-    rotation,
     cellSize,
     originX: pad + ((inner - boardPixelWidth) / 2),
     originY: pad + ((inner - boardPixelHeight) / 2)
@@ -178,10 +174,9 @@ function buildEditorLayout(state, mapWidth, mapHeight) {
 }
 
 function getEditorCellRect(layout, x, y) {
-  const rotated = rotateEditorCell(x, y, layout.mapWidth, layout.mapHeight, layout.rotation);
   return {
-    x: layout.originX + (rotated.x * layout.cellSize),
-    y: layout.originY + (rotated.y * layout.cellSize),
+    x: layout.originX + (x * layout.cellSize),
+    y: layout.originY + (y * layout.cellSize),
     width: layout.cellSize,
     height: layout.cellSize
   };
@@ -279,25 +274,4 @@ function renderEditorFocusMarker(state, parent, layout) {
   marker.setAttribute("stroke-dasharray", "4 3");
   marker.setAttribute("pointer-events", "none");
   parent.appendChild(marker);
-}
-
-function rotateEditorCell(x, y, mapWidth, mapHeight, rotation) {
-  const rot = normalizeRotation(rotation);
-
-  switch (rot) {
-    case 1:
-      return { x: mapHeight - 1 - y, y: x };
-    case 2:
-      return { x: mapWidth - 1 - x, y: mapHeight - 1 - y };
-    case 3:
-      return { x: y, y: mapWidth - 1 - x };
-    case 0:
-    default:
-      return { x, y };
-  }
-}
-
-function normalizeRotation(value) {
-  const n = Number.isFinite(value) ? value : 0;
-  return ((n % 4) + 4) % 4;
 }

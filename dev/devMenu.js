@@ -85,8 +85,6 @@ class DevMenu {
     this.controlSelectEl = null;
     this.teamSelectEl = null;
 
-    this.mapRotateLeftEl = null;
-    this.mapRotateRightEl = null;
     this.mapToggleViewEl = null;
     this.mapResetEl = null;
     this.mapRaiseHeightEl = null;
@@ -234,9 +232,6 @@ class DevMenu {
     return [];
   }
 
-  getRotationValue() {
-    return this.appState?.camera?.rotation ?? this.appState?.rotation ?? 0;
-  }
 
   getViewLabel() {
     const currentView = this.appState?.ui?.viewMode ?? "iso";
@@ -288,8 +283,6 @@ class DevMenu {
     this.controlSelectEl = refs.controlSelectEl;
     this.teamSelectEl = refs.teamSelectEl;
 
-    this.mapRotateLeftEl = refs.mapRotateLeftEl;
-    this.mapRotateRightEl = refs.mapRotateRightEl;
     this.mapToggleViewEl = refs.mapToggleViewEl;
     this.mapResetEl = refs.mapResetEl;
     this.mapEditorHostEl = refs.mapEditorHostEl;
@@ -311,15 +304,6 @@ class DevMenu {
       this.setActiveTab("map");
     });
 
-    this.mapRotateLeftEl?.addEventListener("click", () => {
-      this.refs?.rotateLeftButton?.click();
-      this.render();
-    });
-
-    this.mapRotateRightEl?.addEventListener("click", () => {
-      this.refs?.rotateRightButton?.click();
-      this.render();
-    });
 
     this.mapToggleViewEl?.addEventListener("click", () => {
       this.refs?.toggleViewButton?.click();
@@ -1136,8 +1120,7 @@ class DevMenu {
       appState: this.appState,
       activeUnit,
       selectedUnit,
-      viewLabel: this.getViewLabel(),
-      rotationValue: this.getRotationValue()
+      viewLabel: this.getViewLabel()
     });
   }
 
@@ -1187,7 +1170,6 @@ class DevMenu {
 
     this.mapStateEl.innerHTML = renderMapStateHtml({
       viewLabel: this.getViewLabel(),
-      rotationValue: this.getRotationValue(),
       mapWidth,
       mapHeight,
       focus,

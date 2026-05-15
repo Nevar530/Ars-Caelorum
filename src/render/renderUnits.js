@@ -265,7 +265,7 @@ function getFacingLineClass(state, unit) {
 }
 
 function getScreenFacing(state, unit) {
-  return normalizeFacing(getWorldFacing(state, unit) + (state.rotation ?? 0));
+  return normalizeFacing(getWorldFacing(state, unit));
 }
 
 function getDiamondFacingLinePoints(state, unit, diamond) {

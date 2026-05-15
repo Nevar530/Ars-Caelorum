@@ -171,21 +171,16 @@ function getIsoTargetFrameBounds(state, zoomLevel) {
 
   const tile = getTile(state.map, focus.x, focus.y);
   const supportElevation = tile ? getTileFootElevation(tile) : 0;
-  const board = getRuntimeBoardSize(state);
-
   const center = projectIsoRaw(
     focus.x + 0.5,
     focus.y + 0.5,
-    supportElevation + liftTiles,
-    state.rotation,
-    1,
-    board
+    supportElevation + liftTiles
   );
 
-  const xNeg = projectIsoRaw(focus.x + 0.5 - spanX, focus.y + 0.5, supportElevation, state.rotation, 1, board);
-  const xPos = projectIsoRaw(focus.x + 0.5 + spanX, focus.y + 0.5, supportElevation, state.rotation, 1, board);
-  const yNeg = projectIsoRaw(focus.x + 0.5, focus.y + 0.5 - spanY, supportElevation, state.rotation, 1, board);
-  const yPos = projectIsoRaw(focus.x + 0.5, focus.y + 0.5 + spanY, supportElevation, state.rotation, 1, board);
+  const xNeg = projectIsoRaw(focus.x + 0.5 - spanX, focus.y + 0.5, supportElevation);
+  const xPos = projectIsoRaw(focus.x + 0.5 + spanX, focus.y + 0.5, supportElevation);
+  const yNeg = projectIsoRaw(focus.x + 0.5, focus.y + 0.5 - spanY, supportElevation);
+  const yPos = projectIsoRaw(focus.x + 0.5, focus.y + 0.5 + spanY, supportElevation);
 
   const halfWidth =
     Math.max(
@@ -356,8 +351,8 @@ export function getMapScreenBoundsRaw(state) {
   const points = [];
 
   for (const corner of corners) {
-    points.push(projectIsoRaw(corner.x, corner.y, 0, state.rotation, 1, board));
-    points.push(projectIsoRaw(corner.x, corner.y, MAP_CONFIG.maxElevation + 4, state.rotation, 1, board));
+    points.push(projectIsoRaw(corner.x, corner.y, 0));
+    points.push(projectIsoRaw(corner.x, corner.y, MAP_CONFIG.maxElevation + 4));
   }
 
   return {
@@ -377,7 +372,7 @@ export function projectScene(state, x, y, elevation = 0, size = 1) {
 }
 
 export function projectIso(state, x, y, elevation = 0, size = 1) {
-  const raw = projectIsoRaw(x, y, elevation, state.rotation, size, getRuntimeBoardSize(state));
+  const raw = projectIsoRaw(x, y, elevation);
 
   return {
     x: raw.x + (state.camera?.offsetX ?? 0),
@@ -385,18 +380,11 @@ export function projectIso(state, x, y, elevation = 0, size = 1) {
   };
 }
 
-export function projectIsoRaw(x, y, elevation = 0, rotation = 0, _size = 1, boardSize = null) {
-  const board = {
-    width: Math.max(1, Number(boardSize?.width ?? MAP_CONFIG.width ?? 40)),
-    height: Math.max(1, Number(boardSize?.height ?? MAP_CONFIG.height ?? 40))
-  };
-  const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, rotation);
-
-  const isoX =
-    ((rotated.x - rotated.y) * (RENDER_CONFIG.isoTileWidth / 2)) + CAMERA_CENTER.isoX;
+export function projectIsoRaw(x, y, elevation = 0) {
+  const isoX = ((x - y) * (RENDER_CONFIG.isoTileWidth / 2)) + CAMERA_CENTER.isoX;
 
   const isoY =
-    ((rotated.x + rotated.y) * (RENDER_CONFIG.isoTileHeight / 2)) +
+    ((x + y) * (RENDER_CONFIG.isoTileHeight / 2)) +
     CAMERA_CENTER.isoY -
     (elevation * RENDER_CONFIG.elevationStepPx);
 
@@ -418,14 +406,11 @@ export function projectTopDown(state, x, y) {
 }
 
 export function getSceneSortKey(state, x, y, elevation = 0) {
-  const board = getRuntimeBoardSize(state);
-  const rotated = rotateSceneCoordContinuous(x, y, board.width, board.height, state.rotation);
-
   if (state.ui?.viewMode === "top") {
     return (y * 1000) + x;
   }
 
-  return ((rotated.x + rotated.y) * 1000) + (elevation * 10);
+  return ((x + y) * 1000) + (elevation * 10);
 }
 
 export function getLosHeights(baseElevation, scale = "mech") {
@@ -496,21 +481,6 @@ export function getCurrentInteractionScale(state) {
   );
 }
 
-function rotateSceneCoordContinuous(x, y, width, height, rotation = 0) {
-  const rot = ((rotation % 4) + 4) % 4;
-
-  switch (rot) {
-    case 1:
-      return { x: height - y, y: x };
-    case 2:
-      return { x: width - x, y: height - y };
-    case 3:
-      return { x: y, y: width - x };
-    case 0:
-    default:
-      return { x, y };
-  }
-}
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));

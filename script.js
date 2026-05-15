@@ -56,8 +56,6 @@ const refs = {
   worldScene: document.getElementById("world-scene"),
   worldUi: document.getElementById("world-ui"),
   devToolbar: document.getElementById("devToolbar"),
-  rotateLeftButton: document.getElementById("rotateLeft"),
-  rotateRightButton: document.getElementById("rotateRight"),
   toggleViewButton: document.getElementById("toggleView"),
   resetMapButton: document.getElementById("resetMap"),
   editorModeMechButton: document.getElementById("editorModeMech"),
@@ -82,7 +80,6 @@ async function init() {
   const state = createState({
     map: initialMap,
     units: [],
-    rotation: 0,
     content,
     campaign
   });
@@ -643,13 +640,6 @@ function getSelectedMissionEntry() {
     rebuildOrdersAndLog: turnController.rebuildOrdersAndLog,
     resetCombatToSetup: gameController.resetCombatToSetup,
 
-    rotateLeft() {
-      gameController.animateRotation(-1);
-    },
-
-    rotateRight() {
-      gameController.animateRotation(1);
-    },
 
     toggleView: gameController.toggleView,
     zoomIn: gameController.zoomIn,

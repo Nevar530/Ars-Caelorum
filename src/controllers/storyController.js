@@ -173,7 +173,7 @@ export function createStoryController({
 
     syncActiveSelection(unit);
 
-    const delta = getBoardDeltaFromScreenDirection(state.rotation, direction, { dx: 1, dy: 1 });
+    const delta = getBoardDeltaFromScreenDirection(direction, { dx: 1, dy: 1 });
     const target = clampFocusToBoard(
       Number(unit.x ?? 0) + Number(delta.dx ?? 0),
       Number(unit.y ?? 0) + Number(delta.dy ?? 0),
@@ -184,7 +184,7 @@ export function createStoryController({
     if (target.x === unit.x && target.y === unit.y) return true;
     if (!canStepToTile(state, unit.x, unit.y, target.x, target.y)) return true;
 
-    const facing = getWorldFacingFromScreenDirection(state.rotation, direction);
+    const facing = getWorldFacingFromScreenDirection(direction);
     moveUnitTo(state.units, unit.instanceId, target.x, target.y);
     logDev(`${unit.name} moved to (${target.x},${target.y}) in story mode.`);
 

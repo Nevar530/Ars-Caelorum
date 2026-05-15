@@ -64,7 +64,7 @@ export function moveBuilderTileSelection(builderState, appState, screenDirection
 
   const selected = builderState.selected ?? null;
   const start = getSelectionStartTile(selected, appState);
-  const delta = getBoardDeltaFromScreenDirection(appState?.rotation, screenDirection);
+  const delta = getBoardDeltaFromScreenDirection(screenDirection);
   const width = getMapWidth(appState.map);
   const height = getMapHeight(appState.map);
 
@@ -102,8 +102,8 @@ function getSelectionStartTile(selected, appState) {
   };
 }
 
-function getBoardDeltaFromScreenDirection(rotation, direction) {
-  const facing = getWorldFacingFromScreenDirection(rotation, direction);
+function getBoardDeltaFromScreenDirection(direction) {
+  const facing = getWorldFacingFromScreenDirection(direction);
 
   switch (facing) {
     case 0:
@@ -119,12 +119,8 @@ function getBoardDeltaFromScreenDirection(rotation, direction) {
   }
 }
 
-function getWorldFacingFromScreenDirection(rotation, direction) {
-  const baseFacing = screenDirectionToBaseFacing(direction);
-  if (baseFacing === null) return null;
-
-  const rot = normalizeRotation(rotation);
-  return ((baseFacing - rot) + 4) % 4;
+function getWorldFacingFromScreenDirection(direction) {
+  return screenDirectionToBaseFacing(direction);
 }
 
 function screenDirectionToBaseFacing(direction) {
@@ -140,30 +136,4 @@ function screenDirectionToBaseFacing(direction) {
     default:
       return null;
   }
-}
-
-function normalizeRotation(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? ((n % 4) + 4) % 4 : 0;
-}
-
-function getMapWidth(map) {
-  const value = Number(map?.width ?? map?.cols ?? 0);
-  if (Number.isFinite(value) && value > 0) return Math.floor(value);
-
-  const tiles = Array.isArray(map?.tiles) ? map.tiles : [];
-  return tiles.length;
-}
-
-function getMapHeight(map) {
-  const value = Number(map?.height ?? map?.rows ?? 0);
-  if (Number.isFinite(value) && value > 0) return Math.floor(value);
-
-  const tiles = Array.isArray(map?.tiles) ? map.tiles : [];
-  const firstColumn = Array.isArray(tiles[0]) ? tiles[0] : [];
-  return firstColumn.length;
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, Number(value)));
 }

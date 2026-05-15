@@ -182,9 +182,6 @@ export function createGameController({
     setActiveMissionDefinition(state, runtimeMissionDefinition);
     resetTriggerRuntimeState(state);
 
-    state.rotation = 0;
-    state.camera.angle = 0;
-    state.camera.isTurning = false;
     state.ui.viewMode = "iso";
 
     resetCombatToSetup();
@@ -328,43 +325,6 @@ export function createGameController({
     render();
   }
 
-  function animateRotation(direction) {
-    if (state.ui.viewMode !== "iso") return;
-    if (state.camera.isTurning) return;
-
-    state.camera.isTurning = true;
-
-    const startAngle = state.camera.angle;
-    const endAngle = startAngle + (direction * 90);
-    const durationMs = 320;
-    const startTime = performance.now();
-
-    function easeInOutQuad(t) {
-      return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-    }
-
-    function tick(now) {
-      const elapsed = now - startTime;
-      const rawT = Math.min(1, elapsed / durationMs);
-      const easedT = easeInOutQuad(rawT);
-
-      state.camera.angle = startAngle + ((endAngle - startAngle) * easedT);
-      render();
-
-      if (rawT < 1) {
-        requestAnimationFrame(tick);
-        return;
-      }
-
-      state.camera.angle = ((endAngle % 360) + 360) % 360;
-      state.rotation = Math.round(state.camera.angle / 90) % 4;
-      state.camera.isTurning = false;
-      render();
-    }
-
-    requestAnimationFrame(tick);
-  }
-
   function toggleHelpDrawer() {
     state.ui.helpDrawer.open = !state.ui.helpDrawer.open;
     render();
@@ -378,13 +338,6 @@ export function createGameController({
   
   function toggleView() {
     state.ui.viewMode = state.ui.viewMode === "iso" ? "top" : "iso";
-
-    if (state.ui.viewMode === "top") {
-      state.camera.angle = Math.round(state.camera.angle / 90) * 90;
-      state.rotation = Math.round(state.camera.angle / 90) % 4;
-      state.camera.isTurning = false;
-    }
-
     render();
   }
 
@@ -423,7 +376,6 @@ export function createGameController({
     closeCommandMenu,
     moveMenuSelection,
     moveMenuSelectionGrid,
-    animateRotation,
     toggleHelpDrawer,
     closeHelpDrawer,
     toggleView,

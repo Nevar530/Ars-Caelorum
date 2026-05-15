@@ -86,8 +86,8 @@ export function snapFocusToActiveUnit(state, options = {}) {
   state.camera.zoomScale = state.camera.zoomMode ?? unitScale;
 }
 
-export function getBoardDeltaFromScreenDirection(rotation, direction, step = { dx: 1, dy: 1 }) {
-  const facing = getWorldFacingFromScreenDirection(rotation, direction);
+export function getBoardDeltaFromScreenDirection(direction, step = { dx: 1, dy: 1 }) {
+  const facing = getWorldFacingFromScreenDirection(direction);
 
   switch (facing) {
     case 0:
@@ -103,12 +103,8 @@ export function getBoardDeltaFromScreenDirection(rotation, direction, step = { d
   }
 }
 
-export function getWorldFacingFromScreenDirection(rotation, direction) {
-  const baseFacing = screenDirectionToBaseFacing(direction);
-  if (baseFacing === null) return null;
-
-  const rot = normalizeRotation(rotation);
-  return ((baseFacing - rot) + 4) % 4;
+export function getWorldFacingFromScreenDirection(direction) {
+  return screenDirectionToBaseFacing(direction);
 }
 
 export function screenDirectionToBaseFacing(direction) {
@@ -124,9 +120,4 @@ export function screenDirectionToBaseFacing(direction) {
     default:
       return null;
   }
-}
-
-export function normalizeRotation(value) {
-  const n = Number.isFinite(value) ? value : 0;
-  return ((n % 4) + 4) % 4;
 }

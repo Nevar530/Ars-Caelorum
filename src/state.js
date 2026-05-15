@@ -6,7 +6,6 @@ export function createState({
   map,
   units = null,
   mechs = [],
-  rotation = 0,
   content = { mechs: [], weapons: [], sigils: [], attacks: [], pilots: [], pilotAbilities: [], mechAbilities: [], pilotItems: [], mechItems: [], spawnPoints: [], mapCatalog: null, missionCatalog: null, defaultMap: null },
   campaign = null
 }) {
@@ -23,7 +22,6 @@ export function createState({
     map,
     units: runtimeUnits,
 
-    rotation,
     content,
 
     turn: {
@@ -142,8 +140,6 @@ export function createState({
     },
 
     camera: {
-      angle: rotation * 90,
-      isTurning: false,
       zoomMode: previewUnit?.scale ?? "map",
       zoomScale: previewUnit?.scale ?? "pilot"
     },

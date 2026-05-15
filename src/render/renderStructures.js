@@ -176,7 +176,6 @@ function makeRoofItems(state, structure) {
       cell,
       points,
       imagePath: structure.roofSprite,
-      textureRotation: state.rotation,
       sortDepth: floorScreenY + structure.heightPx + 0.42,
       sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation + structure.heightLevels) + 0.3,
       render(parent) {
@@ -309,8 +308,8 @@ function shouldFadeEdgeForInteriorView(state, fadeInfo, edgePart) {
 
 function isLowerScreenWorldEdge(state, worldFace) {
   const face = String(worldFace ?? "").toLowerCase();
-  return face === getWorldFaceForScreenSide(state.rotation, "left") ||
-    face === getWorldFaceForScreenSide(state.rotation, "right");
+  return face === getWorldFaceForScreenSide("left") ||
+    face === getWorldFaceForScreenSide("right");
 }
 
 function makeStructureCellLookup(structure) {
@@ -429,7 +428,7 @@ function drawRoof(item, parent) {
   group.appendChild(fallback);
 
   if (item.imagePath) {
-    appendProjectedRoofImage(group, item.points, item.imagePath, item.textureRotation);
+    appendProjectedRoofImage(group, item.points, item.imagePath);
   }
 
   const outline = makePolygon(item.points, "structure-roof-outline", "none");
@@ -460,7 +459,7 @@ function getEdgePlanePoints(state, x, y, edge, elevation, heightPx) {
 
 function getScreenEdgeEndpointsForWorldFace(state, x, y, worldFace, elevation) {
   const diamond = getCellScreenDiamond(state, x, y, elevation);
-  const screenEdge = getScreenEdgeForWorldFace(state.rotation, worldFace);
+  const screenEdge = getScreenEdgeForWorldFace(worldFace);
 
   switch (screenEdge) {
     case "topLeft":
@@ -476,10 +475,10 @@ function getScreenEdgeEndpointsForWorldFace(state, x, y, worldFace, elevation) {
   }
 }
 
-function getScreenEdgeForWorldFace(rotation, worldFace) {
+function getScreenEdgeForWorldFace(worldFace) {
   const face = String(worldFace ?? "").toLowerCase();
-  const leftWorldFace = getWorldFaceForScreenSide(rotation, "left");
-  const rightWorldFace = getWorldFaceForScreenSide(rotation, "right");
+  const leftWorldFace = getWorldFaceForScreenSide("left");
+  const rightWorldFace = getWorldFaceForScreenSide("right");
   const topRightWorldFace = getOppositeWorldFace(leftWorldFace);
   const topLeftWorldFace = getOppositeWorldFace(rightWorldFace);
 
@@ -493,7 +492,7 @@ function getScreenEdgeForWorldFace(rotation, worldFace) {
 function getCellScreenDiamond(state, x, y, elevation) {
   // Match terrain rendering exactly: project the authored tile origin once,
   // then build the screen diamond from fixed iso offsets. Do not use
-  // projectScene(x + 1, y) etc.; that was the rotation drift.
+  // projectScene(x + 1, y) etc.; that was the old coordinate drift.
   const p = projectScene(state, x, y, elevation, 1);
   const halfW = RENDER_CONFIG.isoTileWidth / 2;
   const halfH = RENDER_CONFIG.isoTileHeight / 2;
@@ -522,7 +521,7 @@ function getOppositeWorldFace(worldFace) {
 }
 
 
-function appendProjectedRoofImage(parentGroup, points, imagePath, textureRotation = 0) {
+function appendProjectedRoofImage(parentGroup, points, imagePath) {
   const id = `structure-roof-clip-${clipId += 1}`;
   const clip = svgEl("clipPath");
   clip.setAttribute("id", id);
@@ -558,33 +557,12 @@ function appendProjectedRoofImage(parentGroup, points, imagePath, textureRotatio
   const baseC = vx / size;
   const baseD = vy / size;
 
-  const rot = normalizeTextureRotation(textureRotation);
-  const radians = (rot * Math.PI) / 2;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  const center = size / 2;
-
-  const rotE = center - (cos * center) + (sin * center);
-  const rotF = center - (sin * center) - (cos * center);
-
-  const a = (baseA * cos) + (baseC * sin);
-  const b = (baseB * cos) + (baseD * sin);
-  const c = (baseA * -sin) + (baseC * cos);
-  const d = (baseB * -sin) + (baseD * cos);
-  const e = (baseA * rotE) + (baseC * rotF) + topLeft.x;
-  const f = (baseB * rotE) + (baseD * rotF) + topLeft.y;
-
-  image.setAttribute("transform", `matrix(${a} ${b} ${c} ${d} ${e} ${f})`);
+  image.setAttribute("transform", `matrix(${baseA} ${baseB} ${baseC} ${baseD} ${topLeft.x} ${topLeft.y})`);
 
   group.appendChild(image);
   parentGroup.appendChild(group);
 }
 
-function normalizeTextureRotation(rotation = 0) {
-  const value = Number(rotation ?? 0);
-  if (!Number.isFinite(value)) return 0;
-  return ((Math.round(value) % 4) + 4) % 4;
-}
 
 function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight) {
   const id = `structure-${layerName}-clip-${clipId += 1}`;
@@ -627,7 +605,7 @@ function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceW
 }
 
 function getImageMappingPoints(points, layerName) {
-  // Edge geometry order is locked to world/rotation math for correct placement.
+  // Edge geometry order is locked to fixed authored-isometric world faces.
   // Texture mapping can be re-ordered independently so wall/door art is not
   // horizontally mirrored on edges whose projected top segment runs right-to-left.
   if (layerName !== "edge") return points;

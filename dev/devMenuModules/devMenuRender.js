@@ -6,7 +6,7 @@ import {
   safeUpper
 } from "./devMenuUtils.js";
 
-export function renderRuntimeStateHtml({ units, appState, activeUnit, selectedUnit, viewLabel, rotationValue }) {
+export function renderRuntimeStateHtml({ units, appState, activeUnit, selectedUnit, viewLabel }) {
   const activeText = activeUnit
     ? `${activeUnit.name} / ${activeUnit.pilotName ?? "No Pilot"}`
     : "None";
@@ -29,7 +29,6 @@ export function renderRuntimeStateHtml({ units, appState, activeUnit, selectedUn
     <div>Action Profile: <strong>${actionProfile?.name ?? actionProfile?.id ?? "-"}</strong></div>
     <div>Command Menu: <strong>${commandMenu.open ? "OPEN" : "CLOSED"}</strong></div>
     <div>View: <strong>${viewLabel}</strong></div>
-    <div>Rotation: <strong>${rotationValue}</strong></div>
   `;
 }
 
@@ -145,7 +144,6 @@ export function renderUnitsHtml({ units, activeUnitId, selectedUnitId }) {
 
 export function renderMapStateHtml({
   viewLabel,
-  rotationValue,
   mapWidth,
   mapHeight,
   focus,
@@ -156,7 +154,6 @@ export function renderMapStateHtml({
 }) {
   return `
     <div>View: <strong>${viewLabel}</strong></div>
-    <div>Rotation: <strong>${rotationValue}</strong></div>
     <div>Map Size: <strong>${mapWidth}x${mapHeight}</strong></div>
     <div>Focus Tile: <strong>(${focus.x ?? 0},${focus.y ?? 0})</strong></div>
     <div>Selected Unit: <strong>${selectedUnit ? `${selectedUnit.name} / ${selectedUnit.pilotName ?? "No Pilot"}` : "None"}</strong></div>

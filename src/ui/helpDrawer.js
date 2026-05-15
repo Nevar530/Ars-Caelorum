@@ -17,7 +17,6 @@ function interfaceSection() {
 
 function cameraSection() {
   return section("Camera / View", [
-    { key: "Q / E", label: "Rotate map left / right" },
     { key: "R", label: "Toggle tactical view" },
     { key: "+ / -", label: "Zoom in / out" }
   ]);

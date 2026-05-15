@@ -620,16 +620,16 @@ function getTileEdgeSegments(previewState, x, y) {
   if (!diamond) return [];
 
   return [
-    { id: getWorldFaceForScreenEdge(previewState.rotation, "topLeft"), a: diamond.top, b: diamond.left },
-    { id: getWorldFaceForScreenEdge(previewState.rotation, "topRight"), a: diamond.top, b: diamond.right },
-    { id: getWorldFaceForScreenEdge(previewState.rotation, "bottomRight"), a: diamond.right, b: diamond.bottom },
-    { id: getWorldFaceForScreenEdge(previewState.rotation, "bottomLeft"), a: diamond.left, b: diamond.bottom }
+    { id: getWorldFaceForScreenEdge("topLeft"), a: diamond.top, b: diamond.left },
+    { id: getWorldFaceForScreenEdge("topRight"), a: diamond.top, b: diamond.right },
+    { id: getWorldFaceForScreenEdge("bottomRight"), a: diamond.right, b: diamond.bottom },
+    { id: getWorldFaceForScreenEdge("bottomLeft"), a: diamond.left, b: diamond.bottom }
   ].filter((edge) => edge.id);
 }
 
-function getWorldFaceForScreenEdge(rotation, screenEdge) {
-  const leftWorldFace = getWorldFaceForScreenSide(rotation, "left");
-  const rightWorldFace = getWorldFaceForScreenSide(rotation, "right");
+function getWorldFaceForScreenEdge(screenEdge) {
+  const leftWorldFace = getWorldFaceForScreenSide("left");
+  const rightWorldFace = getWorldFaceForScreenSide("right");
   const topRightWorldFace = getOppositeWorldFace(leftWorldFace);
   const topLeftWorldFace = getOppositeWorldFace(rightWorldFace);
 
@@ -647,15 +647,10 @@ function getWorldFaceForScreenEdge(rotation, screenEdge) {
   }
 }
 
-function getWorldFaceForScreenSide(rotation, screenSide) {
-  const index = normalizeRotationIndex(rotation);
+function getWorldFaceForScreenSide(screenSide) {
   const side = String(screenSide ?? "").toLowerCase();
-
-  const leftFaces = ["sw", "se", "ne", "nw"];
-  const rightFaces = ["se", "ne", "nw", "sw"];
-
-  if (side === "left") return leftFaces[index];
-  if (side === "right") return rightFaces[index];
+  if (side === "left") return "sw";
+  if (side === "right") return "se";
   return null;
 }
 
@@ -674,10 +669,6 @@ function getOppositeWorldFace(worldFace) {
   }
 }
 
-function normalizeRotationIndex(rotation) {
-  const raw = Math.round(Number(rotation ?? 0));
-  return ((raw % 4) + 4) % 4;
-}
 
 function renderWorkspaceReadout({ appState, builderState, workspaceRefs }) {
   const readout = workspaceRefs.readout;
