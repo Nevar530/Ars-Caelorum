@@ -1960,6 +1960,34 @@ button:disabled {
   vector-effect: non-scaling-stroke;
 }
 
+
+.builder-overlay-prop {
+  fill: rgba(255, 164, 64, 0.14);
+  stroke: rgba(255, 197, 92, 0.78);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.builder-overlay-prop.is-blocking {
+  fill: rgba(255, 111, 111, 0.12);
+  stroke: rgba(255, 122, 122, 0.92);
+  stroke-width: 2.5;
+}
+
+.builder-overlay-prop.is-preview {
+  fill: rgba(103, 232, 249, 0.16);
+  stroke: rgba(103, 232, 249, 0.94);
+  stroke-width: 3;
+}
+
+.builder-overlay-prop.is-selected {
+  fill: rgba(255, 224, 112, 0.2);
+  stroke: rgba(255, 236, 145, 1);
+  stroke-width: 4;
+}
+
+.builder-overlay-label-prop { fill: #ffd891; }
+
 .builder-overlay-spawn {
   fill: rgba(255, 122, 182, 0.24);
   stroke: rgba(255, 122, 182, 0.9);

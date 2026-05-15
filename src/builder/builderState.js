@@ -48,7 +48,9 @@ export function createBuilderState() {
       deployment: true,
       objectives: true,
       triggers: true,
-      tileHeights: false
+      tileHeights: false,
+      props: true,
+      propArt: true
     },
     terrainTool: {
       terrainTypeId: "grass",
@@ -89,7 +91,9 @@ export function createBuilderState() {
       offsetX: 0,
       offsetY: 0,
       layer: "samePlane",
-      erase: false
+      erase: false,
+      select: false,
+      selectedPropId: ""
     },
     spawnTool: {
       mode: "spawn",

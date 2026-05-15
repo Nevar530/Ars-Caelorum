@@ -41,6 +41,7 @@ import {
 } from "../builderAdapters.js";
 import { getObjectiveZoneCells } from "../builderObjectives.js";
 import { getTriggerZoneCells } from "../builderTriggers.js";
+import { getMapProps, getPropFootprintCells, normalizeProp } from "../../props/propRules.js";
 
 const PICK_MAX_DISTANCE_PX = 44;
 
@@ -93,6 +94,10 @@ function buildPreviewState(appState, options = {}) {
     hideStructuresForBuilderPreview(previewState);
   } else if (options.builderState?.activeTab === "structures" && areStructureRoofsVisible(options.builderState) === false) {
     hideStructureRoofsForBuilderPreview(previewState);
+  }
+
+  if (shouldHidePropArtForBuilderPreview(options.builderState)) {
+    hidePropsForBuilderPreview(previewState);
   }
 
   const builderFocus = getBuilderFocusTile(options.builderState);
@@ -159,6 +164,15 @@ function hideStructureRoofsForBuilderPreview(previewState) {
     delete structure.roof;
     delete structure.roofSprite;
   }
+}
+
+function shouldHidePropArtForBuilderPreview(builderState) {
+  return builderState?.activeTab === "structures" && builderState?.overlays?.propArt === false;
+}
+
+function hidePropsForBuilderPreview(previewState) {
+  if (!previewState?.map) return;
+  previewState.map.props = [];
 }
 
 function cloneForPreview(appState) {
@@ -350,6 +364,7 @@ function renderBuilderWorkspaceOverlays({ previewState, appState, builderState, 
   if (overlayState.triggers) overlays.push(renderTriggerZoneOverlays(previewState, builderState));
   if (overlayState.spawns) overlays.push(renderSpawnOverlays(previewState));
   if (overlayState.rooms) overlays.push(renderRoomOverlays(previewState));
+  if (overlayState.props) overlays.push(renderPropOverlays(previewState, appState, builderState));
   if (overlayState.structureEdges) overlays.push(renderStructureEdgeOverlays(previewState));
   if (overlayState.tileHeights) overlays.push(renderTileHeightOverlays(previewState));
 
@@ -359,6 +374,10 @@ function renderBuilderWorkspaceOverlays({ previewState, appState, builderState, 
 
   if (isStructureBrushPreviewActive(builderState)) {
     overlays.push(renderStructureBrushPreview(previewState, appState, builderState));
+  }
+
+  if (isPropBrushPreviewActive(builderState)) {
+    overlays.push(renderPropBrushPreview(previewState, appState, builderState));
   }
 
   if (hover?.type === "tile") {
@@ -426,6 +445,62 @@ function renderStructureBrushPreview(previewState, appState, builderState) {
     const stroke = erase ? "#ff7a7a" : "#aa84ff";
     const width = isAnchor ? 3 : 2;
     return '<polygon points="' + formatPointString(points) + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + width + '" vector-effect="non-scaling-stroke" pointer-events="none" />';
+  }).join("");
+}
+
+function isPropBrushPreviewActive(builderState) {
+  return builderState?.workspaceMode === "builder-map" && builderState?.activeTab === "structures" && builderState?.structureTool?.subTab === "props";
+}
+
+function renderPropBrushPreview(previewState, appState, builderState) {
+  const anchor = getTerrainBrushAnchor(builderState);
+  if (!anchor) return "";
+
+  const tool = builderState?.propTool ?? {};
+  const footprintW = Math.max(1, Math.round(Number(tool.footprintW ?? 1)));
+  const footprintH = Math.max(1, Math.round(Number(tool.footprintH ?? 1)));
+  const cells = [];
+  for (let dy = 0; dy < footprintH; dy += 1) {
+    for (let dx = 0; dx < footprintW; dx += 1) {
+      cells.push({ x: anchor.x + dx, y: anchor.y + dy });
+    }
+  }
+
+  return renderPropFootprintCells(previewState, cells, {
+    className: "builder-overlay-prop is-preview",
+    label: "prop",
+    anchorX: anchor.x,
+    anchorY: anchor.y
+  });
+}
+
+function renderPropOverlays(previewState, appState, builderState) {
+  const sourceMap = builderState?.authoring?.map ?? appState?.map ?? previewState?.map;
+  const props = getMapProps(sourceMap).map((prop) => normalizeProp(prop)).filter(Boolean);
+  if (!props.length) return "";
+
+  const selectedId = String(builderState?.propTool?.selectedPropId ?? "").trim();
+  return props.map((prop) => renderPropFootprintCells(previewState, getPropFootprintCells(prop), {
+    className: "builder-overlay-prop" + (prop.blocksMovement ? " is-blocking" : "") + (prop.id === selectedId ? " is-selected" : ""),
+    label: prop.id,
+    anchorX: prop.x,
+    anchorY: prop.y
+  })).join("");
+}
+
+function renderPropFootprintCells(previewState, cells, options = {}) {
+  if (!Array.isArray(cells) || !cells.length) return "";
+  const className = options.className ?? "builder-overlay-prop";
+  const anchorX = Number(options.anchorX ?? cells[0]?.x);
+  const anchorY = Number(options.anchorY ?? cells[0]?.y);
+  const label = options.label ?? "prop";
+
+  return cells.map((cell) => {
+    const points = getTilePolygonPoints(previewState, cell.x, cell.y);
+    if (points.length !== 4) return "";
+    const isAnchor = Number(cell.x) === anchorX && Number(cell.y) === anchorY;
+    return '<polygon class="' + className + '" points="' + formatPointString(points) + '" pointer-events="none" />' +
+      (isAnchor ? renderTileText(previewState, cell.x, cell.y, label, "builder-overlay-label builder-overlay-label-prop") : "");
   }).join("");
 }
 

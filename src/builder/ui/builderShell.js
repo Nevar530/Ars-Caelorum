@@ -38,7 +38,9 @@ import {
   ensurePropToolSettings,
   getBuilderPropSpriteOptions,
   getPropSpritePreviewPath,
-  isPropEraseModeActive
+  getSelectedPropId,
+  isPropEraseModeActive,
+  isPropSelectModeActive
 } from "../builderProps.js";
 import { getMapSummary } from "../builderAdapters.js";
 import { ensureSpawnToolSettings } from "../builderSpawns.js";
@@ -244,9 +246,14 @@ function renderOverlayToggles({ builderState, refs }) {
     toggles.push(["structureArt", "Structures", areBuilderStructuresVisible(builderState)]);
   }
 
+  if (builderState?.activeTab === "structures") {
+    toggles.push(["propArt", "Prop Art", builderState.overlays?.propArt !== false]);
+  }
+
   toggles.push(
     ["structureEdges", "Edges", builderState.overlays?.structureEdges],
     ["rooms", "Rooms", builderState.overlays?.rooms],
+    ["props", "Props", builderState.overlays?.props],
     ["spawns", "Spawns", builderState.overlays?.spawns],
     ["deployment", "Deploy", builderState.overlays?.deployment],
     ["objectives", "Objectives", builderState.overlays?.objectives],
@@ -990,9 +997,13 @@ function renderPropTools(builderState, appState, tool, editable) {
   const propOptions = buildPropSpriteOptions(appState, builderState, tool.spriteId ?? "prop_car_001.png");
   const propPreview = renderPropSpritePreview(tool.spriteId, "Prop Preview");
   const eraseActive = isPropEraseModeActive(builderState) ? " is-active" : "";
+  const selectActive = isPropSelectModeActive(builderState) ? " is-active" : "";
+  const selectedPropId = getSelectedPropId(builderState);
+  const selectedText = selectedPropId ? 'Selected: ' + escapeHtml(selectedPropId) : 'Selected: none';
 
   return '<div class="builder-inspector-card builder-structure-tool-card builder-grid-card">' +
       '<div class="builder-field-label">Prop Brush</div>' +
+      '<div class="builder-inspector-note">' + selectedText + '</div>' +
       '<label class="builder-form-field builder-form-field-compact"><span>Prop Art</span><select data-builder-field="prop-sprite"' + (editable ? '' : ' disabled') + '>' + propOptions + '</select></label>' +
       propPreview +
       '<label class="builder-form-field builder-form-field-compact"><span>Footprint W</span><input type="number" data-builder-field="prop-footprint-w" value="' + escapeHtml(tool.footprintW ?? 1) + '" min="1" max="12" step="1"' + (editable ? '' : ' disabled') + '></label>' +
@@ -1005,8 +1016,9 @@ function renderPropTools(builderState, appState, tool, editable) {
       '<label class="builder-form-field builder-form-field-compact"><span>Offset Y px</span><input type="number" data-builder-field="prop-offset-y" value="' + escapeHtml(tool.offsetY ?? 0) + '" min="-2048" max="2048" step="1"' + (editable ? '' : ' disabled') + '></label>' +
       '<label class="builder-form-field builder-form-field-compact builder-checkbox-field"><span>Blocks Movement</span><input type="checkbox" data-builder-field="prop-blocks-movement"' + (tool.blocksMovement !== false ? ' checked' : '') + (editable ? '' : ' disabled') + '></label>' +
       '<label class="builder-form-field builder-form-field-compact builder-checkbox-field"><span>Mirror Art X</span><input type="checkbox" data-builder-field="prop-mirror-x"' + (tool.mirrorX ? ' checked' : '') + (editable ? '' : ' disabled') + '></label>' +
+      '<div class="builder-tool-row"><button type="button" class="builder-tool-button' + selectActive + '" data-builder-action="prop-select"' + (editable ? '' : ' disabled') + '>Select/Edit</button><button type="button" class="builder-tool-button" data-builder-action="update-selected-prop"' + (editable && selectedPropId ? '' : ' disabled') + '>Update Selected</button></div>' +
       '<div class="builder-tool-row"><button type="button" class="builder-tool-button' + eraseActive + '" data-builder-action="prop-erase"' + (editable ? '' : ' disabled') + '>Erase Props</button><button type="button" class="builder-tool-button" data-builder-action="reset-prop-brush"' + (editable ? '' : ' disabled') + '>Reset Prop</button></div>' +
-      '<div class="builder-inspector-note">Props are footprint-based objects. Height / LOS controls sight blocking. Blocks Movement controls whether the footprint is walkable.</div>' +
+      '<div class="builder-inspector-note">Props are footprint-based objects. Toggle Prop Art off above to see footprints without visual clutter. Height / LOS controls sight blocking.</div>' +
     '</div>';
 }
 

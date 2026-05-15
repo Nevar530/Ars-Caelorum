@@ -49,9 +49,12 @@ import {
 import {
   applyPropToolAtTile,
   isPropEraseModeActive,
+  isPropSelectModeActive,
   resetPropToolToDefaults,
   setPropEraseMode,
-  updatePropToolFromFields
+  setPropSelectMode,
+  updatePropToolFromFields,
+  updateSelectedPropFromTool
 } from "./builderProps.js";
 import {
   createEdgeSelection,
@@ -845,6 +848,22 @@ class MissionBuilder {
       updatePropToolFromFields(this.builderState, this.refs.root, this.appState);
       const tool = setPropEraseMode(this.builderState, !isPropEraseModeActive(this.builderState));
       pushBuilderLog(this.builderState, tool?.erase ? "Prop erase armed. Click a prop footprint to remove it." : "Prop erase cancelled.");
+      this.render();
+      return;
+    }
+
+    if (action === "prop-select") {
+      updatePropToolFromFields(this.builderState, this.refs.root, this.appState);
+      const tool = setPropSelectMode(this.builderState, !isPropSelectModeActive(this.builderState));
+      pushBuilderLog(this.builderState, tool?.select ? "Prop select/edit armed. Click a prop footprint to load it into the brush." : "Prop select/edit cancelled.");
+      this.render();
+      return;
+    }
+
+    if (action === "update-selected-prop") {
+      updatePropToolFromFields(this.builderState, this.refs.root, this.appState);
+      const result = updateSelectedPropFromTool(this.builderState, this.appState);
+      pushBuilderLog(this.builderState, result.message);
       this.render();
       return;
     }

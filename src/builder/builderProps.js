@@ -25,6 +25,8 @@ export function ensurePropToolSettings(builderState, appState = null) {
   tool.offsetY = clampWhole(tool.offsetY, 0, -2048, 2048);
   tool.layer = normalizeLayer(tool.layer);
   tool.erase = Boolean(tool.erase);
+  tool.select = Boolean(tool.select);
+  tool.selectedPropId = String(tool.selectedPropId ?? "").trim();
   return tool;
 }
 
@@ -69,11 +71,28 @@ export function setPropEraseMode(builderState, enabled = true) {
   const tool = ensurePropToolSettings(builderState);
   if (!tool) return null;
   tool.erase = Boolean(enabled);
+  if (tool.erase) tool.select = false;
   return tool;
 }
 
 export function isPropEraseModeActive(builderState) {
   return Boolean(builderState?.propTool?.erase);
+}
+
+export function setPropSelectMode(builderState, enabled = true) {
+  const tool = ensurePropToolSettings(builderState);
+  if (!tool) return null;
+  tool.select = Boolean(enabled);
+  if (tool.select) tool.erase = false;
+  return tool;
+}
+
+export function isPropSelectModeActive(builderState) {
+  return Boolean(builderState?.propTool?.select);
+}
+
+export function getSelectedPropId(builderState) {
+  return String(builderState?.propTool?.selectedPropId ?? "").trim();
 }
 
 export function applyPropToolAtTile(builderState, appState, x, y) {
@@ -91,8 +110,13 @@ export function applyPropToolAtTile(builderState, appState, x, y) {
 
   if (tool.erase) {
     const removed = erasePropsAtTile(map, tileX, tileY);
+    if (removed > 0 && tool.selectedPropId && !findPropById(map, tool.selectedPropId)) tool.selectedPropId = "";
     builderState.dirty = removed > 0 || builderState.dirty;
     return { ok: true, message: removed > 0 ? `Erased ${removed} prop${removed === 1 ? "" : "s"}.` : "No prop under selected tile." };
+  }
+
+  if (tool.select) {
+    return selectPropAtTile(builderState, appState, tileX, tileY);
   }
 
   const prop = {
@@ -116,6 +140,73 @@ export function applyPropToolAtTile(builderState, appState, x, y) {
   map.props.push(prop);
   builderState.dirty = true;
   return { ok: true, message: `Placed prop ${prop.spriteId} at ${tileX}, ${tileY}.`, prop };
+}
+
+export function selectPropAtTile(builderState, appState, x, y) {
+  const map = getEditableBuilderMap(builderState);
+  if (!map) return { ok: false, message: "Prop selection is only available on builder-owned maps." };
+
+  const hits = getPropsAtTile(map, x, y);
+  const prop = hits.length ? hits[hits.length - 1] : null;
+  if (!prop) {
+    return { ok: false, message: `No prop footprint at ${x}, ${y}.` };
+  }
+
+  const clean = normalizeProp(prop);
+  if (!clean) return { ok: false, message: "Selected prop could not be read." };
+
+  const tool = ensurePropToolSettings(builderState, appState);
+  tool.selectedPropId = clean.id;
+  tool.spriteId = clean.spriteId;
+  tool.footprintW = clean.footprintW;
+  tool.footprintH = clean.footprintH;
+  tool.height = clean.height;
+  tool.visualHeight = clean.visualHeight;
+  tool.blocksMovement = clean.blocksMovement;
+  tool.scale = clean.scale;
+  tool.mirrorX = clean.mirrorX;
+  tool.offsetX = clean.offsetX;
+  tool.offsetY = clean.offsetY;
+  tool.layer = clean.layer;
+  tool.erase = false;
+
+  return { ok: true, message: `Selected prop ${clean.id}. Adjust fields and click Update Selected.` };
+}
+
+export function updateSelectedPropFromTool(builderState, appState = null) {
+  const map = getEditableBuilderMap(builderState);
+  if (!map) return { ok: false, message: "Prop update is only available on builder-owned maps." };
+
+  const tool = ensurePropToolSettings(builderState, appState);
+  const selectedId = String(tool?.selectedPropId ?? "").trim();
+  if (!selectedId) return { ok: false, message: "No selected prop to update." };
+
+  const prop = findPropById(map, selectedId);
+  if (!prop) {
+    tool.selectedPropId = "";
+    return { ok: false, message: `Selected prop ${selectedId} no longer exists.` };
+  }
+
+  prop.spriteId = tool.spriteId;
+  prop.footprintW = tool.footprintW;
+  prop.footprintH = tool.footprintH;
+  prop.height = tool.height;
+  prop.visualHeight = tool.visualHeight;
+  prop.blocksMovement = tool.blocksMovement;
+  prop.scale = tool.scale;
+  prop.layer = tool.layer;
+
+  if (tool.mirrorX) prop.mirrorX = true;
+  else delete prop.mirrorX;
+
+  if (tool.offsetX !== 0) prop.offsetX = tool.offsetX;
+  else delete prop.offsetX;
+
+  if (tool.offsetY !== 0) prop.offsetY = tool.offsetY;
+  else delete prop.offsetY;
+
+  builderState.dirty = true;
+  return { ok: true, message: `Updated prop ${selectedId}.`, prop };
 }
 
 export function getBuilderPropSpriteOptions(appState, builderState = null) {
@@ -153,7 +244,9 @@ function createDefaultPropTool(appState, builderState) {
     offsetX: 0,
     offsetY: 0,
     layer: "samePlane",
-    erase: false
+    erase: false,
+    select: false,
+    selectedPropId: ""
   };
 }
 
@@ -174,6 +267,12 @@ function erasePropsAtTile(map, x, y) {
   const before = props.length;
   map.props = props.filter((prop) => !hits.has(String(prop?.id ?? normalizeProp(prop)?.id ?? "")));
   return before - map.props.length;
+}
+
+function findPropById(map, propId) {
+  const id = String(propId ?? "").trim();
+  if (!id) return null;
+  return ensurePropsArray(map).find((prop) => String(prop?.id ?? "").trim() === id) ?? null;
 }
 
 function makePropId(map, x, y) {
