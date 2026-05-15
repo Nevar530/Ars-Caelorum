@@ -421,6 +421,9 @@ function validateStructures(result, map, width, height) {
 
 function validateProps(result, map, width, height) {
   const props = Array.isArray(map?.props) ? map.props : [];
+  const bounds = getEffectiveMapBounds(map, width, height);
+  const propWidth = bounds.width;
+  const propHeight = bounds.height;
   const ids = new Set();
 
   for (const prop of props) {
@@ -436,12 +439,12 @@ function validateProps(result, map, width, height) {
 
     if (ids.has(id)) addWarning(result, "PROP_DUPLICATE_ID", `Duplicate prop id ${id}.`);
     ids.add(id);
-    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= propWidth || y >= propHeight) {
       addError(result, "PROP_OUT_OF_BOUNDS", `${id} starts outside map bounds at ${x}, ${y}.`);
     }
     if (!Number.isInteger(footprintW) || footprintW < 1) addError(result, "PROP_BAD_FOOTPRINT", `${id} has invalid footprintW.`);
     if (!Number.isInteger(footprintH) || footprintH < 1) addError(result, "PROP_BAD_FOOTPRINT", `${id} has invalid footprintH.`);
-    if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(footprintW) && Number.isFinite(footprintH) && (x + footprintW > width || y + footprintH > height)) {
+    if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(footprintW) && Number.isFinite(footprintH) && (x + footprintW > propWidth || y + footprintH > propHeight)) {
       addWarning(result, "PROP_FOOTPRINT_CROPS", `${id} footprint extends beyond map bounds.`);
     }
     if (!Number.isFinite(height) || height < 0) addError(result, "PROP_BAD_HEIGHT", `${id} has invalid height.`);
@@ -452,6 +455,28 @@ function validateProps(result, map, width, height) {
   }
 }
 
+function getEffectiveMapBounds(map, width, height) {
+  let effectiveWidth = Number.isFinite(width) ? width : 0;
+  let effectiveHeight = Number.isFinite(height) ? height : 0;
+
+  if (Array.isArray(map)) {
+    effectiveHeight = Math.max(effectiveHeight, map.length);
+    for (const row of map) {
+      if (Array.isArray(row)) effectiveWidth = Math.max(effectiveWidth, row.length);
+    }
+  }
+
+  if (Array.isArray(map?.tiles)) {
+    for (const tile of map.tiles) {
+      const x = Number(tile?.x);
+      const y = Number(tile?.y);
+      if (Number.isFinite(x)) effectiveWidth = Math.max(effectiveWidth, Math.floor(x) + 1);
+      if (Number.isFinite(y)) effectiveHeight = Math.max(effectiveHeight, Math.floor(y) + 1);
+    }
+  }
+
+  return { width: effectiveWidth, height: effectiveHeight };
+}
 
 function validateMissionShell(result, map, mission) {
   if (!mission?.id) addWarning(result, "MISSION_ID_DEFAULT", "Mission id is currently generated from the map id. Mission Package authoring should set it later.");

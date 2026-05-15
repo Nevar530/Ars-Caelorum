@@ -45,6 +45,11 @@ export function attachMapMetadata(map, metadata = {}) {
       writable: true,
       configurable: true
     },
+    props: {
+      value: structuredClone(metadata.props ?? map.props ?? []),
+      writable: true,
+      configurable: true
+    },
     terrainTypes: {
       value: Array.isArray(metadata.terrainTypes)
         ? [...metadata.terrainTypes]
@@ -169,6 +174,7 @@ export function normalizeMapDefinition(definition) {
     return attachMapMetadata(refreshAllTileSummaries(definition), {
       id: definition.id,
       structures: definition.structures,
+      props: definition.props,
       name: definition.name,
       width: definition.width,
       height: definition.height,
@@ -195,6 +201,7 @@ export function cloneMapDefinition(sourceMap = null) {
     const clonedRows = structuredClone(sourceMap);
     return attachMapMetadata(clonedRows, {
       structures: sourceMap.structures,
+      props: sourceMap.props,
       id: sourceMap.id,
       name: sourceMap.name,
       width: sourceMap.width,
