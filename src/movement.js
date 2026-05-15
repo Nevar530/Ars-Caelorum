@@ -11,6 +11,7 @@ import {
 import { getUnitById } from "./mechs.js";
 import { getActiveBody } from "./actors/actorResolver.js";
 import { isEdgeMovementBlockedBetween } from "./structures/structureRules.js";
+import { isPropMovementBlockedAt } from "./props/propRules.js";
 import { canUnitOccupyCells } from "./scale/occupancy.js";
 import {
   getResolutionBoardSize,
@@ -145,6 +146,7 @@ function areOccupiedCellsStandable(state, unit) {
   for (const cell of occupiedCells) {
     const tile = getTile(state.map, cell.x, cell.y);
     if (isTileMovementBlocked(tile)) return false;
+    if (isPropMovementBlockedAt(state.map, cell.x, cell.y)) return false;
   }
 
   return true;

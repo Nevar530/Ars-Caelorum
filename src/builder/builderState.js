@@ -62,6 +62,7 @@ export function createBuilderState() {
       roomId: "room_01",
       roofSprite: "roof_metal_001.png",
       structureVisualHeightPx: 64,
+      subTab: "rooms",
       brushSize: 1,
       eyedropper: false,
       erase: false,
@@ -75,6 +76,20 @@ export function createBuilderState() {
       offsetY: 0,
       edgeEyedropper: false,
       edgeErase: false
+    },
+    propTool: {
+      spriteId: "prop_car_001.png",
+      footprintW: 2,
+      footprintH: 1,
+      height: 1,
+      visualHeight: 1,
+      blocksMovement: true,
+      scale: 1,
+      mirrorX: false,
+      offsetX: 0,
+      offsetY: 0,
+      layer: "samePlane",
+      erase: false
     },
     spawnTool: {
       mode: "spawn",

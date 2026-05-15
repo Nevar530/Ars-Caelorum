@@ -47,6 +47,7 @@ export function ensureStructureToolSettings(builderState, appState = null) {
   tool.roomId = sanitizeId(tool.roomId, "room_01");
   tool.roofSprite = sanitizeSprite(tool.roofSprite, getBuilderRoofSpriteOptions(appState, builderState)[0] ?? "roof_metal_001.png");
   tool.structureVisualHeightPx = clampWholeNumber(tool.structureVisualHeightPx, 64, 1, 512);
+  tool.subTab = normalizeStructureSubTab(tool.subTab);
   tool.brushSize = clampWholeNumber(tool.brushSize, 1, BRUSH_SIZE_MIN, BRUSH_SIZE_MAX);
   tool.eyedropper = Boolean(tool.eyedropper);
   tool.erase = Boolean(tool.erase);
@@ -120,6 +121,17 @@ export function updateStructureToolFromFields(builderState, root, appState = nul
   if (offsetY !== undefined) tool.offsetY = clampWholeNumber(offsetY, tool.offsetY ?? 0, -512, 512);
 
   return ensureStructureToolSettings(builderState, appState);
+}
+
+export function setStructureSubTab(builderState, subTab) {
+  const tool = ensureStructureToolSettings(builderState);
+  if (!tool) return null;
+  tool.subTab = normalizeStructureSubTab(subTab);
+  return tool;
+}
+
+export function getStructureSubTab(builderState) {
+  return normalizeStructureSubTab(builderState?.structureTool?.subTab);
 }
 
 export function resetStructureToolToDefaults(builderState, appState = null) {
@@ -449,6 +461,7 @@ function createDefaultStructureTool(appState, builderState) {
     structureId: "structure_01",
     roomId: "room_01",
     roofSprite: getBuilderRoofSpriteOptions(appState, builderState)[0] ?? "roof_metal_001.png",
+    subTab: "rooms",
     brushSize: 1,
     eyedropper: false,
     erase: false,
@@ -618,4 +631,10 @@ function normalizeEdgeType(value) {
 function normalizeWorldEdge(value) {
   const clean = String(value ?? "").trim().toLowerCase();
   return clean === "sw" || clean === "se" || clean === "ne" || clean === "nw" ? clean : null;
+}
+
+function normalizeStructureSubTab(value) {
+  const clean = String(value ?? "rooms").trim().toLowerCase();
+  if (clean === "edges" || clean === "props") return clean;
+  return "rooms";
 }

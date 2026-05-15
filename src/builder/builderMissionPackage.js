@@ -363,6 +363,7 @@ function resizeBuilderMap(map, width, height, defaults = {}) {
     map.startState.deploymentCells = cropCoordList(map.startState.deploymentCells, width, height);
   }
   map.structures = cropStructures(map.structures, width, height);
+  map.props = cropProps(map.props, width, height);
   map.objectives = cropZoneCollections(map.objectives, width, height);
   map.triggers = cropZoneCollections(map.triggers, width, height);
 
@@ -400,6 +401,15 @@ function cropStructures(structures, width, height) {
     cells: cropCoordList(structure?.cells, width, height),
     edges: cropCoordList(structure?.edges, width, height)
   })).filter((structure) => (Array.isArray(structure.cells) && structure.cells.length) || (Array.isArray(structure.edges) && structure.edges.length));
+}
+
+function cropProps(props, width, height) {
+  if (!Array.isArray(props)) return [];
+  return props.filter((prop) => {
+    const x = Number(prop?.x);
+    const y = Number(prop?.y);
+    return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < width && y < height;
+  });
 }
 
 function cropZoneCollections(list, width, height) {

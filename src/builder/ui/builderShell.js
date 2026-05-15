@@ -34,6 +34,12 @@ import {
   isStructureEraseModeActive,
   isStructureEyedropperActive
 } from "../builderStructures.js";
+import {
+  ensurePropToolSettings,
+  getBuilderPropSpriteOptions,
+  getPropSpritePreviewPath,
+  isPropEraseModeActive
+} from "../builderProps.js";
 import { getMapSummary } from "../builderAdapters.js";
 import { ensureSpawnToolSettings } from "../builderSpawns.js";
 import {
@@ -905,85 +911,102 @@ function renderTerrainInspectorTools(builderState, appState) {
 
 function renderStructureInspectorTools(builderState, appState) {
   const tool = ensureStructureToolSettings(builderState, appState) ?? {};
+  const propTool = ensurePropToolSettings(builderState, appState) ?? {};
   const editable = builderState.workspaceMode === "builder-map";
+  const subTab = tool.subTab ?? "rooms";
+  const tabBar = renderStructureSubTabs(subTab, editable);
+
+  if (subTab === "edges") {
+    return tabBar + renderStructureEdgesTools(builderState, appState, tool, editable);
+  }
+
+  if (subTab === "props") {
+    return tabBar + renderPropTools(builderState, appState, propTool, editable);
+  }
+
+  return tabBar + renderStructureRoomsTools(builderState, appState, tool, editable);
+}
+
+function renderStructureSubTabs(active, editable) {
+  const tabs = [
+    ["rooms", "Rooms"],
+    ["edges", "Edges"],
+    ["props", "Props"]
+  ];
+  return '<div class="builder-inspector-card builder-tool-card builder-tool-subtabs">' +
+    tabs.map(([id, label]) => {
+      const activeClass = active === id ? ' is-active' : '';
+      return '<button type="button" class="builder-tool-button' + activeClass + '" data-builder-action="structure-subtab:' + id + '"' + (editable ? '' : ' disabled') + '>' + label + '</button>';
+    }).join('') +
+    '</div>';
+}
+
+function renderStructureRoomsTools(builderState, appState, tool, editable) {
   const roofOptions = buildRoofSpriteOptions(appState, builderState, tool.roofSprite ?? "roof_metal_001.png");
   const brushSizeOptions = buildBrushSizeOptions(tool.brushSize ?? 1);
-  const edgeTypeOptions = buildStructureEdgeTypeOptions(tool.edgeType ?? "wall");
-  const edgeSpriteOptions = buildStructureEdgeSpriteOptions(appState, builderState, tool.edgeSpriteId ?? "wall_metal_001.png");
   const eyedropperActive = isStructureEyedropperActive(builderState) ? " is-active" : "";
   const eraseActive = isStructureEraseModeActive(builderState) ? " is-active" : "";
-  const edgeEyedropperActive = isStructureEdgeEyedropperActive(builderState) ? " is-active" : "";
-  const edgeEraseActive = isStructureEdgeEraseModeActive(builderState) ? " is-active" : "";
   const roofsVisible = areStructureRoofsVisible(builderState);
   const roofPreview = renderStructureSpritePreview(tool.roofSprite, "Roof Preview");
-  const edgePreview = renderStructureSpritePreview(tool.edgeSpriteId, "Edge Preview");
 
   return '<div class="builder-inspector-card builder-structure-tool-card builder-grid-card">' +
       '<div class="builder-field-label">Room / Roof Brush</div>' +
-      '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Structure ID</span>' +
-        '<input type="text" data-builder-field="structure-id" value="' + escapeHtml(tool.structureId ?? "structure_01") + '" spellcheck="false"' + (editable ? '' : ' disabled') + '>' +
-      '</label>' +
-      '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Room ID</span>' +
-        '<input type="text" data-builder-field="structure-room-id" value="' + escapeHtml(tool.roomId ?? "room_01") + '" spellcheck="false"' + (editable ? '' : ' disabled') + '>' +
-      '</label>' +
-      '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Roof Sprite</span>' +
-        '<select data-builder-field="structure-roof-sprite"' + (editable ? '' : ' disabled') + '>' + roofOptions + '</select>' +
-      '</label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Structure ID</span><input type="text" data-builder-field="structure-id" value="' + escapeHtml(tool.structureId ?? "structure_01") + '" spellcheck="false"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Room ID</span><input type="text" data-builder-field="structure-room-id" value="' + escapeHtml(tool.roomId ?? "room_01") + '" spellcheck="false"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Roof Sprite</span><select data-builder-field="structure-roof-sprite"' + (editable ? '' : ' disabled') + '>' + roofOptions + '</select></label>' +
       roofPreview +
-      '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Room Visual Height px</span>' +
-        '<input type="number" data-builder-field="structure-visual-height" value="' + escapeHtml(tool.structureVisualHeightPx ?? 64) + '" min="1" max="512" step="1"' + (editable ? '' : ' disabled') + '>' +
-      '</label>' +
-      '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Brush Size</span>' +
-        '<select data-builder-field="structure-brush-size"' + (editable ? '' : ' disabled') + '>' + brushSizeOptions + '</select>' +
-      '</label>' +
-      '<div class="builder-tool-row">' +
-        '<button type="button" class="builder-tool-button' + eyedropperActive + '" data-builder-action="structure-eyedropper"' + (editable ? '' : ' disabled') + '>Cell Eyedropper</button>' +
-        '<button type="button" class="builder-tool-button' + eraseActive + '" data-builder-action="structure-erase"' + (editable ? '' : ' disabled') + '>Erase Cells</button>' +
-      '</div>' +
-      '<div class="builder-tool-row">' +
-        '<button type="button" class="builder-tool-button" data-builder-action="reset-structure-brush"' + (editable ? '' : ' disabled') + '>Reset Brush</button>' +
-        '<button type="button" class="builder-tool-button' + (roofsVisible ? ' is-active' : '') + '" data-builder-action="toggle-structure-roofs">' + (roofsVisible ? 'Roofs Shown' : 'Roofs Hidden') + '</button>' +
-      '</div>' +
-      '<div class="builder-field-label builder-section-label">Wall / Door Edge Brush</div>' +
-      '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Edge Type</span>' +
-        '<select data-builder-field="structure-edge-type"' + (editable ? '' : ' disabled') + '>' + edgeTypeOptions + '</select>' +
-      '</label>' +
-      '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Wall / Door Art</span>' +
-        '<select data-builder-field="structure-edge-sprite"' + (editable ? '' : ' disabled') + '>' + edgeSpriteOptions + '</select>' +
-      '</label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Room Visual Height px</span><input type="number" data-builder-field="structure-visual-height" value="' + escapeHtml(tool.structureVisualHeightPx ?? 64) + '" min="1" max="512" step="1"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Brush Size</span><select data-builder-field="structure-brush-size"' + (editable ? '' : ' disabled') + '>' + brushSizeOptions + '</select></label>' +
+      '<div class="builder-tool-row"><button type="button" class="builder-tool-button' + eyedropperActive + '" data-builder-action="structure-eyedropper"' + (editable ? '' : ' disabled') + '>Cell Eyedropper</button><button type="button" class="builder-tool-button' + eraseActive + '" data-builder-action="structure-erase"' + (editable ? '' : ' disabled') + '>Erase Cells</button></div>' +
+      '<div class="builder-tool-row"><button type="button" class="builder-tool-button" data-builder-action="reset-structure-brush"' + (editable ? '' : ' disabled') + '>Reset Brush</button><button type="button" class="builder-tool-button' + (roofsVisible ? ' is-active' : '') + '" data-builder-action="toggle-structure-roofs">' + (roofsVisible ? 'Roofs Shown' : 'Roofs Hidden') + '</button></div>' +
+      '<div class="builder-inspector-note">Rooms define the room/cutaway footprint. Room Visual Height sets roof height and the default wall visual height.</div>' +
+    '</div>';
+}
+
+function renderStructureEdgesTools(builderState, appState, tool, editable) {
+  const edgeTypeOptions = buildStructureEdgeTypeOptions(tool.edgeType ?? "wall");
+  const edgeSpriteOptions = buildStructureEdgeSpriteOptions(appState, builderState, tool.edgeSpriteId ?? "wall_metal_001.png");
+  const edgeEyedropperActive = isStructureEdgeEyedropperActive(builderState) ? " is-active" : "";
+  const edgeEraseActive = isStructureEdgeEraseModeActive(builderState) ? " is-active" : "";
+  const edgePreview = renderStructureSpritePreview(tool.edgeSpriteId, "Edge Preview");
+
+  return '<div class="builder-inspector-card builder-structure-tool-card builder-grid-card">' +
+      '<div class="builder-field-label">Wall / Door Edge Brush</div>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Structure ID</span><input type="text" data-builder-field="structure-id" value="' + escapeHtml(tool.structureId ?? "structure_01") + '" spellcheck="false"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Edge Type</span><select data-builder-field="structure-edge-type"' + (editable ? '' : ' disabled') + '>' + edgeTypeOptions + '</select></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Wall / Door Art</span><select data-builder-field="structure-edge-sprite"' + (editable ? '' : ' disabled') + '>' + edgeSpriteOptions + '</select></label>' +
       edgePreview +
-      '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Edge Height / LOS</span>' +
-        '<input type="number" data-builder-field="structure-edge-height" value="' + escapeHtml(tool.edgeHeight ?? getStructureEdgeTypeDefaults(tool.edgeType).edgeHeight) + '" min="0" max="99" step="1"' + (editable ? '' : ' disabled') + '>' +
-      '</label>' +
-      '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Wall Visual Override px</span>' +
-        '<input type="number" data-builder-field="structure-edge-visual-height" value="' + escapeHtml(tool.visualHeightPx ?? getStructureEdgeTypeDefaults(tool.edgeType).visualHeightPx ?? 0) + '" min="0" max="512" step="1"' + (editable ? '' : ' disabled') + '>' +
-      '</label>' +
-      '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Offset X px</span>' +
-        '<input type="number" data-builder-field="structure-edge-offset-x" value="' + escapeHtml(tool.offsetX ?? 0) + '" min="-512" max="512" step="1"' + (editable ? '' : ' disabled') + '>' +
-      '</label>' +
-      '<label class="builder-form-field builder-form-field-compact">' +
-        '<span>Offset Y px</span>' +
-        '<input type="number" data-builder-field="structure-edge-offset-y" value="' + escapeHtml(tool.offsetY ?? 0) + '" min="-512" max="512" step="1"' + (editable ? '' : ' disabled') + '>' +
-      '</label>' +
-      '<label class="builder-form-field builder-form-field-compact builder-checkbox-field">' +
-        '<span>Mirror Art X</span>' +
-        '<input type="checkbox" data-builder-field="structure-edge-mirror-x"' + (tool.mirrorX ? ' checked' : '') + (editable ? '' : ' disabled') + '>' +
-      '</label>' +
-      '<div class="builder-tool-row">' +
-        '<button type="button" class="builder-tool-button' + edgeEyedropperActive + '" data-builder-action="structure-edge-eyedropper"' + (editable ? '' : ' disabled') + '>Edge Eyedropper</button>' +
-        '<button type="button" class="builder-tool-button' + edgeEraseActive + '" data-builder-action="structure-edge-erase"' + (editable ? '' : ' disabled') + '>Erase Edge</button>' +
-      '</div>' +
-      '<div class="builder-inspector-note">Click to paint room/roof cells. Shift-hover shows the edge target; Shift-click paints wall/door art. Room Visual Height sets the roof and default wall height. Wall Visual Override uses 0 for room default. Edge Height / LOS is gameplay truth.</div>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Edge Height / LOS</span><input type="number" data-builder-field="structure-edge-height" value="' + escapeHtml(tool.edgeHeight ?? getStructureEdgeTypeDefaults(tool.edgeType).edgeHeight) + '" min="0" max="99" step="1"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Wall Visual Override px</span><input type="number" data-builder-field="structure-edge-visual-height" value="' + escapeHtml(tool.visualHeightPx ?? getStructureEdgeTypeDefaults(tool.edgeType).visualHeightPx ?? 0) + '" min="0" max="512" step="1"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Offset X px</span><input type="number" data-builder-field="structure-edge-offset-x" value="' + escapeHtml(tool.offsetX ?? 0) + '" min="-512" max="512" step="1"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Offset Y px</span><input type="number" data-builder-field="structure-edge-offset-y" value="' + escapeHtml(tool.offsetY ?? 0) + '" min="-512" max="512" step="1"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact builder-checkbox-field"><span>Mirror Art X</span><input type="checkbox" data-builder-field="structure-edge-mirror-x"' + (tool.mirrorX ? ' checked' : '') + (editable ? '' : ' disabled') + '></label>' +
+      '<div class="builder-tool-row"><button type="button" class="builder-tool-button' + edgeEyedropperActive + '" data-builder-action="structure-edge-eyedropper"' + (editable ? '' : ' disabled') + '>Edge Eyedropper</button><button type="button" class="builder-tool-button' + edgeEraseActive + '" data-builder-action="structure-edge-erase"' + (editable ? '' : ' disabled') + '>Erase Edge</button></div>' +
+      '<div class="builder-inspector-note">Edges tab paints walls/doors directly. Hover highlights the edge; click paints it. Edge Height / LOS is gameplay truth.</div>' +
+    '</div>';
+}
+
+function renderPropTools(builderState, appState, tool, editable) {
+  const propOptions = buildPropSpriteOptions(appState, builderState, tool.spriteId ?? "prop_car_001.png");
+  const propPreview = renderPropSpritePreview(tool.spriteId, "Prop Preview");
+  const eraseActive = isPropEraseModeActive(builderState) ? " is-active" : "";
+
+  return '<div class="builder-inspector-card builder-structure-tool-card builder-grid-card">' +
+      '<div class="builder-field-label">Prop Brush</div>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Prop Art</span><select data-builder-field="prop-sprite"' + (editable ? '' : ' disabled') + '>' + propOptions + '</select></label>' +
+      propPreview +
+      '<label class="builder-form-field builder-form-field-compact"><span>Footprint W</span><input type="number" data-builder-field="prop-footprint-w" value="' + escapeHtml(tool.footprintW ?? 1) + '" min="1" max="12" step="1"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Footprint H</span><input type="number" data-builder-field="prop-footprint-h" value="' + escapeHtml(tool.footprintH ?? 1) + '" min="1" max="12" step="1"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Height / LOS</span><input type="number" data-builder-field="prop-height" value="' + escapeHtml(tool.height ?? 1) + '" min="0" max="99" step="1"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Visual Height</span><input type="number" data-builder-field="prop-visual-height" value="' + escapeHtml(tool.visualHeight ?? tool.height ?? 1) + '" min="0" max="99" step="1"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Scale</span><input type="number" data-builder-field="prop-scale" value="' + escapeHtml(tool.scale ?? 1) + '" min="0.1" max="8" step="0.1"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Layer</span><select data-builder-field="prop-layer"' + (editable ? '' : ' disabled') + '>' + buildSimpleOptions(["belowUnits", "samePlane", "aboveUnits", "roofOverlay"], tool.layer ?? "samePlane") + '</select></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Offset X px</span><input type="number" data-builder-field="prop-offset-x" value="' + escapeHtml(tool.offsetX ?? 0) + '" min="-2048" max="2048" step="1"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Offset Y px</span><input type="number" data-builder-field="prop-offset-y" value="' + escapeHtml(tool.offsetY ?? 0) + '" min="-2048" max="2048" step="1"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact builder-checkbox-field"><span>Blocks Movement</span><input type="checkbox" data-builder-field="prop-blocks-movement"' + (tool.blocksMovement !== false ? ' checked' : '') + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact builder-checkbox-field"><span>Mirror Art X</span><input type="checkbox" data-builder-field="prop-mirror-x"' + (tool.mirrorX ? ' checked' : '') + (editable ? '' : ' disabled') + '></label>' +
+      '<div class="builder-tool-row"><button type="button" class="builder-tool-button' + eraseActive + '" data-builder-action="prop-erase"' + (editable ? '' : ' disabled') + '>Erase Props</button><button type="button" class="builder-tool-button" data-builder-action="reset-prop-brush"' + (editable ? '' : ' disabled') + '>Reset Prop</button></div>' +
+      '<div class="builder-inspector-note">Props are footprint-based objects. Height / LOS controls sight blocking. Blocks Movement controls whether the footprint is walkable.</div>' +
     '</div>';
 }
 
@@ -1021,6 +1044,24 @@ function renderStructureSpritePreview(spriteId, label) {
   }
 
   const src = escapeHtml(getStructureSpritePreviewPath(clean));
+  return '<div class="builder-structure-art-preview"><span>' + escapeHtml(label) + '</span><img src="' + src + '" alt="' + escapeHtml(clean) + '"><strong>' + escapeHtml(clean) + '</strong></div>';
+}
+
+function buildPropSpriteOptions(appState, builderState, selectedSprite = "prop_car_001.png") {
+  const options = getBuilderPropSpriteOptions(appState, builderState);
+  const cleanSelected = String(selectedSprite ?? "").trim();
+  const values = cleanSelected && !options.includes(cleanSelected) ? [cleanSelected, ...options] : options;
+  return values.map((sprite) => {
+    const value = escapeHtml(sprite);
+    const selected = sprite === cleanSelected ? " selected" : "";
+    return '<option value="' + value + '"' + selected + '>' + value + '</option>';
+  }).join("");
+}
+
+function renderPropSpritePreview(spriteId, label) {
+  const clean = String(spriteId ?? "").trim();
+  if (!clean) return '<div class="builder-structure-art-preview is-empty"><span>' + escapeHtml(label) + '</span><strong>No sprite</strong></div>';
+  const src = escapeHtml(getPropSpritePreviewPath(clean));
   return '<div class="builder-structure-art-preview"><span>' + escapeHtml(label) + '</span><img src="' + src + '" alt="' + escapeHtml(clean) + '"><strong>' + escapeHtml(clean) + '</strong></div>';
 }
 

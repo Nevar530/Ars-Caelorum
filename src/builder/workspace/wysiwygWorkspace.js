@@ -31,6 +31,7 @@ import {
   formatDeploymentCell,
   formatEdges,
   formatStructureCells,
+  formatProps,
   getDeploymentCellTruth,
   getMapSummary,
   getSpawnTruth,
@@ -183,6 +184,7 @@ function preservePreviewMapMetadata(previewState, sourceState) {
     "spawns",
     "startState",
     "structures",
+    "props",
     "objectives",
     "defaults"
   ];
@@ -682,11 +684,12 @@ function renderWorkspaceReadout({ appState, builderState, workspaceRefs }) {
       <span>Map ID</span><strong>${escapeHtml(summary.id)}</strong>
       <span>Size</span><strong>${summary.width} × ${summary.height}</strong>
       <span>Structures</span><strong>${summary.structureCount}</strong>
+      <span>Props</span><strong>${summary.propCount ?? 0}</strong>
       <span>Deployment Cells</span><strong>${summary.deploymentCellCount}</strong>
       <span>Spawns</span><strong>${summary.spawnCount}</strong>
       <span>Selected</span><strong>${escapeHtml(selected?.label ?? "Map")}</strong>
     </div>
-    <div class="builder-readout-help">Click a tile to inspect or paint with the active tab. Shift-click selects/paints the nearest structure edge.</div>
+    <div class="builder-readout-help">Click a tile to inspect or paint with the active tab. In Structures > Edges, hover highlights the edge and click paints it.</div>
   `;
 }
 
@@ -731,6 +734,10 @@ export function buildTileInspectorHtml(appState, selection) {
     <div class="builder-inspector-card">
       <div class="builder-field-label">Authored Edges</div>
       <div class="builder-field-value">${truth.authoredEdges.length ? escapeHtml(formatEdges(truth.authoredEdges)) : "None"}</div>
+    </div>
+    <div class="builder-inspector-card">
+      <div class="builder-field-label">Props</div>
+      <div class="builder-field-value">${truth.props.length ? escapeHtml(formatProps(truth.props)) : "None"}</div>
     </div>
     <div class="builder-inspector-card">
       <div class="builder-field-label">Spawn</div>

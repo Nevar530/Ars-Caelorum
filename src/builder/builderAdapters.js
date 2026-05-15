@@ -17,6 +17,7 @@ import {
   getStructuresAtTile,
   makeCellKey
 } from "../structures/structureRules.js";
+import { getMapProps, getPropsAtTile, getPropFootprintCells, normalizeProp } from "../props/propRules.js";
 
 export function getRuntimeMap(appState) {
   return appState?.map ?? null;
@@ -38,6 +39,7 @@ export function getMapSummary(appState) {
     width: getMapWidth(map),
     height: getMapHeight(map),
     structureCount: getMapStructures(map).length,
+    propCount: getMapProps(map).length,
     deploymentCellCount: getDeploymentCellTruth(map).length,
     spawnCount: getSpawnTruth(map).length
   };
@@ -60,6 +62,7 @@ export function getTileTruth(appState, x, y) {
     movementClass: tile.movementClass ?? "clear",
     structureCells: getStructureCellsAt(map, tileX, tileY),
     authoredEdges: getAuthoredEdgesAt(map, tileX, tileY),
+    props: getPropTruthAt(map, tileX, tileY),
     spawn: getSpawnAt(map, tileX, tileY),
     deploymentCell: getDeploymentCellAt(map, tileX, tileY),
     unit: getUnitAt(appState, tileX, tileY)
@@ -97,6 +100,20 @@ export function getStructureEdgeTruth(map) {
     const id = structure?.id ?? "structure";
     return getStructureEdgeParts(structure).map((edge) => ({ ...edge, structureId: id }));
   });
+}
+
+export function getPropTruthAt(map, x, y) {
+  return getPropsAtTile(map, x, y).map((prop) => ({
+    ...prop,
+    cells: getPropFootprintCells(prop)
+  }));
+}
+
+export function formatProps(props) {
+  return props.map((prop) => {
+    const move = prop.blocksMovement ? "blocks move" : "walkable";
+    return `${prop.id ?? "prop"} ${prop.footprintW ?? 1}x${prop.footprintH ?? 1} h${prop.height ?? 0} / ${move}`;
+  }).join("; ");
 }
 
 export function getSpawnAt(map, x, y) {

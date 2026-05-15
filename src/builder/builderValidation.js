@@ -51,6 +51,7 @@ export function validateBuilderPackage(builderState, appState = null) {
     validateDeployments(result, map, appState, objectives);
     validateDeploymentCells(result, map, width, height);
     validateStructures(result, map, width, height);
+    validateProps(result, map, width, height);
 
     if (!objectives.length) {
       addError(result, "MAP_NO_OBJECTIVES", `${mapLabel} has no authored objectives.`);
@@ -417,6 +418,40 @@ function validateStructures(result, map, width, height) {
     }
   }
 }
+
+function validateProps(result, map, width, height) {
+  const props = Array.isArray(map?.props) ? map.props : [];
+  const ids = new Set();
+
+  for (const prop of props) {
+    const id = cleanString(prop?.id) || "unnamed-prop";
+    const x = Number(prop?.x);
+    const y = Number(prop?.y);
+    const footprintW = Number(prop?.footprintW ?? prop?.w ?? prop?.width ?? 1);
+    const footprintH = Number(prop?.footprintH ?? prop?.h ?? prop?.heightTiles ?? 1);
+    const height = Number(prop?.height ?? prop?.losHeight ?? prop?.heightLevels ?? 0);
+    const visualHeight = Number(prop?.visualHeight ?? prop?.visualHeightLevels ?? height);
+    const scale = Number(prop?.scale ?? 1);
+    const layer = cleanString(prop?.layer || "samePlane");
+
+    if (ids.has(id)) addWarning(result, "PROP_DUPLICATE_ID", `Duplicate prop id ${id}.`);
+    ids.add(id);
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
+      addError(result, "PROP_OUT_OF_BOUNDS", `${id} starts outside map bounds at ${x}, ${y}.`);
+    }
+    if (!Number.isInteger(footprintW) || footprintW < 1) addError(result, "PROP_BAD_FOOTPRINT", `${id} has invalid footprintW.`);
+    if (!Number.isInteger(footprintH) || footprintH < 1) addError(result, "PROP_BAD_FOOTPRINT", `${id} has invalid footprintH.`);
+    if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(footprintW) && Number.isFinite(footprintH) && (x + footprintW > width || y + footprintH > height)) {
+      addWarning(result, "PROP_FOOTPRINT_CROPS", `${id} footprint extends beyond map bounds.`);
+    }
+    if (!Number.isFinite(height) || height < 0) addError(result, "PROP_BAD_HEIGHT", `${id} has invalid height.`);
+    if (!Number.isFinite(visualHeight) || visualHeight < 0) addError(result, "PROP_BAD_VISUAL_HEIGHT", `${id} has invalid visualHeight.`);
+    if (!Number.isFinite(scale) || scale <= 0) addError(result, "PROP_BAD_SCALE", `${id} has invalid scale.`);
+    if (!["belowUnits", "samePlane", "aboveUnits", "roofOverlay"].includes(layer)) addWarning(result, "PROP_BAD_LAYER", `${id} has unknown layer ${layer}.`);
+    if (!cleanString(prop?.spriteId ?? prop?.sprite ?? prop?.image)) addWarning(result, "PROP_NO_SPRITE", `${id} has no spriteId.`);
+  }
+}
+
 
 function validateMissionShell(result, map, mission) {
   if (!mission?.id) addWarning(result, "MISSION_ID_DEFAULT", "Mission id is currently generated from the map id. Mission Package authoring should set it later.");

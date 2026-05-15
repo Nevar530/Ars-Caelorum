@@ -60,6 +60,7 @@ export function createBlankBuilderMap(options = {}) {
     spawns: { player: [], enemy: [], neutral: [] },
     startState: { deployments: [], deploymentCells: [] },
     structures: [],
+    props: [],
     objectives: [],
     triggers: [],
     defaults: {

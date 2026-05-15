@@ -42,9 +42,17 @@ import {
   setStructureEdgeEyedropper,
   setStructureEraseMode,
   setStructureEyedropper,
+  setStructureSubTab,
   toggleStructureRoofVisibility,
   updateStructureToolFromFields
 } from "./builderStructures.js";
+import {
+  applyPropToolAtTile,
+  isPropEraseModeActive,
+  resetPropToolToDefaults,
+  setPropEraseMode,
+  updatePropToolFromFields
+} from "./builderProps.js";
 import {
   createEdgeSelection,
   createTileSelection,
@@ -255,8 +263,10 @@ class MissionBuilder {
 
     const result = this.isStructureAuthoringActive() && selected?.type === "edge"
       ? this.applyStructureEdgeActionAtEdge(selected.x, selected.y, selected.edge)
-      : this.isStructureAuthoringActive()
-        ? this.applyStructureActionAtTile(target.x, target.y)
+      : this.isStructureAuthoringActive() && this.builderState.structureTool?.subTab === "props"
+        ? this.applyPropActionAtTile(target.x, target.y)
+        : this.isStructureAuthoringActive()
+          ? this.applyStructureActionAtTile(target.x, target.y)
         : this.isSpawnAuthoringActive()
           ? this.applySpawnActionAtTile(target.x, target.y)
           : this.isObjectiveAuthoringActive()
@@ -337,6 +347,7 @@ class MissionBuilder {
 
     if (this.builderState.activeTab === "structures") {
       updateStructureToolFromFields(this.builderState, this.refs.root, this.appState, { changedField });
+      updatePropToolFromFields(this.builderState, this.refs.root, this.appState);
       this.render();
       return;
     }
@@ -388,7 +399,8 @@ class MissionBuilder {
     if (!this.builderState.isOpen || !isBuilderWorkspaceMap(this.builderState)) return;
 
     const workspaceAppState = getBuilderWorkspaceAppState(this.builderState, this.appState);
-    const picked = this.isStructureAuthoringActive() && event.shiftKey
+    const structureEdgePicking = this.isStructureAuthoringActive() && (event.shiftKey || this.builderState.structureTool?.subTab === "edges");
+    const picked = structureEdgePicking
       ? pickWorkspaceEdgeFromEvent({
           event,
           appState: workspaceAppState,
@@ -444,7 +456,8 @@ class MissionBuilder {
     }
 
     const workspaceAppState = getBuilderWorkspaceAppState(this.builderState, this.appState);
-    const picked = event.shiftKey
+    const structureEdgePicking = this.isStructureAuthoringActive() && (event.shiftKey || this.builderState.structureTool?.subTab === "edges");
+    const picked = structureEdgePicking
       ? pickWorkspaceEdgeFromEvent({ event, appState: workspaceAppState, board: this.refs.board })
       : pickWorkspaceTileFromEvent({ event, appState: workspaceAppState, board: this.refs.board });
 
@@ -454,7 +467,7 @@ class MissionBuilder {
       return;
     }
 
-    if (event.shiftKey) {
+    if (structureEdgePicking) {
       setBuilderSelection(this.builderState, createEdgeSelection(workspaceAppState, picked.x, picked.y, picked.edge));
       if (this.isStructureAuthoringActive()) {
         const result = this.applyStructureEdgeActionAtEdge(picked.x, picked.y, picked.edge);
@@ -470,6 +483,9 @@ class MissionBuilder {
 
     if (this.isTerrainAuthoringActive()) {
       const result = this.applyTerrainActionAtTile(picked.x, picked.y);
+      pushBuilderLog(this.builderState, result.message);
+    } else if (this.isStructureAuthoringActive() && this.builderState.structureTool?.subTab === "props") {
+      const result = this.applyPropActionAtTile(picked.x, picked.y);
       pushBuilderLog(this.builderState, result.message);
     } else if (this.isStructureAuthoringActive()) {
       const result = this.applyStructureActionAtTile(picked.x, picked.y);
@@ -515,6 +531,11 @@ class MissionBuilder {
     return isTerrainEyedropperActive(this.builderState)
       ? sampleTerrainToolAtTile(this.builderState, this.appState, x, y)
       : applyTerrainToolAtTile(this.builderState, this.appState, x, y);
+  }
+
+  applyPropActionAtTile(x, y) {
+    updatePropToolFromFields(this.builderState, this.refs.root, this.appState);
+    return applyPropToolAtTile(this.builderState, this.appState, x, y);
   }
 
   applyStructureActionAtTile(x, y) {
@@ -810,6 +831,31 @@ class MissionBuilder {
       return;
     }
 
+    if (action && typeof action === "string" && action.startsWith("structure-subtab:")) {
+      updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
+      updatePropToolFromFields(this.builderState, this.refs.root, this.appState);
+      const subTab = action.split(":")[1];
+      const tool = setStructureSubTab(this.builderState, subTab);
+      pushBuilderLog(this.builderState, `Structures set to ${tool?.subTab ?? "rooms"}.`);
+      this.render();
+      return;
+    }
+
+    if (action === "prop-erase") {
+      updatePropToolFromFields(this.builderState, this.refs.root, this.appState);
+      const tool = setPropEraseMode(this.builderState, !isPropEraseModeActive(this.builderState));
+      pushBuilderLog(this.builderState, tool?.erase ? "Prop erase armed. Click a prop footprint to remove it." : "Prop erase cancelled.");
+      this.render();
+      return;
+    }
+
+    if (action === "reset-prop-brush") {
+      resetPropToolToDefaults(this.builderState, this.appState);
+      pushBuilderLog(this.builderState, "Prop brush reset to defaults.");
+      this.render();
+      return;
+    }
+
     if (action === "structure-eyedropper") {
       updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
       const tool = setStructureEyedropper(this.builderState, !isStructureEyedropperActive(this.builderState));
@@ -830,7 +876,7 @@ class MissionBuilder {
     if (action === "structure-edge-eyedropper") {
       updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
       const tool = setStructureEdgeEyedropper(this.builderState, !isStructureEdgeEyedropperActive(this.builderState));
-      pushBuilderLog(this.builderState, tool?.edgeEyedropper ? "Structure edge eyedropper armed. Shift-click an edge to sample edge brush settings." : "Structure edge eyedropper cancelled.");
+      pushBuilderLog(this.builderState, tool?.edgeEyedropper ? "Structure edge eyedropper armed. Click an edge to sample edge brush settings." : "Structure edge eyedropper cancelled.");
       this.render();
       return;
     }
@@ -839,7 +885,7 @@ class MissionBuilder {
       updateStructureToolFromFields(this.builderState, this.refs.root, this.appState);
       const nextErase = !this.builderState.structureTool?.edgeErase;
       const tool = setStructureEdgeEraseMode(this.builderState, nextErase);
-      pushBuilderLog(this.builderState, tool?.edgeErase ? "Structure edge erase armed. Shift-click edges to remove them." : "Structure edge erase cancelled.");
+      pushBuilderLog(this.builderState, tool?.edgeErase ? "Structure edge erase armed. Click edges to remove them." : "Structure edge erase cancelled.");
       this.render();
       return;
     }

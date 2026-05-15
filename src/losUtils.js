@@ -2,6 +2,7 @@
 
 import { getTile, getTileEffectiveElevation } from "./map.js";
 import { getEdgeLosBlockBetween } from "./structures/structureRules.js";
+import { getPropLosHeightAt } from "./props/propRules.js";
 
 const HEIGHT_PROFILES = {
   mech: {
@@ -97,6 +98,22 @@ export function traceRay(z1, z2, lineTiles, state) {
         rayHeight,
         stopHeight: rayHeight
       };
+    }
+
+    const propHeight = getPropLosHeightAt(state.map, pos.x, pos.y);
+    if (propHeight > 0) {
+      const propStopHeight = terrainHeight + propHeight;
+      if (propStopHeight >= rayHeight) {
+        return {
+          blocked: true,
+          blockingTile: pos,
+          reason: "prop_blocked",
+          terrainHeight: propStopHeight,
+          propHeight,
+          rayHeight,
+          stopHeight: propStopHeight
+        };
+      }
     }
   }
 

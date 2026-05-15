@@ -114,6 +114,7 @@ export function buildMapDefinitionForExport(map) {
     spawns: cloneJson(map?.spawns ?? { player: [], enemy: [], neutral: [] }),
     startState: normalizeStartState(map?.startState),
     structures: sanitizeStructuresForExport(map?.structures ?? []),
+    props: sanitizePropsForExport(map?.props ?? []),
     tiles
   };
 }
@@ -399,6 +400,36 @@ function sanitizeStructuresForExport(structures) {
       });
     }
 
+    return clean;
+  });
+}
+
+
+function sanitizePropsForExport(props) {
+  if (!Array.isArray(props)) return [];
+
+  return props.map((prop) => {
+    const clean = cloneJson(prop ?? {});
+    clean.id = sanitizeId(clean.id ?? `prop_${clean.x ?? 0}_${clean.y ?? 0}`, "prop_0_0");
+    clean.x = Number(clean.x ?? 0);
+    clean.y = Number(clean.y ?? 0);
+    clean.footprintW = Math.max(1, Math.round(Number(clean.footprintW ?? clean.w ?? clean.width ?? 1)));
+    clean.footprintH = Math.max(1, Math.round(Number(clean.footprintH ?? clean.h ?? clean.heightTiles ?? 1)));
+    clean.height = Math.max(0, Number(clean.height ?? clean.losHeight ?? clean.heightLevels ?? 0));
+    clean.visualHeight = Math.max(0, Number(clean.visualHeight ?? clean.visualHeightLevels ?? clean.height ?? 0));
+    clean.blocksMovement = clean.blocksMovement !== false;
+    clean.scale = Math.max(0.1, Number(clean.scale ?? 1));
+    clean.spriteId = String(clean.spriteId ?? clean.sprite ?? clean.image ?? "prop_car_001.png").trim() || "prop_car_001.png";
+    if (clean.mirrorX !== true) delete clean.mirrorX;
+    clean.offsetX = Number(clean.offsetX ?? 0) || 0;
+    clean.offsetY = Number(clean.offsetY ?? 0) || 0;
+    if (clean.offsetX === 0) delete clean.offsetX;
+    if (clean.offsetY === 0) delete clean.offsetY;
+    const layer = String(clean.layer ?? "samePlane").trim();
+    clean.layer = ["belowUnits", "samePlane", "aboveUnits", "roofOverlay"].includes(layer) ? layer : "samePlane";
+    delete clean.sprite;
+    delete clean.image;
+    delete clean.cover;
     return clean;
   });
 }

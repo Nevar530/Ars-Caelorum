@@ -11,6 +11,7 @@ import {
 import { renderTerrainTile } from "./renderTerrain.js";
 import { getUnitRenderSceneItems } from "./renderUnits.js";
 import { getStructureSceneItems } from "./renderStructures.js";
+import { getPropSceneItems } from "./renderProps.js";
 import { getMapEdgeSceneItems } from "./renderMapEdges.js";
 import { projectScene } from "./projection.js";
 import { getTerrainDepth, getUnitRenderContext, UNIT_SORT_EPSILON } from "./renderSceneMath.js";
@@ -117,7 +118,7 @@ export function buildTerrainSceneItems(state, reachableMap = new Map(), tileOver
 }
 
 export function buildStructureSceneItems(state) {
-  return { structureSceneItems: getStructureSceneItems(state) };
+  return { structureSceneItems: [...getStructureSceneItems(state), ...getPropSceneItems(state)] };
 }
 
 export function buildMapEdgeSceneItems(state) {
