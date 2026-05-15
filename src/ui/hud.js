@@ -434,16 +434,16 @@ function renderTacticalScanSvg(state) {
     : { x: Number(state.focus?.x ?? 0), y: Number(state.focus?.y ?? 0) };
 
   const rows = Math.max(1, Math.min(6, mapHeight || 6));
-  const naturalCols = 18;
-  const cols = Math.max(1, Math.min(naturalCols, mapWidth || naturalCols));
-  const cellW = width / cols;
-  const cellH = height / rows;
-  const markerSize = Math.min(cellW, cellH);
+  const cell = height / rows;
+  const cols = Math.max(1, Math.ceil(width / cell));
+  const contentWidth = cols * cell;
+  const offsetX = (width - contentWidth) / 2;
+  const markerSize = cell;
 
   const startX = clampScanStart(Math.round(focus.x - (cols / 2)), cols, mapWidth);
   const startY = clampScanStart(Math.round(focus.y - (rows / 2)), rows, mapHeight);
-  const px = (x) => (x - startX) * cellW;
-  const py = (y) => (y - startY) * cellH;
+  const px = (x) => offsetX + ((x - startX) * cell);
+  const py = (y) => (y - startY) * cell;
 
   const pieces = [];
 
@@ -456,15 +456,15 @@ function renderTacticalScanSvg(state) {
       const tile = getTile(state.map, x, y);
       const elevation = getTileRenderElevation(tile) ?? tile?.elevation ?? 0;
       const terrainClass = `hud-scan-cell--${tileTypeFromElevation(elevation)}`;
-      pieces.push(`<rect x="${fmt(px(x))}" y="${fmt(py(y))}" width="${fmt(cellW)}" height="${fmt(cellH)}" class="hud-scan-cell ${terrainClass}"/>`);
+      pieces.push(`<rect x="${fmt(px(x))}" y="${fmt(py(y))}" width="${fmt(cell)}" height="${fmt(cell)}" class="hud-scan-cell ${terrainClass}"/>`);
     }
   }
 
-  pieces.push(renderScanRooms(state, startX, startY, cols, rows, cellW, cellH, px, py));
-  pieces.push(renderScanEdges(state, startX, startY, cols, rows, cellW, cellH, px, py));
-  pieces.push(renderScanProps(state, startX, startY, cols, rows, cellW, cellH, px, py));
-  pieces.push(renderScanUnits(state, startX, startY, cols, rows, cellW, cellH, markerSize, px, py));
-  pieces.push(renderScanFocus(state, startX, startY, cols, rows, cellW, cellH, px, py));
+  pieces.push(renderScanRooms(state, startX, startY, cols, rows, cell, cell, px, py));
+  pieces.push(renderScanEdges(state, startX, startY, cols, rows, cell, cell, px, py));
+  pieces.push(renderScanProps(state, startX, startY, cols, rows, cell, cell, px, py));
+  pieces.push(renderScanUnits(state, startX, startY, cols, rows, cell, cell, markerSize, px, py));
+  pieces.push(renderScanFocus(state, startX, startY, cols, rows, cell, cell, px, py));
 
   pieces.push(`</svg>`);
   return pieces.join("");
