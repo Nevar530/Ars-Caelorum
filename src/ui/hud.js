@@ -1,13 +1,14 @@
 // src/ui/hud.js
 
-import { getTile, tileTypeFromElevation } from "../map.js";
+import { getMapHeight, getMapWidth, getTile, getTileRenderElevation, tileTypeFromElevation } from "../map.js";
 import { getUnitAt, getUnitById } from "../mechs.js";
 import { getSelectedAbilityMenuItems, getSelectedAttackMenuItems, getSelectedItemMenuItems, isCommandMenuItemDisabled } from "../action.js";
-import { getLineOfSightResult } from "../los.js";
 import { getActiveActor, getActiveBody, getEmbarkedPilotForMech } from "../actors/actorResolver.js";
 import { getDeploymentAvailableRoster, getDeploymentPlacedUnitAt, getDeploymentPlacementCount, getDeploymentReady, isDeploymentActive, isDeploymentMenuFocused } from "../deployment/deploymentState.js";
 import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
 import { isStoryMode } from "../mode/mapMode.js";
+import { getMapStructures, getStructureEdgeParts, getStructureCells, normalizeStructureForMap, STRUCTURE_EDGE_TYPES } from "../structures/structureRules.js";
+import { getMapProps, getPropFootprintCells, normalizeProp } from "../props/propRules.js";
 
 /* =========================
    INPUT
@@ -121,35 +122,38 @@ function renderActivePanel(state) {
   ];
 
   return `
-    <div class="hud-unit-readout">
-      <div class="hud-unit-topline">
-        <div class="hud-unit-titleblock">
-          <div class="hud-card-title">${escapeHtml(role)}</div>
-          <div class="hud-unit-name-row">
-            <div class="hud-unit-name-stack">
-              <div class="hud-unit-name">${escapeHtml(activeBody.name)}</div>
-              <div class="hud-subline">${escapeHtml(sublineParts.join(" · "))}</div>
-            </div>
-            <div class="hud-active-vitals">
-              ${vitalBar("SHD", activeBody.shield, activeBody.maxShield, "shield")}
-              ${vitalBar("CORE", activeBody.core, activeBody.maxCore, "core")}
+    <div class="hud-unit-readout hud-readout-with-portrait">
+      ${renderPilotPortrait(pilot ?? activeBody, "Active pilot portrait")}
+      <div class="hud-readout-main">
+        <div class="hud-unit-topline">
+          <div class="hud-unit-titleblock">
+            <div class="hud-card-title">${escapeHtml(role)}</div>
+            <div class="hud-unit-name-row">
+              <div class="hud-unit-name-stack">
+                <div class="hud-unit-name">${escapeHtml(activeBody.name)}</div>
+                <div class="hud-subline">${escapeHtml(sublineParts.join(" · "))}</div>
+              </div>
+              <div class="hud-active-vitals">
+                ${vitalBar("SHD", activeBody.shield, activeBody.maxShield, "shield")}
+                ${vitalBar("CORE", activeBody.core, activeBody.maxCore, "core")}
+              </div>
             </div>
           </div>
+          <div class="hud-tag">ACTIVE</div>
         </div>
-        <div class="hud-tag">ACTIVE</div>
-      </div>
 
-      <div class="hud-stat-strip">
-        ${stats.map(([label, value]) => compactStat(label, value)).join("")}
-      </div>
-
-      ${mech && pilot ? `
-        <div class="hud-embarked-strip ${disabledMech ? "is-warning" : ""}">
-          <div class="hud-embarked-name">Pilot: ${escapeHtml(pilot.name)}</div>
-          ${vitalBar("P-SHD", pilot.shield, pilot.maxShield, "shield")}
-          ${vitalBar("P-CORE", pilot.core, pilot.maxCore, "core")}
+        <div class="hud-stat-strip">
+          ${stats.map(([label, value]) => compactStat(label, value)).join("")}
         </div>
-      ` : ""}
+
+        ${mech && pilot ? `
+          <div class="hud-embarked-strip ${disabledMech ? "is-warning" : ""}">
+            <div class="hud-embarked-name">Pilot: ${escapeHtml(pilot.name)}</div>
+            ${vitalBar("P-SHD", pilot.shield, pilot.maxShield, "shield")}
+            ${vitalBar("P-CORE", pilot.core, pilot.maxCore, "core")}
+          </div>
+        ` : ""}
+      </div>
     </div>
   `;
 }
@@ -318,7 +322,6 @@ function renderContextPanel(state) {
     return renderDeploymentPanel(state);
   }
 
-  const tile = getTile(state.map, state.focus.x, state.focus.y);
   const focusedUnit = getUnitAt(state.units, state.focus.x, state.focus.y);
   const activeBody = getActiveBody(state);
 
@@ -337,68 +340,258 @@ function renderContextPanel(state) {
       ["STAT", focusedUnit.status ?? "-"]
     ];
 
+    const portraitPilot = targetPilot ?? (focusedUnit.unitType === "pilot" ? focusedUnit : null);
+
     return `
-      <div class="hud-target-readout">
-        <div class="hud-target-topline">
-          <div class="hud-card-title">${escapeHtml(role)}</div>
-          <div class="hud-target-name-row">
-            <div class="hud-unit-name-stack">
-              <div class="hud-unit-name">${escapeHtml(focusedUnit.name)}</div>
-              <div class="hud-subline">${escapeHtml(focusedUnit.team ?? "")}</div>
-            </div>
-            <div class="hud-active-vitals">
-              ${vitalBar("SHD", focusedUnit.shield, focusedUnit.maxShield, "shield")}
-              ${vitalBar("CORE", focusedUnit.core, focusedUnit.maxCore, "core")}
+      <div class="hud-target-readout hud-readout-with-portrait">
+        ${renderPilotPortrait(portraitPilot, "Target pilot portrait")}
+        <div class="hud-readout-main">
+          <div class="hud-target-topline">
+            <div class="hud-unit-titleblock">
+              <div class="hud-card-title">${escapeHtml(role)}</div>
+              <div class="hud-target-name-row">
+                <div class="hud-unit-name-stack">
+                  <div class="hud-unit-name">${escapeHtml(focusedUnit.name)}</div>
+                  <div class="hud-subline">${escapeHtml(focusedUnit.team ?? "")}</div>
+                </div>
+                <div class="hud-active-vitals">
+                  ${vitalBar("SHD", focusedUnit.shield, focusedUnit.maxShield, "shield")}
+                  ${vitalBar("CORE", focusedUnit.core, focusedUnit.maxCore, "core")}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="hud-stat-strip">
-          ${stats.map(([label, value]) => compactStat(label, value)).join("")}
-        </div>
-
-        ${targetPilot ? `
-          <div class="hud-embarked-strip">
-            <div class="hud-embarked-name">Pilot: ${escapeHtml(targetPilot.name)}</div>
-            ${vitalBar("P-SHD", targetPilot.shield, targetPilot.maxShield, "shield")}
-            ${vitalBar("P-CORE", targetPilot.core, targetPilot.maxCore, "core")}
+          <div class="hud-stat-strip">
+            ${stats.map(([label, value]) => compactStat(label, value)).join("")}
           </div>
-        ` : ""}
+
+          ${targetPilot ? `
+            <div class="hud-embarked-strip">
+              <div class="hud-embarked-name">Pilot: ${escapeHtml(targetPilot.name)}</div>
+              ${vitalBar("P-SHD", targetPilot.shield, targetPilot.maxShield, "shield")}
+              ${vitalBar("P-CORE", targetPilot.core, targetPilot.maxCore, "core")}
+            </div>
+          ` : ""}
+        </div>
       </div>
     `;
   }
 
-  const elev = tile?.elevation ?? 0;
+  return renderTacticalScanPanel(state);
+}
 
-  let los = "-";
-  if (activeBody) {
-    const result = getLineOfSightResult(
-      state,
-      activeBody.x,
-      activeBody.y,
-      state.focus.x,
-      state.focus.y
-    );
 
-    los = result.visible
-      ? result.cover === "half"
-        ? "Half"
-        : "Clear"
-      : "Blocked";
-  }
+function renderPilotPortrait(pilot, altText = "Pilot portrait") {
+  const src = getPilotPortraitPath(pilot);
 
   return `
-    <div class="hud-tile-readout">
-      <div class="hud-card-title">Tile</div>
-      <div class="hud-tile-focus">(${state.focus.x}, ${state.focus.y})</div>
-      <div class="hud-stat-strip hud-stat-strip--tile">
-        ${compactStat("ELEV", elev)}
-        ${compactStat("LOS", los)}
-        ${compactStat(isStoryMode(state) ? "MODE" : "ROUND", isStoryMode(state) ? "Story" : state.turn.round)}
-        ${compactStat("PHASE", state.turn.phase)}
-      </div>
+    <div class="hud-pilot-portrait-box">
+      <img
+        class="hud-pilot-portrait"
+        src="${escapeAttr(src)}"
+        alt="${escapeAttr(altText)}"
+        onerror="this.onerror=null;this.src='art/pilot/blank_portrait.png';"
+      >
     </div>
   `;
+}
+
+function getPilotPortraitPath(pilot) {
+  const explicit = String(pilot?.portrait ?? pilot?.imagePortrait ?? pilot?.render?.portrait ?? "").trim();
+  if (explicit) return explicit;
+
+  const rawId = String(pilot?.definitionId ?? pilot?.id ?? pilot?.pilotId ?? "").trim();
+  const rawName = String(pilot?.name ?? pilot?.pilotName ?? "").trim();
+  const key = normalizePortraitKey(rawId || rawName);
+
+  return key ? `art/pilot/${key}_portrait.png` : "art/pilot/blank_portrait.png";
+}
+
+function normalizePortraitKey(value) {
+  let key = String(value ?? "").trim().toLowerCase();
+  key = key.replace(/^pilot[_-]/, "");
+  key = key.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return key || "blank";
+}
+
+function renderTacticalScanPanel(state) {
+  return `
+    <div class="hud-scan-readout">
+      ${renderTacticalScanSvg(state)}
+      <div class="hud-scan-prompt">Press <b>R</b> for full tactical map</div>
+    </div>
+  `;
+}
+
+function renderTacticalScanSvg(state) {
+  const width = 520;
+  const height = 74;
+  const cols = 14;
+  const rows = 5;
+  const cell = Math.min(width / cols, height / rows);
+  const activeBody = getActiveBody(state);
+  const focus = activeBody
+    ? { x: Number(activeBody.x ?? 0), y: Number(activeBody.y ?? 0) }
+    : { x: Number(state.focus?.x ?? 0), y: Number(state.focus?.y ?? 0) };
+  const startX = Math.round(focus.x - (cols / 2));
+  const startY = Math.round(focus.y - (rows / 2));
+  const mapWidth = getMapWidth(state.map);
+  const mapHeight = getMapHeight(state.map);
+  const originX = (width - (cols * cell)) / 2;
+  const originY = (height - (rows * cell)) / 2;
+  const px = (x) => originX + ((x - startX) * cell);
+  const py = (y) => originY + ((y - startY) * cell);
+
+  const pieces = [];
+
+  pieces.push(`<svg class="hud-scan-map" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">`);
+  pieces.push(`<rect x="0" y="0" width="${width}" height="${height}" class="hud-scan-bg"/>`);
+
+  for (let y = startY; y < startY + rows; y += 1) {
+    for (let x = startX; x < startX + cols; x += 1) {
+      if (x < 0 || y < 0 || x >= mapWidth || y >= mapHeight) continue;
+      const tile = getTile(state.map, x, y);
+      const elevation = getTileRenderElevation(tile) ?? tile?.elevation ?? 0;
+      const terrainClass = `hud-scan-cell--${tileTypeFromElevation(elevation)}`;
+      pieces.push(`<rect x="${fmt(px(x))}" y="${fmt(py(y))}" width="${fmt(cell)}" height="${fmt(cell)}" class="hud-scan-cell ${terrainClass}"/>`);
+    }
+  }
+
+  pieces.push(renderScanRooms(state, startX, startY, cols, rows, cell, px, py));
+  pieces.push(renderScanEdges(state, startX, startY, cols, rows, cell, px, py));
+  pieces.push(renderScanProps(state, startX, startY, cols, rows, cell, px, py));
+  pieces.push(renderScanUnits(state, startX, startY, cols, rows, cell, px, py));
+  pieces.push(renderScanFocus(state, startX, startY, cols, rows, cell, px, py));
+
+  pieces.push(`</svg>`);
+  return pieces.join("");
+}
+
+function renderScanRooms(state, startX, startY, cols, rows, cell, px, py) {
+  const parts = [];
+  for (const raw of getMapStructures(state.map)) {
+    const structure = normalizeStructureForMap(state, raw);
+    if (!structure) continue;
+
+    for (const structureCell of getStructureCells(structure)) {
+      const x = Number(structureCell.x);
+      const y = Number(structureCell.y);
+      if (!isInScanBounds(x, y, startX, startY, cols, rows)) continue;
+      parts.push(`<rect x="${fmt(px(x))}" y="${fmt(py(y))}" width="${fmt(cell)}" height="${fmt(cell)}" class="hud-scan-room"/>`);
+    }
+  }
+  return parts.join("");
+}
+
+function renderScanEdges(state, startX, startY, cols, rows, cell, px, py) {
+  const parts = [];
+  for (const raw of getMapStructures(state.map)) {
+    const structure = normalizeStructureForMap(state, raw);
+    if (!structure) continue;
+
+    for (const edge of getStructureEdgeParts(structure)) {
+      const x = Number(edge.x);
+      const y = Number(edge.y);
+      if (!isInScanBounds(x, y, startX, startY, cols, rows)) continue;
+      const line = getScanEdgeLine(x, y, edge.edge, cell, px, py);
+      if (!line) continue;
+      const type = String(edge.type ?? STRUCTURE_EDGE_TYPES.WALL).toLowerCase();
+      const cssClass = type === STRUCTURE_EDGE_TYPES.DOOR
+        ? "hud-scan-edge hud-scan-edge--door"
+        : type === STRUCTURE_EDGE_TYPES.WINDOW
+          ? "hud-scan-edge hud-scan-edge--window"
+          : "hud-scan-edge";
+      parts.push(`<line x1="${fmt(line.x1)}" y1="${fmt(line.y1)}" x2="${fmt(line.x2)}" y2="${fmt(line.y2)}" class="${cssClass}"/>`);
+    }
+  }
+  return parts.join("");
+}
+
+function renderScanProps(state, startX, startY, cols, rows, cell, px, py) {
+  const parts = [];
+  for (const raw of getMapProps(state.map)) {
+    const prop = normalizeProp(raw);
+    if (!prop) continue;
+    const cells = getPropFootprintCells(prop).filter((coord) => isInScanBounds(coord.x, coord.y, startX, startY, cols, rows));
+    if (!cells.length) continue;
+
+    const minX = Math.min(...cells.map((coord) => coord.x));
+    const minY = Math.min(...cells.map((coord) => coord.y));
+    const maxX = Math.max(...cells.map((coord) => coord.x));
+    const maxY = Math.max(...cells.map((coord) => coord.y));
+    const cssClass = prop.blocksMovement ? "hud-scan-prop hud-scan-prop--blocking" : "hud-scan-prop";
+    parts.push(`<rect x="${fmt(px(minX))}" y="${fmt(py(minY))}" width="${fmt(((maxX - minX) + 1) * cell)}" height="${fmt(((maxY - minY) + 1) * cell)}" class="${cssClass}"/>`);
+  }
+  return parts.join("");
+}
+
+function renderScanUnits(state, startX, startY, cols, rows, cell, px, py) {
+  const parts = [];
+  const activeBody = getActiveBody(state);
+  const units = Array.isArray(state.units) ? state.units : [];
+
+  for (const unit of units) {
+    if (unit.embarked === true) continue;
+    const x = Number(unit.x ?? 0);
+    const y = Number(unit.y ?? 0);
+    if (!isInScanBounds(x, y, startX, startY, cols, rows)) continue;
+
+    const isActive = activeBody?.instanceId === unit.instanceId;
+    const centerX = px(x) + (cell / 2);
+    const centerY = py(y) + (cell / 2);
+    const radius = Math.max(4, cell * (unit.unitType === "mech" ? 0.38 : 0.28));
+    const cssClass = [
+      "hud-scan-unit",
+      unit.team === "enemy" ? "hud-scan-unit--enemy" : "hud-scan-unit--player",
+      isActive ? "hud-scan-unit--active" : ""
+    ].filter(Boolean).join(" ");
+
+    if (unit.unitType === "mech") {
+      const size = cell * 0.82;
+      parts.push(`<rect x="${fmt(centerX - (size / 2))}" y="${fmt(centerY - (size / 2))}" width="${fmt(size)}" height="${fmt(size)}" rx="${fmt(cell * 0.14)}" class="${cssClass}"/>`);
+    } else {
+      parts.push(`<circle cx="${fmt(centerX)}" cy="${fmt(centerY)}" r="${fmt(radius)}" class="${cssClass}"/>`);
+    }
+
+    if (isActive) {
+      parts.push(`<text x="${fmt(centerX)}" y="${fmt(Math.max(8, centerY - radius - 4))}" class="hud-scan-label">${escapeHtml(unit.pilotName ?? unit.name ?? "Active")}</text>`);
+    }
+  }
+
+  return parts.join("");
+}
+
+function renderScanFocus(state, startX, startY, cols, rows, cell, px, py) {
+  const x = Number(state.focus?.x ?? NaN);
+  const y = Number(state.focus?.y ?? NaN);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return "";
+  if (!isInScanBounds(x, y, startX, startY, cols, rows)) return "";
+
+  return `<rect x="${fmt(px(x) + 2)}" y="${fmt(py(y) + 2)}" width="${fmt(Math.max(0, cell - 4))}" height="${fmt(Math.max(0, cell - 4))}" class="hud-scan-focus"/>`;
+}
+
+function getScanEdgeLine(x, y, edge, cell, px, py) {
+  const left = px(x);
+  const top = py(y);
+  const right = left + cell;
+  const bottom = top + cell;
+
+  switch (String(edge ?? "").toLowerCase()) {
+    case "ne": return { x1: left, y1: top, x2: right, y2: top };
+    case "se": return { x1: right, y1: top, x2: right, y2: bottom };
+    case "sw": return { x1: left, y1: bottom, x2: right, y2: bottom };
+    case "nw": return { x1: left, y1: top, x2: left, y2: bottom };
+    default: return null;
+  }
+}
+
+function isInScanBounds(x, y, startX, startY, cols, rows) {
+  return x >= startX && y >= startY && x < startX + cols && y < startY + rows;
+}
+
+function fmt(value) {
+  return Number(value).toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
 }
 
 /* =========================
@@ -595,6 +788,10 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value);
 }
 
 function escapeClassToken(value) {
