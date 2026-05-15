@@ -338,6 +338,7 @@ export function createGameController({
   
   function toggleView() {
     state.ui.viewMode = state.ui.viewMode === "iso" ? "top" : "iso";
+
     render();
   }
 
@@ -376,6 +377,7 @@ export function createGameController({
     closeCommandMenu,
     moveMenuSelection,
     moveMenuSelectionGrid,
+    animateRotation,
     toggleHelpDrawer,
     closeHelpDrawer,
     toggleView,

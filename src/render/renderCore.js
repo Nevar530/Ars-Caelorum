@@ -153,7 +153,7 @@ function renderEditorUi(state, refs) {
   const editorState = state.ui?.mapEditor ?? {};
   const hoverCount = Array.isArray(editorState.hoverTiles) ? editorState.hoverTiles.length : 0;
   refs.editorModeLabel.textContent =
-    `Map Editor · Tile ${state.ui.editor.selectedTile.x},${state.ui.editor.selectedTile.y} · Brush ${editorState.brushSize ?? 1}x${editorState.brushSize ?? 1} · Preview ${hoverCount}`;
+    `Map Editor · Fixed Iso · Tile ${state.ui.editor.selectedTile.x},${state.ui.editor.selectedTile.y} · Brush ${editorState.brushSize ?? 1}x${editorState.brushSize ?? 1} · Preview ${hoverCount}`;
 }
 
 function buildEditorLayout(state, mapWidth, mapHeight) {
@@ -275,3 +275,5 @@ function renderEditorFocusMarker(state, parent, layout) {
   marker.setAttribute("pointer-events", "none");
   parent.appendChild(marker);
 }
+
+

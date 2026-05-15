@@ -60,13 +60,13 @@ export function createBuilderState() {
     structureTool: {
       structureId: "structure_01",
       roomId: "room_01",
-      roofSprite: "roof_001.png",
+      roofSprite: "roof_metal_001.png",
       brushSize: 1,
       eyedropper: false,
       erase: false,
       showRoofs: true,
       edgeType: "wall",
-      edgeSpriteId: "wall_001.png",
+      edgeSpriteId: "wall_metal_001.png",
       edgeHeight: 2,
       edgeEyedropper: false,
       edgeErase: false

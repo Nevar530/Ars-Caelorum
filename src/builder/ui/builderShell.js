@@ -144,7 +144,7 @@ export function createBuilderShell() {
       </div>
 
       <footer class="builder-bottombar">
-        <div data-builder-hints>` + "`" + ` closes · WASD/Arrows move builder cursor · Shift-click edge</div>
+        <div data-builder-hints>` + "`" + ` closes · WASD/Arrows move builder cursor · Space/Enter paint · Shift-click edge</div>
         <div data-builder-selection-summary>Builder Menu · New / Load · Hover none</div>
         <div data-builder-validation>0 errors · 0 warnings</div>
         <div data-builder-log></div>
@@ -906,10 +906,10 @@ function renderTerrainInspectorTools(builderState, appState) {
 function renderStructureInspectorTools(builderState, appState) {
   const tool = ensureStructureToolSettings(builderState, appState) ?? {};
   const editable = builderState.workspaceMode === "builder-map";
-  const roofOptions = buildRoofSpriteOptions(appState, builderState, tool.roofSprite ?? "roof_001.png");
+  const roofOptions = buildRoofSpriteOptions(appState, builderState, tool.roofSprite ?? "roof_metal_001.png");
   const brushSizeOptions = buildBrushSizeOptions(tool.brushSize ?? 1);
   const edgeTypeOptions = buildStructureEdgeTypeOptions(tool.edgeType ?? "wall");
-  const edgeSpriteOptions = buildStructureEdgeSpriteOptions(appState, builderState, tool.edgeSpriteId ?? "wall_001.png");
+  const edgeSpriteOptions = buildStructureEdgeSpriteOptions(appState, builderState, tool.edgeSpriteId ?? "wall_metal_001.png");
   const eyedropperActive = isStructureEyedropperActive(builderState) ? " is-active" : "";
   const eraseActive = isStructureEraseModeActive(builderState) ? " is-active" : "";
   const edgeEyedropperActive = isStructureEdgeEyedropperActive(builderState) ? " is-active" : "";
@@ -967,7 +967,7 @@ function renderStructureInspectorTools(builderState, appState) {
     '</div>';
 }
 
-function buildRoofSpriteOptions(appState, builderState, selectedRoof = "roof_001.png") {
+function buildRoofSpriteOptions(appState, builderState, selectedRoof = "roof_metal_001.png") {
   const options = getBuilderRoofSpriteOptions(appState, builderState);
   return options.map((roof) => {
     const value = escapeHtml(roof);
@@ -983,7 +983,7 @@ function buildStructureEdgeTypeOptions(selectedType = "wall") {
   }).join("");
 }
 
-function buildStructureEdgeSpriteOptions(appState, builderState, selectedSprite = "wall_001.png") {
+function buildStructureEdgeSpriteOptions(appState, builderState, selectedSprite = "wall_metal_001.png") {
   const options = getBuilderStructureEdgeSpriteOptions(appState, builderState);
   const cleanSelected = String(selectedSprite ?? "").trim();
   const values = cleanSelected && !options.includes(cleanSelected) ? [cleanSelected, ...options] : options;

@@ -121,3 +121,4 @@ export function screenDirectionToBaseFacing(direction) {
       return null;
   }
 }
+

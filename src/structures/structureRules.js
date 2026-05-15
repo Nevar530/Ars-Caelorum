@@ -344,14 +344,14 @@ function normalizeEdgeHeight(value) {
 function inferSpriteForType(type) {
   switch (type) {
     case STRUCTURE_EDGE_TYPES.DOOR:
-      return "door_001.png";
+      return "door_security_001.png";
     case STRUCTURE_EDGE_TYPES.WINDOW:
       return "window_001.png";
     case STRUCTURE_EDGE_TYPES.OPEN:
       return null;
     case STRUCTURE_EDGE_TYPES.WALL:
     default:
-      return "wall_001.png";
+      return "wall_metal_001.png";
   }
 }
 

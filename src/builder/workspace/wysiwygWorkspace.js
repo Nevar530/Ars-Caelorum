@@ -628,31 +628,20 @@ function getTileEdgeSegments(previewState, x, y) {
 }
 
 function getWorldFaceForScreenEdge(screenEdge) {
-  const leftWorldFace = getWorldFaceForScreenSide("left");
-  const rightWorldFace = getWorldFaceForScreenSide("right");
-  const topRightWorldFace = getOppositeWorldFace(leftWorldFace);
-  const topLeftWorldFace = getOppositeWorldFace(rightWorldFace);
-
   switch (screenEdge) {
     case "bottomLeft":
-      return leftWorldFace;
+      return "sw";
     case "bottomRight":
-      return rightWorldFace;
+      return "se";
     case "topRight":
-      return topRightWorldFace;
+      return "ne";
     case "topLeft":
-      return topLeftWorldFace;
+      return "nw";
     default:
       return null;
   }
 }
 
-function getWorldFaceForScreenSide(screenSide) {
-  const side = String(screenSide ?? "").toLowerCase();
-  if (side === "left") return "sw";
-  if (side === "right") return "se";
-  return null;
-}
 
 function getOppositeWorldFace(worldFace) {
   switch (String(worldFace ?? "").toLowerCase()) {

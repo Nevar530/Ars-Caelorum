@@ -176,6 +176,7 @@ function makeRoofItems(state, structure) {
       cell,
       points,
       imagePath: structure.roofSprite,
+      textureRotation: 0,
       sortDepth: floorScreenY + structure.heightPx + 0.42,
       sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation + structure.heightLevels) + 0.3,
       render(parent) {
@@ -428,7 +429,7 @@ function drawRoof(item, parent) {
   group.appendChild(fallback);
 
   if (item.imagePath) {
-    appendProjectedRoofImage(group, item.points, item.imagePath);
+    appendProjectedRoofImage(group, item.points, item.imagePath, item.textureRotation);
   }
 
   const outline = makePolygon(item.points, "structure-roof-outline", "none");
@@ -476,23 +477,24 @@ function getScreenEdgeEndpointsForWorldFace(state, x, y, worldFace, elevation) {
 }
 
 function getScreenEdgeForWorldFace(worldFace) {
-  const face = String(worldFace ?? "").toLowerCase();
-  const leftWorldFace = getWorldFaceForScreenSide("left");
-  const rightWorldFace = getWorldFaceForScreenSide("right");
-  const topRightWorldFace = getOppositeWorldFace(leftWorldFace);
-  const topLeftWorldFace = getOppositeWorldFace(rightWorldFace);
-
-  if (face === leftWorldFace) return "bottomLeft";
-  if (face === rightWorldFace) return "bottomRight";
-  if (face === topRightWorldFace) return "topRight";
-  if (face === topLeftWorldFace) return "topLeft";
-  return null;
+  switch (String(worldFace ?? "").toLowerCase()) {
+    case "sw":
+      return "bottomLeft";
+    case "se":
+      return "bottomRight";
+    case "ne":
+      return "topRight";
+    case "nw":
+      return "topLeft";
+    default:
+      return null;
+  }
 }
 
 function getCellScreenDiamond(state, x, y, elevation) {
   // Match terrain rendering exactly: project the authored tile origin once,
   // then build the screen diamond from fixed iso offsets. Do not use
-  // projectScene(x + 1, y) etc.; that was the old coordinate drift.
+  // projectScene(x + 1, y) etc.; that breaks fixed authored iso edge alignment.
   const p = projectScene(state, x, y, elevation, 1);
   const halfW = RENDER_CONFIG.isoTileWidth / 2;
   const halfH = RENDER_CONFIG.isoTileHeight / 2;
@@ -521,7 +523,7 @@ function getOppositeWorldFace(worldFace) {
 }
 
 
-function appendProjectedRoofImage(parentGroup, points, imagePath) {
+function appendProjectedRoofImage(parentGroup, points, imagePath, textureRotation = 0) {
   const id = `structure-roof-clip-${clipId += 1}`;
   const clip = svgEl("clipPath");
   clip.setAttribute("id", id);
@@ -557,12 +559,31 @@ function appendProjectedRoofImage(parentGroup, points, imagePath) {
   const baseC = vx / size;
   const baseD = vy / size;
 
-  image.setAttribute("transform", `matrix(${baseA} ${baseB} ${baseC} ${baseD} ${topLeft.x} ${topLeft.y})`);
+  const rot = getFixedTextureRotation(textureRotation);
+  const radians = (rot * Math.PI) / 2;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const center = size / 2;
+
+  const rotE = center - (cos * center) + (sin * center);
+  const rotF = center - (sin * center) - (cos * center);
+
+  const a = (baseA * cos) + (baseC * sin);
+  const b = (baseB * cos) + (baseD * sin);
+  const c = (baseA * -sin) + (baseC * cos);
+  const d = (baseB * -sin) + (baseD * cos);
+  const e = (baseA * rotE) + (baseC * rotF) + topLeft.x;
+  const f = (baseB * rotE) + (baseD * rotF) + topLeft.y;
+
+  image.setAttribute("transform", `matrix(${a} ${b} ${c} ${d} ${e} ${f})`);
 
   group.appendChild(image);
   parentGroup.appendChild(group);
 }
 
+function getFixedTextureRotation(_unusedTextureRotation = 0) {
+  return 0;
+}
 
 function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight) {
   const id = `structure-${layerName}-clip-${clipId += 1}`;
@@ -605,7 +626,7 @@ function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceW
 }
 
 function getImageMappingPoints(points, layerName) {
-  // Edge geometry order is locked to fixed authored-isometric world faces.
+  // Edge geometry order is locked to fixed authored iso world-face placement.
   // Texture mapping can be re-ordered independently so wall/door art is not
   // horizontally mirrored on edges whose projected top segment runs right-to-left.
   if (layerName !== "edge") return points;

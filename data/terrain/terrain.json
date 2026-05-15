@@ -2,16 +2,10 @@
   "grass": {
     "label": "Grass",
     "spriteSetId": "grass_001",
-    "topSprite": "art/tiles/grass_top.png",
-    "faceSprite": "art/tiles/grass_face.png",
+    "topSprite": "art/tiles/floor_grass_001.png",
+    "faceSprite": "art/tiles/face_grass_001.png",
     "baseColor": "#5f8f4f",
-    "movementClass": "clear",
-    "faceSprites": {
-      "ne": "art/tiles/grass_face_ne.png",
-      "se": "art/tiles/grass_face_se.png",
-      "sw": "art/tiles/grass_face_sw.png",
-      "nw": "art/tiles/grass_face_nw.png"
-    }
+    "movementClass": "clear"
   },
   "rock": {
     "label": "Rock",
@@ -34,29 +28,17 @@
   "asphalt": {
     "label": "Asphalt",
     "spriteSetId": "asphalt_001",
-    "topSprite": "art/tiles/asphalt_top.png",
-    "faceSprite": "art/tiles/asphalt_face.png",
+    "topSprite": "art/tiles/floor_asphalt_001.png",
+    "faceSprite": "art/tiles/face_asphalt_001.png",
     "baseColor": "#4c4f55",
-    "movementClass": "clear",
-    "faceSprites": {
-      "ne": "art/tiles/asphalt_face_ne.png",
-      "se": "art/tiles/asphalt_face_se.png",
-      "sw": "art/tiles/asphalt_face_sw.png",
-      "nw": "art/tiles/asphalt_face_nw.png"
-    }
+    "movementClass": "clear"
   },
   "concrete": {
     "label": "Concrete",
     "spriteSetId": "concrete_001",
-    "topSprite": "art/tiles/concrete_top.png",
-    "faceSprite": "art/tiles/concrete_face.png",
+    "topSprite": "art/tiles/floor_concrete_001.png",
+    "faceSprite": "art/tiles/face_concrete_001.png",
     "baseColor": "#9a9a94",
-    "movementClass": "clear",
-    "faceSprites": {
-      "ne": "art/tiles/concrete_face_ne.png",
-      "se": "art/tiles/concrete_face_se.png",
-      "sw": "art/tiles/concrete_face_sw.png",
-      "nw": "art/tiles/concrete_face_nw.png"
-    }
+    "movementClass": "clear"
   }
 }

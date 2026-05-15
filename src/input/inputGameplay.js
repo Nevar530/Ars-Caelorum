@@ -55,7 +55,6 @@ export function bindGameplayInput(state, refs, actions) {
       return;
     }
 
-
     if (handleZoomKeys(event, key, actions)) {
       event.preventDefault();
       return;
@@ -166,7 +165,6 @@ function handleHelpKeys(event, actions) {
 
   return false;
 }
-
 
 function handleZoomKeys(event, key, actions) {
   if (key === "+" || key === "=" || (event.shiftKey && key === "+")) {

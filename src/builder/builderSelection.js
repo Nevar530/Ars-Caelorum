@@ -103,7 +103,7 @@ function getSelectionStartTile(selected, appState) {
 }
 
 function getBoardDeltaFromScreenDirection(direction) {
-  const facing = getWorldFacingFromScreenDirection(direction);
+  const facing = screenDirectionToBaseFacing(direction);
 
   switch (facing) {
     case 0:
@@ -119,9 +119,6 @@ function getBoardDeltaFromScreenDirection(direction) {
   }
 }
 
-function getWorldFacingFromScreenDirection(direction) {
-  return screenDirectionToBaseFacing(direction);
-}
 
 function screenDirectionToBaseFacing(direction) {
   switch (direction) {
@@ -136,4 +133,26 @@ function screenDirectionToBaseFacing(direction) {
     default:
       return null;
   }
+}
+
+
+function getMapWidth(map) {
+  const value = Number(map?.width ?? map?.cols ?? 0);
+  if (Number.isFinite(value) && value > 0) return Math.floor(value);
+
+  const tiles = Array.isArray(map?.tiles) ? map.tiles : [];
+  return tiles.length;
+}
+
+function getMapHeight(map) {
+  const value = Number(map?.height ?? map?.rows ?? 0);
+  if (Number.isFinite(value) && value > 0) return Math.floor(value);
+
+  const tiles = Array.isArray(map?.tiles) ? map.tiles : [];
+  const firstColumn = Array.isArray(tiles[0]) ? tiles[0] : [];
+  return firstColumn.length;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, Number(value)));
 }

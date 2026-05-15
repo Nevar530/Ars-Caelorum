@@ -240,7 +240,7 @@ class MissionBuilder {
   }
 
   handleWorkspaceConfirmKey(event) {
-    if (event.code !== "Space" && event.key !== " ") return false;
+    if (event.code !== "Space" && event.key !== " " && event.key !== "Enter") return false;
     if (!this.isTerrainAuthoringActive() && !this.isStructureAuthoringActive() && !this.isSpawnAuthoringActive() && !this.isObjectiveAuthoringActive() && !this.isTriggerAuthoringActive()) return false;
 
     const selected = this.builderState.selected ?? null;
@@ -1111,11 +1111,8 @@ function isTextEntryEvent(event, root) {
 
   if (isTextEntryElement(event.target)) return true;
 
-  const active = root?.contains?.(document.activeElement) ? document.activeElement : null;
-  if (isTextEntryElement(active)) return true;
-
   const path = typeof event.composedPath === "function" ? event.composedPath() : [];
-  return path.some((element) => isTextEntryElement(element));
+  return path.some((element) => element !== window && element !== document && element !== document.body && isTextEntryElement(element));
 }
 
 function isTextEntryElement(element) {

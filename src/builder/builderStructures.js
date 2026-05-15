@@ -9,20 +9,20 @@
 import { getMapHeight, getMapWidth } from "../map.js";
 import { getCenteredBrushCells } from "./builderTerrain.js";
 
-const DEFAULT_ROOF_SPRITES = ["roof_001.png"];
-const DEFAULT_EDGE_SPRITES = ["wall_001.png", "door_001.png"];
+const DEFAULT_ROOF_SPRITES = ["roof_metal_001.png"];
+const DEFAULT_EDGE_SPRITES = ["wall_metal_001.png", "door_security_001.png"];
 const BRUSH_SIZE_MIN = 1;
 const BRUSH_SIZE_MAX = 9;
 
 const EDGE_TYPE_DEFAULTS = {
   wall: {
     type: "wall",
-    spriteId: "wall_001.png",
+    spriteId: "wall_metal_001.png",
     edgeHeight: 2
   },
   door: {
     type: "door",
-    spriteId: "door_001.png",
+    spriteId: "door_security_001.png",
     edgeHeight: 0
   },
   opening: {
@@ -42,7 +42,7 @@ export function ensureStructureToolSettings(builderState, appState = null) {
   const tool = builderState.structureTool;
   tool.structureId = sanitizeId(tool.structureId, "structure_01");
   tool.roomId = sanitizeId(tool.roomId, "room_01");
-  tool.roofSprite = sanitizeSprite(tool.roofSprite, getBuilderRoofSpriteOptions(appState, builderState)[0] ?? "roof_001.png");
+  tool.roofSprite = sanitizeSprite(tool.roofSprite, getBuilderRoofSpriteOptions(appState, builderState)[0] ?? "roof_metal_001.png");
   tool.brushSize = clampWholeNumber(tool.brushSize, 1, BRUSH_SIZE_MIN, BRUSH_SIZE_MAX);
   tool.eyedropper = Boolean(tool.eyedropper);
   tool.erase = Boolean(tool.erase);
@@ -73,7 +73,7 @@ export function updateStructureToolFromFields(builderState, root, appState = nul
 
   if (structureId !== undefined) tool.structureId = sanitizeId(structureId, tool.structureId ?? "structure_01");
   if (roomId !== undefined) tool.roomId = sanitizeId(roomId, tool.roomId ?? "room_01");
-  if (roofSprite !== undefined) tool.roofSprite = sanitizeSprite(roofSprite, tool.roofSprite ?? "roof_001.png");
+  if (roofSprite !== undefined) tool.roofSprite = sanitizeSprite(roofSprite, tool.roofSprite ?? "roof_metal_001.png");
   if (brushSize !== undefined) tool.brushSize = clampWholeNumber(brushSize, tool.brushSize ?? 1, BRUSH_SIZE_MIN, BRUSH_SIZE_MAX);
 
   if (edgeType !== undefined) {
@@ -240,7 +240,7 @@ export function sampleStructureToolAtTile(builderState, appState, x, y) {
     ...current,
     structureId: sanitizeId(hit.structure?.id, current?.structureId ?? "structure_01"),
     roomId: sanitizeId(hit.cell?.roomId, current?.roomId ?? "room_01"),
-    roofSprite: sanitizeSprite(hit.structure?.roof ?? hit.structure?.roofSprite, current?.roofSprite ?? "roof_001.png"),
+    roofSprite: sanitizeSprite(hit.structure?.roof ?? hit.structure?.roofSprite, current?.roofSprite ?? "roof_metal_001.png"),
     brushSize: clampWholeNumber(current?.brushSize, 1, BRUSH_SIZE_MIN, BRUSH_SIZE_MAX),
     eyedropper: false,
     erase: false,
@@ -412,7 +412,7 @@ function createDefaultStructureTool(appState, builderState) {
   return {
     structureId: "structure_01",
     roomId: "room_01",
-    roofSprite: getBuilderRoofSpriteOptions(appState, builderState)[0] ?? "roof_001.png",
+    roofSprite: getBuilderRoofSpriteOptions(appState, builderState)[0] ?? "roof_metal_001.png",
     brushSize: 1,
     eyedropper: false,
     erase: false,
@@ -445,7 +445,7 @@ function ensureStructure(map, structureId, roofSprite) {
       id,
       cells: [],
       heightPx: 64,
-      roof: sanitizeSprite(roofSprite, "roof_001.png"),
+      roof: sanitizeSprite(roofSprite, "roof_metal_001.png"),
       floor: null,
       showInteriorFloor: false,
       edges: []

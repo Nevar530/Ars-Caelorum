@@ -85,6 +85,8 @@ class DevMenu {
     this.controlSelectEl = null;
     this.teamSelectEl = null;
 
+    this.mapRotateLeftEl = null;
+    this.mapRotateRightEl = null;
     this.mapToggleViewEl = null;
     this.mapResetEl = null;
     this.mapRaiseHeightEl = null;
@@ -232,7 +234,6 @@ class DevMenu {
     return [];
   }
 
-
   getViewLabel() {
     const currentView = this.appState?.ui?.viewMode ?? "iso";
     return currentView === "top" ? "TACTICAL" : "ISO";
@@ -283,6 +284,8 @@ class DevMenu {
     this.controlSelectEl = refs.controlSelectEl;
     this.teamSelectEl = refs.teamSelectEl;
 
+    this.mapRotateLeftEl = refs.mapRotateLeftEl;
+    this.mapRotateRightEl = refs.mapRotateRightEl;
     this.mapToggleViewEl = refs.mapToggleViewEl;
     this.mapResetEl = refs.mapResetEl;
     this.mapEditorHostEl = refs.mapEditorHostEl;
@@ -1120,7 +1123,7 @@ class DevMenu {
       appState: this.appState,
       activeUnit,
       selectedUnit,
-      viewLabel: this.getViewLabel()
+      viewLabel: this.getViewLabel(),
     });
   }
 
