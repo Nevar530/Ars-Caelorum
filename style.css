@@ -4336,13 +4336,12 @@ button:disabled {
 .hud-scan-readout {
   height: 100%;
   min-height: 0;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) 26px;
-  gap: 5px;
+  display: block;
   overflow: hidden;
 }
 
 .hud-scan-map {
+  display: block;
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -4444,27 +4443,6 @@ button:disabled {
   vector-effect: non-scaling-stroke;
 }
 
-.hud-scan-prompt {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  border-radius: 6px;
-  border: 1px solid var(--line-soft);
-  background: rgba(255,255,255,.018);
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1;
-  letter-spacing: .02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.hud-scan-prompt b {
-  color: var(--accent);
-  font-weight: 900;
-}
 
 @media (max-width: 1280px) {
   .hud-readout-with-portrait {
@@ -4477,7 +4455,4 @@ button:disabled {
     min-width: 58px;
   }
 
-  .hud-scan-prompt {
-    font-size: 10px;
-  }
 }

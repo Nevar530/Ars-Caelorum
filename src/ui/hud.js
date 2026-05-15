@@ -419,29 +419,31 @@ function renderTacticalScanPanel(state) {
   return `
     <div class="hud-scan-readout">
       ${renderTacticalScanSvg(state)}
-      <div class="hud-scan-prompt">Press <b>R</b> for full tactical map</div>
     </div>
   `;
 }
 
 function renderTacticalScanSvg(state) {
   const width = 520;
-  const height = 74;
-  const cols = 14;
-  const rows = 5;
-  const cell = Math.min(width / cols, height / rows);
+  const height = 96;
+  const mapWidth = getMapWidth(state.map);
+  const mapHeight = getMapHeight(state.map);
   const activeBody = getActiveBody(state);
   const focus = activeBody
     ? { x: Number(activeBody.x ?? 0), y: Number(activeBody.y ?? 0) }
     : { x: Number(state.focus?.x ?? 0), y: Number(state.focus?.y ?? 0) };
-  const startX = Math.round(focus.x - (cols / 2));
-  const startY = Math.round(focus.y - (rows / 2));
-  const mapWidth = getMapWidth(state.map);
-  const mapHeight = getMapHeight(state.map);
-  const originX = (width - (cols * cell)) / 2;
-  const originY = (height - (rows * cell)) / 2;
-  const px = (x) => originX + ((x - startX) * cell);
-  const py = (y) => originY + ((y - startY) * cell);
+
+  const rows = Math.max(1, Math.min(6, mapHeight || 6));
+  const naturalCols = 18;
+  const cols = Math.max(1, Math.min(naturalCols, mapWidth || naturalCols));
+  const cellW = width / cols;
+  const cellH = height / rows;
+  const markerSize = Math.min(cellW, cellH);
+
+  const startX = clampScanStart(Math.round(focus.x - (cols / 2)), cols, mapWidth);
+  const startY = clampScanStart(Math.round(focus.y - (rows / 2)), rows, mapHeight);
+  const px = (x) => (x - startX) * cellW;
+  const py = (y) => (y - startY) * cellH;
 
   const pieces = [];
 
@@ -454,21 +456,21 @@ function renderTacticalScanSvg(state) {
       const tile = getTile(state.map, x, y);
       const elevation = getTileRenderElevation(tile) ?? tile?.elevation ?? 0;
       const terrainClass = `hud-scan-cell--${tileTypeFromElevation(elevation)}`;
-      pieces.push(`<rect x="${fmt(px(x))}" y="${fmt(py(y))}" width="${fmt(cell)}" height="${fmt(cell)}" class="hud-scan-cell ${terrainClass}"/>`);
+      pieces.push(`<rect x="${fmt(px(x))}" y="${fmt(py(y))}" width="${fmt(cellW)}" height="${fmt(cellH)}" class="hud-scan-cell ${terrainClass}"/>`);
     }
   }
 
-  pieces.push(renderScanRooms(state, startX, startY, cols, rows, cell, px, py));
-  pieces.push(renderScanEdges(state, startX, startY, cols, rows, cell, px, py));
-  pieces.push(renderScanProps(state, startX, startY, cols, rows, cell, px, py));
-  pieces.push(renderScanUnits(state, startX, startY, cols, rows, cell, px, py));
-  pieces.push(renderScanFocus(state, startX, startY, cols, rows, cell, px, py));
+  pieces.push(renderScanRooms(state, startX, startY, cols, rows, cellW, cellH, px, py));
+  pieces.push(renderScanEdges(state, startX, startY, cols, rows, cellW, cellH, px, py));
+  pieces.push(renderScanProps(state, startX, startY, cols, rows, cellW, cellH, px, py));
+  pieces.push(renderScanUnits(state, startX, startY, cols, rows, cellW, cellH, markerSize, px, py));
+  pieces.push(renderScanFocus(state, startX, startY, cols, rows, cellW, cellH, px, py));
 
   pieces.push(`</svg>`);
   return pieces.join("");
 }
 
-function renderScanRooms(state, startX, startY, cols, rows, cell, px, py) {
+function renderScanRooms(state, startX, startY, cols, rows, cellW, cellH, px, py) {
   const parts = [];
   for (const raw of getMapStructures(state.map)) {
     const structure = normalizeStructureForMap(state, raw);
@@ -478,13 +480,13 @@ function renderScanRooms(state, startX, startY, cols, rows, cell, px, py) {
       const x = Number(structureCell.x);
       const y = Number(structureCell.y);
       if (!isInScanBounds(x, y, startX, startY, cols, rows)) continue;
-      parts.push(`<rect x="${fmt(px(x))}" y="${fmt(py(y))}" width="${fmt(cell)}" height="${fmt(cell)}" class="hud-scan-room"/>`);
+      parts.push(`<rect x="${fmt(px(x))}" y="${fmt(py(y))}" width="${fmt(cellW)}" height="${fmt(cellH)}" class="hud-scan-room"/>`);
     }
   }
   return parts.join("");
 }
 
-function renderScanEdges(state, startX, startY, cols, rows, cell, px, py) {
+function renderScanEdges(state, startX, startY, cols, rows, cellW, cellH, px, py) {
   const parts = [];
   for (const raw of getMapStructures(state.map)) {
     const structure = normalizeStructureForMap(state, raw);
@@ -494,7 +496,7 @@ function renderScanEdges(state, startX, startY, cols, rows, cell, px, py) {
       const x = Number(edge.x);
       const y = Number(edge.y);
       if (!isInScanBounds(x, y, startX, startY, cols, rows)) continue;
-      const line = getScanEdgeLine(x, y, edge.edge, cell, px, py);
+      const line = getScanEdgeLine(x, y, edge.edge, cellW, cellH, px, py);
       if (!line) continue;
       const type = String(edge.type ?? STRUCTURE_EDGE_TYPES.WALL).toLowerCase();
       const cssClass = type === STRUCTURE_EDGE_TYPES.DOOR
@@ -508,7 +510,7 @@ function renderScanEdges(state, startX, startY, cols, rows, cell, px, py) {
   return parts.join("");
 }
 
-function renderScanProps(state, startX, startY, cols, rows, cell, px, py) {
+function renderScanProps(state, startX, startY, cols, rows, cellW, cellH, px, py) {
   const parts = [];
   for (const raw of getMapProps(state.map)) {
     const prop = normalizeProp(raw);
@@ -521,12 +523,12 @@ function renderScanProps(state, startX, startY, cols, rows, cell, px, py) {
     const maxX = Math.max(...cells.map((coord) => coord.x));
     const maxY = Math.max(...cells.map((coord) => coord.y));
     const cssClass = prop.blocksMovement ? "hud-scan-prop hud-scan-prop--blocking" : "hud-scan-prop";
-    parts.push(`<rect x="${fmt(px(minX))}" y="${fmt(py(minY))}" width="${fmt(((maxX - minX) + 1) * cell)}" height="${fmt(((maxY - minY) + 1) * cell)}" class="${cssClass}"/>`);
+    parts.push(`<rect x="${fmt(px(minX))}" y="${fmt(py(minY))}" width="${fmt(((maxX - minX) + 1) * cellW)}" height="${fmt(((maxY - minY) + 1) * cellH)}" class="${cssClass}"/>`);
   }
   return parts.join("");
 }
 
-function renderScanUnits(state, startX, startY, cols, rows, cell, px, py) {
+function renderScanUnits(state, startX, startY, cols, rows, cellW, cellH, markerSize, px, py) {
   const parts = [];
   const activeBody = getActiveBody(state);
   const units = Array.isArray(state.units) ? state.units : [];
@@ -538,9 +540,9 @@ function renderScanUnits(state, startX, startY, cols, rows, cell, px, py) {
     if (!isInScanBounds(x, y, startX, startY, cols, rows)) continue;
 
     const isActive = activeBody?.instanceId === unit.instanceId;
-    const centerX = px(x) + (cell / 2);
-    const centerY = py(y) + (cell / 2);
-    const radius = Math.max(4, cell * (unit.unitType === "mech" ? 0.38 : 0.28));
+    const centerX = px(x) + (cellW / 2);
+    const centerY = py(y) + (cellH / 2);
+    const radius = Math.max(3.5, markerSize * (unit.unitType === "mech" ? 0.34 : 0.25));
     const cssClass = [
       "hud-scan-unit",
       unit.team === "enemy" ? "hud-scan-unit--enemy" : "hud-scan-unit--player",
@@ -548,8 +550,8 @@ function renderScanUnits(state, startX, startY, cols, rows, cell, px, py) {
     ].filter(Boolean).join(" ");
 
     if (unit.unitType === "mech") {
-      const size = cell * 0.82;
-      parts.push(`<rect x="${fmt(centerX - (size / 2))}" y="${fmt(centerY - (size / 2))}" width="${fmt(size)}" height="${fmt(size)}" rx="${fmt(cell * 0.14)}" class="${cssClass}"/>`);
+      const size = markerSize * 0.72;
+      parts.push(`<rect x="${fmt(centerX - (size / 2))}" y="${fmt(centerY - (size / 2))}" width="${fmt(size)}" height="${fmt(size)}" rx="${fmt(markerSize * 0.12)}" class="${cssClass}"/>`);
     } else {
       parts.push(`<circle cx="${fmt(centerX)}" cy="${fmt(centerY)}" r="${fmt(radius)}" class="${cssClass}"/>`);
     }
@@ -562,20 +564,20 @@ function renderScanUnits(state, startX, startY, cols, rows, cell, px, py) {
   return parts.join("");
 }
 
-function renderScanFocus(state, startX, startY, cols, rows, cell, px, py) {
+function renderScanFocus(state, startX, startY, cols, rows, cellW, cellH, px, py) {
   const x = Number(state.focus?.x ?? NaN);
   const y = Number(state.focus?.y ?? NaN);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return "";
   if (!isInScanBounds(x, y, startX, startY, cols, rows)) return "";
 
-  return `<rect x="${fmt(px(x) + 2)}" y="${fmt(py(y) + 2)}" width="${fmt(Math.max(0, cell - 4))}" height="${fmt(Math.max(0, cell - 4))}" class="hud-scan-focus"/>`;
+  return `<rect x="${fmt(px(x) + 2)}" y="${fmt(py(y) + 2)}" width="${fmt(Math.max(0, cellW - 4))}" height="${fmt(Math.max(0, cellH - 4))}" class="hud-scan-focus"/>`;
 }
 
-function getScanEdgeLine(x, y, edge, cell, px, py) {
+function getScanEdgeLine(x, y, edge, cellW, cellH, px, py) {
   const left = px(x);
   const top = py(y);
-  const right = left + cell;
-  const bottom = top + cell;
+  const right = left + cellW;
+  const bottom = top + cellH;
 
   switch (String(edge ?? "").toLowerCase()) {
     case "ne": return { x1: left, y1: top, x2: right, y2: top };
@@ -586,6 +588,14 @@ function getScanEdgeLine(x, y, edge, cell, px, py) {
   }
 }
 
+function clampScanStart(value, visibleCount, maxCount) {
+  const safeMax = Math.max(0, Number(maxCount ?? 0));
+  const safeVisible = Math.max(1, Number(visibleCount ?? 1));
+  const maxStart = Math.max(0, safeMax - safeVisible);
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(value, maxStart));
+}
+
 function isInScanBounds(x, y, startX, startY, cols, rows) {
   return x >= startX && y >= startY && x < startX + cols && y < startY + rows;
 }
@@ -594,9 +604,7 @@ function fmt(value) {
   return Number(value).toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
 }
 
-/* =========================
-   SUB VIEWS
-========================= */
+
 
 function renderCommandMenu(state) {
   const menu = state.ui.commandMenu;
