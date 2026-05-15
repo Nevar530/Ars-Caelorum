@@ -81,6 +81,7 @@ export function createBuilderState() {
       edgeErase: false
     },
     propTool: {
+      name: "",
       spriteId: "prop_car_001.png",
       footprintW: 2,
       footprintH: 1,

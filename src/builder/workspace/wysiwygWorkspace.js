@@ -468,7 +468,7 @@ function renderPropBrushPreview(previewState, appState, builderState) {
 
   return renderPropFootprintCells(previewState, cells, {
     className: "builder-overlay-prop is-preview",
-    label: "prop",
+    label: tool.name || "",
     anchorX: anchor.x,
     anchorY: anchor.y
   });
@@ -482,7 +482,7 @@ function renderPropOverlays(previewState, appState, builderState) {
   const selectedId = String(builderState?.propTool?.selectedPropId ?? "").trim();
   return props.map((prop) => renderPropFootprintCells(previewState, getPropFootprintCells(prop), {
     className: "builder-overlay-prop" + (prop.blocksMovement ? " is-blocking" : "") + (prop.id === selectedId ? " is-selected" : ""),
-    label: prop.id,
+    label: prop.name || "",
     anchorX: prop.x,
     anchorY: prop.y
   })).join("");
@@ -499,8 +499,9 @@ function renderPropFootprintCells(previewState, cells, options = {}) {
     const points = getTilePolygonPoints(previewState, cell.x, cell.y);
     if (points.length !== 4) return "";
     const isAnchor = Number(cell.x) === anchorX && Number(cell.y) === anchorY;
+    const text = String(label ?? "").trim();
     return '<polygon class="' + className + '" points="' + formatPointString(points) + '" pointer-events="none" />' +
-      (isAnchor ? renderTileText(previewState, cell.x, cell.y, label, "builder-overlay-label builder-overlay-label-prop") : "");
+      (isAnchor && text ? renderTileText(previewState, cell.x, cell.y, text, "builder-overlay-label builder-overlay-label-prop") : "");
   }).join("");
 }
 

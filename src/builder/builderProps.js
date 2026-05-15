@@ -13,6 +13,7 @@ export function ensurePropToolSettings(builderState, appState = null) {
   if (!builderState.propTool) builderState.propTool = createDefaultPropTool(appState, builderState);
 
   const tool = builderState.propTool;
+  tool.name = sanitizePropName(tool.name, "");
   tool.spriteId = sanitizeSprite(tool.spriteId, getBuilderPropSpriteOptions(appState, builderState)[0] ?? "prop_car_001.png");
   tool.footprintW = clampWhole(tool.footprintW, 1, 1, 12);
   tool.footprintH = clampWhole(tool.footprintH, 1, 1, 12);
@@ -34,6 +35,7 @@ export function updatePropToolFromFields(builderState, root, appState = null) {
   const tool = ensurePropToolSettings(builderState, appState);
   if (!tool || !root) return tool;
 
+  const propName = root.querySelector('[data-builder-field="prop-name"]')?.value;
   const spriteId = root.querySelector('[data-builder-field="prop-sprite"]')?.value;
   const footprintW = root.querySelector('[data-builder-field="prop-footprint-w"]')?.value;
   const footprintH = root.querySelector('[data-builder-field="prop-footprint-h"]')?.value;
@@ -46,6 +48,7 @@ export function updatePropToolFromFields(builderState, root, appState = null) {
   const offsetY = root.querySelector('[data-builder-field="prop-offset-y"]')?.value;
   const layer = root.querySelector('[data-builder-field="prop-layer"]')?.value;
 
+  if (propName !== undefined) tool.name = sanitizePropName(propName, tool.name);
   if (spriteId !== undefined) tool.spriteId = sanitizeSprite(spriteId, tool.spriteId);
   if (footprintW !== undefined) tool.footprintW = clampWhole(footprintW, tool.footprintW, 1, 12);
   if (footprintH !== undefined) tool.footprintH = clampWhole(footprintH, tool.footprintH, 1, 12);
@@ -133,6 +136,7 @@ export function applyPropToolAtTile(builderState, appState, x, y) {
     layer: tool.layer
   };
 
+  if (tool.name) prop.name = tool.name;
   if (tool.mirrorX) prop.mirrorX = true;
   if (tool.offsetX !== 0) prop.offsetX = tool.offsetX;
   if (tool.offsetY !== 0) prop.offsetY = tool.offsetY;
@@ -157,6 +161,7 @@ export function selectPropAtTile(builderState, appState, x, y) {
 
   const tool = ensurePropToolSettings(builderState, appState);
   tool.selectedPropId = clean.id;
+  tool.name = clean.name ?? "";
   tool.spriteId = clean.spriteId;
   tool.footprintW = clean.footprintW;
   tool.footprintH = clean.footprintH;
@@ -196,6 +201,7 @@ export function updateSelectedPropFromTool(builderState, appState = null) {
   prop.scale = tool.scale;
   prop.layer = tool.layer;
 
+  if (tool.name) prop.name = tool.name;
   if (tool.mirrorX) prop.mirrorX = true;
   else delete prop.mirrorX;
 
@@ -233,6 +239,7 @@ export function getPropSpritePreviewPath(spriteId) {
 
 function createDefaultPropTool(appState, builderState) {
   return {
+    name: "",
     spriteId: getBuilderPropSpriteOptions(appState, builderState)[0] ?? "prop_car_001.png",
     footprintW: 2,
     footprintH: 1,
@@ -285,6 +292,11 @@ function makePropId(map, x, y) {
 }
 
 function sanitizeSprite(value, fallback = "") {
+  const clean = String(value ?? "").trim();
+  return clean || fallback;
+}
+
+function sanitizePropName(value, fallback = "") {
   const clean = String(value ?? "").trim();
   return clean || fallback;
 }

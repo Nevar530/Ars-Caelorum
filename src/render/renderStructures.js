@@ -174,22 +174,20 @@ function makeTopdownRoomLabelItem(state, structure, room) {
   const size = getTopdownCellSize(state);
   if (size < 20 || !room.cells.length) return null;
 
-  const rects = room.cells.map((cell) => topdownCellRect(state, cell.x, cell.y, size));
-  const minX = Math.min(...rects.map((rect) => rect.x));
-  const minY = Math.min(...rects.map((rect) => rect.y));
-  const maxX = Math.max(...rects.map((rect) => rect.x + rect.width));
-  const maxY = Math.max(...rects.map((rect) => rect.y + rect.height));
   const label = simplifyBlueprintLabel(room.name || room.id, "ROOM");
+  const labelCell = findBestRoomLabelCell(room, structure) ?? room.cells[0];
+  const rect = topdownCellRect(state, labelCell.x, labelCell.y, size);
+  const maxRoomY = Math.max(...room.cells.map((cell) => topdownCellRect(state, cell.x, cell.y, size).y + size));
 
   return {
     kind: "blueprint_room_label",
     structureId: structure.id,
     roomId: room.id,
-    x: (minX + maxX) / 2,
-    y: (minY + maxY) / 2,
+    x: rect.x + (rect.width / 2),
+    y: rect.y + (rect.height / 2),
     label,
-    sortDepth: maxY + 0.62,
-    sortKey: getSceneSortKey(state, room.cells[0].x, room.cells[0].y, structure.elevation) + 0.62,
+    sortDepth: maxRoomY + 0.62,
+    sortKey: getSceneSortKey(state, labelCell.x, labelCell.y, structure.elevation) + 0.62,
     render(parent) {
       const text = makeText(this.x, this.y, this.label, "structure-debug-text");
       text.setAttribute("fill", "rgba(208, 238, 255, 0.86)");
@@ -200,6 +198,67 @@ function makeTopdownRoomLabelItem(state, structure, room) {
       parent.appendChild(text);
     }
   };
+}
+
+function findBestRoomLabelCell(room, structure) {
+  const cells = Array.isArray(room?.cells) ? room.cells : [];
+  if (!cells.length) return null;
+
+  const minX = Math.min(...cells.map((cell) => Number(cell.x)));
+  const maxX = Math.max(...cells.map((cell) => Number(cell.x)));
+  const minY = Math.min(...cells.map((cell) => Number(cell.y)));
+  const maxY = Math.max(...cells.map((cell) => Number(cell.y)));
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const roomKeys = room.keys instanceof Set ? room.keys : new Set(cells.map((cell) => makeCellKey(cell.x, cell.y)));
+  const doorKeys = getRoomDoorCellKeys(structure, roomKeys);
+
+  let best = cells[0];
+  let bestScore = -Infinity;
+
+  for (const cell of cells) {
+    const x = Number(cell.x);
+    const y = Number(cell.y);
+    const neighborCount = countNeighborCells(roomKeys, x, y, true);
+    const cardinalCount = countNeighborCells(roomKeys, x, y, false);
+    const distanceFromCenter = Math.hypot(x - centerX, y - centerY);
+    const doorPenalty = doorKeys.has(makeCellKey(x, y)) ? 2.5 : 0;
+    const score = (neighborCount * 10) + (cardinalCount * 5) - (distanceFromCenter * 2) - doorPenalty;
+
+    if (score > bestScore) {
+      best = cell;
+      bestScore = score;
+    }
+  }
+
+  return best;
+}
+
+function countNeighborCells(roomKeys, x, y, includeDiagonals) {
+  let count = 0;
+  for (let dy = -1; dy <= 1; dy += 1) {
+    for (let dx = -1; dx <= 1; dx += 1) {
+      if (dx === 0 && dy === 0) continue;
+      if (!includeDiagonals && Math.abs(dx) + Math.abs(dy) !== 1) continue;
+      if (roomKeys.has(makeCellKey(Number(x) + dx, Number(y) + dy))) count += 1;
+    }
+  }
+  return count;
+}
+
+function getRoomDoorCellKeys(structure, roomKeys) {
+  const keys = new Set();
+  for (const edgePart of getStructureEdgeParts(structure)) {
+    if (String(edgePart?.type ?? "").toLowerCase() !== "door") continue;
+    const x = Number(edgePart.x);
+    const y = Number(edgePart.y);
+    const key = makeCellKey(x, y);
+    if (roomKeys.has(key)) keys.add(key);
+    const neighbor = getNeighborForWorldEdge(x, y, edgePart.edge);
+    const neighborKey = makeCellKey(neighbor.x, neighbor.y);
+    if (roomKeys.has(neighborKey)) keys.add(neighborKey);
+  }
+  return keys;
 }
 
 function makeTopdownEdgeItem(state, structure, edgePart) {

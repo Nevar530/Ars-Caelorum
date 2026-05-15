@@ -420,6 +420,8 @@ function sanitizePropsForExport(props) {
     clean.blocksMovement = clean.blocksMovement !== false;
     clean.scale = Math.max(0.1, Number(clean.scale ?? 1));
     clean.spriteId = String(clean.spriteId ?? clean.sprite ?? clean.image ?? "prop_car_001.png").trim() || "prop_car_001.png";
+    clean.name = String(clean.name ?? clean.propName ?? clean.label ?? "").trim();
+    if (!clean.name) delete clean.name;
     if (clean.mirrorX !== true) delete clean.mirrorX;
     clean.offsetX = Number(clean.offsetX ?? 0) || 0;
     clean.offsetY = Number(clean.offsetY ?? 0) || 0;

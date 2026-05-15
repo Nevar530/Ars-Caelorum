@@ -4,7 +4,7 @@
 // LOS read the same prop footprint/height truth from props/propRules.js.
 
 import { RENDER_CONFIG } from "../config.js";
-import { svgEl } from "../utils.js";
+import { svgEl, makeText } from "../utils.js";
 import { getTile, getTileRenderElevation } from "../map.js";
 import { getMapProps, getPropFootprintCells, normalizeProp } from "../props/propRules.js";
 import { projectScene, projectTileCenter, getSceneSortKey, getTopdownCellSize } from "./projection.js";
@@ -89,9 +89,25 @@ function makeTopdownPropItem(state, prop) {
       rect.setAttribute("pointer-events", "none");
       group.appendChild(rect);
 
+      const label = String(this.prop.name ?? "").trim();
+      if (label) {
+        const text = makeText(this.x + (this.widthPx / 2), this.y + (this.heightPx / 2), simplifyPropLabel(label), "structure-debug-text");
+        text.setAttribute("fill", "rgba(255, 226, 125, 0.96)");
+        text.setAttribute("font-size", "9");
+        text.setAttribute("font-weight", "800");
+        text.setAttribute("letter-spacing", "0.06em");
+        text.setAttribute("pointer-events", "none");
+        group.appendChild(text);
+      }
+
       parent.appendChild(group);
     }
   };
+}
+
+
+function simplifyPropLabel(value) {
+  return String(value ?? "").trim().toUpperCase();
 }
 
 function drawIsoProp(item, parent) {

@@ -34,10 +34,12 @@ export function normalizeProp(raw) {
   const offsetY = clampWhole(raw?.offsetY, -2048, 2048, 0);
   const layer = normalizeLayer(raw?.layer);
   const id = String(raw?.id ?? `prop_${x}_${y}`).trim() || `prop_${x}_${y}`;
+  const name = String(raw?.name ?? raw?.propName ?? raw?.label ?? "").trim();
   const spriteId = String(raw?.spriteId ?? raw?.sprite ?? raw?.image ?? DEFAULT_PROP_SPRITE).trim() || DEFAULT_PROP_SPRITE;
 
   return {
     id,
+    name,
     x,
     y,
     footprintW,

@@ -1005,6 +1005,7 @@ function renderPropTools(builderState, appState, tool, editable) {
   return '<div class="builder-inspector-card builder-structure-tool-card builder-grid-card">' +
       '<div class="builder-field-label">Prop Brush</div>' +
       '<div class="builder-inspector-note">' + selectedText + '</div>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Prop Name / Tag</span><input type="text" data-builder-field="prop-name" value="' + escapeHtml(tool.name ?? "") + '" spellcheck="true"' + (editable ? '' : ' disabled') + '></label>' +
       '<label class="builder-form-field builder-form-field-compact"><span>Prop Art</span><select data-builder-field="prop-sprite"' + (editable ? '' : ' disabled') + '>' + propOptions + '</select></label>' +
       propPreview +
       '<label class="builder-form-field builder-form-field-compact"><span>Footprint W</span><input type="number" data-builder-field="prop-footprint-w" value="' + escapeHtml(tool.footprintW ?? 1) + '" min="1" max="12" step="1"' + (editable ? '' : ' disabled') + '></label>' +
