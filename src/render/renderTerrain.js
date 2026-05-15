@@ -309,6 +309,8 @@ function drawTopTerrainCell(state, item, parent) {
 
   parent.appendChild(rect);
 
+  drawTopdownTerrainBlueTone({ parent, x: screenX, y: screenY, sizePx, elevation });
+
   if (tileOverlayStyle?.fill) {
     const inset = Math.max(1, sizePx * 0.08);
     const overlay = svgEl("rect");
@@ -336,6 +338,34 @@ function drawTopTerrainCell(state, item, parent) {
   }
 }
 
+
+
+function drawTopdownTerrainBlueTone({ parent, x, y, sizePx, elevation }) {
+  const level = Math.max(0, Number(elevation ?? 0));
+  const heightRatio = Math.max(0, Math.min(1, level / 8));
+
+  const blue = svgEl("rect");
+  blue.setAttribute("x", x);
+  blue.setAttribute("y", y);
+  blue.setAttribute("width", sizePx);
+  blue.setAttribute("height", sizePx);
+  blue.setAttribute("fill", "rgba(34, 118, 205, 0.34)");
+  blue.setAttribute("stroke", "none");
+  blue.setAttribute("pointer-events", "none");
+  parent.appendChild(blue);
+
+  if (heightRatio > 0) {
+    const shade = svgEl("rect");
+    shade.setAttribute("x", x);
+    shade.setAttribute("y", y);
+    shade.setAttribute("width", sizePx);
+    shade.setAttribute("height", sizePx);
+    shade.setAttribute("fill", `rgba(2, 20, 50, ${Math.min(0.42, 0.08 + (heightRatio * 0.34)).toFixed(3)})`);
+    shade.setAttribute("stroke", "none");
+    shade.setAttribute("pointer-events", "none");
+    parent.appendChild(shade);
+  }
+}
 
 function applyTerrainFaceStroke(polygon, strokeColor) {
   polygon.setAttribute("stroke", strokeColor);

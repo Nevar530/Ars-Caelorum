@@ -337,9 +337,31 @@ export function createGameController({
   }
   
   function toggleView() {
-    state.ui.viewMode = state.ui.viewMode === "iso" ? "top" : "iso";
+    const enteringTopdown = state.ui.viewMode !== "top";
+    state.ui.viewMode = enteringTopdown ? "top" : "iso";
+
+    if (enteringTopdown) {
+      const activeUnit = getActiveCameraUnit(state);
+      if (activeUnit) {
+        state.camera.zoomMode = "pilot";
+        state.camera.zoomLevel = "pilot";
+        state.camera.zoomScale = "pilot";
+        state.focus = { x: Number(activeUnit.x ?? 0), y: Number(activeUnit.y ?? 0) };
+      } else {
+        state.camera.zoomMode = "map";
+        state.camera.zoomLevel = "map";
+        state.camera.zoomScale = "map";
+      }
+    }
 
     render();
+  }
+
+  function getActiveCameraUnit(state) {
+    const activeId = state?.turn?.activeUnitId ?? state?.selection?.unitId ?? null;
+    if (!activeId) return null;
+    const units = Array.isArray(state?.units) ? state.units : [];
+    return units.find((unit) => unit?.instanceId === activeId) ?? null;
   }
 
   function zoomIn() {

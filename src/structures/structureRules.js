@@ -210,6 +210,9 @@ function normalizeStructureCells(raw) {
         const roomId = String(cell?.roomId ?? cell?.room ?? cell?.zoneId ?? cell?.zone ?? "").trim();
         if (roomId) normalized.roomId = roomId;
 
+        const roomName = String(cell?.roomName ?? cell?.name ?? cell?.label ?? "").trim();
+        if (roomName) normalized.roomName = roomName;
+
         return normalized;
       })
       .filter((cell) => Number.isFinite(cell.x) && Number.isFinite(cell.y));

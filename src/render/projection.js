@@ -109,7 +109,7 @@ function updateTopdownFraming(state, viewport, zoomLevel) {
   const board = getRuntimeBoardSize(state);
   const preset = CAMERA_ZOOM_CONFIG.topdown?.[zoomLevel] ?? CAMERA_ZOOM_CONFIG.topdown.map;
 
-  if (!preset || preset.cols == null || preset.rows == null) {
+  if (zoomLevel === "map" || !preset || preset.cols == null || preset.rows == null) {
     const usableWidth = Math.max(200, viewport.width - (TOPDOWN_CONFIG.padding * 2));
     const usableHeight = Math.max(200, viewport.height - (TOPDOWN_CONFIG.padding * 2));
 
@@ -302,6 +302,7 @@ export function getCurrentZoomLevel(state) {
 }
 
 function getEffectiveZoomLevelForPhase(state, zoomLevel) {
+  if (state?.ui?.viewMode === "top") return zoomLevel;
   if (!state?.turn?.combatStarted) return zoomLevel;
   if (state?.turn?.phase !== "action") return zoomLevel;
 

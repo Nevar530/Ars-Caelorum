@@ -62,6 +62,7 @@ export function createBuilderState() {
     structureTool: {
       structureId: "structure_01",
       roomId: "room_01",
+      roomName: "Room 01",
       roofSprite: "roof_metal_001.png",
       structureVisualHeightPx: 64,
       subTab: "rooms",

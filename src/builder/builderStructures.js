@@ -74,6 +74,7 @@ export function updateStructureToolFromFields(builderState, root, appState = nul
 
   const structureId = root.querySelector('[data-builder-field="structure-id"]')?.value;
   const roomId = root.querySelector('[data-builder-field="structure-room-id"]')?.value;
+  const roomName = root.querySelector('[data-builder-field="structure-room-name"]')?.value;
   const roofSprite = root.querySelector('[data-builder-field="structure-roof-sprite"]')?.value;
   const structureVisualHeightPx = root.querySelector('[data-builder-field="structure-visual-height"]')?.value;
   const brushSize = root.querySelector('[data-builder-field="structure-brush-size"]')?.value;
@@ -87,6 +88,7 @@ export function updateStructureToolFromFields(builderState, root, appState = nul
 
   if (structureId !== undefined) tool.structureId = sanitizeId(structureId, tool.structureId ?? "structure_01");
   if (roomId !== undefined) tool.roomId = sanitizeId(roomId, tool.roomId ?? "room_01");
+  if (roomName !== undefined) tool.roomName = sanitizeRoomName(roomName, tool.roomName ?? makeDefaultRoomName(tool.roomId));
   if (roofSprite !== undefined) tool.roofSprite = sanitizeSprite(roofSprite, tool.roofSprite ?? "roof_metal_001.png");
   if (structureVisualHeightPx !== undefined) tool.structureVisualHeightPx = clampWholeNumber(structureVisualHeightPx, tool.structureVisualHeightPx ?? 64, 1, 512);
   if (brushSize !== undefined) tool.brushSize = clampWholeNumber(brushSize, tool.brushSize ?? 1, BRUSH_SIZE_MIN, BRUSH_SIZE_MAX);
@@ -275,6 +277,7 @@ export function sampleStructureToolAtTile(builderState, appState, x, y) {
     ...current,
     structureId: sanitizeId(hit.structure?.id, current?.structureId ?? "structure_01"),
     roomId: sanitizeId(hit.cell?.roomId, current?.roomId ?? "room_01"),
+    roomName: sanitizeRoomName(hit.cell?.roomName ?? hit.cell?.name ?? hit.cell?.label, current?.roomName ?? makeDefaultRoomName(hit.cell?.roomId ?? current?.roomId ?? "room_01")),
     roofSprite: sanitizeSprite(hit.structure?.roof ?? hit.structure?.roofSprite, current?.roofSprite ?? "roof_metal_001.png"),
     structureVisualHeightPx: clampWholeNumber(hit.structure?.visualHeightPx ?? hit.structure?.heightPx, current?.structureVisualHeightPx ?? 64, 1, 512),
     brushSize: clampWholeNumber(current?.brushSize, 1, BRUSH_SIZE_MIN, BRUSH_SIZE_MAX),
@@ -364,7 +367,8 @@ export function applyStructureToolAtTile(builderState, appState, x, y) {
     structure.cells.push({
       x: cell.x,
       y: cell.y,
-      roomId: tool.roomId
+      roomId: tool.roomId,
+      roomName: tool.roomName
     });
   }
 
@@ -613,6 +617,22 @@ function sanitizeId(value, fallback) {
     .replace(/[^a-z0-9_-]+/g, "_")
     .replace(/^_+|_+$/g, "");
   return clean || fallback;
+}
+
+
+function sanitizeRoomName(value, fallback = "Room") {
+  const text = String(value ?? "").trim();
+  return text || fallback;
+}
+
+function makeDefaultRoomName(roomId) {
+  const text = String(roomId ?? "room_01").trim();
+  if (!text) return "Room";
+  return text
+    .replace(/^room[_\s-]*/i, "Room ")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function sanitizeSprite(value, fallback) {

@@ -80,12 +80,16 @@ function groupTopdownCellsByRoom(structure) {
     if (!groups.has(roomId)) {
       groups.set(roomId, {
         id: roomId,
+        name: "",
         cells: [],
         keys: new Set()
       });
     }
 
     const group = groups.get(roomId);
+    if (!group.name) {
+      group.name = String(cell?.roomName ?? cell?.name ?? cell?.label ?? "").trim();
+    }
     group.cells.push(cell);
     group.keys.add(makeCellKey(cell.x, cell.y));
   }
@@ -175,7 +179,7 @@ function makeTopdownRoomLabelItem(state, structure, room) {
   const minY = Math.min(...rects.map((rect) => rect.y));
   const maxX = Math.max(...rects.map((rect) => rect.x + rect.width));
   const maxY = Math.max(...rects.map((rect) => rect.y + rect.height));
-  const label = simplifyBlueprintLabel(room.id, "ROOM");
+  const label = simplifyBlueprintLabel(room.name || room.id, "ROOM");
 
   return {
     kind: "blueprint_room_label",

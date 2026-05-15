@@ -960,6 +960,7 @@ function renderStructureRoomsTools(builderState, appState, tool, editable) {
       '<div class="builder-field-label">Room / Roof Brush</div>' +
       '<label class="builder-form-field builder-form-field-compact"><span>Structure ID</span><input type="text" data-builder-field="structure-id" value="' + escapeHtml(tool.structureId ?? "structure_01") + '" spellcheck="false"' + (editable ? '' : ' disabled') + '></label>' +
       '<label class="builder-form-field builder-form-field-compact"><span>Room ID</span><input type="text" data-builder-field="structure-room-id" value="' + escapeHtml(tool.roomId ?? "room_01") + '" spellcheck="false"' + (editable ? '' : ' disabled') + '></label>' +
+      '<label class="builder-form-field builder-form-field-compact"><span>Room Name</span><input type="text" data-builder-field="structure-room-name" value="' + escapeHtml(tool.roomName ?? "Room 01") + '" spellcheck="true"' + (editable ? '' : ' disabled') + '></label>' +
       '<label class="builder-form-field builder-form-field-compact"><span>Roof Sprite</span><select data-builder-field="structure-roof-sprite"' + (editable ? '' : ' disabled') + '>' + roofOptions + '</select></label>' +
       roofPreview +
       '<label class="builder-form-field builder-form-field-compact"><span>Room Visual Height px</span><input type="number" data-builder-field="structure-visual-height" value="' + escapeHtml(tool.structureVisualHeightPx ?? 64) + '" min="1" max="512" step="1"' + (editable ? '' : ' disabled') + '></label>' +
