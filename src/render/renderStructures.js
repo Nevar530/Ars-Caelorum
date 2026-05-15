@@ -52,36 +52,270 @@ export function getStructureSceneItems(state) {
 }
 
 function makeTopItems(state, structure) {
-  const size = getTopdownCellSize(state);
+  // Top-down is a data blueprint, not a second camera using structure art.
+  // Rooms draw as filled map-data areas, edges draw as wall/door lines.
   const items = [];
+  const roomGroups = groupTopdownCellsByRoom(structure);
 
-  for (const cell of getStructureCells(structure)) {
-    const p = projectScene(state, cell.x, cell.y, structure.elevation, 1);
+  for (const room of roomGroups) {
+    items.push(makeTopdownRoomFillItem(state, structure, room));
+    items.push(...makeTopdownRoomBorderItems(state, structure, room));
+    const label = makeTopdownRoomLabelItem(state, structure, room);
+    if (label) items.push(label);
+  }
 
-    items.push({
-      kind: "structure_topdown_cell",
-      x: p.x,
-      y: p.y,
-      width: size,
-      height: size,
-      sortDepth: p.y + 0.2,
-      sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation) + 0.2,
-      render(parent) {
-        const rect = svgEl("rect");
-        rect.setAttribute("x", String(this.x));
-        rect.setAttribute("y", String(this.y));
-        rect.setAttribute("width", String(this.width));
-        rect.setAttribute("height", String(this.height));
-        rect.setAttribute("fill", "rgba(180,120,170,0.34)");
-        rect.setAttribute("stroke", "rgba(255,255,255,0.72)");
-        rect.setAttribute("stroke-width", "2");
-        rect.setAttribute("pointer-events", "none");
-        parent.appendChild(rect);
-      }
-    });
+  for (const edgePart of getStructureEdgeParts(structure)) {
+    const item = makeTopdownEdgeItem(state, structure, edgePart);
+    if (item) items.push(item);
   }
 
   return items;
+}
+
+function groupTopdownCellsByRoom(structure) {
+  const groups = new Map();
+
+  for (const cell of getStructureCells(structure)) {
+    const roomId = String(cell?.roomId ?? structure?.id ?? "room").trim() || String(structure?.id ?? "room");
+    if (!groups.has(roomId)) {
+      groups.set(roomId, {
+        id: roomId,
+        cells: [],
+        keys: new Set()
+      });
+    }
+
+    const group = groups.get(roomId);
+    group.cells.push(cell);
+    group.keys.add(makeCellKey(cell.x, cell.y));
+  }
+
+  return Array.from(groups.values());
+}
+
+function makeTopdownRoomFillItem(state, structure, room) {
+  const size = getTopdownCellSize(state);
+  const rects = room.cells.map((cell) => topdownCellRect(state, cell.x, cell.y, size));
+  const minY = Math.min(...rects.map((rect) => rect.y));
+  const maxY = Math.max(...rects.map((rect) => rect.y + rect.height));
+
+  return {
+    kind: "blueprint_room_fill",
+    structureId: structure.id,
+    roomId: room.id,
+    rects,
+    sortDepth: maxY + 0.14,
+    sortKey: (minY * 1000) + 0.14,
+    render(parent) {
+      const group = svgEl("g");
+      group.dataset.structureId = this.structureId;
+      group.dataset.roomId = this.roomId;
+      group.dataset.structurePart = "blueprint-room";
+
+      for (const rectData of this.rects) {
+        const rect = svgEl("rect");
+        rect.setAttribute("x", String(rectData.x));
+        rect.setAttribute("y", String(rectData.y));
+        rect.setAttribute("width", String(rectData.width));
+        rect.setAttribute("height", String(rectData.height));
+        rect.setAttribute("fill", "rgba(64, 142, 194, 0.20)");
+        rect.setAttribute("stroke", "none");
+        rect.setAttribute("pointer-events", "none");
+        group.appendChild(rect);
+      }
+
+      parent.appendChild(group);
+    }
+  };
+}
+
+function makeTopdownRoomBorderItems(state, structure, room) {
+  const size = getTopdownCellSize(state);
+  const items = [];
+
+  for (const cell of room.cells) {
+    for (const edge of ["ne", "se", "sw", "nw"]) {
+      const neighbor = getNeighborForWorldEdge(cell.x, cell.y, edge);
+      if (room.keys.has(makeCellKey(neighbor.x, neighbor.y))) continue;
+
+      const line = getTopdownEdgeLine(state, cell.x, cell.y, edge, size);
+      if (!line) continue;
+
+      items.push({
+        kind: "blueprint_room_border",
+        structureId: structure.id,
+        roomId: room.id,
+        line,
+        sortDepth: Math.max(line.y1, line.y2) + 0.17,
+        sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation) + 0.17,
+        render(parent) {
+          const path = svgEl("line");
+          path.setAttribute("x1", String(this.line.x1));
+          path.setAttribute("y1", String(this.line.y1));
+          path.setAttribute("x2", String(this.line.x2));
+          path.setAttribute("y2", String(this.line.y2));
+          path.setAttribute("stroke", "rgba(120, 205, 255, 0.72)");
+          path.setAttribute("stroke-width", "1.4");
+          path.setAttribute("pointer-events", "none");
+          parent.appendChild(path);
+        }
+      });
+    }
+  }
+
+  return items;
+}
+
+function makeTopdownRoomLabelItem(state, structure, room) {
+  const size = getTopdownCellSize(state);
+  if (size < 20 || !room.cells.length) return null;
+
+  const rects = room.cells.map((cell) => topdownCellRect(state, cell.x, cell.y, size));
+  const minX = Math.min(...rects.map((rect) => rect.x));
+  const minY = Math.min(...rects.map((rect) => rect.y));
+  const maxX = Math.max(...rects.map((rect) => rect.x + rect.width));
+  const maxY = Math.max(...rects.map((rect) => rect.y + rect.height));
+  const label = simplifyBlueprintLabel(room.id, "ROOM");
+
+  return {
+    kind: "blueprint_room_label",
+    structureId: structure.id,
+    roomId: room.id,
+    x: (minX + maxX) / 2,
+    y: (minY + maxY) / 2,
+    label,
+    sortDepth: maxY + 0.62,
+    sortKey: getSceneSortKey(state, room.cells[0].x, room.cells[0].y, structure.elevation) + 0.62,
+    render(parent) {
+      const text = makeText(this.x, this.y, this.label, "structure-debug-text");
+      text.setAttribute("fill", "rgba(208, 238, 255, 0.86)");
+      text.setAttribute("font-size", "10");
+      text.setAttribute("font-weight", "700");
+      text.setAttribute("letter-spacing", "0.08em");
+      text.setAttribute("pointer-events", "none");
+      parent.appendChild(text);
+    }
+  };
+}
+
+function makeTopdownEdgeItem(state, structure, edgePart) {
+  const type = String(edgePart?.type ?? "wall").toLowerCase();
+  if (type === "open") return null;
+
+  const size = getTopdownCellSize(state);
+  const line = getTopdownEdgeLine(state, edgePart.x, edgePart.y, edgePart.edge, size);
+  if (!line) return null;
+
+  const edgeHeight = Number(edgePart.edgeHeight ?? 0);
+  const isDoor = type === "door";
+  const isWindow = type === "window";
+  const midpoint = {
+    x: (line.x1 + line.x2) / 2,
+    y: (line.y1 + line.y2) / 2
+  };
+
+  return {
+    kind: "blueprint_edge",
+    structureId: structure.id,
+    edgePart,
+    line,
+    midpoint,
+    isDoor,
+    isWindow,
+    edgeHeight,
+    sortDepth: Math.max(line.y1, line.y2) + 0.7,
+    sortKey: getSceneSortKey(state, edgePart.x, edgePart.y, structure.elevation) + 0.7,
+    render(parent) {
+      const group = svgEl("g");
+      group.dataset.structureId = this.structureId;
+      group.dataset.structurePart = "blueprint-edge";
+      group.dataset.edgeType = this.edgePart?.type ?? "wall";
+
+      const stroke = this.isDoor
+        ? "rgba(255, 210, 92, 0.98)"
+        : this.isWindow
+          ? "rgba(106, 218, 255, 0.9)"
+          : "rgba(228, 244, 255, 0.9)";
+      const width = this.isDoor
+        ? 5
+        : Math.max(2.4, Math.min(6, 2.2 + Number(this.edgeHeight ?? 0)));
+
+      const path = svgEl("line");
+      path.setAttribute("x1", String(this.line.x1));
+      path.setAttribute("y1", String(this.line.y1));
+      path.setAttribute("x2", String(this.line.x2));
+      path.setAttribute("y2", String(this.line.y2));
+      path.setAttribute("stroke", stroke);
+      path.setAttribute("stroke-width", String(width));
+      path.setAttribute("stroke-linecap", this.isDoor ? "square" : "round");
+      if (this.isWindow) path.setAttribute("stroke-dasharray", "6 4");
+      path.setAttribute("pointer-events", "none");
+      group.appendChild(path);
+
+      if (this.isDoor) {
+        const text = makeText(this.midpoint.x, this.midpoint.y - 4, "DOOR", "structure-debug-text");
+        text.setAttribute("fill", "rgba(255, 226, 125, 0.98)");
+        text.setAttribute("font-size", "9");
+        text.setAttribute("font-weight", "800");
+        text.setAttribute("letter-spacing", "0.06em");
+        text.setAttribute("pointer-events", "none");
+        group.appendChild(text);
+      }
+
+      parent.appendChild(group);
+    }
+  };
+}
+
+function topdownCellRect(state, x, y, size = getTopdownCellSize(state)) {
+  const p = projectScene(state, Number(x), Number(y), 0, 1);
+  return {
+    x: p.x,
+    y: p.y,
+    width: size,
+    height: size
+  };
+}
+
+function getTopdownEdgeLine(state, x, y, edge, size = getTopdownCellSize(state)) {
+  const rect = topdownCellRect(state, x, y, size);
+
+  switch (String(edge ?? "").toLowerCase()) {
+    case "ne":
+      return { x1: rect.x, y1: rect.y, x2: rect.x + rect.width, y2: rect.y };
+    case "se":
+      return { x1: rect.x + rect.width, y1: rect.y, x2: rect.x + rect.width, y2: rect.y + rect.height };
+    case "sw":
+      return { x1: rect.x, y1: rect.y + rect.height, x2: rect.x + rect.width, y2: rect.y + rect.height };
+    case "nw":
+      return { x1: rect.x, y1: rect.y, x2: rect.x, y2: rect.y + rect.height };
+    default:
+      return null;
+  }
+}
+
+function getNeighborForWorldEdge(x, y, edge) {
+  switch (String(edge ?? "").toLowerCase()) {
+    case "ne":
+      return { x: Number(x), y: Number(y) - 1 };
+    case "se":
+      return { x: Number(x) + 1, y: Number(y) };
+    case "sw":
+      return { x: Number(x), y: Number(y) + 1 };
+    case "nw":
+      return { x: Number(x) - 1, y: Number(y) };
+    default:
+      return { x: Number(x), y: Number(y) };
+  }
+}
+
+function simplifyBlueprintLabel(value, fallback) {
+  const text = String(value ?? "").trim();
+  if (!text) return fallback;
+  return text
+    .replace(/^room[_\s-]*/i, "R")
+    .replace(/^structure[_\s-]*/i, "S")
+    .toUpperCase();
 }
 
 function makeFloorItems(state, structure) {
