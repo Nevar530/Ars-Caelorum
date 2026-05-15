@@ -66,7 +66,7 @@ export function renderFrontScreen(state, refs) {
     missionList.innerHTML = missions
       .map((entry) => {
         const isSelected = entry.id === selectedMission?.id;
-        const locked = isMissionLocked(state, entry.id);
+        const locked = isMissionLocked(state, entry);
         return `
           <button
             type="button"
@@ -92,7 +92,7 @@ export function renderFrontScreen(state, refs) {
           Mission file: <strong>${escapeHtml(selectedMission.path || "fallback map wrapper")}</strong>
         </div>
         <div class="front-screen-card-text" style="margin-top:10px;">
-          Campaign: <strong>${isMissionLocked(state, selectedMission.id) ? "Locked" : "Unlocked"}</strong>
+          Campaign: <strong>${isMissionLocked(state, selectedMission) ? "Locked" : "Unlocked"}</strong>
           · Current credits: <strong>${escapeHtml(state?.campaign?.inventory?.currency ?? 0)}</strong>
         </div>
       `;
@@ -105,7 +105,7 @@ export function renderFrontScreen(state, refs) {
   }
 
   if (missionStartButton) {
-    missionStartButton.disabled = !selectedMission || isMissionLocked(state, selectedMission?.id);
+    missionStartButton.disabled = !selectedMission || isMissionLocked(state, selectedMission);
   }
 
   const isPhaseBriefing = screen === "phase-briefing";
@@ -138,7 +138,7 @@ export function renderFrontScreen(state, refs) {
   }
 
   if (briefingStartButton) {
-    briefingStartButton.disabled = isPhaseBriefing ? false : (!briefingMission || isMissionLocked(state, briefingMission?.id));
+    briefingStartButton.disabled = isPhaseBriefing ? false : (!briefingMission || isMissionLocked(state, briefingMission));
     briefingStartButton.textContent = isPhaseBriefing ? "Continue" : "Launch Mission";
   }
 }
@@ -183,9 +183,18 @@ function getBriefingObjectiveLabels(missionDefinition, briefing) {
     .filter(Boolean);
 }
 
-function isMissionLocked(state, missionId) {
+function isMissionLocked(state, missionEntryOrId) {
   if (!state?.campaign) return false;
+  const missionId = typeof missionEntryOrId === "object" ? missionEntryOrId?.id : missionEntryOrId;
+  if (isAlwaysUnlockedMission(missionEntryOrId)) return false;
   return !isMissionUnlocked(state.campaign, missionId);
+}
+
+function isAlwaysUnlockedMission(missionEntryOrId) {
+  if (!missionEntryOrId || typeof missionEntryOrId !== "object") return false;
+  return missionEntryOrId.alwaysUnlocked === true
+    || missionEntryOrId.devUnlocked === true
+    || missionEntryOrId.testMission === true;
 }
 
 function compareMissionEntries(a, b) {

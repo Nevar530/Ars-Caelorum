@@ -56,6 +56,8 @@ const refs = {
   worldScene: document.getElementById("world-scene"),
   worldUi: document.getElementById("world-ui"),
   devToolbar: document.getElementById("devToolbar"),
+  rotateLeftButton: document.getElementById("rotateLeft"),
+  rotateRightButton: document.getElementById("rotateRight"),
   toggleViewButton: document.getElementById("toggleView"),
   resetMapButton: document.getElementById("resetMap"),
   editorModeMechButton: document.getElementById("editorModeMech"),
@@ -80,6 +82,7 @@ async function init() {
   const state = createState({
     map: initialMap,
     units: [],
+    rotation: 0,
     content,
     campaign
   });
@@ -331,6 +334,12 @@ function getSelectedMissionEntry() {
     return missions.find((entry) => entry?.id === selectedMissionId) ?? missions[0] ?? null;
   }
 
+  function isMissionEntryUnlocked(entry) {
+    if (!entry) return false;
+    if (entry.alwaysUnlocked === true || entry.devUnlocked === true || entry.testMission === true) return true;
+    return isMissionUnlocked(state.campaign, entry.id);
+  }
+
   async function loadMissionForEntry(entry) {
     if (!entry) return null;
 
@@ -424,7 +433,7 @@ function getSelectedMissionEntry() {
     async openSelectedMissionBriefing() {
       const missionEntry = getSelectedMissionEntry();
       if (!missionEntry) return;
-      if (!isMissionUnlocked(state.campaign, missionEntry.id)) return;
+      if (!isMissionEntryUnlocked(missionEntry)) return;
 
       const missionDefinition = await loadMissionForEntry(missionEntry);
       state.ui.shell.briefingMission = missionEntry;
@@ -460,7 +469,7 @@ function getSelectedMissionEntry() {
       pauseTitleThemeAudio();
       const missionEntry = state.ui.shell.briefingMission ?? getSelectedMissionEntry();
       if (!missionEntry) return;
-      if (!isMissionUnlocked(state.campaign, missionEntry.id)) return;
+      if (!isMissionEntryUnlocked(missionEntry)) return;
 
       const missionDefinition = state.ui.shell.briefingDefinition ?? await loadMissionForEntry(missionEntry);
       const mapPath = getMissionStartMapPath(missionDefinition, missionEntry);
@@ -640,6 +649,13 @@ function getSelectedMissionEntry() {
     rebuildOrdersAndLog: turnController.rebuildOrdersAndLog,
     resetCombatToSetup: gameController.resetCombatToSetup,
 
+    rotateLeft() {
+      gameController.animateRotation(-1);
+    },
+
+    rotateRight() {
+      gameController.animateRotation(1);
+    },
 
     toggleView: gameController.toggleView,
     zoomIn: gameController.zoomIn,

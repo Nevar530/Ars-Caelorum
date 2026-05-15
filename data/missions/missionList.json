@@ -11,7 +11,8 @@
       "id": "new_map_mission",
       "name": "Structure Render Test Map",
       "path": "./data/missions/new_map_mission.json",
-      "summary": "Loadable test map for fixed-iso structure walls, roofs, and render sorting."
+      "summary": "Loadable test map for fixed-iso structure walls, roofs, and render sorting.",
+      "alwaysUnlocked": true
     }
   ]
 }
