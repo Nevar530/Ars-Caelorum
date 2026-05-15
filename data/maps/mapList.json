@@ -38,6 +38,14 @@
       "name": "013 Practice Sparring - Defeat All",
       "path": "./data/maps/013_practice_sparring.json",
       "mode": "combat"
+    },
+    {
+      "id": "new_map",
+      "name": "New Map - Structure Render Test",
+      "path": "./data/maps/new_map.json",
+      "mode": "combat",
+      "objectiveSummary": "Structure render sorting test map",
+      "objectiveCount": 1
     }
   ]
 }

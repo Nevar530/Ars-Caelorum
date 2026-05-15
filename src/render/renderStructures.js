@@ -167,7 +167,8 @@ function makeRoofItems(state, structure) {
     if (isCellRoofRevealed(cell, revealInfo)) continue;
 
     const floorPoints = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, 0);
-    const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, structure.heightPx);
+    const roofHeightPx = getStructureVisualHeightPx(structure);
+    const points = getCellRoofOrFloorPoints(state, cell.x, cell.y, structure.elevation, roofHeightPx);
     const floorScreenY = Math.max(...floorPoints.map((point) => point.y));
 
     items.push({
@@ -177,8 +178,11 @@ function makeRoofItems(state, structure) {
       points,
       imagePath: structure.roofSprite,
       textureRotation: 0,
-      sortDepth: floorScreenY + structure.heightPx + 0.42,
-      sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation + structure.heightLevels) + 0.3,
+      // Roofs are sorted by their base footprint, not by their visual rise.
+      // A taller/farther roof should not draw over a closer wall just because
+      // its artwork is higher on screen.
+      sortDepth: floorScreenY + 0.42,
+      sortKey: getSceneSortKey(state, cell.x, cell.y, structure.elevation) + 0.3,
       render(parent) {
         drawRoof(this, parent);
       }
@@ -585,7 +589,7 @@ function getFixedTextureRotation(_unusedTextureRotation = 0) {
   return 0;
 }
 
-function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight, mirrorX = false) {
+function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight) {
   const id = `structure-${layerName}-clip-${clipId += 1}`;
   const clip = svgEl("clipPath");
   clip.setAttribute("id", id);
@@ -606,7 +610,7 @@ function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceW
   image.setAttribute("href", imagePath);
   image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
 
-  const imagePoints = getImageMappingPoints(points, layerName, mirrorX);
+  const imagePoints = getImageMappingPoints(points, layerName);
   const topStart = imagePoints[0];
   const topEnd = imagePoints[1];
   const bottomStart = imagePoints[3];
@@ -625,33 +629,34 @@ function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceW
   parentGroup.appendChild(group);
 }
 
-function getImageMappingPoints(points, layerName, mirrorX = false) {
+function getImageMappingPoints(points, layerName) {
   // Edge geometry order is locked to fixed authored iso world-face placement.
   // Texture mapping can be re-ordered independently so wall/door art is not
   // horizontally mirrored on edges whose projected top segment runs right-to-left.
   if (layerName !== "edge") return points;
 
   const [topA, topB, bottomB, bottomA] = points;
-  const base = topA.x <= topB.x
-    ? points
-    : [topB, topA, bottomA, bottomB];
+  if (topA.x <= topB.x) return points;
 
-  if (!mirrorX) return base;
+  return [topB, topA, bottomA, bottomB];
+}
 
-  return [base[1], base[0], base[3], base[2]];
+function getStructureVisualHeightPx(structure) {
+  const explicit = Number(structure?.visualHeightPx ?? structure?.heightPx);
+  if (Number.isFinite(explicit) && explicit > 0) return Math.max(1, explicit);
+  return 64;
 }
 
 function getEdgeVisualHeightPx(edgePart, structure) {
   const explicit = Number(edgePart?.visualHeightPx ?? edgePart?.heightPx);
-  if (Number.isFinite(explicit) && explicit > 0) return Math.max(0, explicit);
-  return Math.max(1, Number(structure?.visualHeightPx ?? structure?.heightPx ?? 64));
+  if (Number.isFinite(explicit) && explicit > 0) return Math.max(1, explicit);
+  return getStructureVisualHeightPx(structure);
 }
 
 function offsetPoints(points, offsetX = 0, offsetY = 0) {
   if (!Array.isArray(points)) return points;
   const dx = Number(offsetX ?? 0);
   const dy = Number(offsetY ?? 0);
-  if (!Number.isFinite(dx) && !Number.isFinite(dy)) return points;
   const safeDx = Number.isFinite(dx) ? dx : 0;
   const safeDy = Number.isFinite(dy) ? dy : 0;
   if (safeDx === 0 && safeDy === 0) return points;

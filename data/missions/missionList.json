@@ -6,6 +6,12 @@
       "name": "000 Game State Tester - Full Flow Harness",
       "path": "./data/missions/000_game_state_tester_mission.json",
       "summary": "Stable internal tester mission for combat/story flow, objectives, triggers, dialogue, protect-unit, CPU ally, enter-mech, and phase handoff."
+    },
+    {
+      "id": "new_map_mission",
+      "name": "Structure Render Test Map",
+      "path": "./data/missions/new_map_mission.json",
+      "summary": "Loadable test map for fixed-iso structure walls, roofs, and render sorting."
     }
   ]
 }

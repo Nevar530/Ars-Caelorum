@@ -40,9 +40,9 @@ export function normalizeStructureForMap(state, raw) {
   if (!tile) return null;
 
   const elevation = Number(raw?.elevation ?? getTileRenderElevation(tile) ?? 0);
-  const visualHeightPx = Math.max(1, Number(raw?.visualHeightPx ?? raw?.heightPx ?? DEFAULT_STRUCTURE_HEIGHT_PX));
-  const heightPx = visualHeightPx;
-  const heightLevels = Number(raw?.heightLevels ?? (visualHeightPx / RENDER_CONFIG.elevationStepPx));
+  const visualHeightPx = normalizeVisualPx(raw?.visualHeightPx ?? raw?.heightPx ?? DEFAULT_STRUCTURE_HEIGHT_PX, DEFAULT_STRUCTURE_HEIGHT_PX);
+  const heightPx = normalizeVisualPx(raw?.heightPx ?? raw?.visualHeightPx ?? DEFAULT_STRUCTURE_HEIGHT_PX, visualHeightPx);
+  const heightLevels = Number(raw?.heightLevels ?? (heightPx / RENDER_CONFIG.elevationStepPx));
   const id = String(raw?.id ?? `structure_${firstCell.x}_${firstCell.y}`);
 
   return {
@@ -54,8 +54,8 @@ export function normalizeStructureForMap(state, raw) {
     roomIds: new Set(cells.map((cell) => cell.roomId).filter(Boolean)),
     edgeParts: normalizeStructureEdges(raw, cells),
     elevation,
-    visualHeightPx,
     heightPx,
+    visualHeightPx,
     heightLevels,
     drawFallbackFaces: raw?.drawFallbackFaces === true,
     roofSprite: resolveStructureSpritePath(raw?.roof ?? raw?.roofSprite),
@@ -261,25 +261,22 @@ function normalizeEdgePart(edge) {
   const type = normalizeEdgeType(edge?.type ?? edge?.kind);
   const spriteId = edge?.spriteId ?? edge?.sprite ?? edge?.image ?? edge?.faceSprite ?? inferSpriteForType(type);
   const edgeHeight = normalizeEdgeHeight(edge?.edgeHeight ?? edge?.height ?? edge?.heightLevels);
-  const visualHeightPx = normalizeVisualHeight(edge?.visualHeightPx ?? edge?.heightPx);
+  const visualHeightPx = normalizeOptionalVisualPx(edge?.visualHeightPx ?? edge?.heightPx);
   const offsetX = normalizeOffsetPx(edge?.offsetX);
   const offsetY = normalizeOffsetPx(edge?.offsetY);
 
-  const normalized = {
+  return {
     x,
     y,
     edge: worldEdge,
     type,
     edgeHeight,
     sprite: resolveStructureSpritePath(spriteId),
-    mirrorX: edge?.mirrorX === true
+    visualHeightPx,
+    mirrorX: edge?.mirrorX === true,
+    offsetX,
+    offsetY
   };
-
-  if (visualHeightPx != null) normalized.visualHeightPx = visualHeightPx;
-  if (offsetX !== 0) normalized.offsetX = offsetX;
-  if (offsetY !== 0) normalized.offsetY = offsetY;
-
-  return normalized;
 }
 
 function normalizeEdgeFromKey(key, value) {
@@ -348,20 +345,27 @@ function normalizeEdgeType(type) {
   return STRUCTURE_EDGE_TYPES.WALL;
 }
 
-function normalizeEdgeHeight(value) {
+function normalizeVisualPx(value, fallback = DEFAULT_STRUCTURE_HEIGHT_PX) {
   const explicit = Number(value);
-  return Number.isFinite(explicit) ? Math.max(0, explicit) : 0;
+  if (Number.isFinite(explicit) && explicit > 0) return Math.max(1, explicit);
+  return Math.max(1, Number(fallback) || DEFAULT_STRUCTURE_HEIGHT_PX);
 }
 
-function normalizeVisualHeight(value) {
+function normalizeOptionalVisualPx(value) {
   const explicit = Number(value);
-  if (!Number.isFinite(explicit)) return null;
-  return Math.max(0, explicit);
+  if (Number.isFinite(explicit) && explicit > 0) return Math.max(1, explicit);
+  return 0;
 }
 
 function normalizeOffsetPx(value) {
   const explicit = Number(value);
-  return Number.isFinite(explicit) ? explicit : 0;
+  if (!Number.isFinite(explicit)) return 0;
+  return Math.max(-512, Math.min(512, Math.round(explicit)));
+}
+
+function normalizeEdgeHeight(value) {
+  const explicit = Number(value);
+  return Number.isFinite(explicit) ? Math.max(0, explicit) : 0;
 }
 
 function inferSpriteForType(type) {

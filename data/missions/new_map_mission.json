@@ -1,0 +1,77 @@
+{
+  "id": "new_map_mission",
+  "name": "New Map Mission",
+  "goalText": "Complete all tactical phases.",
+  "mapId": "new_map",
+  "mapPath": "./data/maps/new_map.json",
+  "startMapId": "new_map",
+  "maps": [
+    {
+      "id": "new_map",
+      "name": "New Map",
+      "path": "./data/maps/new_map.json",
+      "mapPath": "./data/maps/new_map.json",
+      "phaseIndex": 1,
+      "objectiveSummary": "No map objectives authored yet.",
+      "objectiveCount": 1
+    }
+  ],
+  "objectivePreset": "defeat_all",
+  "briefing": {
+    "title": "New Map Mission",
+    "text": "Mission package created in the Mission Builder.",
+    "objectives": [
+      "Defeat all enemy units"
+    ]
+  },
+  "objectives": [
+    {
+      "id": "defeat_enemies",
+      "type": "defeat_all",
+      "targetTeam": "enemy",
+      "label": "Defeat all enemy units",
+      "briefingText": "Defeat all enemy units."
+    }
+  ],
+  "triggers": [],
+  "logic": [],
+  "dialogue": {
+    "intro": {
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "Mission Control",
+          "text": "Mission loaded."
+        }
+      ]
+    },
+    "victory": {
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "Mission Control",
+          "text": "Victory confirmed."
+        }
+      ]
+    },
+    "defeat": {
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "Mission Control",
+          "text": "Mission failed."
+        }
+      ]
+    }
+  },
+  "results": {
+    "victory": {
+      "title": "Victory",
+      "text": "Mission complete."
+    },
+    "defeat": {
+      "title": "Defeat",
+      "text": "Mission failed."
+    }
+  }
+}
