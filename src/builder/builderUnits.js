@@ -7,6 +7,7 @@
 
 import { parseSpawnId, SPAWN_TEAMS } from "../maps/mapSpawns.js";
 import { getDefaultControlTypeForSpawnTeam } from "./builderSpawns.js";
+import { isPilotAvailableForBuilderRoster } from "./builderRoster.js";
 
 const START_TYPES = ["pilot", "emptyMech"];
 const CONTROL_TYPES = ["PC", "CPU"];
@@ -29,7 +30,7 @@ export function ensureUnitToolSettings(builderState, appState = null) {
   if (!builderState.unitTool) builderState.unitTool = createDefaultUnitTool();
 
   const tool = builderState.unitTool;
-  const pilots = getPilotOptions(appState);
+  const pilots = getPilotOptions(appState, builderState);
   const mechs = getMechOptions(appState);
 
   tool.startType = START_TYPES.includes(tool.startType) ? tool.startType : "pilot";
@@ -228,12 +229,24 @@ export function getSpawnIdOptions(builderState) {
   return options;
 }
 
-export function getPilotOptions(appState = null) {
+export function getPilotOptions(appState = null, builderState = null) {
   const pilots = Array.isArray(appState?.content?.pilots) ? appState.content.pilots : [];
-  return pilots.map((pilot) => ({
-    id: String(pilot?.id ?? "").trim(),
-    label: String(pilot?.name ?? pilot?.id ?? "Pilot").trim()
-  })).filter((pilot) => pilot.id);
+  const tool = builderState?.unitTool ?? {};
+  const shouldFilterRoster =
+    tool.startType !== "emptyMech"
+    && String(tool.team ?? "player") === "player"
+    && String(tool.controlType ?? "PC") === "PC";
+
+  return pilots
+    .filter((pilot) => {
+      if (!shouldFilterRoster) return true;
+      return isPilotAvailableForBuilderRoster(builderState, pilot?.id);
+    })
+    .map((pilot) => ({
+      id: String(pilot?.id ?? "").trim(),
+      label: String(pilot?.name ?? pilot?.id ?? "Pilot").trim()
+    }))
+    .filter((pilot) => pilot.id);
 }
 
 export function getMechOptions(appState = null) {

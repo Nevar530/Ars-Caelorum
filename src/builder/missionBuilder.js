@@ -79,6 +79,7 @@ import {
   resetUnitToolToDefaults,
   updateUnitToolFromFields
 } from "./builderUnits.js";
+import { readRosterFields } from "./builderRoster.js";
 import {
   addBehaviorDefinition,
   applyBehaviorToolAtTile,
@@ -376,6 +377,12 @@ class MissionBuilder {
     if (this.builderState.activeTab === "units") {
       updateUnitToolFromFields(this.builderState, this.refs.root, this.appState, { changedField });
       updateBehaviorToolFromFields(this.builderState, this.refs.root);
+      this.render();
+      return;
+    }
+
+    if (this.builderState.activeTab === "roster") {
+      readRosterFields(this.builderState, this.refs.root, this.appState);
       this.render();
       return;
     }

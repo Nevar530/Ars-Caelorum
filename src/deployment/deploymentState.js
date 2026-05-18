@@ -1,4 +1,5 @@
 import { createMechInstance, createPilotInstance } from "../mechs.js";
+import { isPilotAvailableInCampaign } from "../campaign/campaignRoster.js";
 import { getOccupantsAt, canUnitOccupyCells } from "../scale/occupancy.js";
 
 function getStartState(map) {
@@ -78,7 +79,8 @@ export function initializeDeploymentState(state) {
     .filter((cell) => cell.controlType === "PC" && cell.unitType === unitType);
   const roster = startState.deployments
     .map(normalizeDeployment)
-    .filter((entry) => entry.controlType === "PC" && entry.team === "player")
+.filter((entry) => entry.controlType === "PC" && entry.team === "player")
+    .filter((entry) => isPilotAvailableInCampaign(state.campaign, entry.pilotDefinitionId))
     .map((entry, index) => {
       const pilotDefinition = getPilotDefinition(state.content, entry.pilotDefinitionId);
       const mechDefinition = entry.mechDefinitionId

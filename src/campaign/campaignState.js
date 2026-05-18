@@ -100,17 +100,38 @@ export function ensurePilotProgress(campaignState, pilotId, defaults = {}) {
   campaignState.pilots[id] = normalizePilotProgress({
     ...defaults,
     ...(existing && typeof existing === "object" ? existing : {}),
-    recruited: existing?.recruited ?? defaults.recruited ?? true
+    recruited: existing?.recruited ?? defaults.recruited ?? true,
+    available: existing?.available ?? defaults.available ?? true
   });
 
   return campaignState.pilots[id];
 }
 
 export function recruitPilot(campaignState, pilotId, defaults = {}) {
-  const progress = ensurePilotProgress(campaignState, pilotId, { ...defaults, recruited: true });
-  if (progress) progress.recruited = true;
+  const progress = ensurePilotProgress(campaignState, pilotId, { ...defaults, recruited: true, available: defaults.available ?? true });
+  if (progress) {
+    progress.recruited = true;
+    if (defaults.available !== false) progress.available = true;
+  }
   return progress;
 }
+
+export function setPilotRecruitment(campaignState, pilotId, recruited = true, defaults = {}) {
+  const progress = ensurePilotProgress(campaignState, pilotId, { ...defaults, recruited: Boolean(recruited), available: Boolean(recruited) });
+  if (!progress) return null;
+  progress.recruited = Boolean(recruited);
+  if (!progress.recruited) progress.available = false;
+  return progress;
+}
+
+export function setPilotAvailability(campaignState, pilotId, available = true, defaults = {}) {
+  const progress = ensurePilotProgress(campaignState, pilotId, { ...defaults, recruited: true, available: Boolean(available) });
+  if (!progress) return null;
+  progress.recruited = true;
+  progress.available = Boolean(available);
+  return progress;
+}
+
 
 export function addPilotLevels(campaignState, pilotId, levels = 1) {
   const progress = ensurePilotProgress(campaignState, pilotId, { recruited: true });
@@ -198,7 +219,8 @@ export function normalizePilotProgress(progress) {
     statBonuses: normalizeStatBonuses(source.statBonuses),
     learnedAbilities: uniqueIds(source.learnedAbilities),
     activeAbilities: uniqueIds(source.activeAbilities),
-    recruited: source.recruited !== false
+    recruited: source.recruited !== false,
+    available: source.available !== false && source.recruited !== false
   };
 }
 

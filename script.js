@@ -28,6 +28,7 @@ import { isMissionUnlocked, setCurrentMission } from "./src/campaign/campaignSta
 import { loadCampaignState, resetStoredCampaignState, saveCampaignState } from "./src/campaign/campaignStorage.js";
 import { applyMissionRewards } from "./src/campaign/campaignRewards.js";
 import { getCurrentMissionEntry } from "./src/campaign/campaignProgression.js";
+import { applyMissionRosterState } from "./src/campaign/campaignRoster.js";
 import { createGameMenuController } from "./src/controllers/gameMenuController.js";
 import { FLOW_ACTIONS, getMissionFlowBranch, normalizeFlowAction } from "./src/campaign/campaignFlow.js";
 
@@ -397,6 +398,7 @@ function getSelectedMissionEntry() {
     const mapDefinition = await loadMapDefinitionByPath(mapPath);
     state.ui.shell.selectedMissionId = missionEntry.id;
     state.ui.shell.selectedMapId = missionEntry.id;
+    applyMissionRosterState(state.campaign, missionDefinition, state.content);
     setCurrentMission(state.campaign, missionEntry.id);
     state.campaign = saveCampaignState(state.campaign, { defaultMissionId });
     state.ui.shell.briefingMission = missionEntry;

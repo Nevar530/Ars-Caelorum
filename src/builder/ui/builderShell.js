@@ -52,6 +52,10 @@ import {
   getUnitStartAssignments
 } from "../builderUnits.js";
 import {
+  ensureRosterToolSettings,
+  getCampaignRosterRows
+} from "../builderRoster.js";
+import {
   ensureBehaviorToolSettings,
   getBehaviorDefinitions,
   getBehaviorTargetUnitOptions
@@ -227,6 +231,7 @@ function renderTabHeader({ builderState, refs }) {
     structures: "Structure cells/rooms are active for builder-owned maps. Roof visibility is an editor view toggle; edge/wall tools are active.",
     spawns: "Spawn and deployment authoring writes existing map.spawns and map.startState truth.",
     units: "Unit start assignments write map.startState.deployments using the current runtime contract.",
+    roster: "Active roster authoring controls who is recruited and available for player deployment.",
     objectives: "Objective definitions are authored here. Reach/Hold objectives use map painting for zones.",
     triggers: "Preset triggers live here. Use Run Logic Chain when one zone needs several actions.",
     logic: "Logic V1 is simple: optional condition, then ordered action list. No node graph, no NASA console.",
@@ -475,6 +480,9 @@ function renderInspector({ builderState, refs, appState }) {
   const unitTools = builderState.activeTab === "units"
     ? renderUnitInspectorTools(builderState, appState)
     : "";
+  const rosterTools = builderState.activeTab === "roster"
+    ? renderRosterInspectorTools(builderState, appState)
+    : "";
   const objectiveTools = builderState.activeTab === "objectives"
     ? renderObjectiveInspectorTools(builderState, appState)
     : "";
@@ -508,6 +516,7 @@ function renderInspector({ builderState, refs, appState }) {
     ${structureTools}
     ${spawnTools}
     ${unitTools}
+    ${rosterTools}
     ${objectiveTools}
     ${triggerTools}
     ${logicTools}
@@ -731,7 +740,7 @@ function renderDialogueInspectorTools(builderState, appState = null) {
 }
 
 function buildDialogueSpeakerOptions(appState, selectedId) {
-  const pilots = getPilotOptions(appState);
+  const pilots = getPilotOptions(appState, builderState);
   const selected = String(selectedId ?? "system");
   const options = [{ id: "system", label: "System / Mission Control" }, ...pilots];
   return options.map((option) => {
@@ -1155,10 +1164,50 @@ function renderPropSpritePreview(spriteId, label) {
   return '<div class="builder-structure-art-preview"><span>' + escapeHtml(label) + '</span><img src="' + src + '" alt="' + escapeHtml(clean) + '"><strong>' + escapeHtml(clean) + '</strong></div>';
 }
 
+function renderRosterInspectorTools(builderState, appState) {
+  const roster = ensureRosterToolSettings(builderState);
+  const rows = getCampaignRosterRows(builderState, appState);
+  const editable = builderState.workspaceMode === "builder-map";
+
+  if (!rows.length) {
+    return `
+      <div class="builder-inspector-card">
+        <div class="builder-field-label">Active Roster</div>
+        <div class="builder-inspector-note">No campaignRoster pilots found in pilots.json.</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="builder-inspector-card builder-grid-card">
+      <div class="builder-field-label">Active Roster</div>
+      <div class="builder-inspector-note builder-note-compact">Recruited means the pilot exists in campaign state. Available means the pilot can be deployed by player-team PC starts. Skye defaults to recruited/available.</div>
+      <div class="builder-unit-start-list">
+        ${rows.map((pilot) => `
+          <div class="builder-unit-start-row">
+            <div>
+              <strong>${escapeHtml(pilot.name)}</strong>
+              <small>${escapeHtml(pilot.id)}${pilot.role ? " · " + escapeHtml(pilot.role) : ""}</small>
+            </div>
+            <label class="builder-form-check builder-form-check-inline">
+              <input type="checkbox" data-builder-field="roster-recruited" data-pilot-id="${escapeHtml(pilot.id)}"${pilot.recruited ? " checked" : ""}${editable ? "" : " disabled"}>
+              <span>Recruited</span>
+            </label>
+            <label class="builder-form-check builder-form-check-inline">
+              <input type="checkbox" data-builder-field="roster-available" data-pilot-id="${escapeHtml(pilot.id)}"${pilot.available ? " checked" : ""}${editable && pilot.recruited ? "" : " disabled"}>
+              <span>Available</span>
+            </label>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
 function renderUnitInspectorTools(builderState, appState) {
   const tool = ensureUnitToolSettings(builderState, appState) ?? {};
   const editable = builderState.workspaceMode === "builder-map";
-  const pilots = getPilotOptions(appState);
+  const pilots = getPilotOptions(appState, builderState);
   const mechs = getMechOptions(appState);
   const spawns = getSpawnIdOptions(builderState);
   const starts = getUnitStartAssignments(builderState);

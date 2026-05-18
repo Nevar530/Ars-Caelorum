@@ -789,6 +789,29 @@ function normalizeFlowBranch(branch, result) {
   return { action };
 }
 
+
+function normalizeActiveRoster(activeRoster) {
+  const source = activeRoster && typeof activeRoster === "object" ? activeRoster : {};
+  const pilots = source.pilots && typeof source.pilots === "object" && !Array.isArray(source.pilots)
+    ? source.pilots
+    : { pilot_skye: { recruited: true, available: true } };
+
+  return {
+    pilots: Object.fromEntries(Object.entries(pilots)
+      .map(([pilotId, state]) => [sanitizeId(pilotId, ""), normalizeRosterPilotState(state)])
+      .filter(([pilotId]) => Boolean(pilotId)))
+  };
+}
+
+function normalizeRosterPilotState(state) {
+  const source = state && typeof state === "object" ? state : {};
+  const recruited = source.recruited === true;
+  return {
+    recruited,
+    available: recruited && source.available !== false
+  };
+}
+
 function normalizeVictoryFlowAction(action) {
   const value = String(action ?? "continue").trim();
   return ["continue", "restart", "mainMenu"].includes(value) ? value : "continue";

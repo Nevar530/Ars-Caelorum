@@ -51,7 +51,7 @@ export function validateBuilderPackage(builderState, appState = null) {
     validateMapBasics(result, map, width, height);
     validateTiles(result, map, width, height);
     validateSpawns(result, map, width, height);
-    validateDeployments(result, map, appState, objectives);
+    validateDeployments(result, map, appState, objectives, mission);
     validateDeploymentCells(result, map, width, height);
     validateStructures(result, map, width, height);
     validateProps(result, map, width, height);
@@ -99,6 +99,7 @@ function validateMissionPackageBasics(result, mission, maps, appState = null) {
   }
 
   validateCampaignFlow(result, mission, appState);
+  validateActiveRoster(result, mission, appState);
 }
 
 function validateCampaignFlow(result, mission, appState = null) {
@@ -141,6 +142,35 @@ function getKnownMissionIds(appState, mission) {
   }
   const currentId = cleanString(mission?.id);
   if (currentId) ids.add(currentId);
+  return ids;
+}
+
+
+function validateActiveRoster(result, mission, appState = null) {
+  const roster = mission?.activeRoster?.pilots && typeof mission.activeRoster.pilots === "object"
+    ? mission.activeRoster.pilots
+    : {};
+  const known = new Set(getContentIds(appState?.content?.pilots));
+  for (const [pilotId, state] of Object.entries(roster)) {
+    const id = cleanString(pilotId);
+    if (!id) continue;
+    if (known.size && !known.has(id)) {
+      addWarning(result, "ROSTER_UNKNOWN_PILOT", `Active roster references unknown pilot "${id}".`);
+    }
+    if (state?.available === true && state?.recruited !== true) {
+      addWarning(result, "ROSTER_AVAILABLE_NOT_RECRUITED", `Active roster marks "${id}" available without recruited=true.`);
+    }
+  }
+}
+
+function getMissionAvailablePilotIds(mission) {
+  const roster = mission?.activeRoster?.pilots && typeof mission.activeRoster.pilots === "object"
+    ? mission.activeRoster.pilots
+    : {};
+  const ids = new Set();
+  for (const [pilotId, state] of Object.entries(roster)) {
+    if (state?.recruited === true && state?.available !== false) ids.add(cleanString(pilotId));
+  }
   return ids;
 }
 
@@ -192,7 +222,7 @@ function validateSpawns(result, map, width, height) {
   }
 }
 
-function validateDeployments(result, map, appState, objectives = []) {
+function validateDeployments(result, map, appState, objectives = [], mission = null) {
   const startState = map?.startState ?? {};
   const deployments = Array.isArray(startState.deployments) ? startState.deployments : [];
   const startMode = startState.startMode ?? "authored";
@@ -221,7 +251,13 @@ function validateDeployments(result, map, appState, objectives = []) {
       if (pilotIds.size && !pilotIds.has(entry.pilotDefinitionId)) {
         addError(result, "DEPLOYMENT_BAD_PILOT_REF", `${label} references missing pilotDefinitionId "${entry.pilotDefinitionId}".`);
       }
-      if (team === "player") playerPilots += 1;
+      if (team === "player") {
+        playerPilots += 1;
+        const availableIds = getMissionAvailablePilotIds(mission);
+        if (controlType === "PC" && availableIds.size && !availableIds.has(cleanString(entry.pilotDefinitionId))) {
+          addWarning(result, "DEPLOYMENT_PILOT_NOT_AVAILABLE", `${label} uses player pilot "${entry.pilotDefinitionId}" but that pilot is not available in the active roster.`);
+        }
+      }
       if (team === "enemy") enemyPilots += 1;
     }
 

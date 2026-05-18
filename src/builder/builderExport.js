@@ -115,6 +115,7 @@ export function buildMapDefinitionForExport(map) {
     startState: normalizeStartState(map?.startState),
     structures: sanitizeStructuresForExport(map?.structures ?? []),
     props: sanitizePropsForExport(map?.props ?? []),
+    npcBehaviors: cloneJson(map?.npcBehaviors ?? []),
     tiles
   };
 }
@@ -152,6 +153,11 @@ export function buildMissionDefinitionForExport(mapDefinition, mission = null, m
     campaignFlow: cloneJson(mission?.campaignFlow ?? {
       onVictory: { action: "continue", loadMissionId: "" },
       onDefeat: { action: "restart" }
+    }),
+    activeRoster: cloneJson(mission?.activeRoster ?? {
+      pilots: {
+        pilot_skye: { recruited: true, available: true }
+      }
     })
   };
 }
@@ -170,7 +176,8 @@ export function buildMissionPackageDefinition({ missionDefinition, mapDefinition
     logic: cloneJson(missionDefinition?.logic ?? []),
     dialogue: cloneJson(missionDefinition?.dialogue ?? {}),
     results: cloneJson(missionDefinition?.results ?? {}),
-    campaignFlow: cloneJson(missionDefinition?.campaignFlow ?? {})
+    campaignFlow: cloneJson(missionDefinition?.campaignFlow ?? {}),
+    activeRoster: cloneJson(missionDefinition?.activeRoster ?? {})
   };
 }
 

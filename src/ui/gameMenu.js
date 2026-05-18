@@ -231,7 +231,7 @@ function renderCharactersTab(state) {
             data-pilot-id="${escapeHtml(pilot.id)}"
           >
             <span>${escapeHtml(pilot.name)}</span>
-            <b>Lv ${escapeHtml(pilot.level)}</b>
+            <b>${pilot.available ? "Ready" : "Inactive"} · Lv ${escapeHtml(pilot.level)}</b>
           </button>
         `).join("")}
       </aside>
@@ -371,6 +371,7 @@ function getVisiblePilotEntries(state) {
         id: pilotId,
         name: definition.name ?? pilotId,
         role: definition.role ?? "",
+        available: progress?.available !== false,
         level: Math.max(1, Math.trunc(Number(progress?.level ?? 1) || 1)),
         statPoints: Math.max(0, Math.trunc(Number(progress?.statPoints ?? 0) || 0)),
         baseStats,

@@ -38,7 +38,8 @@
     },
     "inventory": {
       "items": []
-    }
+    },
+    "campaignRoster": true
   },
   {
     "id": "pilot_eve",
@@ -79,7 +80,8 @@
     },
     "inventory": {
       "items": []
-    }
+    },
+    "campaignRoster": true
   },
   {
     "id": "pilot_theo",
@@ -120,7 +122,8 @@
     },
     "inventory": {
       "items": []
-    }
+    },
+    "campaignRoster": true
   },
   {
     "id": "pilot_pax",
@@ -161,7 +164,8 @@
     },
     "inventory": {
       "items": []
-    }
+    },
+    "campaignRoster": true
   },
   {
     "id": "pilot_quinn",
@@ -202,7 +206,8 @@
     },
     "inventory": {
       "items": []
-    }
+    },
+    "campaignRoster": true
   },
   {
     "id": "pilot_revaele",
@@ -243,7 +248,8 @@
     },
     "inventory": {
       "items": []
-    }
+    },
+    "campaignRoster": true
   },
   {
     "id": "pilot_axis",
@@ -284,7 +290,8 @@
     },
     "inventory": {
       "items": []
-    }
+    },
+    "campaignRoster": true
   },
   {
     "id": "pilot_biggs",

@@ -12,6 +12,7 @@ export const BUILDER_TABS = [
   { id: "structures", label: "Structures" },
   { id: "spawns", label: "Spawns" },
   { id: "units", label: "Units" },
+  { id: "roster", label: "Roster" },
   { id: "objectives", label: "Objectives" },
   { id: "triggers", label: "Triggers" },
   { id: "logic", label: "Logic" },
@@ -126,7 +127,7 @@ export function createBuilderState() {
       areaMode: "box",
       areaW: 3,
       areaH: 3,
-      stepInterval: 1,
+      stepInterval: 4,
       enabled: true,
       selectedIndex: -1,
       paintMode: "add"
