@@ -41,6 +41,7 @@ import {
 } from "../builderAdapters.js";
 import { getObjectiveZoneCells } from "../builderObjectives.js";
 import { getTriggerZoneCells } from "../builderTriggers.js";
+import { getBehaviorZoneCells } from "../builderBehaviors.js";
 import { getMapProps, getPropFootprintCells, normalizeProp } from "../../props/propRules.js";
 
 const PICK_MAX_DISTANCE_PX = 44;
@@ -362,6 +363,7 @@ function renderBuilderWorkspaceOverlays({ previewState, appState, builderState, 
   if (overlayState.deployment) overlays.push(renderDeploymentOverlays(previewState));
   if (overlayState.objectives) overlays.push(renderObjectiveZoneOverlays(previewState, builderState));
   if (overlayState.triggers) overlays.push(renderTriggerZoneOverlays(previewState, builderState));
+  if (overlayState.behaviors) overlays.push(renderBehaviorZoneOverlays(previewState, builderState));
   if (overlayState.spawns) overlays.push(renderSpawnOverlays(previewState));
   if (overlayState.rooms) overlays.push(renderRoomOverlays(previewState));
   if (overlayState.props) overlays.push(renderPropOverlays(previewState, appState, builderState));
@@ -561,6 +563,20 @@ function renderTriggerZoneOverlays(previewState, builderState) {
     return `
       <polygon class="builder-overlay-trigger" points="${formatPointString(points)}" pointer-events="none" />
       ${renderTileText(previewState, cell.x, cell.y, label, "builder-overlay-label builder-overlay-label-trigger")}
+    `;
+  }).join("");
+}
+
+function renderBehaviorZoneOverlays(previewState, builderState) {
+  const cells = getBehaviorZoneCells(builderState);
+  if (!cells.length) return "";
+
+  return cells.map((cell) => {
+    const points = getTilePolygonPoints(previewState, cell.x, cell.y);
+    if (points.length !== 4) return "";
+    return `
+      <polygon class="builder-overlay-objective" points="${formatPointString(points)}" pointer-events="none" />
+      ${renderTileText(previewState, cell.x, cell.y, "wander", "builder-overlay-label builder-overlay-label-objective")}
     `;
   }).join("");
 }

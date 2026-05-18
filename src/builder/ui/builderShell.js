@@ -52,6 +52,11 @@ import {
   getUnitStartAssignments
 } from "../builderUnits.js";
 import {
+  ensureBehaviorToolSettings,
+  getBehaviorDefinitions,
+  getBehaviorTargetUnitOptions
+} from "../builderBehaviors.js";
+import {
   ensureMissionPackageDraft,
   getMissionMapDrafts,
   getMissionPackageSummary,
@@ -260,6 +265,7 @@ function renderOverlayToggles({ builderState, refs }) {
     ["deployment", "Deploy", builderState.overlays?.deployment],
     ["objectives", "Objectives", builderState.overlays?.objectives],
     ["triggers", "Triggers", builderState.overlays?.triggers],
+    ["behaviors", "Behaviors", builderState.overlays?.behaviors],
     ["tileHeights", "Heights", builderState.overlays?.tileHeights]
   );
 
@@ -1222,8 +1228,97 @@ function renderUnitInspectorTools(builderState, appState) {
       </div>
       <div class="builder-field-label builder-section-label">Current StartState Deployments</div>
       ${renderUnitStartList(starts)}
+      ${renderBehaviorInspectorTools(builderState, editable)}
     </div>
   `;
+}
+
+
+function renderBehaviorInspectorTools(builderState, editable) {
+  const tool = ensureBehaviorToolSettings(builderState) ?? {};
+  const behaviors = getBehaviorDefinitions(builderState);
+  const unitOptions = buildBehaviorUnitOptions(builderState, tool.unitId);
+  const areaModeOptions = buildLabeledOptions([
+    { value: "box", label: "Box Around Home" },
+    { value: "zone", label: "Painted Wander Zone" }
+  ], tool.areaMode ?? "box");
+  const selectedBehavior = Number.isInteger(Number(tool.selectedIndex)) && behaviors[Number(tool.selectedIndex)]
+    ? behaviors[Number(tool.selectedIndex)]
+    : null;
+  const selectedTileCount = Array.isArray(selectedBehavior?.tiles) ? selectedBehavior.tiles.length : 0;
+  const addActive = tool.paintMode !== "erase" ? " is-active" : "";
+  const eraseActive = tool.paintMode === "erase" ? " is-active" : "";
+
+  return `
+    <div class="builder-field-label builder-section-label">NPC Behavior</div>
+    <label class="builder-form-field builder-form-field-compact">
+      <span>Behavior ID</span>
+      <input type="text" data-builder-field="behavior-id" value="${escapeHtml(tool.id ?? "")}" placeholder="auto" spellcheck="false"${editable ? "" : " disabled"}>
+    </label>
+    <label class="builder-form-field builder-form-field-compact">
+      <span>Unit</span>
+      <select data-builder-field="behavior-unit-id"${editable ? "" : " disabled"}>${unitOptions}</select>
+    </label>
+    <label class="builder-form-field builder-form-field-compact">
+      <span>Wander Area</span>
+      <select data-builder-field="behavior-area-mode"${editable ? "" : " disabled"}>${areaModeOptions}</select>
+    </label>
+    <label class="builder-form-field builder-form-field-compact">
+      <span>Box Width</span>
+      <input type="number" min="1" step="1" data-builder-field="behavior-area-w" value="${escapeHtml(tool.areaW ?? 3)}"${editable ? "" : " disabled"}>
+    </label>
+    <label class="builder-form-field builder-form-field-compact">
+      <span>Box Height</span>
+      <input type="number" min="1" step="1" data-builder-field="behavior-area-h" value="${escapeHtml(tool.areaH ?? 3)}"${editable ? "" : " disabled"}>
+    </label>
+    <label class="builder-form-field builder-form-field-compact">
+      <span>Step Interval</span>
+      <input type="number" min="1" step="1" data-builder-field="behavior-step-interval" value="${escapeHtml(tool.stepInterval ?? 1)}"${editable ? "" : " disabled"}>
+    </label>
+    <label class="builder-form-check">
+      <input type="checkbox" data-builder-field="behavior-enabled"${tool.enabled !== false ? " checked" : ""}${editable ? "" : " disabled"}>
+      <span>Enabled</span>
+    </label>
+    <div class="builder-tool-row">
+      <button type="button" class="builder-tool-button" data-builder-action="add-behavior"${editable ? "" : " disabled"}>Add Behavior</button>
+      <button type="button" class="builder-tool-button" data-builder-action="update-behavior"${editable ? "" : " disabled"}>Update Selected</button>
+    </div>
+    ${tool.areaMode === "zone" ? `
+      <div class="builder-tool-row builder-tool-row-tight">
+        <button type="button" class="builder-tool-button${addActive}" data-builder-action="behavior-paint-add"${editable ? "" : " disabled"}>Paint Wander</button>
+        <button type="button" class="builder-tool-button${eraseActive}" data-builder-action="behavior-paint-erase"${editable ? "" : " disabled"}>Erase Wander</button>
+      </div>
+      <div class="builder-inspector-note builder-note-compact">Click map tiles to paint this wander zone. Selected behavior has ${selectedTileCount} tile(s).</div>
+    ` : `
+      <div class="builder-inspector-note builder-note-compact">Box mode wanders inside the width/height around the unit's first runtime position.</div>
+    `}
+    ${renderBehaviorList(behaviors, tool.selectedIndex)}
+  `;
+}
+
+function renderBehaviorList(behaviors, selectedIndex) {
+  const list = Array.isArray(behaviors) ? behaviors : [];
+  if (!list.length) return '<div class="builder-inspector-note">No NPC behaviors yet.</div>';
+
+  return '<div class="builder-unit-start-list">' + list.map((behavior, index) => {
+    const selected = Number(selectedIndex) === index ? ' is-active' : '';
+    const mode = behavior?.areaMode === 'zone'
+      ? 'zone tiles: ' + (Array.isArray(behavior?.tiles) ? behavior.tiles.length : 0)
+      : 'box ' + (behavior?.areaW ?? 3) + 'x' + (behavior?.areaH ?? 3);
+    const status = behavior?.enabled === false ? 'disabled' : 'enabled';
+    return '<div class="builder-unit-start-row' + selected + '">' +
+      '<button type="button" class="builder-trigger-main" data-builder-action="select-behavior:' + index + '">' +
+        '<strong>' + escapeHtml((index + 1) + '. ' + (behavior?.id ?? 'wander')) + '</strong>' +
+        '<span>' + escapeHtml((behavior?.unitId ?? 'missing unit') + ' · ' + mode + ' · step ' + (behavior?.stepInterval ?? 1) + ' · ' + status) + '</span>' +
+      '</button>' +
+      '<button type="button" class="builder-tool-button" data-builder-action="remove-behavior:' + index + '">Remove</button>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function buildBehaviorUnitOptions(builderState, selectedId = "") {
+  const options = getBehaviorTargetUnitOptions(builderState);
+  return buildObjectOptions(options, selectedId, "No deployed units", true, "Choose unit");
 }
 
 function renderUnitStartList(starts) {

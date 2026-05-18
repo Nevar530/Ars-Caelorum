@@ -309,11 +309,16 @@ export function isTileBlocked(state, x, y, activeUnit = null, _resolution = "bas
   return !canUnitOccupyOrigin(state, activeUnit, x, y);
 }
 
+export function canUnitStepToTile(state, unit, fromX, fromY, toX, toY) {
+  if (!unit) return false;
+  return canTraverseBetweenOrigins(state, unit, fromX, fromY, toX, toY);
+}
+
 export function canStepToTile(state, fromX, fromY, toX, toY, _resolution = "base") {
   const activeUnit = getMovementBody(state);
   if (!activeUnit) return false;
 
-  return canTraverseBetweenOrigins(state, activeUnit, fromX, fromY, toX, toY);
+  return canUnitStepToTile(state, activeUnit, fromX, fromY, toX, toY);
 }
 
 export function getTileMoveCost(state, fromX, fromY, toX, toY, _resolution = "base") {

@@ -80,6 +80,16 @@ import {
   updateUnitToolFromFields
 } from "./builderUnits.js";
 import {
+  addBehaviorDefinition,
+  applyBehaviorToolAtTile,
+  isBehaviorAuthoringActive,
+  removeBehaviorDefinition,
+  selectBehaviorDefinition,
+  setBehaviorPaintMode,
+  updateBehaviorToolFromFields,
+  updateSelectedBehaviorDefinition
+} from "./builderBehaviors.js";
+import {
   addNewMapToMissionPackage,
   applyMissionPackagePreset,
   deleteActiveMissionPackageMap,
@@ -252,7 +262,7 @@ class MissionBuilder {
 
   handleWorkspaceConfirmKey(event) {
     if (event.code !== "Space" && event.key !== " " && event.key !== "Enter") return false;
-    if (!this.isTerrainAuthoringActive() && !this.isStructureAuthoringActive() && !this.isSpawnAuthoringActive() && !this.isObjectiveAuthoringActive() && !this.isTriggerAuthoringActive()) return false;
+    if (!this.isTerrainAuthoringActive() && !this.isStructureAuthoringActive() && !this.isSpawnAuthoringActive() && !this.isObjectiveAuthoringActive() && !this.isTriggerAuthoringActive() && !this.isBehaviorAuthoringActive()) return false;
 
     const selected = this.builderState.selected ?? null;
     const hover = this.builderState.hover ?? null;
@@ -276,7 +286,9 @@ class MissionBuilder {
             ? this.applyObjectiveActionAtTile(target.x, target.y)
             : this.isTriggerAuthoringActive()
               ? this.applyTriggerActionAtTile(target.x, target.y)
-              : this.applyTerrainActionAtTile(target.x, target.y);
+              : this.isBehaviorAuthoringActive()
+                ? this.applyBehaviorActionAtTile(target.x, target.y)
+                : this.applyTerrainActionAtTile(target.x, target.y);
 
     pushBuilderLog(this.builderState, result.message);
     this.render();
@@ -363,6 +375,7 @@ class MissionBuilder {
 
     if (this.builderState.activeTab === "units") {
       updateUnitToolFromFields(this.builderState, this.refs.root, this.appState, { changedField });
+      updateBehaviorToolFromFields(this.builderState, this.refs.root);
       this.render();
       return;
     }
@@ -502,6 +515,9 @@ class MissionBuilder {
     } else if (this.isTriggerAuthoringActive()) {
       const result = this.applyTriggerActionAtTile(picked.x, picked.y);
       pushBuilderLog(this.builderState, result.message);
+    } else if (this.isBehaviorAuthoringActive()) {
+      const result = this.applyBehaviorActionAtTile(picked.x, picked.y);
+      pushBuilderLog(this.builderState, result.message);
     } else {
       pushBuilderLog(this.builderState, "Selected tile " + picked.x + ", " + picked.y + ".");
     }
@@ -527,6 +543,10 @@ class MissionBuilder {
 
   isTriggerAuthoringActive() {
     return isTriggerAuthoringActive(this.builderState);
+  }
+
+  isBehaviorAuthoringActive() {
+    return isBehaviorAuthoringActive(this.builderState);
   }
 
   applyTerrainActionAtTile(x, y) {
@@ -569,6 +589,11 @@ class MissionBuilder {
   applyTriggerActionAtTile(x, y) {
     updateTriggerToolFromFields(this.builderState, this.refs.root);
     return applyTriggerToolAtTile(this.builderState, this.appState, x, y);
+  }
+
+  applyBehaviorActionAtTile(x, y) {
+    updateBehaviorToolFromFields(this.builderState, this.refs.root);
+    return applyBehaviorToolAtTile(this.builderState, this.appState, x, y);
   }
 
   async handleAction(action) {
@@ -760,6 +785,46 @@ class MissionBuilder {
       updateObjectiveToolFromFields(this.builderState, this.refs.root);
       const tool = setObjectivePaintMode(this.builderState, action === "objective-paint-erase" ? "erase" : "add");
       pushBuilderLog(this.builderState, tool.paintMode === "erase" ? "Objective zone erase armed." : "Objective zone paint armed.");
+      this.render();
+      return;
+    }
+
+    if (action === "add-behavior") {
+      updateBehaviorToolFromFields(this.builderState, this.refs.root);
+      const result = addBehaviorDefinition(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "update-behavior") {
+      updateBehaviorToolFromFields(this.builderState, this.refs.root);
+      const result = updateSelectedBehaviorDefinition(this.builderState);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("select-behavior:")) {
+      const index = Number(action.split(":")[1]);
+      const result = selectBehaviorDefinition(this.builderState, index);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action && typeof action === "string" && action.startsWith("remove-behavior:")) {
+      const index = Number(action.split(":")[1]);
+      const result = removeBehaviorDefinition(this.builderState, index);
+      pushBuilderLog(this.builderState, result.message);
+      this.render();
+      return;
+    }
+
+    if (action === "behavior-paint-add" || action === "behavior-paint-erase") {
+      updateBehaviorToolFromFields(this.builderState, this.refs.root);
+      const tool = setBehaviorPaintMode(this.builderState, action === "behavior-paint-erase" ? "erase" : "add");
+      pushBuilderLog(this.builderState, tool.paintMode === "erase" ? "Wander zone erase armed." : "Wander zone paint armed.");
       this.render();
       return;
     }

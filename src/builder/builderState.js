@@ -50,7 +50,8 @@ export function createBuilderState() {
       triggers: true,
       tileHeights: false,
       props: true,
-      propArt: true
+      propArt: true,
+      behaviors: true
     },
     terrainTool: {
       terrainTypeId: "grass",
@@ -117,6 +118,18 @@ export function createBuilderState() {
       pilotSpawnId: "",
       mechSpawnId: "",
       instancePrefix: ""
+    },
+    behaviorTool: {
+      id: "",
+      unitId: "",
+      type: "wander",
+      areaMode: "box",
+      areaW: 3,
+      areaH: 3,
+      stepInterval: 1,
+      enabled: true,
+      selectedIndex: -1,
+      paintMode: "add"
     },
     packageTool: {
       objectivePreset: "defeat_all"

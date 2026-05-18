@@ -1000,5 +1000,43 @@
     "objectives": [
       "Talk to Theo on the bridge."
     ]
-  }
+  },
+  "npcBehaviors": [
+    {
+      "id": "theo_bridge_wander",
+      "type": "wander",
+      "unitId": "hub-theo",
+      "areaMode": "zone",
+      "areaW": 3,
+      "areaH": 3,
+      "stepInterval": 2,
+      "enabled": true,
+      "tiles": [
+        {
+          "x": 5,
+          "y": 4
+        },
+        {
+          "x": 6,
+          "y": 4
+        },
+        {
+          "x": 7,
+          "y": 4
+        },
+        {
+          "x": 5,
+          "y": 5
+        },
+        {
+          "x": 6,
+          "y": 5
+        },
+        {
+          "x": 7,
+          "y": 5
+        }
+      ]
+    }
+  ]
 }

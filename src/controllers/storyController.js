@@ -4,7 +4,7 @@
 // This deliberately stays small: story mode keeps normal mission/map/trigger data
 // but skips initiative, rounds, turn phases, and combat menus.
 
-import { canStepToTile, clampFocusToBoard } from "../movement.js";
+import { canStepToTile, canUnitStepToTile, clampFocusToBoard } from "../movement.js";
 import { getUnitById, moveUnitTo } from "../mechs.js";
 import { getActiveActor, getActiveBody, getControlledBodyForPilot } from "../actors/actorResolver.js";
 import { getBoardDeltaFromScreenDirection, getWorldFacingFromScreenDirection } from "../input/inputFocus.js";
@@ -57,6 +57,114 @@ export function initializeStoryModeState(state) {
   }
 
   return true;
+}
+
+
+const WANDER_DIRECTIONS = [
+  { facing: 0, dx: 0, dy: -1 },
+  { facing: 1, dx: 1, dy: 0 },
+  { facing: 2, dx: 0, dy: 1 },
+  { facing: 3, dx: -1, dy: 0 }
+];
+
+function getStoryNpcBehaviors(state) {
+  const behaviors = Array.isArray(state?.map?.npcBehaviors) ? state.map.npcBehaviors : [];
+  return behaviors.filter((behavior) => behavior?.enabled !== false && behavior?.type === "wander");
+}
+
+function normalizeBehaviorTiles(tiles) {
+  const clean = [];
+  const seen = new Set();
+  for (const tile of Array.isArray(tiles) ? tiles : []) {
+    const x = Number(tile?.x);
+    const y = Number(tile?.y);
+    if (!Number.isInteger(x) || !Number.isInteger(y)) continue;
+    const key = `${x},${y}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    clean.push({ x, y });
+  }
+  return clean;
+}
+
+function ensureWanderHome(behavior, unit) {
+  if (!Number.isFinite(Number(behavior.homeX))) behavior.homeX = Number(unit.x ?? 0);
+  if (!Number.isFinite(Number(behavior.homeY))) behavior.homeY = Number(unit.y ?? 0);
+  return { x: Number(behavior.homeX), y: Number(behavior.homeY) };
+}
+
+function isTileInsideWanderArea(behavior, unit, x, y) {
+  const mode = String(behavior?.areaMode ?? "box");
+  if (mode === "zone") {
+    const tiles = normalizeBehaviorTiles(behavior.tiles);
+    if (tiles.length) return tiles.some((tile) => tile.x === x && tile.y === y);
+  }
+
+  const home = ensureWanderHome(behavior, unit);
+  const width = Math.max(1, Math.trunc(Number(behavior.areaW ?? behavior.size ?? 3) || 3));
+  const height = Math.max(1, Math.trunc(Number(behavior.areaH ?? behavior.size ?? width) || width));
+  const left = home.x - Math.floor((width - 1) / 2);
+  const right = home.x + Math.ceil((width - 1) / 2);
+  const top = home.y - Math.floor((height - 1) / 2);
+  const bottom = home.y + Math.ceil((height - 1) / 2);
+
+  return x >= left && x <= right && y >= top && y <= bottom;
+}
+
+function shouldWanderThisTick(behavior) {
+  const interval = Math.max(1, Math.trunc(Number(behavior.stepInterval ?? 1) || 1));
+  const runtime = behavior.runtime && typeof behavior.runtime === "object" ? behavior.runtime : {};
+  const tick = Math.max(0, Math.trunc(Number(runtime.tick ?? 0) || 0)) + 1;
+  behavior.runtime = { ...runtime, tick };
+  return tick % interval === 0;
+}
+
+function shuffleCopy(list) {
+  const copy = [...list];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function tickStoryNpcWander(state, { setUnitFacing, logDev } = {}) {
+  if (!isStoryMode(state)) return false;
+  if (state?.ui?.dialogue?.active || state?.mission?.result) return false;
+
+  let movedAny = false;
+  const activeBodyId = state?.turn?.activeBodyId ?? state?.turn?.activeUnitId ?? null;
+
+  for (const behavior of getStoryNpcBehaviors(state)) {
+    if (!shouldWanderThisTick(behavior)) continue;
+
+    const unitId = String(behavior.unitId ?? behavior.targetUnitId ?? "").trim();
+    if (!unitId || unitId === activeBodyId) continue;
+
+    const unit = getUnitById(state.units, unitId);
+    if (!unit || unit.status === "disabled" || unit.status === "destroyed") continue;
+    if (unit.embarked) continue;
+
+    ensureWanderHome(behavior, unit);
+    const candidates = shuffleCopy(WANDER_DIRECTIONS)
+      .map((step) => ({
+        facing: step.facing,
+        x: Number(unit.x ?? 0) + step.dx,
+        y: Number(unit.y ?? 0) + step.dy
+      }))
+      .filter((candidate) => isTileInsideWanderArea(behavior, unit, candidate.x, candidate.y))
+      .filter((candidate) => canUnitStepToTile(state, unit, Number(unit.x ?? 0), Number(unit.y ?? 0), candidate.x, candidate.y));
+
+    if (!candidates.length) continue;
+
+    const next = candidates[0];
+    setUnitFacing?.(state.units, unit.instanceId, next.facing);
+    moveUnitTo(state.units, unit.instanceId, next.x, next.y);
+    movedAny = true;
+    logDev?.(`${unit.name ?? unit.instanceId} wandered to (${next.x},${next.y}).`);
+  }
+
+  return movedAny;
 }
 
 export function createStoryController({
@@ -181,14 +289,27 @@ export function createStoryController({
       state
     );
 
-    if (target.x === unit.x && target.y === unit.y) return true;
-    if (!canStepToTile(state, unit.x, unit.y, target.x, target.y)) return true;
-
     const facing = getWorldFacingFromScreenDirection(direction);
+    if (facing !== null && facing !== undefined) {
+      setUnitFacing(state.units, unit.instanceId, facing);
+    }
+
+    if (target.x === unit.x && target.y === unit.y) {
+      render();
+      return true;
+    }
+
+    if (!canStepToTile(state, unit.x, unit.y, target.x, target.y)) {
+      render();
+      return true;
+    }
+
     moveUnitTo(state.units, unit.instanceId, target.x, target.y);
     logDev(`${unit.name} moved to (${target.x},${target.y}) in story mode.`);
 
     continueStoryMove({ unitId: unit.instanceId, facing });
+    tickStoryNpcWander(state, { setUnitFacing, logDev });
+    render();
     return true;
   }
 
