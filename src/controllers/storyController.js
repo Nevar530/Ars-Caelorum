@@ -161,7 +161,6 @@ function tickStoryNpcWander(state, { setUnitFacing, logDev } = {}) {
     setUnitFacing?.(state.units, unit.instanceId, next.facing);
     moveUnitTo(state.units, unit.instanceId, next.x, next.y);
     movedAny = true;
-    logDev?.(`${unit.name ?? unit.instanceId} wandered to (${next.x},${next.y}).`);
   }
 
   return movedAny;
@@ -177,6 +176,44 @@ export function createStoryController({
   onMissionResult = null
 }) {
   let pendingStoryMoveAfterDialogue = null;
+  let npcWanderTimer = null;
+
+  function stopStoryNpcWanderTimer() {
+    if (npcWanderTimer) {
+      window.clearInterval(npcWanderTimer);
+      npcWanderTimer = null;
+    }
+  }
+
+  function shouldRunStoryNpcWanderTimer() {
+    if (!isStoryMode(state)) return false;
+    if (state?.ui?.shell?.screen && state.ui.shell.screen !== "game") return false;
+    if (state?.ui?.dialogue?.active || state?.mission?.result) return false;
+    return getStoryNpcBehaviors(state).length > 0;
+  }
+
+  function startStoryNpcWanderTimer() {
+    stopStoryNpcWanderTimer();
+    if (!isStoryMode(state) || !getStoryNpcBehaviors(state).length) return false;
+
+    npcWanderTimer = window.setInterval(() => {
+      if (!shouldRunStoryNpcWanderTimer()) return;
+      if (tickStoryNpcWander(state, { setUnitFacing })) {
+        syncActiveSelection();
+        render();
+      }
+    }, 800);
+
+    return true;
+  }
+
+  function refreshStoryNpcWanderTimer() {
+    if (!isStoryMode(state) || !getStoryNpcBehaviors(state).length) {
+      stopStoryNpcWanderTimer();
+      return false;
+    }
+    return startStoryNpcWanderTimer();
+  }
 
   function getStoryActor() {
     return getActiveActor(state) ?? firstPlayablePilot(state);
@@ -295,13 +332,11 @@ export function createStoryController({
     }
 
     if (target.x === unit.x && target.y === unit.y) {
-      tickStoryNpcWander(state, { setUnitFacing, logDev });
       render();
       return true;
     }
 
     if (!canStepToTile(state, unit.x, unit.y, target.x, target.y)) {
-      tickStoryNpcWander(state, { setUnitFacing, logDev });
       render();
       return true;
     }
@@ -310,7 +345,6 @@ export function createStoryController({
     logDev(`${unit.name} moved to (${target.x},${target.y}) in story mode.`);
 
     continueStoryMove({ unitId: unit.instanceId, facing });
-    tickStoryNpcWander(state, { setUnitFacing, logDev });
     render();
     return true;
   }
@@ -399,6 +433,8 @@ export function createStoryController({
     initializeStoryModeState: () => initializeStoryModeState(state),
     moveStoryUnit,
     storyInteract,
-    resumePendingStoryMoveAfterDialogue
+    resumePendingStoryMoveAfterDialogue,
+    refreshStoryNpcWanderTimer,
+    stopStoryNpcWanderTimer
   };
 }

@@ -127,11 +127,6 @@ async function init() {
     logDev
   });
 
-  gameController.setMapLoadedHook?.(() => missionTriggerRuntime.handleMissionTriggerEvent("onMissionStart", {
-    round: state.turn?.round ?? 0,
-    mode: state.turn?.mode ?? state.map?.mode ?? "combat"
-  }));
-
   const movementController = createMovementController({
     state,
     getUnitById,
@@ -154,6 +149,14 @@ async function init() {
     onUnitEnteredZone: missionTriggerRuntime.handleUnitEnteredZone,
     onMissionTriggerEvent: (eventType, context) => missionTriggerRuntime.handleMissionTriggerEvent(eventType, context),
     onMissionResult: gameController.endMission
+  });
+
+  gameController.setMapLoadedHook?.(() => {
+    storyController.refreshStoryNpcWanderTimer?.();
+    return missionTriggerRuntime.handleMissionTriggerEvent("onMissionStart", {
+      round: state.turn?.round ?? 0,
+      mode: state.turn?.mode ?? state.map?.mode ?? "combat"
+    });
   });
 
   const combatController = createCombatController({
@@ -463,11 +466,13 @@ function getSelectedMissionEntry() {
     closeHelpDrawer: gameController.closeHelpDrawer,
 
     showTitleScreen() {
+      storyController.stopStoryNpcWanderTimer?.();
       state.ui.shell.screen = "title";
       gameController.showTitleScreen();
     },
 
     openMissionSelect() {
+      storyController.stopStoryNpcWanderTimer?.();
       startTitleThemeAudio();
       state.ui.shell.screen = "mission-select";
       gameController.render();
@@ -528,6 +533,7 @@ function getSelectedMissionEntry() {
     },
 
     resetCampaign() {
+      storyController.stopStoryNpcWanderTimer?.();
       state.campaign = resetStoredCampaignState({ defaultMissionId });
       state.ui.shell.selectedMissionId = state.campaign.currentMissionId;
       state.ui.shell.selectedMapId = state.campaign.currentMissionId;
