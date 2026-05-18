@@ -295,11 +295,13 @@ export function createStoryController({
     }
 
     if (target.x === unit.x && target.y === unit.y) {
+      tickStoryNpcWander(state, { setUnitFacing, logDev });
       render();
       return true;
     }
 
     if (!canStepToTile(state, unit.x, unit.y, target.x, target.y)) {
+      tickStoryNpcWander(state, { setUnitFacing, logDev });
       render();
       return true;
     }

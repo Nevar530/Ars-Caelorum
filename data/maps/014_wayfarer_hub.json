@@ -24,6 +24,10 @@
       {
         "x": 6,
         "y": 4
+      },
+      {
+        "x": 3,
+        "y": 6
       }
     ]
   },
@@ -42,6 +46,14 @@
         "pilotDefinitionId": "pilot_theo",
         "pilotInstanceId": "hub-theo",
         "pilotSpawnId": "neutral_1",
+        "team": "neutral",
+        "controlType": "CPU",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_eve",
+        "pilotInstanceId": "hub-eve",
+        "pilotSpawnId": "neutral_2",
         "team": "neutral",
         "controlType": "CPU",
         "startEmbarked": false
@@ -1007,9 +1019,9 @@
       "type": "wander",
       "unitId": "hub-theo",
       "areaMode": "zone",
-      "areaW": 3,
+      "areaW": 4,
       "areaH": 3,
-      "stepInterval": 2,
+      "stepInterval": 1,
       "enabled": true,
       "tiles": [
         {
@@ -1025,6 +1037,10 @@
           "y": 4
         },
         {
+          "x": 8,
+          "y": 4
+        },
+        {
           "x": 5,
           "y": 5
         },
@@ -1035,8 +1051,38 @@
         {
           "x": 7,
           "y": 5
+        },
+        {
+          "x": 8,
+          "y": 5
+        },
+        {
+          "x": 5,
+          "y": 6
+        },
+        {
+          "x": 6,
+          "y": 6
+        },
+        {
+          "x": 7,
+          "y": 6
+        },
+        {
+          "x": 8,
+          "y": 6
         }
       ]
+    },
+    {
+      "id": "eve_bridge_wander",
+      "type": "wander",
+      "unitId": "hub-eve",
+      "areaMode": "box",
+      "areaW": 4,
+      "areaH": 4,
+      "stepInterval": 1,
+      "enabled": true
     }
   ]
 }
