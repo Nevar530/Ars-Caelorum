@@ -15,7 +15,7 @@ import { initializeDeploymentState, resetDeploymentState } from "../deployment/d
 import { initializeStoryModeState } from "./storyController.js";
 import { getMapMode, isStoryMode } from "../mode/mapMode.js";
 import { buildMissionResultReceipt } from "../campaign/missionResult.js";
-import { recruitPlayerTeamDeployments } from "../campaign/campaignRoster.js";
+import { applyMissionRosterState, recruitPlayerTeamDeployments } from "../campaign/campaignRoster.js";
 
 export function createGameController({
   state,
@@ -170,9 +170,10 @@ export function createGameController({
   function loadMapAndUnits(mapDefinition = null, missionDefinition = null) {
     const sourceMap = mapDefinition ?? state.mission?.sourceMap ?? state.content?.defaultMap ?? null;
     state.map = resetMap(sourceMap);
-    recruitPlayerTeamDeployments(state.campaign, state.map);
     const isDeploymentMap = state.map?.startState?.startMode === "deployment";
     const runtimeMissionDefinition = buildRuntimeMissionDefinitionForMap(state.map, missionDefinition ?? state.mission?.definition ?? null);
+    applyMissionRosterState(state.campaign, runtimeMissionDefinition, state.content);
+    recruitPlayerTeamDeployments(state.campaign, state.map);
     state.units = instantiateTestUnits(state.content, state.map, {
       includePlayerDeployments: !isDeploymentMap,
       campaignState: state.campaign,
