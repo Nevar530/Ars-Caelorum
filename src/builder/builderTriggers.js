@@ -22,6 +22,7 @@ const TRIGGER_TYPES = [
   { value: "onEnterMech", label: "Enter Mech" },
   { value: "onExitMech", label: "Exit Mech" },
   { value: "onInteract", label: "Interact / Action Button" },
+  { value: "onUnitInteract", label: "Unit Interact" },
   { value: "onHitTarget", label: "Hit Target" },
   { value: "onStatChange", label: "Stat Changed" }
 ];
@@ -47,6 +48,8 @@ function createDefaultTriggerTool() {
     value: -1,
     missionResult: "victory",
     dialogueKey: "intro",
+    targetUnitId: "",
+    interactionRange: 1,
     selectedIndex: -1,
     paintMode: "add"
   };
@@ -70,6 +73,8 @@ export function ensureTriggerToolSettings(builderState) {
   tool.value = normalizeInteger(tool.value, -1);
   if (!MISSION_RESULTS.includes(tool.missionResult)) tool.missionResult = "victory";
   tool.dialogueKey = sanitizeId(tool.dialogueKey ?? "intro") || "intro";
+  tool.targetUnitId = sanitizeLooseId(tool.targetUnitId ?? "");
+  tool.interactionRange = Math.max(1, normalizeInteger(tool.interactionRange, 1));
   if (!Number.isInteger(Number(tool.selectedIndex))) tool.selectedIndex = -1;
   if (tool.paintMode !== "erase") tool.paintMode = "add";
 
@@ -103,6 +108,8 @@ export function updateTriggerToolFromFields(builderState, root) {
   const missionResult = readField(root, "trigger-mission-result", tool.missionResult);
   tool.missionResult = MISSION_RESULTS.includes(missionResult) ? missionResult : "victory";
   tool.dialogueKey = sanitizeId(readField(root, "trigger-dialogue-key", tool.dialogueKey)) || "intro";
+  tool.targetUnitId = sanitizeLooseId(readField(root, "trigger-target-unit-id", tool.targetUnitId));
+  tool.interactionRange = Math.max(1, normalizeInteger(readField(root, "trigger-interaction-range", tool.interactionRange), tool.interactionRange));
 
   return tool;
 }
@@ -195,6 +202,8 @@ export function selectTriggerDefinition(builderState, index) {
   tool.value = normalizeInteger(trigger.value, -1);
   tool.missionResult = trigger.missionResult ?? "victory";
   tool.dialogueKey = trigger.dialogueKey ?? "intro";
+  tool.targetUnitId = trigger.targetUnitId ?? "";
+  tool.interactionRange = normalizeInteger(trigger.interactionRange, 1);
 
   ensureTriggerToolSettings(builderState);
   return { ok: true, message: `Selected trigger ${trigger.id ?? cleanIndex + 1}.` };
@@ -227,6 +236,26 @@ export function setTriggerPaintMode(builderState, mode) {
 export function triggerTypeNeedsZone(type) {
   const cleanType = String(type ?? "onUnitEnterZone");
   return cleanType === "onUnitEnterZone" || cleanType === "onInteract";
+}
+
+export function triggerTypeNeedsTargetUnit(type) {
+  return String(type ?? "") === "onUnitInteract";
+}
+
+export function getTriggerTargetUnitOptions(builderState) {
+  const deployments = Array.isArray(builderState?.authoring?.map?.startState?.deployments)
+    ? builderState.authoring.map.startState.deployments
+    : [];
+
+  return deployments
+    .map((entry, index) => {
+      const id = sanitizeLooseId(entry?.pilotInstanceId ?? entry?.mechInstanceId ?? "");
+      if (!id) return null;
+      const definitionId = entry?.pilotDefinitionId ?? entry?.mechDefinitionId ?? "unit";
+      const label = `${id} (${definitionId})`;
+      return { id, label, index };
+    })
+    .filter(Boolean);
 }
 
 export function isTriggerAuthoringActive(builderState) {
@@ -332,6 +361,11 @@ function buildTriggerFromTool(tool, id) {
     trigger.logicChainId = tool.logicChainId || "";
   }
 
+  if (trigger.type === "onUnitInteract") {
+    trigger.targetUnitId = tool.targetUnitId || "";
+    trigger.interactionRange = Math.max(1, normalizeInteger(tool.interactionRange, 1));
+  }
+
   return trigger;
 }
 
@@ -379,6 +413,10 @@ function normalizeInteger(value, fallback = 0) {
   const number = Number(value);
   if (!Number.isFinite(number)) return Number(fallback) || 0;
   return Math.trunc(number);
+}
+
+function sanitizeLooseId(value) {
+  return String(value ?? "").trim();
 }
 
 function sanitizeId(value) {

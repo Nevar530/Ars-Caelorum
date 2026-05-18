@@ -12,7 +12,7 @@ const VALID_TEAMS = new Set(["player", "enemy", "neutral"]);
 const VALID_CONTROL_TYPES = new Set(["PC", "CPU"]);
 const DEFAULT_BRIEFING_TEXT = "Builder-authored mission package. Replace this briefing text in the Mission Builder when mission authoring comes online.";
 const VALID_OBJECTIVE_TYPES = new Set(["defeat_all", "reach_zone", "hold_zone", "survive_rounds", "trigger_complete", "protect_unit"]);
-const VALID_TRIGGER_TYPES = new Set(["onUnitEnterZone", "onMissionStart", "onRoundStart", "onRoundEnd", "onEnterMech", "onExitMech", "onInteract", "onHitTarget", "onStatChange"]);
+const VALID_TRIGGER_TYPES = new Set(["onUnitEnterZone", "onMissionStart", "onRoundStart", "onRoundEnd", "onEnterMech", "onExitMech", "onInteract", "onUnitInteract", "onHitTarget", "onStatChange"]);
 const VALID_TRIGGER_PRESETS = new Set(["load_map", "change_unit_stat", "complete_objective", "end_mission", "start_dialogue", "run_logic"]);
 const VALID_TRIGGER_STATS = new Set(["core", "shield"]);
 const VALID_MISSION_RESULTS = new Set(["victory", "defeat"]);
@@ -627,6 +627,7 @@ function validateTriggers(result, map, mission, objectives) {
     .map((chain) => cleanString(chain?.id))
     .filter(Boolean));
   const dialogueIds = getDialogueIds(mission);
+  const deploymentUnitIds = getDeploymentInstanceIds(map);
   const ids = new Set();
 
   for (let index = 0; index < triggers.length; index += 1) {
@@ -654,6 +655,19 @@ function validateTriggers(result, map, mission, objectives) {
         if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
           addError(result, "TRIGGER_ZONE_OUT_OF_BOUNDS", `${label} has zone tile outside map bounds at ${x}, ${y}.`);
         }
+      }
+    }
+
+    if (type === "onUnitInteract") {
+      const targetUnitId = cleanString(trigger.targetUnitId);
+      const interactionRange = Number(trigger.interactionRange ?? 1);
+      if (!targetUnitId) {
+        addError(result, "TRIGGER_TARGET_UNIT_MISSING", `${label} needs a targetUnitId.`);
+      } else if (deploymentUnitIds.size && !deploymentUnitIds.has(targetUnitId)) {
+        addWarning(result, "TRIGGER_TARGET_UNIT_UNKNOWN", `${label} targets unknown unit "${targetUnitId}".`);
+      }
+      if (!Number.isInteger(interactionRange) || interactionRange < 1) {
+        addError(result, "TRIGGER_INTERACTION_RANGE_BAD", `${label} needs interactionRange of 1 or higher.`);
       }
     }
 

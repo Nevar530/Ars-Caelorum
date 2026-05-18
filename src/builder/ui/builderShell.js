@@ -70,7 +70,9 @@ import {
   getTriggerPresetOptions,
   getTriggerStatOptions,
   getTriggerTeamOptions,
+  getTriggerTargetUnitOptions,
   getTriggerTypeOptions,
+  triggerTypeNeedsTargetUnit,
   triggerTypeNeedsZone
 } from "../builderTriggers.js";
 import {
@@ -1506,6 +1508,7 @@ function renderTriggerInspectorTools(builderState, appState) {
   const missionResultOptions = buildSimpleOptions(getTriggerMissionResultOptions(), tool.missionResult ?? "victory");
   const logicOptions = buildLogicChainOptions(getLogicDefinitions(builderState), tool.logicChainId);
   const dialogueOptions = buildDialogueBlockOptions(builderState, tool.dialogueKey);
+  const targetUnitOptions = buildTriggerTargetUnitSelectOptions(builderState, tool.targetUnitId);
   const selectedTrigger = Number.isInteger(Number(tool.selectedIndex)) && triggers[Number(tool.selectedIndex)]
     ? triggers[Number(tool.selectedIndex)]
     : null;
@@ -1519,6 +1522,7 @@ function renderTriggerInspectorTools(builderState, appState) {
   const showDialogueField = tool.preset === "start_dialogue";
   const showLogicField = tool.preset === "run_logic";
   const needsZone = triggerTypeNeedsZone(tool.type);
+  const needsTargetUnit = triggerTypeNeedsTargetUnit(tool.type);
 
   return `
     <div class="builder-inspector-card builder-trigger-tool-card builder-compact-card builder-grid-card">
@@ -1587,6 +1591,16 @@ function renderTriggerInspectorTools(builderState, appState) {
           <select data-builder-field="trigger-logic-chain-id"${editable ? "" : " disabled"}>${logicOptions}</select>
         </label>
       ` : ""}
+      ${needsTargetUnit ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Target Unit</span>
+          <select data-builder-field="trigger-target-unit-id"${editable ? "" : " disabled"}>${targetUnitOptions}</select>
+        </label>
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Interact Range</span>
+          <input type="number" min="1" step="1" data-builder-field="trigger-interaction-range" value="${escapeHtml(tool.interactionRange ?? 1)}"${editable ? "" : " disabled"}>
+        </label>
+      ` : ""}
       <div class="builder-tool-row">
         <button type="button" class="builder-tool-button" data-builder-action="add-trigger"${editable ? "" : " disabled"}>Add Trigger</button>
         <button type="button" class="builder-tool-button" data-builder-action="update-trigger"${editable ? "" : " disabled"}>Update Selected</button>
@@ -1631,7 +1645,10 @@ function formatTriggerListDetail(trigger) {
   if (trigger?.preset === 'change_unit_stat') return ' · ' + (trigger?.stat ?? 'core') + ' ' + (Number(trigger?.value ?? 0) >= 0 ? '+' : '') + (trigger?.value ?? 0);
   if (trigger?.preset === 'complete_objective') return trigger?.completeObjectiveId ? ' · objective: ' + trigger.completeObjectiveId : ' · objective: missing';
   if (trigger?.preset === 'end_mission') return ' · result: ' + (trigger?.missionResult ?? 'victory');
-  if (trigger?.preset === 'start_dialogue') return trigger?.dialogueKey ? ' · dialogue: ' + trigger.dialogueKey : ' · dialogue: missing';
+  if (trigger?.preset === 'start_dialogue') {
+    const target = trigger?.type === 'onUnitInteract' ? ' · unit: ' + (trigger?.targetUnitId || 'missing') : '';
+    return (trigger?.dialogueKey ? ' · dialogue: ' + trigger.dialogueKey : ' · dialogue: missing') + target;
+  }
   if (trigger?.preset === 'run_logic') return trigger?.logicChainId ? ' · logic: ' + trigger.logicChainId : ' · logic: missing';
   return '';
 }
@@ -1911,6 +1928,16 @@ function buildTriggerObjectiveOptions(objectives, selectedObjectiveId = "") {
     const id = String(objective?.id ?? "");
     const selected = id === cleanSelected ? " selected" : "";
     return `<option value="${escapeHtml(id)}"${selected}>${escapeHtml(objective?.label ?? id)}</option>`;
+  }).join("");
+}
+
+function buildTriggerTargetUnitSelectOptions(builderState, selectedUnitId = "") {
+  const list = getTriggerTargetUnitOptions(builderState);
+  const cleanSelected = String(selectedUnitId ?? "");
+  return '<option value="">Select unit...</option>' + list.map((unit) => {
+    const id = String(unit?.id ?? "");
+    const selected = id === cleanSelected ? " selected" : "";
+    return `<option value="${escapeHtml(id)}"${selected}>${escapeHtml(unit?.label ?? id)}</option>`;
   }).join("");
 }
 

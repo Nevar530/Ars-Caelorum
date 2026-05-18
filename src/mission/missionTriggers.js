@@ -23,6 +23,7 @@ const SUPPORTED_TRIGGER_TYPES = new Set([
   "onEnterMech",
   "onExitMech",
   "onInteract",
+  "onUnitInteract",
   "onHitTarget",
   "onStatChange"
 ]);
@@ -64,6 +65,7 @@ export function resolveMissionEventTriggers(state, eventType, context = {}) {
     if (!SUPPORTED_PRESETS.has(trigger.preset)) continue;
     if (unit && !doesTeamMatch(trigger.team ?? "player", unit.team ?? "player")) continue;
     if (ZONE_TRIGGER_TYPES.has(type) && !triggerHasTile(trigger, unitX, unitY)) continue;
+    if (type === "onUnitInteract" && !doesUnitInteractMatch(state, trigger, unit)) continue;
 
     const firedKey = `${mapId}:${type}:${trigger.id}`;
     if (trigger.once !== false && runtime.fired[firedKey]) continue;
@@ -331,6 +333,28 @@ function doesTeamMatch(filter, team) {
   const cleanFilter = String(filter ?? "player").toLowerCase();
   if (cleanFilter === "any") return true;
   return cleanFilter === String(team ?? "player").toLowerCase();
+}
+
+function doesUnitInteractMatch(state, trigger, sourceUnit) {
+  const targetUnitId = String(trigger?.targetUnitId ?? "").trim();
+  if (!targetUnitId || !sourceUnit) return false;
+
+  const targetUnit = (Array.isArray(state?.units) ? state.units : []).find((unit) => {
+    return unit?.instanceId === targetUnitId || unit?.id === targetUnitId;
+  });
+
+  if (!targetUnit) return false;
+  if (targetUnit.status === "disabled" || targetUnit.status === "destroyed") return false;
+
+  const sourceX = Number(sourceUnit.x);
+  const sourceY = Number(sourceUnit.y);
+  const targetX = Number(targetUnit.x);
+  const targetY = Number(targetUnit.y);
+  if (![sourceX, sourceY, targetX, targetY].every(Number.isFinite)) return false;
+
+  const range = Math.max(1, Math.trunc(Number(trigger?.interactionRange ?? 1) || 1));
+  const distance = Math.abs(sourceX - targetX) + Math.abs(sourceY - targetY);
+  return distance <= range;
 }
 
 function triggerHasTile(trigger, x, y) {

@@ -202,9 +202,18 @@ export function createStoryController({
     const body = getStoryBody();
     if (!actor || !body) return false;
 
-    // Story interaction is data-first. If the author painted an
-    // Interact / Action Button trigger on this tile, fire that before
-    // falling back to built-in contextual vehicle actions.
+    const unitInteractOutcome = fireMissionTriggerEvent("onUnitInteract", { unit: body, actor, body });
+    if (unitInteractOutcome?.handled || unitInteractOutcome?.interrupt) {
+      syncActiveSelection(body);
+      if (shouldPauseForDialogue(unitInteractOutcome)) {
+        render();
+        return true;
+      }
+      if (resolveStoryMissionResult({ timing: "after_interact" })) return true;
+      render();
+      return true;
+    }
+
     const interactOutcome = fireMissionTriggerEvent("onInteract", { unit: body, actor, body });
     if (interactOutcome?.handled || interactOutcome?.interrupt) {
       syncActiveSelection(body);

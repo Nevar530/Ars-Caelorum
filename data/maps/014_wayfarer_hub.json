@@ -75,26 +75,14 @@
     {
       "id": "talk_to_theo",
       "name": "Talk to Theo",
-      "type": "onInteract",
+      "type": "onUnitInteract",
       "team": "player",
       "once": false,
       "preset": "start_dialogue",
       "dialogueKey": "theo_mission_check",
       "completeObjectiveId": "talk_to_theo",
-      "tiles": [
-        {
-          "x": 5,
-          "y": 4
-        },
-        {
-          "x": 5,
-          "y": 5
-        },
-        {
-          "x": 6,
-          "y": 5
-        }
-      ]
+      "targetUnitId": "hub-theo",
+      "interactionRange": 1
     }
   ],
   "logic": [],
@@ -513,23 +501,23 @@
       "x": 5,
       "y": 3,
       "elevation": 0,
-      "terrainTypeId": "concrete",
-      "terrainSpriteId": "concrete_001",
+      "terrainTypeId": "asphalt",
+      "terrainSpriteId": "asphalt_001",
       "movementClass": "clear",
       "spawnId": null,
-      "detail": null,
-      "summary": null
+      "detail": "Darker deck plating under the bridge terminal so the console area reads against the floor.",
+      "summary": "Bridge console deck plate"
     },
     {
       "x": 6,
       "y": 3,
       "elevation": 0,
-      "terrainTypeId": "concrete",
-      "terrainSpriteId": "concrete_001",
+      "terrainTypeId": "asphalt",
+      "terrainSpriteId": "asphalt_001",
       "movementClass": "clear",
       "spawnId": null,
-      "detail": null,
-      "summary": null
+      "detail": "Darker deck plating under the bridge terminal so the console area reads against the floor.",
+      "summary": "Bridge console deck plate"
     },
     {
       "x": 7,
