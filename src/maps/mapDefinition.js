@@ -50,6 +50,11 @@ export function attachMapMetadata(map, metadata = {}) {
       writable: true,
       configurable: true
     },
+    npcBehaviors: {
+      value: structuredClone(metadata.npcBehaviors ?? map.npcBehaviors ?? []),
+      writable: true,
+      configurable: true
+    },
     terrainTypes: {
       value: Array.isArray(metadata.terrainTypes)
         ? [...metadata.terrainTypes]
@@ -187,6 +192,7 @@ export function normalizeMapDefinition(definition) {
       objectives: definition.objectives,
       triggers: definition.triggers,
       logic: definition.logic,
+      npcBehaviors: definition.npcBehaviors,
       defaults: definition.defaults
     });
   }
@@ -215,6 +221,7 @@ export function cloneMapDefinition(sourceMap = null) {
       objectives: sourceMap.objectives,
       triggers: sourceMap.triggers,
       logic: sourceMap.logic,
+      npcBehaviors: sourceMap.npcBehaviors,
       defaults: sourceMap.defaults
     });
   }
