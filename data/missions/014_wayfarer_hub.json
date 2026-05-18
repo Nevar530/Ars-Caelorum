@@ -1,0 +1,185 @@
+{
+  "id": "014_wayfarer_hub",
+  "name": "014 Wayfarer Hub - Bridge Shell",
+  "goalText": "Story-mode hub shell for testing dialogue options and mission routing through Theo.",
+  "mapId": "014_wayfarer_hub",
+  "mapPath": "./data/maps/014_wayfarer_hub.json",
+  "startMapId": "014_wayfarer_hub",
+  "maps": [
+    {
+      "id": "014_wayfarer_hub",
+      "name": "014 Wayfarer Hub - Bridge Shell",
+      "path": "./data/maps/014_wayfarer_hub.json",
+      "mapPath": "./data/maps/014_wayfarer_hub.json",
+      "phaseIndex": 1,
+      "objectiveSummary": "Talk to Theo",
+      "objectiveCount": 1,
+      "mode": "story"
+    }
+  ],
+  "objectivePreset": "hub_shell",
+  "briefing": {
+    "title": "Wayfarer Hub",
+    "text": "The Wayfarer hub is a real story-mode mission. Use Theo to test dialogue choices and mission menu branching.",
+    "objectives": [
+      "Walk to Theo and press Action.",
+      "Choose Good or Rough, then Continue, Load, or Nothing."
+    ]
+  },
+  "objectives": [
+    {
+      "id": "talk_to_theo",
+      "type": "trigger_complete",
+      "team": "player",
+      "label": "Talk to Theo",
+      "briefingText": "Walk to Theo on the bridge and press Action."
+    }
+  ],
+  "triggers": [],
+  "logic": [],
+  "dialogue": {
+    "intro": {
+      "name": "Wayfarer Default",
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "System",
+          "portrait": "art/pilot/theo_portrait.png",
+          "text": "Wayfarer hub shell loaded."
+        }
+      ]
+    },
+    "hub_arrival": {
+      "name": "Arrival on the Wayfarer",
+      "lines": [
+        {
+          "speakerId": "theo",
+          "name": "Theo",
+          "portrait": "art/pilot/theo_portrait.png",
+          "text": "Bridge is ugly, but it works. Come talk when you know where you want to go."
+        }
+      ]
+    },
+    "theo_mission_check": {
+      "name": "Theo Mission Check",
+      "lines": [
+        {
+          "speakerId": "theo",
+          "name": "Theo",
+          "portrait": "art/pilot/theo_portrait.png",
+          "text": "How was the mission?",
+          "options": [
+            {
+              "label": "Good",
+              "nextDialogueKey": "theo_good"
+            },
+            {
+              "label": "Rough",
+              "nextDialogueKey": "theo_rough"
+            },
+            {
+              "label": "Nothing",
+              "action": "closeDialogue"
+            }
+          ]
+        }
+      ]
+    },
+    "theo_good": {
+      "name": "Theo Good Response",
+      "lines": [
+        {
+          "speakerId": "theo",
+          "name": "Theo",
+          "portrait": "art/pilot/theo_portrait.png",
+          "text": "Nice. Where next?",
+          "options": [
+            {
+              "label": "Continue",
+              "action": "loadMission",
+              "loadMissionId": "000_game_state_tester_mission"
+            },
+            {
+              "label": "Load",
+              "action": "missionSelect"
+            },
+            {
+              "label": "Nothing",
+              "action": "closeDialogue"
+            }
+          ]
+        }
+      ]
+    },
+    "theo_rough": {
+      "name": "Theo Rough Response",
+      "lines": [
+        {
+          "speakerId": "theo",
+          "name": "Theo",
+          "portrait": "art/pilot/theo_portrait.png",
+          "text": "Damn. Where next?",
+          "options": [
+            {
+              "label": "Continue",
+              "action": "loadMission",
+              "loadMissionId": "000_game_state_tester_mission"
+            },
+            {
+              "label": "Load",
+              "action": "missionSelect"
+            },
+            {
+              "label": "Nothing",
+              "action": "closeDialogue"
+            }
+          ]
+        }
+      ]
+    },
+    "victory": {
+      "name": "Hub Complete",
+      "lines": [
+        {
+          "speakerId": "theo",
+          "name": "Theo",
+          "portrait": "art/pilot/theo_portrait.png",
+          "text": "We are not done, just moving."
+        }
+      ]
+    },
+    "defeat": {
+      "name": "Hub Failed",
+      "lines": [
+        {
+          "speakerId": "system",
+          "name": "System",
+          "portrait": "art/pilot/theo_portrait.png",
+          "text": "Hub flow failed."
+        }
+      ]
+    }
+  },
+  "results": {
+    "victory": {
+      "title": "Hub Flow Complete",
+      "text": "Wayfarer hub shell resolved."
+    },
+    "defeat": {
+      "title": "Hub Flow Failed",
+      "text": "Wayfarer hub shell failed."
+    }
+  },
+  "mode": "story",
+  "summary": "Real story-mode Wayfarer hub shell with Theo dialogue choices and mission routing.",
+  "campaignFlow": {
+    "onVictory": {
+      "action": "continue",
+      "loadMissionId": "000_game_state_tester_mission"
+    },
+    "onDefeat": {
+      "action": "restart"
+    }
+  },
+  "rewards": {}
+}

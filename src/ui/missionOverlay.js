@@ -163,6 +163,8 @@ function renderDialogueOverlay(state) {
   const index = Math.max(0, Number(dialogue.index ?? 0));
   const speakerName = String(line?.name ?? "Unknown");
   const missionLabel = dialogue.key ? String(dialogue.key).replaceAll("_", " ") : "mission";
+  const options = Array.isArray(line?.options) ? line.options : [];
+  const optionIndex = Math.max(0, Math.min(Number(dialogue.optionIndex ?? 0), Math.max(0, options.length - 1)));
 
   return `
     <div class="dialogue-rise dialogue-rise--active-only" role="dialog" aria-label="Dialogue">
@@ -178,11 +180,26 @@ function renderDialogueOverlay(state) {
         <div class="dialogue-kicker">${escapeHtml(missionLabel)}</div>
         <div class="dialogue-speaker-name">${escapeHtml(speakerName)}</div>
         <div class="dialogue-line-text">${escapeHtml(line?.text || "")}</div>
+        ${options.length ? renderDialogueOptions(options, optionIndex) : ""}
         <div class="dialogue-footer">
           <span>Line ${Math.min(index + 1, lines.length)} / ${lines.length}</span>
-          <button type="button" class="dialogue-continue-button" data-combat-overlay-action="advance-dialogue">Continue</button>
+          ${options.length
+            ? `<span>Arrow keys select · Enter confirms</span>`
+            : `<button type="button" class="dialogue-continue-button" data-combat-overlay-action="advance-dialogue">Continue</button>`}
         </div>
       </div>
+    </div>
+  `;
+}
+
+function renderDialogueOptions(options, selectedIndex) {
+  return `
+    <div class="dialogue-options" role="listbox" aria-label="Dialogue choices">
+      ${options.map((option, index) => `
+        <button type="button" class="dialogue-option-button ${index === selectedIndex ? "is-selected" : ""}" data-combat-overlay-action="select-dialogue-option" data-dialogue-option-index="${index}">
+          ${escapeHtml(option.label)}
+        </button>
+      `).join("")}
     </div>
   `;
 }
@@ -191,7 +208,7 @@ function renderSpeakerCard({ side, label, line, active, fallbackName }) {
   const name = line?.name || fallbackName || label || "?";
   const initial = String(name).trim().charAt(0).toUpperCase() || "?";
   const portrait = line?.portrait
-    ? `<img src="${escapeHtml(line.portrait)}" alt="${escapeHtml(name)} portrait" />`
+    ? `<img src="${escapeHtml(line.portrait)}" alt="${escapeHtml(name)} portrait" onerror="this.onerror=null;this.src='art/pilot/blank_portrait.png';" />`
     : escapeHtml(initial);
 
   return `

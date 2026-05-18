@@ -61,6 +61,7 @@ export function startMissionDialogue(state, dialogueKey = "intro") {
     active: true,
     key: dialogueKey,
     index: 0,
+    optionIndex: 0,
     lines
   };
 
@@ -71,8 +72,12 @@ export function advanceMissionDialogue(state) {
   const dialogue = state?.ui?.dialogue;
   if (!dialogue?.active) return false;
 
+  const currentLine = getCurrentDialogueLine(state);
+  if (Array.isArray(currentLine?.options) && currentLine.options.length) return false;
+
   const count = Array.isArray(dialogue.lines) ? dialogue.lines.length : 0;
   dialogue.index = Number(dialogue.index ?? 0) + 1;
+  dialogue.optionIndex = 0;
 
   if (dialogue.index >= count) {
     clearDialogueState(state);
@@ -82,6 +87,46 @@ export function advanceMissionDialogue(state) {
   return false;
 }
 
+export function moveMissionDialogueOption(state, delta = 0) {
+  const dialogue = state?.ui?.dialogue;
+  if (!dialogue?.active) return false;
+
+  const line = getCurrentDialogueLine(state);
+  const options = Array.isArray(line?.options) ? line.options : [];
+  if (!options.length) return false;
+
+  const current = Math.max(0, Math.min(Number(dialogue.optionIndex ?? 0), options.length - 1));
+  dialogue.optionIndex = (current + Number(delta || 0) + options.length) % options.length;
+  return true;
+}
+
+export function selectMissionDialogueOption(state) {
+  const dialogue = state?.ui?.dialogue;
+  if (!dialogue?.active) return null;
+
+  const line = getCurrentDialogueLine(state);
+  const options = Array.isArray(line?.options) ? line.options : [];
+  if (!options.length) return null;
+
+  const index = Math.max(0, Math.min(Number(dialogue.optionIndex ?? 0), options.length - 1));
+  const option = options[index] ?? null;
+  if (!option) return null;
+
+  const nextDialogueKey = String(option.nextDialogueKey ?? option.dialogueKey ?? "").trim();
+  if (nextDialogueKey) {
+    startMissionDialogue(state, nextDialogueKey);
+    return { selected: true, action: "startDialogue", dialogueKey: nextDialogueKey, option };
+  }
+
+  clearDialogueState(state);
+  return {
+    selected: true,
+    action: String(option.action ?? "closeDialogue").trim() || "closeDialogue",
+    loadMissionId: String(option.loadMissionId ?? "").trim(),
+    option
+  };
+}
+
 export function clearDialogueState(state) {
   if (!state?.ui) return;
 
@@ -89,6 +134,7 @@ export function clearDialogueState(state) {
     active: false,
     key: null,
     index: 0,
+    optionIndex: 0,
     lines: []
   };
 }
@@ -112,8 +158,22 @@ function getDialogueLines(missionDefinition, key) {
       speakerId: line.speakerId ?? null,
       name: line.name ?? line.speakerId ?? "Unknown",
       portrait: line.portrait ?? null,
-      text: String(line.text ?? "")
+      text: String(line.text ?? ""),
+      options: normalizeDialogueOptions(line.options)
     }));
+}
+
+function normalizeDialogueOptions(options) {
+  if (!Array.isArray(options)) return [];
+
+  return options
+    .map((option) => ({
+      label: String(option?.label ?? "").trim(),
+      nextDialogueKey: String(option?.nextDialogueKey ?? option?.dialogueKey ?? "").trim(),
+      action: String(option?.action ?? "").trim(),
+      loadMissionId: String(option?.loadMissionId ?? "").trim()
+    }))
+    .filter((option) => option.label);
 }
 
 function getPilotActors(state) {

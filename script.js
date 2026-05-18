@@ -22,7 +22,7 @@ import { createCpuTurnController } from "./src/ai/cpuTurnController.js";
 import { isCommandMenuItemDisabled } from "./src/action.js";
 import { getMissionEntries } from "./src/ui/frontScreen.js";
 import { confirmDeploymentPlacement, getDeploymentReady, isDeploymentActive, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "./src/deployment/deploymentState.js";
-import { advanceMissionDialogue } from "./src/mission/missionState.js";
+import { advanceMissionDialogue, clearDialogueState, moveMissionDialogueOption, selectMissionDialogueOption } from "./src/mission/missionState.js";
 import { createMissionTriggerRuntime } from "./src/mission/missionTriggerRuntime.js";
 import { isMissionUnlocked, setCurrentMission } from "./src/campaign/campaignState.js";
 import { loadCampaignState, resetStoredCampaignState, saveCampaignState } from "./src/campaign/campaignStorage.js";
@@ -187,6 +187,10 @@ async function init() {
 
     if (button.dataset.combatOverlayAction === "advance-dialogue") {
       actions.advanceDialogue?.();
+    }
+
+    if (button.dataset.combatOverlayAction === "select-dialogue-option") {
+      actions.confirmDialogueOption?.(button.dataset.dialogueOptionIndex);
     }
 
     if (button.dataset.combatOverlayAction === "continue-phase-briefing") {
@@ -663,6 +667,46 @@ function getSelectedMissionEntry() {
 
     continuePhaseBriefing() {
       gameController.continuePhaseBriefing?.();
+    },
+
+    closeDialogue() {
+      clearDialogueState(state);
+      gameController.render();
+    },
+
+    moveDialogueOption(delta) {
+      if (moveMissionDialogueOption(state, delta)) gameController.render();
+    },
+
+    async confirmDialogueOption(optionIndex = null) {
+      if (optionIndex !== null && optionIndex !== undefined && state?.ui?.dialogue?.active) {
+        const parsed = Number(optionIndex);
+        if (Number.isFinite(parsed)) state.ui.dialogue.optionIndex = Math.max(0, Math.trunc(parsed));
+      }
+
+      const result = selectMissionDialogueOption(state);
+      if (!result?.selected) {
+        gameController.render();
+        return;
+      }
+
+      if (result.action === "loadMission" || result.action === "continue") {
+        if (result.loadMissionId && await loadMissionById(result.loadMissionId, { force: true })) return;
+        actions.openMissionSelect();
+        return;
+      }
+
+      if (result.action === "missionSelect") {
+        actions.openMissionSelect();
+        return;
+      }
+
+      if (result.action === "mainMenu") {
+        actions.showTitleScreen();
+        return;
+      }
+
+      gameController.render();
     },
 
     advanceDialogue() {

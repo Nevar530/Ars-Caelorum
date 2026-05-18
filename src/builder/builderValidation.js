@@ -22,6 +22,7 @@ const VALID_LOGIC_ACTIONS = new Set(["complete_objective", "change_unit_stat", "
 const VALID_MAP_MODES = new Set(["combat", "story"]);
 const VALID_VICTORY_FLOW_ACTIONS = new Set(["continue", "restart", "mainMenu"]);
 const VALID_DEFEAT_FLOW_ACTIONS = new Set(["restart", "loadMission", "mainMenu"]);
+const VALID_DIALOGUE_OPTION_ACTIONS = new Set(["", "closeDialogue", "loadMission", "missionSelect", "mainMenu", "continue"]);
 
 export function validateBuilderPackage(builderState, appState = null) {
   const result = createValidationResult();
@@ -814,6 +815,25 @@ function validateDialogue(result, mission) {
       const line = lines[index] ?? {};
       if (!cleanString(line.text)) addError(result, "DIALOGUE_LINE_TEXT_MISSING", `Dialogue block "${cleanKey}" line ${index + 1} has no text.`);
       if (!cleanString(line.name) && !cleanString(line.speakerId)) addWarning(result, "DIALOGUE_LINE_SPEAKER_MISSING", `Dialogue block "${cleanKey}" line ${index + 1} has no speaker.`);
+    }
+  }
+
+  for (const [key, block] of Object.entries(dialogue)) {
+    const cleanKey = cleanString(key) || "unknown";
+    const lines = Array.isArray(block?.lines) ? block.lines : [];
+    for (let index = 0; index < lines.length; index += 1) {
+      const options = Array.isArray(lines[index]?.options) ? lines[index].options : [];
+      for (let optionIndex = 0; optionIndex < options.length; optionIndex += 1) {
+        const option = options[optionIndex] ?? {};
+        const label = cleanString(option.label);
+        const nextDialogueKey = cleanString(option.nextDialogueKey ?? option.dialogueKey);
+        const action = cleanString(option.action);
+        const optionLabel = `Dialogue block "${cleanKey}" line ${index + 1} option ${optionIndex + 1}`;
+        if (!label) addError(result, "DIALOGUE_OPTION_LABEL_MISSING", `${optionLabel} has no label.`);
+        if (nextDialogueKey && !ids.has(nextDialogueKey)) addError(result, "DIALOGUE_OPTION_TARGET_BAD", `${optionLabel} references missing dialogue block "${nextDialogueKey}".`);
+        if (action && !VALID_DIALOGUE_OPTION_ACTIONS.has(action)) addError(result, "DIALOGUE_OPTION_ACTION_BAD", `${optionLabel} has unsupported action "${action}".`);
+        if (!nextDialogueKey && !action) addWarning(result, "DIALOGUE_OPTION_NO_ACTION", `${optionLabel} has no target dialogue or action.`);
+      }
     }
   }
 }

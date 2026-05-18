@@ -461,12 +461,37 @@ function normalizeDialogue(dialogue) {
             text
           };
           if (line?.portrait) next.portrait = String(line.portrait).trim();
+          const options = normalizeDialogueLineOptions(line?.options);
+          if (options.length) next.options = options;
           return next;
         })
         .filter(Boolean)
     };
   }
   return Object.keys(clean).length ? clean : createDefaultDialogue();
+}
+
+
+function normalizeDialogueLineOptions(options) {
+  if (!Array.isArray(options)) return [];
+
+  return options
+    .map((option) => {
+      const clean = {
+        label: sanitizeName(option?.label ?? "", "")
+      };
+      if (!clean.label) return null;
+
+      const nextDialogueKey = sanitizeId(option?.nextDialogueKey ?? option?.dialogueKey ?? "", "");
+      const action = String(option?.action ?? "").trim();
+      const loadMissionId = sanitizeId(option?.loadMissionId ?? "", "");
+
+      if (nextDialogueKey) clean.nextDialogueKey = nextDialogueKey;
+      if (action) clean.action = action;
+      if (loadMissionId) clean.loadMissionId = loadMissionId;
+      return clean;
+    })
+    .filter(Boolean);
 }
 
 function normalizeTriggers(triggers) {

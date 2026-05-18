@@ -46,6 +46,14 @@
       "mode": "combat",
       "objectiveSummary": "Structure render sorting test map",
       "objectiveCount": 1
+    },
+    {
+      "id": "014_wayfarer_hub",
+      "name": "014 Wayfarer Hub - Bridge Shell",
+      "path": "./data/maps/014_wayfarer_hub.json",
+      "mode": "story",
+      "objectiveSummary": "Talk to Theo",
+      "objectiveCount": 1
     }
   ]
 }

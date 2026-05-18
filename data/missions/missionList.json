@@ -13,6 +13,13 @@
       "path": "./data/missions/new_map_mission.json",
       "summary": "Loadable test map for fixed-iso structure walls, roofs, and render sorting.",
       "alwaysUnlocked": true
+    },
+    {
+      "id": "014_wayfarer_hub",
+      "name": "014 Wayfarer Hub - Bridge Shell",
+      "path": "./data/missions/014_wayfarer_hub.json",
+      "summary": "Story-mode hub shell for Theo dialogue options and mission routing.",
+      "alwaysUnlocked": true
     }
   ]
 }

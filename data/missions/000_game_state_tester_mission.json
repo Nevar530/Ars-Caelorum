@@ -429,5 +429,14 @@
         "pilot_eve"
       ]
     }
+  },
+  "campaignFlow": {
+    "onVictory": {
+      "action": "continue",
+      "loadMissionId": "014_wayfarer_hub"
+    },
+    "onDefeat": {
+      "action": "restart"
+    }
   }
 }

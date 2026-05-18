@@ -1,0 +1,1016 @@
+{
+  "id": "014_wayfarer_hub",
+  "name": "014 Wayfarer Hub - Bridge Shell",
+  "mode": "story",
+  "width": 10,
+  "height": 8,
+  "terrainTypes": [
+    "grass",
+    "rock",
+    "sand",
+    "water",
+    "asphalt",
+    "concrete"
+  ],
+  "spawns": {
+    "player": [
+      {
+        "x": 3,
+        "y": 4
+      }
+    ],
+    "enemy": [],
+    "neutral": [
+      {
+        "x": 6,
+        "y": 4
+      }
+    ]
+  },
+  "startState": {
+    "startMode": "authored",
+    "deployments": [
+      {
+        "pilotDefinitionId": "pilot_skye",
+        "pilotInstanceId": "hub-skye",
+        "pilotSpawnId": "player_1",
+        "team": "player",
+        "controlType": "PC",
+        "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_theo",
+        "pilotInstanceId": "hub-theo",
+        "pilotSpawnId": "neutral_1",
+        "team": "neutral",
+        "controlType": "CPU",
+        "startEmbarked": false
+      }
+    ],
+    "deploymentCells": [],
+    "playerDeployment": {
+      "unitType": "pilot",
+      "requiredCount": 1
+    }
+  },
+  "objectives": [
+    {
+      "id": "talk_to_theo",
+      "type": "trigger_complete",
+      "team": "player",
+      "label": "Talk to Theo",
+      "briefingText": "Walk to Theo on the bridge and press Action."
+    }
+  ],
+  "triggers": [
+    {
+      "id": "hub_arrival",
+      "name": "Hub Arrival",
+      "type": "onMissionStart",
+      "team": "any",
+      "once": true,
+      "preset": "start_dialogue",
+      "dialogueKey": "hub_arrival"
+    },
+    {
+      "id": "talk_to_theo",
+      "name": "Talk to Theo",
+      "type": "onInteract",
+      "team": "player",
+      "once": false,
+      "preset": "start_dialogue",
+      "dialogueKey": "theo_mission_check",
+      "completeObjectiveId": "talk_to_theo",
+      "tiles": [
+        {
+          "x": 5,
+          "y": 4
+        },
+        {
+          "x": 5,
+          "y": 5
+        },
+        {
+          "x": 6,
+          "y": 5
+        }
+      ]
+    }
+  ],
+  "logic": [],
+  "structures": [],
+  "props": [
+    {
+      "id": "bridge_console",
+      "name": "Bridge Terminal",
+      "spriteId": "",
+      "x": 5,
+      "y": 3,
+      "footprintW": 2,
+      "footprintH": 1,
+      "height": 1,
+      "visualHeight": 32,
+      "blocksMovement": true,
+      "scale": 1,
+      "mirrorX": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "layer": "ground"
+    }
+  ],
+  "defaults": {
+    "terrainTypeId": "concrete",
+    "elevation": 0,
+    "movementClass": "clear"
+  },
+  "tiles": [
+    {
+      "x": 0,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 3,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 4,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 6,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 9,
+      "y": 0,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 4,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 6,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 7,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 8,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 9,
+      "y": 1,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 3,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 4,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 5,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 6,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 7,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 8,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 9,
+      "y": 2,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 2,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 4,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 5,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 6,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 7,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 8,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 9,
+      "y": 3,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 0,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 1,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 2,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 3,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 4,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 5,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 6,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 7,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 8,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 9,
+      "y": 4,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 1,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 3,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 4,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 6,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 7,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 8,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 9,
+      "y": 5,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 1,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 2,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 3,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 4,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 5,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 6,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 7,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 8,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 9,
+      "y": 6,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 1,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 2,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 3,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 4,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 5,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 6,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 8,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    },
+    {
+      "x": 9,
+      "y": 7,
+      "elevation": 0,
+      "terrainTypeId": "concrete",
+      "terrainSpriteId": "concrete_001",
+      "movementClass": "clear",
+      "spawnId": null,
+      "detail": null,
+      "summary": null
+    }
+  ],
+  "phaseBriefing": {
+    "title": "Wayfarer Hub",
+    "subtitle": "Bridge Shell",
+    "text": "The Wayfarer is online as a real story-mode hub map. Talk to Theo to choose the next test route.",
+    "objectives": [
+      "Talk to Theo on the bridge."
+    ]
+  }
+}

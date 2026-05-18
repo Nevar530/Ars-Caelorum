@@ -10,6 +10,7 @@ import {
   updateActionTargetPreview
 } from "../action.js";
 import { isStoryMode } from "../mode/mapMode.js";
+import { getCurrentDialogueLine } from "../mission/missionState.js";
 import {
   getActiveUnit,
   getBoardDeltaFromScreenDirection,
@@ -39,8 +40,7 @@ export function bindGameplayInput(state, refs, actions) {
     }
 
     if (state?.ui?.dialogue?.active) {
-      if (key === "enter" || key === " " || key === "spacebar") {
-        actions.advanceDialogue?.();
+      if (handleDialogueKeys(event, key, state, actions)) {
         event.preventDefault();
       }
       return;
@@ -99,6 +99,43 @@ export function bindGameplayInput(state, refs, actions) {
       event.preventDefault();
     }
   });
+}
+
+
+function handleDialogueKeys(event, key, state, actions) {
+  const line = getCurrentDialogueLine(state);
+  const options = Array.isArray(line?.options) ? line.options : [];
+
+  if (options.length) {
+    if (key === "arrowup" || key === "w" || key === "arrowleft" || key === "a") {
+      actions.moveDialogueOption?.(-1);
+      return true;
+    }
+
+    if (key === "arrowdown" || key === "s" || key === "arrowright" || key === "d") {
+      actions.moveDialogueOption?.(1);
+      return true;
+    }
+
+    if (key === "enter" || key === " " || key === "spacebar") {
+      actions.confirmDialogueOption?.();
+      return true;
+    }
+
+    if (key === "escape" || key === "backspace") {
+      actions.closeDialogue?.();
+      return true;
+    }
+
+    return true;
+  }
+
+  if (key === "enter" || key === " " || key === "spacebar") {
+    actions.advanceDialogue?.();
+    return true;
+  }
+
+  return false;
 }
 
 function handleGameMenuKeys(event, key, state, actions) {
