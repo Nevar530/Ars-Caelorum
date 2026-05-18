@@ -1,6 +1,7 @@
 // src/ui/gameMenu.js
 
 import { PILOT_STAT_CAPS, PILOT_STAT_KEYS } from "../campaign/campaignState.js";
+import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
 
 const TABS = Object.freeze([
   { id: "characters", label: "Characters" },
@@ -223,17 +224,7 @@ function renderCharactersTab(state) {
   return `
     <div class="game-menu-grid game-menu-grid--characters">
       <aside class="game-menu-list" aria-label="Pilot list">
-        ${pilots.map((pilot) => `
-          <button
-            type="button"
-            class="game-menu-list-row ${pilot.id === selected.id ? "is-selected" : ""}"
-            data-game-menu-action="select-pilot"
-            data-pilot-id="${escapeHtml(pilot.id)}"
-          >
-            <span>${escapeHtml(pilot.name)}</span>
-            <b>${pilot.available ? "Ready" : "Inactive"} · Lv ${escapeHtml(pilot.level)}</b>
-          </button>
-        `).join("")}
+        ${renderPilotGroups(pilots, selected.id)}
       </aside>
       <section class="game-menu-detail">
         <div class="game-menu-detail-head">
@@ -254,6 +245,47 @@ function renderCharactersTab(state) {
       </section>
     </div>
   `;
+}
+
+function renderPilotGroups(pilots, selectedId) {
+  const activePilots = pilots.filter((pilot) => pilot.active);
+  const inactivePilots = pilots.filter((pilot) => !pilot.active);
+
+  return [
+    renderPilotGroup("Active Crew", activePilots, selectedId, "No active crew on this map."),
+    renderPilotGroup("Inactive Crew", inactivePilots, selectedId, "No inactive recruited crew.")
+  ].join("");
+}
+
+function renderPilotGroup(title, pilots, selectedId, emptyText) {
+  return `
+    <div class="game-menu-list-group">
+      <div class="game-menu-list-heading">${escapeHtml(title)}</div>
+      ${pilots.length
+        ? pilots.map((pilot) => renderPilotRow(pilot, selectedId)).join("")
+        : `<div class="game-menu-list-empty">${escapeHtml(emptyText)}</div>`}
+    </div>
+  `;
+}
+
+function renderPilotRow(pilot, selectedId) {
+  return `
+    <button
+      type="button"
+      class="game-menu-list-row ${pilot.id === selectedId ? "is-selected" : ""} ${pilot.active ? "is-active-crew" : ""}"
+      data-game-menu-action="select-pilot"
+      data-pilot-id="${escapeHtml(pilot.id)}"
+    >
+      <span>${escapeHtml(pilot.name)}</span>
+      <b>${escapeHtml(getPilotStatusLabel(pilot))} · Lv ${escapeHtml(pilot.level)}</b>
+    </button>
+  `;
+}
+
+function getPilotStatusLabel(pilot) {
+  if (pilot.active) return "Active";
+  if (!pilot.available) return "Unavailable";
+  return "Inactive";
 }
 
 function renderStatRow(pilot, statKey, selectedStatKey) {
@@ -309,12 +341,21 @@ function renderMissionsTab(state) {
   const campaign = state?.campaign ?? {};
   const completed = Array.isArray(campaign.completedMissions) ? campaign.completedMissions : [];
   const unlocked = Array.isArray(campaign.unlockedMissions) ? campaign.unlockedMissions : [];
+  const currentMissionId = state?.mission?.definition?.id ?? campaign.currentMissionId ?? "None";
+  const currentMissionName = getMissionDisplayName(state, currentMissionId);
+  const activeMapId = state?.mission?.definition?.activeMapId ?? state?.mission?.definition?.mapId ?? state?.map?.id ?? "None";
+  const objectives = getMissionObjectiveStatus(state);
 
   return `
     <div class="game-menu-stack">
-      <div class="game-menu-subpanel"><h3>Current Mission</h3><p>${escapeHtml(campaign.currentMissionId ?? state?.mission?.definition?.id ?? "None")}</p></div>
-      <div class="game-menu-subpanel"><h3>Unlocked Missions</h3>${renderIdList(unlocked, "No unlocked missions.")}</div>
-      <div class="game-menu-subpanel"><h3>Completed Missions</h3>${renderIdList(completed, "No completed missions yet.")}</div>
+      <div class="game-menu-subpanel">
+        <h3>Current Mission</h3>
+        <p><strong>${escapeHtml(currentMissionName)}</strong></p>
+        <p class="game-menu-muted">${escapeHtml(currentMissionId)} · Map ${escapeHtml(activeMapId)}</p>
+      </div>
+      <div class="game-menu-subpanel"><h3>Active Objectives</h3>${renderObjectiveList(objectives, "No active objectives.")}</div>
+      <div class="game-menu-subpanel"><h3>Unlocked Missions</h3>${renderMissionIdList(state, unlocked, "No unlocked missions.")}</div>
+      <div class="game-menu-subpanel"><h3>Completed Missions</h3>${renderMissionIdList(state, completed, "No completed missions yet.")}</div>
     </div>
   `;
 }
@@ -353,6 +394,7 @@ function renderSystemTab(state) {
 function getVisiblePilotEntries(state) {
   const definitions = Array.isArray(state?.content?.pilots) ? state.content.pilots : [];
   const campaignPilots = state?.campaign?.pilots && typeof state.campaign.pilots === "object" ? state.campaign.pilots : {};
+  const activePilotIds = getActivePlayerControlledPilotIds(state);
 
   return Object.entries(campaignPilots)
     .filter(([, progress]) => progress?.recruited !== false)
@@ -372,6 +414,7 @@ function getVisiblePilotEntries(state) {
         name: definition.name ?? pilotId,
         role: definition.role ?? "",
         available: progress?.available !== false,
+        active: activePilotIds.has(pilotId),
         level: Math.max(1, Math.trunc(Number(progress?.level ?? 1) || 1)),
         statPoints: Math.max(0, Math.trunc(Number(progress?.statPoints ?? 0) || 0)),
         baseStats,
@@ -380,6 +423,43 @@ function getVisiblePilotEntries(state) {
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function getActivePlayerControlledPilotIds(state) {
+  const units = Array.isArray(state?.units) ? state.units : [];
+  return new Set(units
+    .filter((unit) => unit?.unitType === "pilot")
+    .filter((unit) => String(unit?.team ?? "player") === "player")
+    .filter((unit) => String(unit?.controlType ?? "PC") === "PC")
+    .map((unit) => String(unit?.definitionId ?? unit?.pilotId ?? "").trim())
+    .filter(Boolean));
+}
+
+function getMissionDisplayName(state, missionId) {
+  const id = String(missionId ?? "").trim();
+  const missions = Array.isArray(state?.content?.missionCatalog?.missions) ? state.content.missionCatalog.missions : [];
+  const found = missions.find((mission) => String(mission?.id ?? "").trim() === id);
+  return found?.name ?? id || "None";
+}
+
+function renderMissionIdList(state, items, emptyText) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!list.length) return `<p>${escapeHtml(emptyText)}</p>`;
+  return `<ul class="game-menu-id-list">${list.map((missionId) => {
+    const name = getMissionDisplayName(state, missionId);
+    return `<li><strong>${escapeHtml(name)}</strong><br><span class="game-menu-muted">${escapeHtml(missionId)}</span></li>`;
+  }).join("")}</ul>`;
+}
+
+function renderObjectiveList(objectives, emptyText) {
+  const list = Array.isArray(objectives) ? objectives : [];
+  if (!list.length) return `<p>${escapeHtml(emptyText)}</p>`;
+  return `<ul class="game-menu-id-list">${list.map((objective) => {
+    const done = Boolean(objective?.completed);
+    const required = Math.max(1, Number(objective?.required ?? 1) || 1);
+    const progress = required > 1 ? ` ${Number(objective?.progress ?? 0) || 0}/${required}` : "";
+    return `<li>${done ? "✓" : "□"} ${escapeHtml(objective?.label ?? objective?.id ?? "Objective")}${escapeHtml(progress)}</li>`;
+  }).join("")}</ul>`;
 }
 
 function normalizeMenuBonuses(value) {

@@ -4507,3 +4507,33 @@ button:disabled {
   color: #f6f1d5;
   outline: none;
 }
+
+.game-menu-list-group {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.game-menu-list-heading {
+  color: rgba(231, 221, 184, 0.75);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.game-menu-list-empty {
+  border: 1px dashed rgba(231, 221, 184, 0.18);
+  border-radius: 0.65rem;
+  color: rgba(231, 221, 184, 0.52);
+  font-size: 0.82rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.game-menu-list-row.is-active-crew b {
+  color: #ffe2a8;
+}
+
+.game-menu-muted {
+  color: rgba(231, 221, 184, 0.62);
+  font-size: 0.82rem;
+}
