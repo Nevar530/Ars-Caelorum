@@ -94,7 +94,7 @@
       "dialogueKey": "theo_mission_check",
       "completeObjectiveId": "talk_to_theo",
       "targetUnitId": "hub-theo",
-      "interactionRange": 1
+      "interactionRange": 2
     }
   ],
   "logic": [],
@@ -1021,7 +1021,7 @@
       "areaMode": "zone",
       "areaW": 4,
       "areaH": 3,
-      "stepInterval": 1,
+      "stepInterval": 4,
       "enabled": true,
       "tiles": [
         {
@@ -1081,7 +1081,7 @@
       "areaMode": "box",
       "areaW": 4,
       "areaH": 4,
-      "stepInterval": 1,
+      "stepInterval": 4,
       "enabled": true
     }
   ]

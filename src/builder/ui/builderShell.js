@@ -1272,7 +1272,7 @@ function renderBehaviorInspectorTools(builderState, editable) {
       <input type="number" min="1" step="1" data-builder-field="behavior-area-h" value="${escapeHtml(tool.areaH ?? 3)}"${editable ? "" : " disabled"}>
     </label>
     <label class="builder-form-field builder-form-field-compact">
-      <span>Step Interval</span>
+      <span>Wait Between Steps</span>
       <input type="number" min="1" step="1" data-builder-field="behavior-step-interval" value="${escapeHtml(tool.stepInterval ?? 1)}"${editable ? "" : " disabled"}>
     </label>
     <label class="builder-form-check">
@@ -1309,7 +1309,7 @@ function renderBehaviorList(behaviors, selectedIndex) {
     return '<div class="builder-unit-start-row' + selected + '">' +
       '<button type="button" class="builder-trigger-main" data-builder-action="select-behavior:' + index + '">' +
         '<strong>' + escapeHtml((index + 1) + '. ' + (behavior?.id ?? 'wander')) + '</strong>' +
-        '<span>' + escapeHtml((behavior?.unitId ?? 'missing unit') + ' · ' + mode + ' · step ' + (behavior?.stepInterval ?? 1) + ' · ' + status) + '</span>' +
+        '<span>' + escapeHtml((behavior?.unitId ?? 'missing unit') + ' · ' + mode + ' · wait ' + (behavior?.stepInterval ?? 1) + ' · ' + status) + '</span>' +
       '</button>' +
       '<button type="button" class="builder-tool-button" data-builder-action="remove-behavior:' + index + '">Remove</button>' +
     '</div>';

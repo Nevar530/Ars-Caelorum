@@ -13,7 +13,7 @@ function createDefaultBehaviorTool() {
     areaMode: "box",
     areaW: 3,
     areaH: 3,
-    stepInterval: 1,
+    stepInterval: 4,
     enabled: true,
     selectedIndex: -1,
     paintMode: "add"
@@ -31,7 +31,7 @@ export function ensureBehaviorToolSettings(builderState) {
   tool.areaMode = AREA_MODES.includes(tool.areaMode) ? tool.areaMode : "box";
   tool.areaW = Math.max(1, normalizeInteger(tool.areaW, 3));
   tool.areaH = Math.max(1, normalizeInteger(tool.areaH, tool.areaW));
-  tool.stepInterval = Math.max(1, normalizeInteger(tool.stepInterval, 1));
+  tool.stepInterval = Math.max(1, normalizeInteger(tool.stepInterval, 4));
   tool.enabled = tool.enabled !== false;
   if (!Number.isInteger(Number(tool.selectedIndex))) tool.selectedIndex = -1;
   if (!PAINT_MODES.includes(tool.paintMode)) tool.paintMode = "add";
@@ -115,7 +115,7 @@ export function selectBehaviorDefinition(builderState, index) {
   tool.areaMode = AREA_MODES.includes(behavior.areaMode) ? behavior.areaMode : "box";
   tool.areaW = normalizeInteger(behavior.areaW, 3);
   tool.areaH = normalizeInteger(behavior.areaH, tool.areaW);
-  tool.stepInterval = normalizeInteger(behavior.stepInterval, 1);
+  tool.stepInterval = normalizeInteger(behavior.stepInterval, 4);
   tool.enabled = behavior.enabled !== false;
   ensureBehaviorToolSettings(builderState);
   return { ok: true, message: `Selected behavior ${behavior.id ?? cleanIndex + 1}.` };
@@ -215,7 +215,7 @@ function buildBehaviorFromTool(tool, id) {
     areaMode: AREA_MODES.includes(tool.areaMode) ? tool.areaMode : "box",
     areaW: Math.max(1, normalizeInteger(tool.areaW, 3)),
     areaH: Math.max(1, normalizeInteger(tool.areaH, tool.areaW)),
-    stepInterval: Math.max(1, normalizeInteger(tool.stepInterval, 1)),
+    stepInterval: Math.max(1, normalizeInteger(tool.stepInterval, 4)),
     enabled: tool.enabled !== false,
     tiles: []
   };

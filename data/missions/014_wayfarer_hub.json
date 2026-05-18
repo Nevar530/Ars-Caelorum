@@ -20,10 +20,10 @@
   "objectivePreset": "hub_shell",
   "briefing": {
     "title": "Wayfarer Hub",
-    "text": "The Wayfarer hub is a real story-mode mission. Use Theo to test dialogue choices and mission menu branching.",
+    "text": "The Wayfarer hub is a real story-mode mission. Use Theo to test dialogue choices and mission routing from the bridge.",
     "objectives": [
       "Walk to Theo and press Action.",
-      "Choose Good or Rough, then Continue, Load, or Nothing."
+      "Choose Good or Rough, then Continue, Mission Board, or Nothing."
     ]
   },
   "objectives": [
@@ -100,7 +100,7 @@
               "loadMissionId": "000_game_state_tester_mission"
             },
             {
-              "label": "Load",
+              "label": "Mission Board",
               "action": "missionSelect"
             },
             {
@@ -126,7 +126,7 @@
               "loadMissionId": "000_game_state_tester_mission"
             },
             {
-              "label": "Load",
+              "label": "Mission Board",
               "action": "missionSelect"
             },
             {

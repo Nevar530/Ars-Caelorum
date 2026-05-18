@@ -128,6 +128,27 @@ function shuffleCopy(list) {
   return copy;
 }
 
+function getWanderHoldRangeForUnit(state, unitId) {
+  let range = 1;
+  const triggers = Array.isArray(state?.map?.triggers) ? state.map.triggers : [];
+  for (const trigger of triggers) {
+    if (trigger?.type !== "onUnitInteract") continue;
+    if (String(trigger?.targetUnitId ?? "").trim() !== String(unitId ?? "").trim()) continue;
+    range = Math.max(range, Math.trunc(Number(trigger?.interactionRange ?? 1) || 1));
+  }
+  return range;
+}
+
+function isNearActiveStoryBody(state, unit, range = 1) {
+  const activeId = state?.turn?.activeBodyId ?? state?.turn?.activeUnitId ?? null;
+  if (!activeId || !unit) return false;
+  const active = getUnitById(state.units, activeId);
+  if (!active || active.instanceId === unit.instanceId) return false;
+
+  const distance = Math.abs(Number(active.x ?? 0) - Number(unit.x ?? 0)) + Math.abs(Number(active.y ?? 0) - Number(unit.y ?? 0));
+  return distance <= Math.max(1, Math.trunc(Number(range ?? 1) || 1));
+}
+
 function tickStoryNpcWander(state, { setUnitFacing, logDev } = {}) {
   if (!isStoryMode(state)) return false;
   if (state?.ui?.dialogue?.active || state?.mission?.result) return false;
@@ -144,6 +165,7 @@ function tickStoryNpcWander(state, { setUnitFacing, logDev } = {}) {
     const unit = getUnitById(state.units, unitId);
     if (!unit || unit.status === "disabled" || unit.status === "destroyed") continue;
     if (unit.embarked) continue;
+    if (isNearActiveStoryBody(state, unit, getWanderHoldRangeForUnit(state, unit.instanceId))) continue;
 
     ensureWanderHome(behavior, unit);
     const candidates = shuffleCopy(WANDER_DIRECTIONS)
