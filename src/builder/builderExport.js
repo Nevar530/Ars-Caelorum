@@ -148,7 +148,11 @@ export function buildMissionDefinitionForExport(mapDefinition, mission = null, m
     results: mission?.results ?? {
       victory: { title: "Victory", text: "Mission complete." },
       defeat: { title: "Defeat", text: "Mission failed." }
-    }
+    },
+    campaignFlow: cloneJson(mission?.campaignFlow ?? {
+      onVictory: { action: "continue", loadMissionId: "" },
+      onDefeat: { action: "restart" }
+    })
   };
 }
 
@@ -165,7 +169,8 @@ export function buildMissionPackageDefinition({ missionDefinition, mapDefinition
     triggers: cloneJson(missionDefinition?.triggers ?? []),
     logic: cloneJson(missionDefinition?.logic ?? []),
     dialogue: cloneJson(missionDefinition?.dialogue ?? {}),
-    results: cloneJson(missionDefinition?.results ?? {})
+    results: cloneJson(missionDefinition?.results ?? {}),
+    campaignFlow: cloneJson(missionDefinition?.campaignFlow ?? {})
   };
 }
 

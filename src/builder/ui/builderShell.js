@@ -480,7 +480,7 @@ function renderInspector({ builderState, refs, appState }) {
     ? renderDialogueInspectorTools(builderState, appState)
     : "";
   const resultsTools = builderState.activeTab === "results"
-    ? renderResultsInspectorTools(builderState)
+    ? renderResultsInspectorTools(builderState, appState)
     : "";
   const validationTools = builderState.activeTab === "validate"
     ? renderValidationInspectorTools(builderState)
@@ -774,9 +774,15 @@ function renderDialogueLineList(block, lines, selectedLineIndex = -1) {
   }).join('') + '</div>';
 }
 
-function renderResultsInspectorTools(builderState) {
+function renderResultsInspectorTools(builderState, appState) {
   const mission = ensureMissionPackageDraft(builderState) ?? {};
   const editable = builderState.workspaceMode === "builder-map";
+  const missionOptions = buildCampaignMissionOptions(appState, builderState);
+  const victoryAction = mission.campaignFlow?.onVictory?.action ?? "continue";
+  const victoryLoadMissionId = mission.campaignFlow?.onVictory?.loadMissionId ?? "";
+  const defeatAction = mission.campaignFlow?.onDefeat?.action ?? "restart";
+  const defeatLoadMissionId = mission.campaignFlow?.onDefeat?.loadMissionId ?? "";
+
   return `
     <div class="builder-inspector-card builder-results-tool-card builder-grid-card">
       <div class="builder-field-label">Mission Results</div>
@@ -789,6 +795,21 @@ function renderResultsInspectorTools(builderState) {
         <textarea data-builder-field="package-victory-text" rows="4" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(mission.results?.victory?.text ?? "Mission complete.")}</textarea>
       </label>
       <label class="builder-form-field builder-form-field-compact">
+        <span>Victory Action</span>
+        <select data-builder-field="package-victory-flow-action"${editable ? "" : " disabled"}>
+          ${buildOption("continue", "Continue", victoryAction)}
+          ${buildOption("restart", "Restart Mission", victoryAction)}
+          ${buildOption("mainMenu", "Main Menu", victoryAction)}
+        </select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Continue Loads Mission</span>
+        <select data-builder-field="package-victory-load-mission-id"${editable ? "" : " disabled"}>
+          <option value="">None / Mission Select Fallback</option>
+          ${buildMissionSelectOptions(missionOptions, victoryLoadMissionId)}
+        </select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
         <span>Defeat Title</span>
         <input type="text" data-builder-field="package-defeat-title" value="${escapeHtml(mission.results?.defeat?.title ?? "Defeat")}" spellcheck="true"${editable ? "" : " disabled"}>
       </label>
@@ -796,8 +817,55 @@ function renderResultsInspectorTools(builderState) {
         <span>Defeat Text</span>
         <textarea data-builder-field="package-defeat-text" rows="4" spellcheck="true"${editable ? "" : " disabled"}>${escapeHtml(mission.results?.defeat?.text ?? "Mission failed.")}</textarea>
       </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Defeat Action</span>
+        <select data-builder-field="package-defeat-flow-action"${editable ? "" : " disabled"}>
+          ${buildOption("restart", "Restart Mission", defeatAction)}
+          ${buildOption("loadMission", "Load Mission", defeatAction)}
+          ${buildOption("mainMenu", "Main Menu", defeatAction)}
+        </select>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Defeat Loads Mission</span>
+        <select data-builder-field="package-defeat-load-mission-id"${editable ? "" : " disabled"}>
+          <option value="">None / Mission Select Fallback</option>
+          ${buildMissionSelectOptions(missionOptions, defeatLoadMissionId)}
+        </select>
+      </label>
     </div>
   `;
+}
+
+function buildCampaignMissionOptions(appState, builderState) {
+  const catalogMissions = Array.isArray(appState?.content?.missionCatalog?.missions)
+    ? appState.content.missionCatalog.missions
+    : [];
+  const packageMission = ensureMissionPackageDraft(builderState);
+  const options = [];
+  const seen = new Set();
+
+  for (const entry of catalogMissions) {
+    const id = String(entry?.id ?? "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    options.push({ id, name: entry?.name ?? id });
+  }
+
+  if (packageMission?.id && !seen.has(packageMission.id)) {
+    options.push({ id: packageMission.id, name: packageMission.name ?? packageMission.id });
+  }
+
+  return options;
+}
+
+function buildMissionSelectOptions(options, selectedId) {
+  const selected = String(selectedId ?? "").trim();
+  return (Array.isArray(options) ? options : []).map((entry) => buildOption(entry.id, entry.name ?? entry.id, selected)).join("");
+}
+
+function buildOption(value, label, selectedValue) {
+  const selected = String(value) === String(selectedValue ?? "") ? " selected" : "";
+  return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(label)}</option>`;
 }
 
 function renderMissionMapList(summary) {

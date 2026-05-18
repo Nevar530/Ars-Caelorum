@@ -1,8 +1,4 @@
 // src/controllers/gameMenuController.js
-//
-// Controller for the campaign/system menu. script.js wires this controller into
-// input and click events, but menu behavior lives here instead of becoming a
-// script.js catch-all.
 
 import {
   closeGameMenu,
@@ -11,6 +7,8 @@ import {
   moveGameMenuStatSelection,
   moveGameMenuTab,
   selectGameMenuPilot,
+  selectGameMenuSystemAction,
+  setGameMenuStatus,
   setGameMenuTab,
   spendPilotStatPoint,
   toggleGameMenu
@@ -21,7 +19,9 @@ export function createGameMenuController({
   render,
   saveCampaign,
   getCpuTurnController = null,
-  returnToTitle = null
+  returnToTitle = null,
+  openMissionSelect = null,
+  restartMission = null
 }) {
   function getCpu() {
     return typeof getCpuTurnController === "function" ? getCpuTurnController() : null;
@@ -64,7 +64,46 @@ export function createGameMenuController({
 
   function confirmSelection() {
     const result = confirmGameMenuSelection(state);
+
+    if (result?.type === "system") {
+      handleSystemAction(result.action);
+      return;
+    }
+
     if (result?.ok) save();
+    render?.();
+  }
+
+  function handleSystemAction(action) {
+    if (action === "resume") {
+      close();
+      return;
+    }
+
+    if (action === "save") {
+      save();
+      setGameMenuStatus(state, "Game saved.");
+      render?.();
+      return;
+    }
+
+    closeGameMenu(state);
+
+    if (action === "restart" && typeof restartMission === "function") {
+      restartMission();
+      return;
+    }
+
+    if (action === "missionSelect" && typeof openMissionSelect === "function") {
+      openMissionSelect();
+      return;
+    }
+
+    if (action === "mainMenu" && typeof returnToTitle === "function") {
+      returnToTitle();
+      return;
+    }
+
     render?.();
   }
 
@@ -95,9 +134,11 @@ export function createGameMenuController({
       return;
     }
 
-    if (action === "return-title") {
-      closeGameMenu(state);
-      if (typeof returnToTitle === "function") returnToTitle();
+    if (action === "system-action") {
+      if (selectGameMenuSystemAction(state, button.dataset.systemAction)) {
+        handleSystemAction(button.dataset.systemAction);
+      }
+      return;
     }
   }
 

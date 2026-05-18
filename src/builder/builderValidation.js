@@ -20,6 +20,8 @@ const VALID_TRIGGER_TEAMS = new Set(["player", "enemy", "any"]);
 const VALID_LOGIC_CONDITIONS = new Set(["objective_complete", "objective_incomplete", "flag_true", "flag_false", "round_at_least"]);
 const VALID_LOGIC_ACTIONS = new Set(["complete_objective", "change_unit_stat", "load_map", "end_mission", "start_dialogue", "set_flag", "give_item", "remove_item"]);
 const VALID_MAP_MODES = new Set(["combat", "story"]);
+const VALID_VICTORY_FLOW_ACTIONS = new Set(["continue", "restart", "mainMenu"]);
+const VALID_DEFEAT_FLOW_ACTIONS = new Set(["restart", "loadMission", "mainMenu"]);
 
 export function validateBuilderPackage(builderState, appState = null) {
   const result = createValidationResult();
@@ -34,7 +36,7 @@ export function validateBuilderPackage(builderState, appState = null) {
     return commitValidation(builderState, result);
   }
 
-  validateMissionPackageBasics(result, mission, maps);
+  validateMissionPackageBasics(result, mission, maps, appState);
 
   for (const map of maps) {
     const width = getMapWidth(map);
@@ -73,7 +75,7 @@ export function hasBlockingValidationErrors(validation) {
   return (validation?.errors?.length ?? 0) > 0;
 }
 
-function validateMissionPackageBasics(result, mission, maps) {
+function validateMissionPackageBasics(result, mission, maps, appState = null) {
   if (!cleanString(mission?.id)) addError(result, "MISSION_ID_MISSING", "Mission id is missing.");
   if (!cleanString(mission?.name)) addWarning(result, "MISSION_NAME_MISSING", "Mission name is missing.");
   if (!mission?.briefing?.text || mission?.briefing?.text === DEFAULT_BRIEFING_TEXT) {
@@ -94,6 +96,51 @@ function validateMissionPackageBasics(result, mission, maps) {
   } else if (!mapIds.has(startMapId)) {
     addError(result, "MISSION_START_MAP_BAD", `Mission startMapId "${startMapId}" does not match any map in the package.`);
   }
+
+  validateCampaignFlow(result, mission, appState);
+}
+
+function validateCampaignFlow(result, mission, appState = null) {
+  const flow = mission?.campaignFlow ?? {};
+  const victory = flow?.onVictory ?? {};
+  const defeat = flow?.onDefeat ?? {};
+  const missionIds = getKnownMissionIds(appState, mission);
+
+  const victoryAction = cleanString(victory.action || "continue");
+  if (!VALID_VICTORY_FLOW_ACTIONS.has(victoryAction)) {
+    addError(result, "CAMPAIGN_FLOW_VICTORY_ACTION_BAD", `Victory flow action "${victoryAction}" is not supported.`);
+  }
+
+  const victoryLoadMissionId = cleanString(victory.loadMissionId);
+  if (victoryAction === "continue" && victoryLoadMissionId && !missionIds.has(victoryLoadMissionId)) {
+    addWarning(result, "CAMPAIGN_FLOW_VICTORY_MISSION_UNKNOWN", `Victory Continue loads unknown mission "${victoryLoadMissionId}".`);
+  }
+
+  const defeatAction = cleanString(defeat.action || "restart");
+  if (!VALID_DEFEAT_FLOW_ACTIONS.has(defeatAction)) {
+    addError(result, "CAMPAIGN_FLOW_DEFEAT_ACTION_BAD", `Defeat flow action "${defeatAction}" is not supported.`);
+  }
+
+  const defeatLoadMissionId = cleanString(defeat.loadMissionId);
+  if (defeatAction === "loadMission") {
+    if (!defeatLoadMissionId) {
+      addWarning(result, "CAMPAIGN_FLOW_DEFEAT_MISSION_MISSING", "Defeat Load Mission has no target mission selected.");
+    } else if (!missionIds.has(defeatLoadMissionId)) {
+      addWarning(result, "CAMPAIGN_FLOW_DEFEAT_MISSION_UNKNOWN", `Defeat Load Mission targets unknown mission "${defeatLoadMissionId}".`);
+    }
+  }
+}
+
+function getKnownMissionIds(appState, mission) {
+  const ids = new Set();
+  const catalog = Array.isArray(appState?.content?.missionCatalog?.missions) ? appState.content.missionCatalog.missions : [];
+  for (const entry of catalog) {
+    const id = cleanString(entry?.id);
+    if (id) ids.add(id);
+  }
+  const currentId = cleanString(mission?.id);
+  if (currentId) ids.add(currentId);
+  return ids;
 }
 
 function validateMapBasics(result, map, width, height) {

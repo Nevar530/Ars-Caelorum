@@ -4456,3 +4456,25 @@ button:disabled {
   }
 
 }
+
+.game-menu-actions--stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.game-menu-system-action.is-selected {
+  border-color: rgba(119, 209, 255, 0.7);
+  background: rgba(119, 209, 255, 0.14);
+}
+
+.game-menu-status {
+  border-color: rgba(123, 213, 168, 0.35);
+}
+
+.combat-overlay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}

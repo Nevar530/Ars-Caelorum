@@ -111,6 +111,7 @@ export function ensureMissionPackageDraft(builderState) {
   mission.briefing.title = sanitizeName(mission.briefing.title, mission.name);
   mission.briefing.text = sanitizeName(mission.briefing.text, DEFAULT_BRIEFING_BODY);
   mission.results = normalizeResults(mission.results);
+  mission.campaignFlow = normalizeCampaignFlow(mission.campaignFlow);
   mission.dialogue = mission.dialogue ?? createDefaultDialogue();
 
   syncMissionMapMetadata(builderState);
@@ -140,7 +141,8 @@ export function createDefaultMissionPackage({ mapId = "new_map", mapName = "New 
     },
     objectives: [],
     dialogue: createDefaultDialogue(),
-    results: normalizeResults(null)
+    results: normalizeResults(null),
+    campaignFlow: normalizeCampaignFlow(null)
   };
   applyObjectivePresetToMission(mission, "defeat_all");
   return mission;
@@ -167,6 +169,10 @@ export function readMissionPackageFields(builderState, root) {
   const victoryText = sanitizeName(readField(root, "package-victory-text", mission.results?.victory?.text), "Mission complete.");
   const defeatTitle = sanitizeName(readField(root, "package-defeat-title", mission.results?.defeat?.title), "Defeat");
   const defeatText = sanitizeName(readField(root, "package-defeat-text", mission.results?.defeat?.text), "Mission failed.");
+  const victoryAction = normalizeVictoryFlowAction(readField(root, "package-victory-flow-action", mission.campaignFlow?.onVictory?.action));
+  const victoryLoadMissionId = sanitizeId(readField(root, "package-victory-load-mission-id", mission.campaignFlow?.onVictory?.loadMissionId), "");
+  const defeatAction = normalizeDefeatFlowAction(readField(root, "package-defeat-flow-action", mission.campaignFlow?.onDefeat?.action));
+  const defeatLoadMissionId = sanitizeId(readField(root, "package-defeat-load-mission-id", mission.campaignFlow?.onDefeat?.loadMissionId), "");
   const preset = sanitizeId(readField(root, "package-objective-preset", mission.objectivePreset), mission.objectivePreset || "defeat_all");
   const startMapId = sanitizeId(readField(root, "package-start-map-id", mission.startMapId), mission.startMapId || activeMapId);
 
@@ -188,6 +194,10 @@ export function readMissionPackageFields(builderState, root) {
     victory: { title: victoryTitle, text: victoryText },
     defeat: { title: defeatTitle, text: defeatText }
   };
+  mission.campaignFlow = normalizeCampaignFlow({
+    onVictory: { action: victoryAction, loadMissionId: victoryLoadMissionId },
+    onDefeat: { action: defeatAction, loadMissionId: defeatLoadMissionId }
+  });
 
   syncMissionMapMetadata(builderState);
   syncActiveMapObjectivesToMission(builderState);
@@ -756,6 +766,37 @@ function normalizeResults(results) {
       text: sanitizeName(results?.defeat?.text, "Mission failed.")
     }
   };
+}
+
+function normalizeCampaignFlow(flow) {
+  return {
+    onVictory: normalizeFlowBranch(flow?.onVictory, "victory"),
+    onDefeat: normalizeFlowBranch(flow?.onDefeat, "defeat")
+  };
+}
+
+function normalizeFlowBranch(branch, result) {
+  const source = branch && typeof branch === "object" ? branch : {};
+  const action = result === "defeat"
+    ? normalizeDefeatFlowAction(source.action)
+    : normalizeVictoryFlowAction(source.action);
+  const loadMissionId = sanitizeId(source.loadMissionId, "");
+
+  if (action === "continue" || action === "loadMission") {
+    return { action, loadMissionId };
+  }
+
+  return { action };
+}
+
+function normalizeVictoryFlowAction(action) {
+  const value = String(action ?? "continue").trim();
+  return ["continue", "restart", "mainMenu"].includes(value) ? value : "continue";
+}
+
+function normalizeDefeatFlowAction(action) {
+  const value = String(action ?? "restart").trim();
+  return ["restart", "loadMission", "mainMenu"].includes(value) ? value : "restart";
 }
 
 function normalizeBriefingLines(lines, objectives) {

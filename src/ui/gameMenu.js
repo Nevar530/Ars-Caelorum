@@ -1,7 +1,4 @@
 // src/ui/gameMenu.js
-//
-// Campaign/system menu shell. This is overlay UI only: it reads/writes campaign
-// state and never reloads the current mission/map.
 
 import { PILOT_STAT_CAPS, PILOT_STAT_KEYS } from "../campaign/campaignState.js";
 
@@ -11,6 +8,14 @@ const TABS = Object.freeze([
   { id: "missions", label: "Missions" },
   { id: "lore", label: "Lore" },
   { id: "system", label: "System" }
+]);
+
+const SYSTEM_ACTIONS = Object.freeze([
+  { id: "resume", label: "Resume" },
+  { id: "save", label: "Save" },
+  { id: "restart", label: "Restart Mission" },
+  { id: "missionSelect", label: "Mission Select" },
+  { id: "mainMenu", label: "Main Menu" }
 ]);
 
 const STAT_LABELS = Object.freeze({
@@ -29,6 +34,8 @@ export function normalizeGameMenuState(state) {
   state.ui.gameMenu.activeTab = normalizeTab(state.ui.gameMenu.activeTab);
   state.ui.gameMenu.selectedPilotId = String(state.ui.gameMenu.selectedPilotId ?? "").trim();
   state.ui.gameMenu.selectedStatKey = normalizeStatKey(state.ui.gameMenu.selectedStatKey);
+  state.ui.gameMenu.selectedSystemIndex = normalizeSystemIndex(state.ui.gameMenu.selectedSystemIndex);
+  state.ui.gameMenu.statusText = String(state.ui.gameMenu.statusText ?? "").trim();
 
   return state.ui.gameMenu;
 }
@@ -72,6 +79,13 @@ export function moveGameMenuTab(state, delta) {
 
 export function moveGameMenuSelection(state, delta) {
   const menu = normalizeGameMenuState(state);
+
+  if (menu.activeTab === "system") {
+    const currentIndex = normalizeSystemIndex(menu.selectedSystemIndex);
+    menu.selectedSystemIndex = (currentIndex + Math.sign(delta || 0) + SYSTEM_ACTIONS.length) % SYSTEM_ACTIONS.length;
+    return true;
+  }
+
   if (menu.activeTab !== "characters") return false;
 
   const pilots = getVisiblePilotEntries(state);
@@ -95,6 +109,15 @@ export function moveGameMenuStatSelection(state, delta) {
 
 export function confirmGameMenuSelection(state) {
   const menu = normalizeGameMenuState(state);
+
+  if (menu.activeTab === "system") {
+    return {
+      ok: true,
+      type: "system",
+      action: SYSTEM_ACTIONS[normalizeSystemIndex(menu.selectedSystemIndex)]?.id ?? "resume"
+    };
+  }
+
   if (menu.activeTab !== "characters") return { ok: false, reason: "no_confirm_action" };
   return spendPilotStatPoint(state, menu.selectedPilotId, menu.selectedStatKey);
 }
@@ -106,6 +129,18 @@ export function selectGameMenuPilot(state, pilotId) {
   if (!exists) return false;
   normalizeGameMenuState(state).selectedPilotId = id;
   return true;
+}
+
+export function selectGameMenuSystemAction(state, actionId) {
+  const id = String(actionId ?? "").trim();
+  const index = SYSTEM_ACTIONS.findIndex((action) => action.id === id);
+  if (index < 0) return false;
+  normalizeGameMenuState(state).selectedSystemIndex = index;
+  return true;
+}
+
+export function setGameMenuStatus(state, text = "") {
+  normalizeGameMenuState(state).statusText = String(text ?? "").trim();
 }
 
 export function spendPilotStatPoint(state, pilotId, statKey) {
@@ -159,8 +194,8 @@ export function renderGameMenu(state) {
           ${renderActiveTab(state, menu.activeTab)}
         </div>
         <footer class="game-menu-footer">
-          <span>I closes menu · Q/E switches tabs · Arrows navigate current tab</span>
-          <span>Stat changes apply when a mission/map loads.</span>
+          <span>I closes menu · Q/E switches tabs · Arrows navigate current tab · Enter confirms</span>
+          <span>${menu.activeTab === "system" ? "System actions are keyboard-first." : "Stat changes apply when a mission/map loads."}</span>
         </footer>
       </section>
     </div>
@@ -277,7 +312,7 @@ function renderMissionsTab(state) {
 
   return `
     <div class="game-menu-stack">
-      <div class="game-menu-subpanel"><h3>Current Mission</h3><p>${escapeHtml(campaign.currentMissionId ?? "None")}</p></div>
+      <div class="game-menu-subpanel"><h3>Current Mission</h3><p>${escapeHtml(campaign.currentMissionId ?? state?.mission?.definition?.id ?? "None")}</p></div>
       <div class="game-menu-subpanel"><h3>Unlocked Missions</h3>${renderIdList(unlocked, "No unlocked missions.")}</div>
       <div class="game-menu-subpanel"><h3>Completed Missions</h3>${renderIdList(completed, "No completed missions yet.")}</div>
     </div>
@@ -294,14 +329,23 @@ function renderLoreTab() {
 }
 
 function renderSystemTab(state) {
+  const menu = normalizeGameMenuState(state);
   const difficulty = state?.campaign?.difficulty ?? "normal";
   return `
     <div class="game-menu-stack">
-      <div class="game-menu-subpanel"><h3>Campaign</h3><p>Difficulty: ${escapeHtml(titleCase(difficulty))}</p><p>Campaign state saves after rewards and stat spending.</p></div>
-      <div class="game-menu-subpanel"><h3>Controls</h3><p>I opens/closes this menu. F1 opens help. Esc remains reserved for back/cancel controls.</p></div>
-      <div class="game-menu-actions">
-        <button type="button" data-game-menu-action="return-title">Return to Title</button>
+      <div class="game-menu-subpanel"><h3>Campaign</h3><p>Difficulty: ${escapeHtml(titleCase(difficulty))}</p><p>Campaign state saves after rewards, stat spending, and manual Save.</p></div>
+      <div class="game-menu-subpanel"><h3>Controls</h3><p>Arrow Up/Down chooses an action. Enter confirms. I or Esc closes this menu.</p></div>
+      <div class="game-menu-actions game-menu-actions--stack">
+        ${SYSTEM_ACTIONS.map((action, index) => `
+          <button
+            type="button"
+            class="game-menu-system-action ${index === menu.selectedSystemIndex ? "is-selected" : ""}"
+            data-game-menu-action="system-action"
+            data-system-action="${escapeHtml(action.id)}"
+          >${escapeHtml(action.label)}</button>
+        `).join("")}
       </div>
+      ${menu.statusText ? `<div class="game-menu-subpanel game-menu-status">${escapeHtml(menu.statusText)}</div>` : ""}
     </div>
   `;
 }
@@ -356,6 +400,11 @@ function normalizeStatKey(statKey) {
 function normalizeTab(tabId) {
   const id = String(tabId ?? "characters").trim().toLowerCase();
   return TABS.some((tab) => tab.id === id) ? id : "characters";
+}
+
+function normalizeSystemIndex(value) {
+  const index = Math.trunc(Number(value ?? 0) || 0);
+  return Math.max(0, Math.min(index, SYSTEM_ACTIONS.length - 1));
 }
 
 function numberStat(value, fallback = 0) {

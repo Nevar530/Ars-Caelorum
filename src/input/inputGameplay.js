@@ -112,6 +112,11 @@ function handleGameMenuKeys(event, key, state, actions) {
 
   if (!state?.ui?.gameMenu?.open) return false;
 
+  if (key === "escape") {
+    actions.closeGameMenu?.();
+    return true;
+  }
+
   if (key === "q") {
     actions.moveGameMenuTab?.(-1);
     return true;

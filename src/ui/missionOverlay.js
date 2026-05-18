@@ -1,6 +1,7 @@
 import { getCurrentDialogueLine, getMissionResultCopy } from "../mission/missionState.js";
 import { getUnitById } from "../mechs.js";
 import { renderGameMenu } from "./gameMenu.js";
+import { getMissionFlowBranch } from "../campaign/campaignFlow.js";
 
 export function renderMissionOverlay(state, refs) {
   const overlay = refs?.combatOverlay;
@@ -41,13 +42,7 @@ export function renderMissionOverlay(state, refs) {
         <div class="combat-overlay-title">${escapeHtml(copy.title)}</div>
         <div class="combat-overlay-text">${escapeHtml(copy.text)}</div>
         ${renderCampaignRewardSummary(state)}
-        <button
-          type="button"
-          class="combat-start-button"
-          data-combat-overlay-action="return-title"
-        >
-          Return to Title Screen
-        </button>
+        ${renderMissionResultActions(state, missionResult)}
       </div>
     `;
     return;
@@ -77,6 +72,30 @@ export function renderMissionOverlay(state, refs) {
     overlay.innerHTML = renderTurnPopup(state);
     return;
   }
+}
+
+function renderMissionResultActions(state, result) {
+  const branch = getMissionFlowBranch(state?.mission?.definition, result);
+  const missionId = String(branch?.loadMissionId ?? "").trim();
+
+  if (result === "defeat") {
+    return `
+      <div class="combat-overlay-actions">
+        <button type="button" class="combat-start-button" data-combat-overlay-action="mission-result-flow" data-flow-action="restart">Restart Mission</button>
+        <button type="button" class="combat-start-button" data-combat-overlay-action="mission-result-flow" data-flow-action="loadMission"${missionId ? ` data-load-mission-id="${escapeHtml(missionId)}"` : ""}>Load Mission</button>
+        <button type="button" class="combat-start-button" data-combat-overlay-action="mission-result-flow" data-flow-action="mainMenu">Main Menu</button>
+      </div>
+    `;
+  }
+
+  const continueLabel = missionId ? "Continue" : "Continue";
+  return `
+    <div class="combat-overlay-actions">
+      <button type="button" class="combat-start-button" data-combat-overlay-action="mission-result-flow" data-flow-action="continue"${missionId ? ` data-load-mission-id="${escapeHtml(missionId)}"` : ""}>${escapeHtml(continueLabel)}</button>
+      <button type="button" class="combat-start-button" data-combat-overlay-action="mission-result-flow" data-flow-action="restart">Restart Mission</button>
+      <button type="button" class="combat-start-button" data-combat-overlay-action="mission-result-flow" data-flow-action="mainMenu">Main Menu</button>
+    </div>
+  `;
 }
 
 function renderCampaignRewardSummary(state) {

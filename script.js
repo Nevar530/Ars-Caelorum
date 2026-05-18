@@ -24,11 +24,12 @@ import { getMissionEntries } from "./src/ui/frontScreen.js";
 import { confirmDeploymentPlacement, getDeploymentReady, isDeploymentActive, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "./src/deployment/deploymentState.js";
 import { advanceMissionDialogue } from "./src/mission/missionState.js";
 import { createMissionTriggerRuntime } from "./src/mission/missionTriggerRuntime.js";
-import { isMissionUnlocked } from "./src/campaign/campaignState.js";
+import { isMissionUnlocked, setCurrentMission } from "./src/campaign/campaignState.js";
 import { loadCampaignState, resetStoredCampaignState, saveCampaignState } from "./src/campaign/campaignStorage.js";
 import { applyMissionRewards } from "./src/campaign/campaignRewards.js";
 import { getCurrentMissionEntry } from "./src/campaign/campaignProgression.js";
 import { createGameMenuController } from "./src/controllers/gameMenuController.js";
+import { FLOW_ACTIONS, getMissionFlowBranch, normalizeFlowAction } from "./src/campaign/campaignFlow.js";
 
 const refs = {
   frontScreen: document.getElementById("frontScreen"),
@@ -190,6 +191,10 @@ async function init() {
 
     if (button.dataset.combatOverlayAction === "continue-phase-briefing") {
       actions.continuePhaseBriefing?.();
+    }
+
+    if (button.dataset.combatOverlayAction === "mission-result-flow") {
+      actions.handleMissionResultFlow?.(button.dataset.flowAction, button.dataset.loadMissionId);
     }
 
     const gameMenuAction = button.dataset.gameMenuAction;
@@ -368,12 +373,83 @@ function getSelectedMissionEntry() {
     state.campaign = saveCampaignState(state.campaign, { defaultMissionId });
   }
 
+  function getMissionEntryById(missionId) {
+    const id = String(missionId ?? "").trim();
+    if (!id) return null;
+    return getMissionEntries(state).find((entry) => entry?.id === id) ?? null;
+  }
+
+  async function startMissionEntry(missionEntry, { force = false } = {}) {
+    if (!missionEntry) return false;
+    if (!force && !isMissionEntryUnlocked(missionEntry)) return false;
+
+    const missionDefinition = await loadMissionForEntry(missionEntry);
+    const mapPath = getMissionStartMapPath(missionDefinition, missionEntry);
+    if (!mapPath) return false;
+
+    const mapDefinition = await loadMapDefinitionByPath(mapPath);
+    state.ui.shell.selectedMissionId = missionEntry.id;
+    state.ui.shell.selectedMapId = missionEntry.id;
+    setCurrentMission(state.campaign, missionEntry.id);
+    state.campaign = saveCampaignState(state.campaign, { defaultMissionId });
+    state.ui.shell.briefingMission = missionEntry;
+    state.ui.shell.briefingDefinition = missionDefinition;
+    state.ui.shell.screen = "game";
+    gameController.loadMapAndUnits(mapDefinition, missionDefinition);
+    return true;
+  }
+
+  async function loadMissionById(missionId, options = {}) {
+    const missionEntry = getMissionEntryById(missionId);
+    if (!missionEntry) return false;
+    return startMissionEntry(missionEntry, options);
+  }
+
+  async function restartCurrentMission() {
+    const missionId = state?.mission?.definition?.id ?? state?.campaign?.currentMissionId ?? state?.ui?.shell?.selectedMissionId ?? null;
+    if (missionId && await loadMissionById(missionId, { force: true })) return true;
+
+    if (state?.mission?.sourceMap && state?.mission?.definition) {
+      state.ui.shell.screen = "game";
+      gameController.loadMapAndUnits(state.mission.sourceMap, state.mission.definition);
+      return true;
+    }
+
+    actions.openMissionSelect();
+    return false;
+  }
+
+  async function handleMissionResultFlow(actionValue, explicitMissionId = "") {
+    const result = state?.mission?.result === "defeat" ? "defeat" : "victory";
+    const branch = getMissionFlowBranch(state?.mission?.definition, result);
+    const action = normalizeFlowAction(actionValue || branch?.action, result === "defeat" ? FLOW_ACTIONS.RESTART : FLOW_ACTIONS.CONTINUE);
+    const loadMissionId = String(explicitMissionId || branch?.loadMissionId || "").trim();
+
+    if (action === FLOW_ACTIONS.RESTART) {
+      await restartCurrentMission();
+      return;
+    }
+
+    if ((action === FLOW_ACTIONS.CONTINUE || action === FLOW_ACTIONS.LOAD_MISSION) && loadMissionId) {
+      if (await loadMissionById(loadMissionId, { force: true })) return;
+    }
+
+    if (action === FLOW_ACTIONS.MISSION_SELECT || action === FLOW_ACTIONS.LOAD_MISSION || action === FLOW_ACTIONS.CONTINUE) {
+      actions.openMissionSelect();
+      return;
+    }
+
+    actions.showTitleScreen();
+  }
+
   const gameMenuController = createGameMenuController({
     state,
     render: gameController.render,
     saveCampaign,
     getCpuTurnController: () => cpuTurnController,
-    returnToTitle: () => actions.showTitleScreen()
+    returnToTitle: () => actions.showTitleScreen(),
+    openMissionSelect: () => actions.openMissionSelect(),
+    restartMission: () => actions.restartCurrentMission()
   });
 
   const actions = {
@@ -460,16 +536,7 @@ function getSelectedMissionEntry() {
     async startSelectedMission() {
       pauseTitleThemeAudio();
       const missionEntry = state.ui.shell.briefingMission ?? getSelectedMissionEntry();
-      if (!missionEntry) return;
-      if (!isMissionEntryUnlocked(missionEntry)) return;
-
-      const missionDefinition = state.ui.shell.briefingDefinition ?? await loadMissionForEntry(missionEntry);
-      const mapPath = getMissionStartMapPath(missionDefinition, missionEntry);
-      if (!mapPath) return;
-
-      const mapDefinition = await loadMapDefinitionByPath(mapPath);
-      state.ui.shell.screen = "game";
-      gameController.loadMapAndUnits(mapDefinition, missionDefinition);
+      await startMissionEntry(missionEntry);
     },
 
     moveMissionSelection(delta) {
@@ -590,6 +657,9 @@ function getSelectedMissionEntry() {
     moveGameMenuStat: gameMenuController.moveStat,
     confirmGameMenuSelection: gameMenuController.confirmSelection,
     handleGameMenuClick: gameMenuController.handleClick,
+    restartCurrentMission,
+    loadMissionById,
+    handleMissionResultFlow,
 
     continuePhaseBriefing() {
       gameController.continuePhaseBriefing?.();
