@@ -12,7 +12,7 @@ import { loadGameData, loadMapDefinitionByPath, loadMissionDefinitionByPath } fr
 import { bindHudInput } from "./src/ui/hud.js";
 import { clearCombatTextMarkers } from "./src/combat/combatTextOverlay.js";
 import { initializeMissionBuilder } from "./src/builder/missionBuilder.js";
-import { logDev, setDevLogSize } from "./dev/devLogger.js";
+import { logDev, setDevLogSize } from "./src/debug/devLogger.js";
 import { createGameController } from "./src/controllers/gameController.js";
 import { createTurnController } from "./src/controllers/turnController.js";
 import { createMovementController } from "./src/controllers/movementController.js";
@@ -51,18 +51,11 @@ const refs = {
   briefingBackButton: document.getElementById("briefingBackButton"),
   briefingStartButton: document.getElementById("briefingStartButton"),
   main: document.getElementById("mainRoot"),
-  editor: document.getElementById("editor"),
   board: document.getElementById("board"),
   worldScene: document.getElementById("world-scene"),
   worldUi: document.getElementById("world-ui"),
-  devToolbar: document.getElementById("devToolbar"),
-  rotateLeftButton: document.getElementById("rotateLeft"),
-  rotateRightButton: document.getElementById("rotateRight"),
   toggleViewButton: document.getElementById("toggleView"),
   resetMapButton: document.getElementById("resetMap"),
-  editorModeMechButton: document.getElementById("editorModeMech"),
-  editorModeDetailButton: document.getElementById("editorModeDetail"),
-  editorModeLabel: document.getElementById("editorModeLabel"),
   hudRoot: document.getElementById("hudRoot"),
   hudLeft: document.getElementById("hudLeft"),
   hudCenter: document.getElementById("hudCenter"),
@@ -82,7 +75,6 @@ async function init() {
   const state = createState({
     map: initialMap,
     units: [],
-    rotation: 0,
     content,
     campaign
   });
@@ -490,11 +482,6 @@ function getSelectedMissionEntry() {
       actions.selectMission(missions[nextIndex].id);
     },
     
-    setEditorMode() {
-      state.ui.editor.mode = "mech";
-      gameController.render();
-    },
-
     selectFocusedMechIfPresent() {
       return gameController.selectFocusedUnitIfPresent(getUnitAt);
     },
@@ -648,14 +635,6 @@ function getSelectedMissionEntry() {
     setActiveUnitByCurrentTurnIndex: turnController.setActiveUnitByCurrentTurnIndex,
     rebuildOrdersAndLog: turnController.rebuildOrdersAndLog,
     resetCombatToSetup: gameController.resetCombatToSetup,
-
-    rotateLeft() {
-      gameController.animateRotation(-1);
-    },
-
-    rotateRight() {
-      gameController.animateRotation(1);
-    },
 
     toggleView: gameController.toggleView,
     zoomIn: gameController.zoomIn,

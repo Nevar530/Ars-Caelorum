@@ -1,7 +1,7 @@
-// dev/devLogger.js
+// src/debug/devLogger.js
 //
 // Lightweight rolling debug log (FIFO).
-// Dev-only system for tracking actions like:
+// Lightweight runtime debug log for tracking actions like:
 // - spawn
 // - move
 // - targeting
