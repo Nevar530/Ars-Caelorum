@@ -439,7 +439,7 @@ function getMissionDisplayName(state, missionId) {
   const id = String(missionId ?? "").trim();
   const missions = Array.isArray(state?.content?.missionCatalog?.missions) ? state.content.missionCatalog.missions : [];
   const found = missions.find((mission) => String(mission?.id ?? "").trim() === id);
-  return found?.name ?? id || "None";
+  return (found?.name ?? id) || "None";
 }
 
 function renderMissionIdList(state, items, emptyText) {
