@@ -1,5 +1,6 @@
 import { createMechInstance, createPilotInstance } from "../mechs.js";
 import { isPilotAvailableInCampaign } from "../campaign/campaignRoster.js";
+import { getCampaignPilotLoadout } from "../campaign/campaignLoadouts.js";
 import { getOccupantsAt, canUnitOccupyCells } from "../scale/occupancy.js";
 
 function getStartState(map) {
@@ -242,6 +243,10 @@ export function confirmDeploymentPlacement(state) {
   const selected = available[Math.max(0, Math.min(state.ui.deployment.listIndex ?? 0, available.length - 1))];
   if (!selected?.definition) return false;
 
+  const selectedPilotLoadout = selected.pilotDefinition
+    ? getCampaignPilotLoadout(state.campaign, selected.pilotDefinition)
+    : null;
+
   const [rawX, rawY] = String(state.ui.deployment.selectedCellKey ?? "").split(",");
   const x = Number(rawX);
   const y = Number(rawY);
@@ -251,6 +256,7 @@ export function confirmDeploymentPlacement(state) {
   if (selected.unitType === "mech") {
     const mechUnit = createMechInstance(selected.mechDefinition, {
       instanceId: selected.mechInstanceId,
+      content: state.content,
       x,
       y,
       team: "player",
@@ -266,6 +272,8 @@ export function confirmDeploymentPlacement(state) {
 
     const pilotUnit = createPilotInstance(selected.pilotDefinition, {
       instanceId: selected.pilotInstanceId,
+      content: state.content,
+      loadout: selectedPilotLoadout,
       x,
       y,
       team: "player",
@@ -284,6 +292,8 @@ export function confirmDeploymentPlacement(state) {
   } else {
     const pilotUnit = createPilotInstance(selected.pilotDefinition, {
       instanceId: selected.instanceId,
+      content: state.content,
+      loadout: selectedPilotLoadout,
       x,
       y,
       team: "player",

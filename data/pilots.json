@@ -24,16 +24,21 @@
       }
     },
     "slots": {
-      "weapon": 2,
       "armor": 1,
+      "accessory": 1,
+      "primaryWeapon": 1,
+      "secondaryWeapon": 1,
       "ability": 3
     },
     "loadout": {
+      "armor": "pilot_armor_standard_01",
+      "accessory": null,
+      "primaryWeapon": "pilot_pistol_01",
+      "secondaryWeapon": "pilot_rifle_01",
       "weapons": [
         "pilot_pistol_01",
         "pilot_rifle_01"
       ],
-      "armor": null,
       "abilities": []
     },
     "inventory": {
@@ -66,16 +71,21 @@
       }
     },
     "slots": {
-      "weapon": 2,
       "armor": 1,
+      "accessory": 1,
+      "primaryWeapon": 1,
+      "secondaryWeapon": 1,
       "ability": 3
     },
     "loadout": {
+      "armor": "pilot_armor_standard_01",
+      "accessory": null,
+      "primaryWeapon": "pilot_pistol_01",
+      "secondaryWeapon": "pilot_rifle_01",
       "weapons": [
         "pilot_pistol_01",
         "pilot_rifle_01"
       ],
-      "armor": null,
       "abilities": []
     },
     "inventory": {
@@ -108,16 +118,21 @@
       }
     },
     "slots": {
-      "weapon": 2,
       "armor": 1,
+      "accessory": 1,
+      "primaryWeapon": 1,
+      "secondaryWeapon": 1,
       "ability": 3
     },
     "loadout": {
+      "armor": "pilot_armor_standard_01",
+      "accessory": null,
+      "primaryWeapon": "pilot_pistol_01",
+      "secondaryWeapon": "pilot_rifle_01",
       "weapons": [
         "pilot_pistol_01",
         "pilot_rifle_01"
       ],
-      "armor": null,
       "abilities": []
     },
     "inventory": {
@@ -150,16 +165,21 @@
       }
     },
     "slots": {
-      "weapon": 2,
       "armor": 1,
+      "accessory": 1,
+      "primaryWeapon": 1,
+      "secondaryWeapon": 1,
       "ability": 3
     },
     "loadout": {
+      "armor": "pilot_armor_standard_01",
+      "accessory": null,
+      "primaryWeapon": "pilot_pistol_01",
+      "secondaryWeapon": "pilot_rifle_01",
       "weapons": [
         "pilot_pistol_01",
         "pilot_rifle_01"
       ],
-      "armor": null,
       "abilities": []
     },
     "inventory": {
@@ -192,16 +212,21 @@
       }
     },
     "slots": {
-      "weapon": 2,
       "armor": 1,
+      "accessory": 1,
+      "primaryWeapon": 1,
+      "secondaryWeapon": 1,
       "ability": 3
     },
     "loadout": {
+      "armor": "pilot_armor_standard_01",
+      "accessory": null,
+      "primaryWeapon": "pilot_pistol_01",
+      "secondaryWeapon": "pilot_rifle_01",
       "weapons": [
         "pilot_pistol_01",
         "pilot_rifle_01"
       ],
-      "armor": null,
       "abilities": []
     },
     "inventory": {
@@ -234,16 +259,21 @@
       }
     },
     "slots": {
-      "weapon": 2,
       "armor": 1,
+      "accessory": 1,
+      "primaryWeapon": 1,
+      "secondaryWeapon": 1,
       "ability": 3
     },
     "loadout": {
+      "armor": "pilot_armor_standard_01",
+      "accessory": null,
+      "primaryWeapon": "pilot_pistol_01",
+      "secondaryWeapon": "pilot_rifle_01",
       "weapons": [
         "pilot_pistol_01",
         "pilot_rifle_01"
       ],
-      "armor": null,
       "abilities": []
     },
     "inventory": {
@@ -276,16 +306,21 @@
       }
     },
     "slots": {
-      "weapon": 2,
       "armor": 1,
+      "accessory": 1,
+      "primaryWeapon": 1,
+      "secondaryWeapon": 1,
       "ability": 3
     },
     "loadout": {
+      "armor": "pilot_armor_standard_01",
+      "accessory": null,
+      "primaryWeapon": "pilot_pistol_01",
+      "secondaryWeapon": "pilot_rifle_01",
       "weapons": [
         "pilot_pistol_01",
         "pilot_rifle_01"
       ],
-      "armor": null,
       "abilities": []
     },
     "inventory": {

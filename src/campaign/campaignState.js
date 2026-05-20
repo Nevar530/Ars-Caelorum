@@ -3,7 +3,7 @@
 // Persistent campaign authority V2.
 // Campaign state is progression/save truth, not runtime map truth.
 
-export const CAMPAIGN_VERSION = 2;
+export const CAMPAIGN_VERSION = 3;
 export const PILOT_LEVEL_CAP = 20;
 export const PILOT_STAT_CAPS = Object.freeze({
   targeting: 5,
@@ -24,8 +24,9 @@ export function createInitialCampaignState({ defaultMissionId = "000_game_state_
     difficulty: "normal",
     inventory: {
       currency: 0,
-      weapons: [],
-      armor: [],
+      weapons: ["pilot_pistol_01", "pilot_rifle_01"],
+      armor: ["pilot_armor_standard_01"],
+      accessories: [],
       items: []
     },
     flags: {},
@@ -198,6 +199,7 @@ function normalizeInventory(inventory) {
     currency: Math.max(0, Math.trunc(Number(source.currency ?? 0) || 0)),
     weapons: uniqueIds(source.weapons),
     armor: uniqueIds(source.armor),
+    accessories: uniqueIds(source.accessories),
     items: uniqueIds(source.items)
   };
 }
@@ -219,8 +221,28 @@ export function normalizePilotProgress(progress) {
     statBonuses: normalizeStatBonuses(source.statBonuses),
     learnedAbilities: uniqueIds(source.learnedAbilities),
     activeAbilities: uniqueIds(source.activeAbilities),
+    loadout: normalizePilotLoadout(source.loadout),
     recruited: source.recruited !== false,
     available: source.available !== false && source.recruited !== false
+  };
+}
+
+
+function normalizePilotLoadout(loadout) {
+  const source = loadout && typeof loadout === "object" ? loadout : {};
+  const weapons = uniqueIds(source.weapons);
+  const primaryWeapon = cleanId(source.primaryWeapon) || weapons[0] || "";
+  const secondaryWeapon = cleanId(source.secondaryWeapon) || weapons[1] || "";
+  const normalizedWeapons = uniqueIds([primaryWeapon, secondaryWeapon]);
+
+  return {
+    armor: cleanId(source.armor) || "",
+    accessory: cleanId(source.accessory) || "",
+    primaryWeapon,
+    secondaryWeapon,
+    weapons: normalizedWeapons,
+    abilities: uniqueIds(source.abilities),
+    items: uniqueIds(source.items)
   };
 }
 

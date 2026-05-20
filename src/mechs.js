@@ -2,7 +2,9 @@
 
 import { getMapSpawns, getMapStartState } from "./map.js";
 import { buildRuntimeInventory, buildRuntimeLoadout, getDefaultSlotsForUnit } from "./content/unitLoadout.js";
+import { getLoadoutModifiers } from "./content/equipmentModifiers.js";
 import { buildEnemyPilotRuntimeOverrides, buildEnemyScalingContext } from "./campaign/enemyScaling.js";
+import { getCampaignPilotLoadout } from "./campaign/campaignLoadouts.js";
 
 const PILOT_CORE_MULTIPLIER = 5;
 const PILOT_TARGETING_CAP = 5;
@@ -42,15 +44,22 @@ function getDefinitionById(items, id, fallbackIndex = 0) {
 
 function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
   const isPilot = unitType === "pilot";
-  const shield = Number(overrides.shield ?? definition?.shield ?? definition?.armor ?? (isPilot ? 0 : 10));
-  const coreStat = Math.max(1, Math.trunc(Number(overrides.coreStat ?? definition?.core ?? (isPilot ? 1 : 6)) || (isPilot ? 1 : 6)));
-  const core = Number(overrides.core ?? (isPilot
-    ? coreStat * PILOT_CORE_MULTIPLIER
-    : (definition?.core ?? definition?.structure ?? 6)));
-  const weaponIds = Array.isArray(definition?.weapons) ? [...definition.weapons] : [];
   const slots = getDefaultSlotsForUnit(unitType, definition);
   const loadout = buildRuntimeLoadout(unitType, definition, overrides);
   const inventory = buildRuntimeInventory(definition, overrides);
+  const equipmentModifiers = getLoadoutModifiers(overrides.content ?? {}, loadout, unitType);
+  const baseShield = Number(overrides.shield ?? definition?.shield ?? definition?.armor ?? (isPilot ? 0 : 10));
+  const shield = isPilot && equipmentModifiers.shield > 0
+    ? equipmentModifiers.shield
+    : Math.max(0, baseShield + equipmentModifiers.shield);
+  const coreStat = Math.max(1, Math.trunc(Number(overrides.coreStat ?? definition?.core ?? (isPilot ? 1 : 6)) || (isPilot ? 1 : 6)) + equipmentModifiers.core);
+  const core = Number(overrides.core ?? (isPilot
+    ? coreStat * PILOT_CORE_MULTIPLIER
+    : (definition?.core ?? definition?.structure ?? 6)));
+  const weaponIds = loadout.weapons?.length
+    ? [...loadout.weapons]
+    : (Array.isArray(definition?.weapons) ? [...definition.weapons] : []);
+  const move = Math.max(0, Number(overrides.move ?? definition.move ?? (isPilot ? 4 : 4)) + equipmentModifiers.move);
 
   return {
     unitType,
@@ -72,7 +81,7 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
     footprintHeight: isPilot ? 1 : 3,
     scale: unitType,
 
-    move: Number(overrides.move ?? definition.move ?? (isPilot ? 4 : 4)),
+    move,
     slots,
     loadout,
     inventory,
@@ -99,9 +108,9 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
     pilotId: overrides.pilotId ?? null,
     pilotName: overrides.pilotName ?? null,
     level: Math.max(1, Math.trunc(Number(overrides.level ?? definition.level ?? 1) || 1)),
-    reaction: clampStat(Number(overrides.reaction ?? definition.reaction ?? 0), isPilot ? PILOT_REACTION_CAP : null),
-    targeting: clampStat(Number(overrides.targeting ?? definition.targeting ?? 0), isPilot ? PILOT_TARGETING_CAP : null),
-    abilityPoints: Math.max(0, Math.trunc(Number(overrides.abilityPoints ?? definition.abilityPoints ?? 0) || 0)),
+    reaction: clampStat(Number(overrides.reaction ?? definition.reaction ?? 0) + equipmentModifiers.reaction, isPilot ? PILOT_REACTION_CAP : null),
+    targeting: clampStat(Number(overrides.targeting ?? definition.targeting ?? 0) + equipmentModifiers.targeting, isPilot ? PILOT_TARGETING_CAP : null),
+    abilityPoints: Math.max(0, Math.trunc(Number(overrides.abilityPoints ?? definition.abilityPoints ?? 0) || 0) + equipmentModifiers.abilityPoints),
 
     team: overrides.team ?? "player",
     controlType: normalizeControlType(overrides.controlType, overrides.team ?? "player"),
@@ -200,7 +209,8 @@ function buildPilotRuntimeOverrides(pilotDefinition, campaignState) {
     coreStat: Math.max(1, Math.trunc(Number(pilotDefinition?.core ?? 1) || 1)) + Math.max(0, Math.trunc(Number(bonuses.core ?? 0) || 0)),
     abilityPoints: Math.max(0, Math.trunc(Number(pilotDefinition?.abilityPoints ?? 0) || 0)) + Math.max(0, Math.trunc(Number(bonuses.abilityPoints ?? 0) || 0)),
     targeting: clampStat((Number(pilotDefinition?.targeting ?? 0) || 0) + (Number(bonuses.targeting ?? 0) || 0), PILOT_TARGETING_CAP),
-    reaction: clampStat((Number(pilotDefinition?.reaction ?? 0) || 0) + (Number(bonuses.reaction ?? 0) || 0), PILOT_REACTION_CAP)
+    reaction: clampStat((Number(pilotDefinition?.reaction ?? 0) || 0) + (Number(bonuses.reaction ?? 0) || 0), PILOT_REACTION_CAP),
+    loadout: getCampaignPilotLoadout(campaignState, pilotDefinition)
   };
 }
 
@@ -279,6 +289,7 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
 
       const mechUnit = createMechInstance(mech, {
         instanceId: mechInstanceId,
+        content,
         x: mechPos.x,
         y: mechPos.y,
         team,
@@ -307,6 +318,7 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
     if (!mech) {
       const pilotUnit = createPilotInstance(pilot, {
         ...pilotRuntimeOverrides,
+        content,
         instanceId: pilotInstanceId,
         x: pilotPos.x,
         y: pilotPos.y,
@@ -333,6 +345,7 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
 
     const mechUnit = createMechInstance(mech, {
       ...pilotRuntimeOverrides,
+      content,
       instanceId: mechInstanceId,
       x: mechPos.x,
       y: mechPos.y,
@@ -347,6 +360,7 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
 
     const pilotUnit = createPilotInstance(pilot, {
       ...pilotRuntimeOverrides,
+      content,
       instanceId: pilotInstanceId,
       x: startEmbarked ? mechPos.x : pilotPos.x,
       y: startEmbarked ? mechPos.y : pilotPos.y,

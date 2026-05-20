@@ -1,6 +1,7 @@
 // src/ui/gameMenu.js
 
 import { PILOT_STAT_CAPS, PILOT_STAT_KEYS } from "../campaign/campaignState.js";
+import { normalizePilotLoadout } from "../content/unitLoadout.js";
 import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
 
 const TABS = Object.freeze([
@@ -238,6 +239,7 @@ function renderCharactersTab(state) {
         <div class="game-menu-stat-grid">
           ${PILOT_STAT_KEYS.map((statKey) => renderStatRow(selected, statKey, menu.selectedStatKey)).join("")}
         </div>
+        ${renderPilotLoadoutPanel(state, selected)}
         <div class="game-menu-subpanel">
           <h4>Abilities</h4>
           <p>Ability unlocks and active ability slots are not built yet. Current target: 4 active abilities.</p>
@@ -245,6 +247,71 @@ function renderCharactersTab(state) {
       </section>
     </div>
   `;
+}
+
+
+function renderPilotLoadoutPanel(state, pilot) {
+  const loadout = pilot?.loadout ?? {};
+  const rows = [
+    ["Armor", loadout.armor, "armor"],
+    ["Accessory", loadout.accessory, "accessory"],
+    ["Primary", loadout.primaryWeapon, "weapon"],
+    ["Secondary", loadout.secondaryWeapon, "weapon"]
+  ];
+
+  return `
+    <div class="game-menu-subpanel">
+      <h4>Pilot Gear</h4>
+      <ul class="game-menu-id-list">
+        ${rows.map(([label, id, type]) => `
+          <li><strong>${escapeHtml(label)}:</strong> ${renderEquipmentName(state, id, type)}</li>
+        `).join("")}
+      </ul>
+    </div>
+  `;
+}
+
+function renderEquipmentName(state, id, type) {
+  const clean = String(id ?? "").trim();
+  if (!clean) return `<span class="game-menu-muted">Empty</span>`;
+  const entry = getContentEntry(state, clean, type);
+  const name = entry?.name ?? clean;
+  const modifierText = renderModifierText(entry?.modifiers);
+  return `<span>${escapeHtml(name)}</span>${modifierText ? ` <span class="game-menu-muted">${escapeHtml(modifierText)}</span>` : ""}`;
+}
+
+function renderCatalogIdList(state, items, type, emptyText) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!list.length) return `<p>${escapeHtml(emptyText)}</p>`;
+  return `<ul class="game-menu-id-list">${list.map((itemId) => {
+    const entry = getContentEntry(state, itemId, type);
+    const name = entry?.name ?? itemId;
+    const modifierText = renderModifierText(entry?.modifiers);
+    return `<li><strong>${escapeHtml(name)}</strong><br><span class="game-menu-muted">${escapeHtml(itemId)}${modifierText ? ` · ${escapeHtml(modifierText)}` : ""}</span></li>`;
+  }).join("")}</ul>`;
+}
+
+function getContentEntry(state, id, type) {
+  const clean = String(id ?? "").trim();
+  if (!clean) return null;
+  const content = state?.content ?? {};
+  const catalogs = type === "weapon"
+    ? [content.weapons]
+    : type === "item"
+      ? [content.pilotItems, content.mechItems]
+      : [content.pilotGear];
+  return catalogs
+    .flatMap((catalog) => Array.isArray(catalog) ? catalog : [])
+    .find((entry) => String(entry?.id ?? "") === clean && (type === "armor" || type === "accessory" ? entry?.slot === type : true)) ?? null;
+}
+
+function renderModifierText(modifiers) {
+  if (!modifiers || typeof modifiers !== "object") return "";
+  return Object.entries(modifiers)
+    .map(([key, value]) => [key, Math.trunc(Number(value ?? 0) || 0)])
+    .filter(([, value]) => value !== 0)
+    .map(([key, value]) => `${value > 0 ? "+" : ""}${value} ${titleCase(key)}`)
+    .join(", ");
 }
 
 function renderPilotGroups(pilots, selectedId) {
@@ -326,13 +393,15 @@ function renderInventoryTab(state) {
   const items = Array.isArray(inventory.items) ? inventory.items : [];
   const weapons = Array.isArray(inventory.weapons) ? inventory.weapons : [];
   const armor = Array.isArray(inventory.armor) ? inventory.armor : [];
+  const accessories = Array.isArray(inventory.accessories) ? inventory.accessories : [];
 
   return `
     <div class="game-menu-stack">
       <div class="game-menu-subpanel"><h3>Credits</h3><p class="game-menu-big-number">${escapeHtml(credits)}</p></div>
-      <div class="game-menu-subpanel"><h3>Items</h3>${renderIdList(items, "No items yet.")}</div>
-      <div class="game-menu-subpanel"><h3>Weapons</h3>${renderIdList(weapons, "No stored weapons yet.")}</div>
-      <div class="game-menu-subpanel"><h3>Armor</h3>${renderIdList(armor, "No armor inventory yet.")}</div>
+      <div class="game-menu-subpanel"><h3>Items</h3>${renderCatalogIdList(state, items, "item", "No items yet.")}</div>
+      <div class="game-menu-subpanel"><h3>Weapons</h3>${renderCatalogIdList(state, weapons, "weapon", "No stored weapons yet.")}</div>
+      <div class="game-menu-subpanel"><h3>Armor</h3>${renderCatalogIdList(state, armor, "armor", "No armor inventory yet.")}</div>
+      <div class="game-menu-subpanel"><h3>Accessories</h3>${renderCatalogIdList(state, accessories, "accessory", "No accessories yet.")}</div>
     </div>
   `;
 }
@@ -419,7 +488,11 @@ function getVisiblePilotEntries(state) {
         statPoints: Math.max(0, Math.trunc(Number(progress?.statPoints ?? 0) || 0)),
         baseStats,
         statBonuses,
-        totalStats
+        totalStats,
+        loadout: normalizePilotLoadout(progress?.loadout, {
+          ...(definition.loadout && typeof definition.loadout === "object" ? definition.loadout : {}),
+          weapons: definition.loadout?.weapons ?? definition.weapons ?? []
+        })
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));

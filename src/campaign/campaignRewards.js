@@ -146,6 +146,7 @@ function ensureInventory(campaignState) {
   if (!campaignState.inventory) campaignState.inventory = {};
   if (!Array.isArray(campaignState.inventory.weapons)) campaignState.inventory.weapons = [];
   if (!Array.isArray(campaignState.inventory.armor)) campaignState.inventory.armor = [];
+  if (!Array.isArray(campaignState.inventory.accessories)) campaignState.inventory.accessories = [];
   if (!Array.isArray(campaignState.inventory.items)) campaignState.inventory.items = [];
   campaignState.inventory.currency = Math.max(0, Math.trunc(Number(campaignState.inventory.currency ?? 0) || 0));
 }
