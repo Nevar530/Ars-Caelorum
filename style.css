@@ -4537,3 +4537,81 @@ button:disabled {
   color: rgba(231, 221, 184, 0.62);
   font-size: 0.82rem;
 }
+
+.game-menu-tabs {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.game-menu-loadout-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.game-menu-loadout-slot {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 12px;
+}
+
+.game-menu-loadout-slot.is-selected {
+  border-color: rgba(119, 209, 255, 0.55);
+  background: rgba(119, 209, 255, 0.08);
+}
+
+.game-menu-loadout-slot-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.game-menu-loadout-slot-head h4 {
+  margin: 0 0 4px;
+}
+
+.game-menu-loadout-options {
+  display: grid;
+  gap: 6px;
+}
+
+.game-menu-loadout-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(8, 14, 22, 0.72);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.game-menu-loadout-option small {
+  color: rgba(231, 221, 184, 0.62);
+  font-size: 0.75rem;
+  text-align: right;
+}
+
+.game-menu-loadout-option.is-equipped {
+  border-color: rgba(240, 176, 0, 0.48);
+  background: rgba(240, 176, 0, 0.11);
+  color: #f6f1d5;
+}
+
+.game-menu-loadout-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@media (max-width: 820px) {
+  .game-menu-loadout-grid {
+    grid-template-columns: 1fr;
+  }
+}

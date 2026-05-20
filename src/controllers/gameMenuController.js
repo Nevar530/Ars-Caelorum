@@ -9,6 +9,8 @@ import {
   selectGameMenuPilot,
   selectGameMenuSystemAction,
   setGameMenuStatus,
+  setPilotLoadoutChoice,
+  cyclePilotLoadoutSlot,
   setGameMenuTab,
   spendPilotStatPoint,
   toggleGameMenu
@@ -123,6 +125,20 @@ export function createGameMenuController({
 
     if (action === "select-pilot") {
       selectGameMenuPilot(state, button.dataset.pilotId);
+      render?.();
+      return;
+    }
+
+    if (action === "set-loadout-slot") {
+      const result = setPilotLoadoutChoice(state, button.dataset.pilotId, button.dataset.loadoutSlot, button.dataset.equipmentId);
+      if (result?.ok) save();
+      render?.();
+      return;
+    }
+
+    if (action === "cycle-loadout-slot") {
+      const result = cyclePilotLoadoutSlot(state, button.dataset.pilotId, button.dataset.loadoutSlot, 1);
+      if (result?.ok) save();
       render?.();
       return;
     }

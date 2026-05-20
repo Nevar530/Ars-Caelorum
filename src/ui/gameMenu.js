@@ -1,15 +1,24 @@
 // src/ui/gameMenu.js
 
-import { PILOT_STAT_CAPS, PILOT_STAT_KEYS } from "../campaign/campaignState.js";
+import { PILOT_STAT_CAPS, PILOT_STAT_KEYS, setPilotLoadoutSlot } from "../campaign/campaignState.js";
 import { normalizePilotLoadout } from "../content/unitLoadout.js";
 import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
+import { isDeploymentActive } from "../deployment/deploymentState.js";
 
 const TABS = Object.freeze([
   { id: "characters", label: "Characters" },
+  { id: "loadout", label: "Loadout" },
   { id: "inventory", label: "Inventory" },
   { id: "missions", label: "Missions" },
   { id: "lore", label: "Lore" },
   { id: "system", label: "System" }
+]);
+
+const LOADOUT_SLOTS = Object.freeze([
+  { key: "armor", label: "Armor", type: "armor" },
+  { key: "accessory", label: "Accessory", type: "accessory" },
+  { key: "primaryWeapon", label: "Primary", type: "weapon" },
+  { key: "secondaryWeapon", label: "Secondary", type: "weapon" }
 ]);
 
 const SYSTEM_ACTIONS = Object.freeze([
@@ -36,6 +45,7 @@ export function normalizeGameMenuState(state) {
   state.ui.gameMenu.activeTab = normalizeTab(state.ui.gameMenu.activeTab);
   state.ui.gameMenu.selectedPilotId = String(state.ui.gameMenu.selectedPilotId ?? "").trim();
   state.ui.gameMenu.selectedStatKey = normalizeStatKey(state.ui.gameMenu.selectedStatKey);
+  state.ui.gameMenu.selectedLoadoutSlot = normalizeLoadoutSlot(state.ui.gameMenu.selectedLoadoutSlot);
   state.ui.gameMenu.selectedSystemIndex = normalizeSystemIndex(state.ui.gameMenu.selectedSystemIndex);
   state.ui.gameMenu.statusText = String(state.ui.gameMenu.statusText ?? "").trim();
 
@@ -88,7 +98,7 @@ export function moveGameMenuSelection(state, delta) {
     return true;
   }
 
-  if (menu.activeTab !== "characters") return false;
+  if (menu.activeTab !== "characters" && menu.activeTab !== "loadout") return false;
 
   const pilots = getVisiblePilotEntries(state);
   if (!pilots.length) return false;
@@ -101,6 +111,14 @@ export function moveGameMenuSelection(state, delta) {
 
 export function moveGameMenuStatSelection(state, delta) {
   const menu = normalizeGameMenuState(state);
+
+  if (menu.activeTab === "loadout") {
+    const currentIndex = Math.max(0, LOADOUT_SLOTS.findIndex((slot) => slot.key === menu.selectedLoadoutSlot));
+    const nextIndex = (currentIndex + Math.sign(delta || 0) + LOADOUT_SLOTS.length) % LOADOUT_SLOTS.length;
+    menu.selectedLoadoutSlot = LOADOUT_SLOTS[nextIndex].key;
+    return true;
+  }
+
   if (menu.activeTab !== "characters") return false;
 
   const currentIndex = Math.max(0, PILOT_STAT_KEYS.findIndex((key) => key === menu.selectedStatKey));
@@ -118,6 +136,10 @@ export function confirmGameMenuSelection(state) {
       type: "system",
       action: SYSTEM_ACTIONS[normalizeSystemIndex(menu.selectedSystemIndex)]?.id ?? "resume"
     };
+  }
+
+  if (menu.activeTab === "loadout") {
+    return cyclePilotLoadoutSlot(state, menu.selectedPilotId, menu.selectedLoadoutSlot, 1);
   }
 
   if (menu.activeTab !== "characters") return { ok: false, reason: "no_confirm_action" };
@@ -168,6 +190,44 @@ export function spendPilotStatPoint(state, pilotId, statKey) {
   return { ok: true, pilotId: id, statKey: key, value: progress.statBonuses[key], remaining: progress.statPoints };
 }
 
+export function setPilotLoadoutChoice(state, pilotId, slotKey, equipmentId) {
+  if (!canEditLoadoutsAtMissionStart(state)) return { ok: false, reason: "loadout_locked" };
+
+  const id = String(pilotId ?? "").trim();
+  const slot = normalizeLoadoutSlot(slotKey);
+  const options = getLoadoutOptions(state, { id, loadout: getPilotMenuLoadout(state, id) }, slot);
+  const cleanEquipmentId = String(equipmentId ?? "").trim();
+  const match = options.find((option) => String(option.id ?? "") === cleanEquipmentId && !option.disabled);
+  if (!match) return { ok: false, reason: "invalid_equipment" };
+
+  const result = setPilotLoadoutSlot(state?.campaign, id, slot, match.id ?? "", getPilotMenuLoadout(state, id));
+  if (!result?.ok) return result ?? { ok: false, reason: "loadout_update_failed" };
+
+  const removedPlacedRuntime = removePlacedDeploymentForPilot(state, id);
+  const menu = normalizeGameMenuState(state);
+  menu.selectedLoadoutSlot = slot;
+  menu.statusText = removedPlacedRuntime
+    ? "Loadout updated. Re-place that unit so deployment uses the new gear."
+    : "Loadout updated.";
+  return { ok: true, type: "loadout", pilotId: id, slotKey: slot, equipmentId: match.id ?? "", removedPlacedRuntime };
+}
+
+export function cyclePilotLoadoutSlot(state, pilotId, slotKey, delta = 1) {
+  if (!canEditLoadoutsAtMissionStart(state)) return { ok: false, reason: "loadout_locked" };
+
+  const id = String(pilotId ?? "").trim();
+  const slot = normalizeLoadoutSlot(slotKey);
+  const loadout = getPilotMenuLoadout(state, id);
+  const options = getLoadoutOptions(state, { id, loadout }, slot).filter((option) => !option.disabled);
+  if (!id || options.length <= 1) return { ok: false, reason: "no_options" };
+
+  const currentId = String(loadout?.[slot] ?? "");
+  const currentIndex = Math.max(0, options.findIndex((option) => String(option.id ?? "") === currentId));
+  const nextIndex = (currentIndex + Math.sign(delta || 1) + options.length) % options.length;
+  return setPilotLoadoutChoice(state, id, slot, options[nextIndex].id ?? "");
+}
+
+
 export function renderGameMenu(state) {
   const menu = normalizeGameMenuState(state);
   if (!menu.open) return "";
@@ -205,6 +265,7 @@ export function renderGameMenu(state) {
 }
 
 function renderActiveTab(state, tabId) {
+  if (tabId === "loadout") return renderLoadoutTab(state);
   if (tabId === "inventory") return renderInventoryTab(state);
   if (tabId === "missions") return renderMissionsTab(state);
   if (tabId === "lore") return renderLoreTab();
@@ -246,6 +307,94 @@ function renderCharactersTab(state) {
         </div>
       </section>
     </div>
+  `;
+}
+
+
+function renderLoadoutTab(state) {
+  const pilots = getVisiblePilotEntries(state);
+  const editable = canEditLoadoutsAtMissionStart(state);
+
+  if (!pilots.length) {
+    return `<div class="game-menu-empty">No recruited pilots yet.</div>`;
+  }
+
+  const menu = normalizeGameMenuState(state);
+  const selected = pilots.find((pilot) => pilot.id === menu.selectedPilotId) ?? pilots[0];
+  menu.selectedPilotId = selected.id;
+
+  return `
+    <div class="game-menu-grid game-menu-grid--characters">
+      <aside class="game-menu-list" aria-label="Pilot loadout list">
+        ${renderPilotGroups(pilots, selected.id)}
+      </aside>
+      <section class="game-menu-detail">
+        <div class="game-menu-detail-head">
+          <div>
+            <h3>${escapeHtml(selected.name)} Loadout</h3>
+            <p>${editable ? "Mission-start prep: gear changes are allowed before Begin Mission only." : "Read-only. Gear cannot be changed after the mission starts."}</p>
+          </div>
+          <div class="game-menu-level-pill">${editable ? "PREP" : "LOCKED"}</div>
+        </div>
+        <div class="game-menu-loadout-grid">
+          ${LOADOUT_SLOTS.map((slot) => renderLoadoutSlotEditor(state, selected, slot, editable, menu.selectedLoadoutSlot === slot.key)).join("")}
+        </div>
+        <div class="game-menu-subpanel">
+          <h4>Rule</h4>
+          <p>Loadout changes are mission-start only. Once combat/story runtime begins, the menu displays gear but will not swap it.</p>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderLoadoutSlotEditor(state, pilot, slot, editable, selected) {
+  const currentId = pilot?.loadout?.[slot.key] ?? "";
+  const currentName = renderEquipmentName(state, currentId, slot.type);
+  const options = getLoadoutOptions(state, pilot, slot.key);
+
+  return `
+    <div class="game-menu-loadout-slot ${selected ? "is-selected" : ""}">
+      <div class="game-menu-loadout-slot-head">
+        <div>
+          <h4>${escapeHtml(slot.label)}</h4>
+          <p>${currentName}</p>
+        </div>
+        <button
+          type="button"
+          class="game-menu-small-button"
+          data-game-menu-action="cycle-loadout-slot"
+          data-pilot-id="${escapeHtml(pilot.id)}"
+          data-loadout-slot="${escapeHtml(slot.key)}"
+          ${editable && options.length > 1 ? "" : "disabled"}
+        >Cycle</button>
+      </div>
+      <div class="game-menu-loadout-options">
+        ${options.map((option) => renderLoadoutOptionButton(state, pilot, slot, option, editable, currentId)).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderLoadoutOptionButton(state, pilot, slot, option, editable, currentId) {
+  const active = String(option.id ?? "") === String(currentId ?? "");
+  const disabled = !editable || Boolean(option.disabled);
+  const label = option.id ? getEquipmentPlainName(state, option.id, slot.type) : "Empty";
+  const detail = option.id ? renderModifierText(getContentEntry(state, option.id, slot.type)?.modifiers) : "No accessory equipped";
+
+  return `
+    <button
+      type="button"
+      class="game-menu-loadout-option ${active ? "is-equipped" : ""}"
+      data-game-menu-action="set-loadout-slot"
+      data-pilot-id="${escapeHtml(pilot.id)}"
+      data-loadout-slot="${escapeHtml(slot.key)}"
+      data-equipment-id="${escapeHtml(option.id ?? "")}"
+      ${disabled ? "disabled" : ""}
+    >
+      <span>${active ? "✓ " : ""}${escapeHtml(label)}</span>
+      ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
+    </button>
   `;
 }
 
@@ -545,6 +694,81 @@ function renderIdList(items, emptyText) {
   if (!list.length) return `<p>${escapeHtml(emptyText)}</p>`;
   return `<ul class="game-menu-id-list">${list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
 }
+
+function canEditLoadoutsAtMissionStart(state) {
+  return Boolean(isDeploymentActive(state));
+}
+
+function removePlacedDeploymentForPilot(state, pilotId) {
+  const roster = Array.isArray(state?.ui?.deployment?.roster) ? state.ui.deployment.roster : [];
+  const entry = roster.find((candidate) => String(candidate?.pilotDefinitionId ?? candidate?.pilotDefinition?.id ?? "") === String(pilotId ?? ""));
+  const linkedIds = new Set((entry?.linkedInstanceIds ?? []).map((id) => String(id ?? "")).filter(Boolean));
+  if (!linkedIds.size || !Array.isArray(state?.units)) return false;
+
+  const before = state.units.length;
+  state.units = state.units.filter((unit) => !linkedIds.has(String(unit?.instanceId ?? "")));
+  const removed = state.units.length !== before;
+  if (removed && linkedIds.has(String(state?.selection?.unitId ?? ""))) {
+    state.selection.unitId = null;
+  }
+  if (removed && state?.ui?.deployment) {
+    state.ui.deployment.menuFocus = "map";
+  }
+  return removed;
+}
+
+function getPilotMenuLoadout(state, pilotId) {
+  const definition = (Array.isArray(state?.content?.pilots) ? state.content.pilots : []).find((pilot) => pilot?.id === pilotId) ?? {};
+  const progress = state?.campaign?.pilots?.[pilotId] ?? {};
+  return normalizePilotLoadout(progress?.loadout, {
+    ...(definition.loadout && typeof definition.loadout === "object" ? definition.loadout : {}),
+    weapons: definition.loadout?.weapons ?? definition.weapons ?? []
+  });
+}
+
+function getLoadoutOptions(state, pilot, slotKey) {
+  const slot = normalizeLoadoutSlot(slotKey);
+  const inventory = state?.campaign?.inventory ?? {};
+  const loadout = pilot?.loadout ?? getPilotMenuLoadout(state, pilot?.id);
+  const currentId = String(loadout?.[slot] ?? "").trim();
+
+  if (slot === "armor") {
+    return buildOwnedOptions(state, inventory.armor, "armor", currentId);
+  }
+
+  if (slot === "accessory") {
+    return [{ id: "" }, ...buildOwnedOptions(state, inventory.accessories, "accessory", currentId)];
+  }
+
+  if (slot === "primaryWeapon" || slot === "secondaryWeapon") {
+    const otherSlot = slot === "primaryWeapon" ? "secondaryWeapon" : "primaryWeapon";
+    const otherWeaponId = String(loadout?.[otherSlot] ?? "").trim();
+    return buildOwnedOptions(state, inventory.weapons, "weapon", currentId).map((option) => ({
+      ...option,
+      disabled: Boolean(option.id && otherWeaponId && option.id === otherWeaponId)
+    }));
+  }
+
+  return [];
+}
+
+function buildOwnedOptions(state, ids, type, currentId = "") {
+  const merged = [...new Set([...(Array.isArray(ids) ? ids : []), currentId].map((id) => String(id ?? "").trim()).filter(Boolean))];
+  return merged
+    .filter((id) => Boolean(getContentEntry(state, id, type)))
+    .map((id) => ({ id }));
+}
+
+function getEquipmentPlainName(state, id, type) {
+  const entry = getContentEntry(state, id, type);
+  return entry?.name ?? id;
+}
+
+function normalizeLoadoutSlot(slotKey) {
+  const key = String(slotKey ?? "armor").trim();
+  return LOADOUT_SLOTS.some((slot) => slot.key === key) ? key : LOADOUT_SLOTS[0].key;
+}
+
 
 function normalizeStatKey(statKey) {
   const key = String(statKey ?? "core").trim();
