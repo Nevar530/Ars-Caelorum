@@ -128,6 +128,35 @@ export function setPilotAvailability(campaignState, pilotId, available = true, d
 }
 
 
+
+export function setPilotLoadoutSlot(campaignState, pilotId, slotKey, equipmentId = "", fallbackLoadout = {}) {
+  const id = cleanId(pilotId);
+  const slot = cleanId(slotKey);
+  if (!campaignState || !id || !["armor", "accessory", "primaryWeapon", "secondaryWeapon"].includes(slot)) {
+    return { ok: false, reason: "invalid_loadout_slot" };
+  }
+
+  const progress = ensurePilotProgress(campaignState, id, { recruited: true });
+  if (!progress) return { ok: false, reason: "pilot_not_found" };
+
+  const current = normalizePilotLoadout({
+    ...(fallbackLoadout && typeof fallbackLoadout === "object" ? fallbackLoadout : {}),
+    ...(progress.loadout && typeof progress.loadout === "object" ? progress.loadout : {})
+  });
+  current[slot] = cleanId(equipmentId) || "";
+
+  if (slot === "primaryWeapon" && current.primaryWeapon && current.primaryWeapon === current.secondaryWeapon) {
+    current.secondaryWeapon = "";
+  }
+
+  if (slot === "secondaryWeapon" && current.secondaryWeapon && current.secondaryWeapon === current.primaryWeapon) {
+    current.primaryWeapon = "";
+  }
+
+  progress.loadout = normalizePilotLoadout(current);
+  return { ok: true, pilotId: id, slotKey: slot, equipmentId: progress.loadout[slot] ?? "" };
+}
+
 export function addPilotLevels(campaignState, pilotId, levels = 1) {
   const progress = ensurePilotProgress(campaignState, pilotId, { recruited: true });
   if (!progress) return null;
