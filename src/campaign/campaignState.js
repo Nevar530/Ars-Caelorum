@@ -12,18 +12,6 @@ export const PILOT_STAT_CAPS = Object.freeze({
 export const PILOT_STAT_KEYS = Object.freeze(["core", "abilityPoints", "targeting", "reaction"]);
 export const STARTING_RECRUIT_IDS = Object.freeze(["pilot_skye"]);
 
-const STARTING_INVENTORY = Object.freeze({
-  currency: 0,
-  weapons: ["pilot_pistol_01", "pilot_rifle_01"],
-  armor: ["pilot_armor_light_01", "pilot_armor_standard_01"],
-  accessories: [
-    "pilot_accessory_servo_assist_01",
-    "pilot_accessory_targeting_stabilizer_01",
-    "pilot_accessory_reaction_booster_01"
-  ],
-  items: []
-});
-
 export function createInitialCampaignState({ defaultMissionId = "000_game_state_tester_mission" } = {}) {
   const missionId = cleanId(defaultMissionId) || "000_game_state_tester_mission";
 
@@ -34,7 +22,7 @@ export function createInitialCampaignState({ defaultMissionId = "000_game_state_
     unlockedMissions: [missionId],
     pilots: buildStartingPilots(),
     difficulty: "normal",
-    inventory: cloneStartingInventory(),
+    inventory: buildStartingInventory(),
     flags: {},
     claimedRewards: {}
   };
@@ -58,7 +46,7 @@ export function normalizeCampaignState(rawState, options = {}) {
     unlockedMissions: unlockedMissions.length ? unlockedMissions : [currentMissionId],
     pilots: normalizePilots({ ...buildStartingPilots(), ...(source.pilots && typeof source.pilots === "object" ? source.pilots : {}) }),
     difficulty: normalizeDifficulty(source.difficulty),
-    inventory: normalizeInventory(source.inventory, Number(source.version ?? 0) < 4),
+    inventory: normalizeInventory(source.inventory, fallback.inventory),
     flags: normalizeRecord(source.flags),
     claimedRewards: normalizeRecord(source.claimedRewards)
   };
@@ -140,31 +128,6 @@ export function setPilotAvailability(campaignState, pilotId, available = true, d
 }
 
 
-export function setPilotLoadoutSlot(campaignState, pilotId, slotKey, equipmentId = "", fallbackLoadout = {}) {
-  const id = cleanId(pilotId);
-  const slot = cleanId(slotKey);
-  if (!campaignState || !id || !["armor", "accessory", "primaryWeapon", "secondaryWeapon"].includes(slot)) {
-    return { ok: false, reason: "invalid_loadout_slot" };
-  }
-
-  const progress = ensurePilotProgress(campaignState, id, { recruited: true });
-  if (!progress) return { ok: false, reason: "pilot_not_found" };
-
-  const current = normalizePilotLoadout(progress.loadout, fallbackLoadout);
-  current[slot] = cleanId(equipmentId) || "";
-
-  if (slot === "primaryWeapon" && current.primaryWeapon && current.primaryWeapon === current.secondaryWeapon) {
-    current.secondaryWeapon = "";
-  }
-
-  if (slot === "secondaryWeapon" && current.secondaryWeapon && current.secondaryWeapon === current.primaryWeapon) {
-    current.primaryWeapon = "";
-  }
-
-  progress.loadout = normalizePilotLoadout(current);
-  return { ok: true, pilotId: id, slotKey: slot, equipmentId: progress.loadout[slot] ?? "" };
-}
-
 export function addPilotLevels(campaignState, pilotId, levels = 1) {
   const progress = ensurePilotProgress(campaignState, pilotId, { recruited: true });
   if (!progress) return null;
@@ -219,30 +182,30 @@ function buildStartingPilots() {
   return Object.fromEntries(STARTING_RECRUIT_IDS.map((pilotId) => [pilotId, normalizePilotProgress({ recruited: true })]));
 }
 
+function buildStartingInventory() {
+  return {
+    currency: 0,
+    weapons: ["pilot_pistol_01", "pilot_rifle_01", "pilot_smg_01"],
+    armor: ["pilot_armor_light_01", "pilot_armor_standard_01"],
+    accessories: ["pilot_accessory_servo_assist_01", "pilot_accessory_targeting_stabilizer_01", "pilot_accessory_reaction_booster_01"],
+    items: []
+  };
+}
+
 function normalizeDifficulty(value) {
   const key = String(value ?? "normal").trim().toLowerCase();
   return ["story", "normal", "hard", "brutal"].includes(key) ? key : "normal";
 }
 
-function normalizeInventory(inventory, mergeStarter = false) {
+function normalizeInventory(inventory, fallbackInventory = {}) {
   const source = inventory && typeof inventory === "object" ? inventory : {};
-  const starter = mergeStarter ? STARTING_INVENTORY : {};
+  const fallback = fallbackInventory && typeof fallbackInventory === "object" ? fallbackInventory : {};
   return {
-    currency: Math.max(0, Math.trunc(Number(source.currency ?? starter.currency ?? 0) || 0)),
-    weapons: uniqueIds([...(starter.weapons ?? []), ...(source.weapons ?? [])]),
-    armor: uniqueIds([...(starter.armor ?? []), ...(source.armor ?? [])]),
-    accessories: uniqueIds([...(starter.accessories ?? []), ...(source.accessories ?? [])]),
-    items: uniqueIds([...(starter.items ?? []), ...(source.items ?? [])])
-  };
-}
-
-function cloneStartingInventory() {
-  return {
-    currency: STARTING_INVENTORY.currency,
-    weapons: [...STARTING_INVENTORY.weapons],
-    armor: [...STARTING_INVENTORY.armor],
-    accessories: [...STARTING_INVENTORY.accessories],
-    items: [...STARTING_INVENTORY.items]
+    currency: Math.max(0, Math.trunc(Number(source.currency ?? fallback.currency ?? 0) || 0)),
+    weapons: uniqueIds([...(fallback.weapons ?? []), ...(source.weapons ?? [])]),
+    armor: uniqueIds([...(fallback.armor ?? []), ...(source.armor ?? [])]),
+    accessories: uniqueIds([...(fallback.accessories ?? []), ...(source.accessories ?? [])]),
+    items: uniqueIds([...(fallback.items ?? []), ...(source.items ?? [])])
   };
 }
 
@@ -270,23 +233,21 @@ export function normalizePilotProgress(progress) {
 }
 
 
-function normalizePilotLoadout(loadout, fallback = {}) {
+function normalizePilotLoadout(loadout) {
   const source = loadout && typeof loadout === "object" ? loadout : {};
-  const fallbackSource = fallback && typeof fallback === "object" ? fallback : {};
   const weapons = uniqueIds(source.weapons);
-  const fallbackWeapons = uniqueIds(fallbackSource.weapons);
-  const primaryWeapon = cleanId(source.primaryWeapon) || weapons[0] || cleanId(fallbackSource.primaryWeapon) || fallbackWeapons[0] || "";
-  const secondaryWeapon = cleanId(source.secondaryWeapon) || weapons[1] || cleanId(fallbackSource.secondaryWeapon) || fallbackWeapons[1] || "";
+  const primaryWeapon = cleanId(source.primaryWeapon) || weapons[0] || "";
+  const secondaryWeapon = cleanId(source.secondaryWeapon) || weapons[1] || "";
   const normalizedWeapons = uniqueIds([primaryWeapon, secondaryWeapon]);
 
   return {
-    armor: cleanId(source.armor) || cleanId(fallbackSource.armor) || "",
-    accessory: cleanId(source.accessory) || cleanId(fallbackSource.accessory) || "",
+    armor: cleanId(source.armor) || "",
+    accessory: cleanId(source.accessory) || "",
     primaryWeapon,
     secondaryWeapon,
     weapons: normalizedWeapons,
-    abilities: uniqueIds(source.abilities?.length ? source.abilities : fallbackSource.abilities),
-    items: uniqueIds(source.items?.length ? source.items : fallbackSource.items)
+    abilities: uniqueIds(source.abilities),
+    items: uniqueIds(source.items)
   };
 }
 

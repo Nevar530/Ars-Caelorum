@@ -28,6 +28,10 @@
       {
         "x": 3,
         "y": 6
+      },
+      {
+        "x": 7,
+        "y": 2
       }
     ]
   },
@@ -57,6 +61,14 @@
         "team": "neutral",
         "controlType": "CPU",
         "startEmbarked": false
+      },
+      {
+        "pilotDefinitionId": "pilot_pax",
+        "pilotInstanceId": "hub-pax",
+        "pilotSpawnId": "neutral_3",
+        "team": "neutral",
+        "controlType": "CPU",
+        "startEmbarked": false
       }
     ],
     "deploymentCells": [],
@@ -72,6 +84,13 @@
       "team": "player",
       "label": "Talk to Theo",
       "briefingText": "Walk to Theo on the bridge and press Action."
+    },
+    {
+      "id": "open_loadout",
+      "type": "trigger_complete",
+      "team": "player",
+      "label": "Open the loadout locker",
+      "briefingText": "Use the grass-marked locker tile or talk to Pax to open Loadout."
     }
   ],
   "triggers": [
@@ -95,6 +114,36 @@
       "completeObjectiveId": "talk_to_theo",
       "targetUnitId": "hub-theo",
       "interactionRange": 2
+    },
+    {
+      "id": "open_loadout_locker",
+      "name": "Open Equipment Locker",
+      "type": "onInteract",
+      "team": "player",
+      "once": false,
+      "preset": "open_menu_tab",
+      "menuTab": "loadout",
+      "statusText": "Equipment locker open. Loadout changes are ship/shop only.",
+      "completeObjectiveId": "open_loadout",
+      "tiles": [
+        {
+          "x": 1,
+          "y": 2
+        }
+      ]
+    },
+    {
+      "id": "talk_to_pax_loadout",
+      "name": "Talk to Pax - Loadout",
+      "type": "onUnitInteract",
+      "team": "player",
+      "once": false,
+      "preset": "open_menu_tab",
+      "menuTab": "loadout",
+      "statusText": "Pax has the loadout locker open. Change gear before leaving the ship.",
+      "completeObjectiveId": "open_loadout",
+      "targetUnitId": "hub-pax",
+      "interactionRange": 2
     }
   ],
   "logic": [],
@@ -111,6 +160,23 @@
       "height": 1,
       "visualHeight": 32,
       "blocksMovement": true,
+      "scale": 1,
+      "mirrorX": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "layer": "ground"
+    },
+    {
+      "id": "equipment_locker_marker",
+      "name": "Equipment Locker",
+      "spriteId": "",
+      "x": 1,
+      "y": 2,
+      "footprintW": 1,
+      "footprintH": 1,
+      "height": 0,
+      "visualHeight": 0,
+      "blocksMovement": false,
       "scale": 1,
       "mirrorX": false,
       "offsetX": 0,
@@ -359,12 +425,12 @@
       "x": 1,
       "y": 2,
       "elevation": 0,
-      "terrainTypeId": "concrete",
-      "terrainSpriteId": "concrete_001",
+      "terrainTypeId": "grass",
+      "terrainSpriteId": "grass_001",
       "movementClass": "clear",
       "spawnId": null,
       "detail": null,
-      "summary": null
+      "summary": "Equipment locker action tile"
     },
     {
       "x": 2,
@@ -1084,5 +1150,6 @@
       "stepInterval": 4,
       "enabled": true
     }
-  ]
+  ],
+  "allowsLoadoutEditing": true
 }

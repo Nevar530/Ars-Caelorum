@@ -4,6 +4,7 @@
 // Keeps script.js as boot/wiring while trigger loading/effects stay in mission modules.
 
 import { normalizeMapDefinition } from "../map.js";
+import { openGameMenu, setGameMenuStatus, setGameMenuTab } from "../ui/gameMenu.js";
 import { resolveMissionEventTriggers, resolveOnUnitEnterZoneTriggers } from "./missionTriggers.js";
 
 export function createMissionTriggerRuntime({
@@ -53,6 +54,12 @@ export function createMissionTriggerRuntime({
       return { handled: true, interrupt: true, result: loadMapResult };
     }
 
+    const openMenuResult = results.find((result) => result?.preset === "open_menu_tab");
+    if (openMenuResult) {
+      openMenuTabFromTrigger(openMenuResult);
+      return { handled: true, interrupt: true, result: openMenuResult };
+    }
+
     const dialogueResult = results.find((result) => result?.preset === "start_dialogue");
     const disablingStatResult = results.find((result) => result?.preset === "change_unit_stat" && result?.stat === "core");
     const disabledUnit = disablingStatResult ? state?.units?.find?.((unit) => unit?.instanceId === disablingStatResult.unitId || unit?.id === disablingStatResult.unitId) : null;
@@ -93,6 +100,8 @@ export function createMissionTriggerRuntime({
         logDev(`Trigger ${result.triggerId} completed objective ${result.completeObjectiveId}.`);
       } else if (result?.preset === "start_dialogue") {
         logDev(`Trigger ${result.triggerId} started dialogue ${result.dialogueKey}.`);
+      } else if (result?.preset === "open_menu_tab") {
+        logDev(`Trigger ${result.triggerId} opened menu tab ${result.menuTab ?? "loadout"}.`);
       } else if (result?.preset === "set_flag") {
         logDev(`Trigger ${result.triggerId} set flag ${result.flagId} to ${result.value}.`);
       } else if (result?.preset === "give_item" || result?.preset === "remove_item") {
@@ -101,6 +110,17 @@ export function createMissionTriggerRuntime({
         logDev(`Trigger ${result.triggerId} skipped logic ${result.logicChainId}; conditions were not met.`);
       }
     }
+  }
+
+
+  function openMenuTabFromTrigger(openMenuResult) {
+    const tabId = String(openMenuResult?.menuTab ?? "loadout").trim() || "loadout";
+    openGameMenu(state);
+    setGameMenuTab(state, tabId);
+    if (openMenuResult?.statusText) {
+      setGameMenuStatus(state, openMenuResult.statusText);
+    }
+    gameController.render();
   }
 
   function loadNextMapFromTrigger(loadMapResult) {

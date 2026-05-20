@@ -12,6 +12,7 @@ const SUPPORTED_PRESETS = new Set([
   "complete_objective",
   "end_mission",
   "start_dialogue",
+  "open_menu_tab",
   "run_logic"
 ]);
 
@@ -146,6 +147,17 @@ function applyTriggerPreset(state, trigger, unit, context = {}) {
     };
   }
 
+  if (trigger.preset === "open_menu_tab") {
+    const tabId = String(trigger.menuTab ?? trigger.tabId ?? "loadout").trim() || "loadout";
+    return {
+      ok: true,
+      preset: "open_menu_tab",
+      triggerId: trigger.id,
+      menuTab: tabId,
+      statusText: String(trigger.statusText ?? "").trim()
+    };
+  }
+
   if (trigger.preset === "run_logic") {
     return applyLogicChain(state, trigger, unit);
   }
@@ -253,6 +265,11 @@ function applyLogicAction(state, trigger, unit, action, context = {}) {
     const dialogueKey = String(action?.dialogueKey ?? "intro").trim() || "intro";
     const started = startMissionDialogue(state, dialogueKey);
     return { ok: started, preset: "start_dialogue", triggerId: trigger.id, logicAction: true, dialogueKey };
+  }
+
+  if (type === "open_menu_tab") {
+    const tabId = String(action?.menuTab ?? action?.tabId ?? "loadout").trim() || "loadout";
+    return { ok: true, preset: "open_menu_tab", triggerId: trigger.id, logicAction: true, menuTab: tabId, statusText: String(action?.statusText ?? "").trim() };
   }
 
   if (type === "set_flag") {

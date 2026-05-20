@@ -3,7 +3,6 @@
 import { PILOT_STAT_CAPS, PILOT_STAT_KEYS, setPilotLoadoutSlot } from "../campaign/campaignState.js";
 import { normalizePilotLoadout } from "../content/unitLoadout.js";
 import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
-import { isDeploymentActive } from "../deployment/deploymentState.js";
 
 const TABS = Object.freeze([
   { id: "characters", label: "Characters" },
@@ -191,7 +190,7 @@ export function spendPilotStatPoint(state, pilotId, statKey) {
 }
 
 export function setPilotLoadoutChoice(state, pilotId, slotKey, equipmentId) {
-  if (!canEditLoadoutsAtMissionStart(state)) return { ok: false, reason: "loadout_locked" };
+  if (!canEditLoadoutsInSafePrep(state)) return { ok: false, reason: "loadout_locked" };
 
   const id = String(pilotId ?? "").trim();
   const slot = normalizeLoadoutSlot(slotKey);
@@ -213,7 +212,7 @@ export function setPilotLoadoutChoice(state, pilotId, slotKey, equipmentId) {
 }
 
 export function cyclePilotLoadoutSlot(state, pilotId, slotKey, delta = 1) {
-  if (!canEditLoadoutsAtMissionStart(state)) return { ok: false, reason: "loadout_locked" };
+  if (!canEditLoadoutsInSafePrep(state)) return { ok: false, reason: "loadout_locked" };
 
   const id = String(pilotId ?? "").trim();
   const slot = normalizeLoadoutSlot(slotKey);
@@ -313,7 +312,7 @@ function renderCharactersTab(state) {
 
 function renderLoadoutTab(state) {
   const pilots = getVisiblePilotEntries(state);
-  const editable = canEditLoadoutsAtMissionStart(state);
+  const editable = canEditLoadoutsInSafePrep(state);
 
   if (!pilots.length) {
     return `<div class="game-menu-empty">No recruited pilots yet.</div>`;
@@ -341,7 +340,7 @@ function renderLoadoutTab(state) {
         </div>
         <div class="game-menu-subpanel">
           <h4>Rule</h4>
-          <p>Loadout changes are mission-start only. Once combat/story runtime begins, the menu displays gear but will not swap it.</p>
+          <p>Loadout changes are available only at ship/shop prep points. Active missions display gear but will not swap it.</p>
         </div>
       </section>
     </div>
@@ -695,8 +694,8 @@ function renderIdList(items, emptyText) {
   return `<ul class="game-menu-id-list">${list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
 }
 
-function canEditLoadoutsAtMissionStart(state) {
-  return Boolean(isDeploymentActive(state));
+function canEditLoadoutsInSafePrep(state) {
+  return Boolean(state?.map?.allowsLoadoutEditing === true || state?.mission?.definition?.allowsLoadoutEditing === true);
 }
 
 function removePlacedDeploymentForPilot(state, pilotId) {
