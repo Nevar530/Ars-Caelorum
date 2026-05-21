@@ -6,6 +6,7 @@
 
 import { getMapHeight, getMapWidth, getTile } from "../map.js";
 import { parseSpawnId, SPAWN_TEAMS } from "../maps/mapSpawns.js";
+import { normalizeContextScreenId } from "../ui/contextScreens.js";
 
 const VALID_EDGE_SIDES = new Set(["ne", "se", "sw", "nw"]);
 const VALID_TEAMS = new Set(["player", "enemy", "neutral"]);
@@ -64,7 +65,7 @@ export function validateBuilderPackage(builderState, appState = null) {
 
     validateDialogue(result, mission);
     validateLogic(result, map, mission, objectives, appState);
-    validateTriggers(result, map, mission, objectives);
+    validateTriggers(result, map, mission, objectives, appState);
   }
 
   addSummaryInfo(result);
@@ -644,7 +645,7 @@ function getDeploymentInstanceIds(map) {
   return ids;
 }
 
-function validateTriggers(result, map, mission, objectives) {
+function validateTriggers(result, map, mission, objectives, appState = null) {
   const triggers = Array.isArray(map?.triggers) ? map.triggers : [];
   if (!triggers.length) return;
 
@@ -664,6 +665,8 @@ function validateTriggers(result, map, mission, objectives) {
     .filter(Boolean));
   const dialogueIds = getDialogueIds(mission);
   const deploymentUnitIds = getDeploymentInstanceIds(map);
+  const shopDefinitions = getMapShopDefinitions(map);
+  const knownStockIds = getKnownShopStockIds(appState);
   const ids = new Set();
 
   for (let index = 0; index < triggers.length; index += 1) {
@@ -742,12 +745,70 @@ function validateTriggers(result, map, mission, objectives) {
       else if (!dialogueIds.has(dialogueKey)) addError(result, "TRIGGER_DIALOGUE_BAD", `${label} references missing dialogue block "${dialogueKey}".`);
     }
 
+    if (preset === "open_context_screen" || preset === "open_menu_tab") {
+      validateContextScreenTrigger(result, trigger, label, shopDefinitions, knownStockIds);
+    }
+
     if (preset === "run_logic") {
       const logicChainId = cleanString(trigger.logicChainId);
       if (!logicChainId) addError(result, "TRIGGER_LOGIC_MISSING", `${label} run_logic preset needs logicChainId.`);
       else if (!logicIds.has(logicChainId)) addError(result, "TRIGGER_LOGIC_BAD", `${label} references missing logic chain "${logicChainId}".`);
     }
   }
+}
+
+
+function validateContextScreenTrigger(result, trigger, label, shopDefinitions, knownStockIds) {
+  const screenId = normalizeContextScreenId(trigger?.screenId ?? trigger?.contextScreenId ?? trigger?.menuTab);
+  if (!screenId) {
+    addError(result, "TRIGGER_CONTEXT_SCREEN_BAD", `${label} opens an unsupported context screen.`);
+    return;
+  }
+
+  if (screenId !== "shop") return;
+
+  const shopId = cleanString(trigger?.shopId);
+  if (!shopId) {
+    addError(result, "TRIGGER_SHOP_ID_MISSING", `${label} opens Shop but has no shopId.`);
+    return;
+  }
+
+  const shop = shopDefinitions.get(shopId);
+  if (!shop) {
+    addError(result, "TRIGGER_SHOP_MISSING", `${label} references missing map shop "${shopId}".`);
+    return;
+  }
+
+  const stock = Array.isArray(shop.stock) ? shop.stock.map(cleanString).filter(Boolean) : [];
+  if (!stock.length) {
+    addWarning(result, "TRIGGER_SHOP_STOCK_EMPTY", `${label} shop "${shopId}" has no authored stock.`);
+  }
+
+  for (const itemId of stock) {
+    if (knownStockIds.size && !knownStockIds.has(itemId)) {
+      addWarning(result, "TRIGGER_SHOP_STOCK_UNKNOWN", `${label} shop stock item "${itemId}" is not in loaded gear/item data.`);
+    }
+  }
+}
+
+function getMapShopDefinitions(map) {
+  const shops = new Map();
+  for (const shop of Array.isArray(map?.shops) ? map.shops : []) {
+    const id = cleanString(shop?.id);
+    if (!id) continue;
+    shops.set(id, shop);
+  }
+  return shops;
+}
+
+function getKnownShopStockIds(appState) {
+  return new Set([
+    ...getContentIds(appState?.content?.weapons),
+    ...getContentIds(appState?.content?.pilotGear),
+    ...getContentIds(appState?.content?.mechGear),
+    ...getContentIds(appState?.content?.pilotItems),
+    ...getContentIds(appState?.content?.mechItems)
+  ]);
 }
 
 function validateLogic(result, map, mission, objectives, appState = null) {

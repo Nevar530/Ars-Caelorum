@@ -157,7 +157,8 @@ function applyTriggerPreset(state, trigger, unit, context = {}) {
       triggerId: trigger.id,
       menuTab: tabId,
       screenId,
-      statusText: String(trigger.statusText ?? "").trim()
+      statusText: String(trigger.statusText ?? "").trim(),
+      shopId: String(trigger.shopId ?? "").trim()
     };
   }
 
@@ -273,7 +274,7 @@ function applyLogicAction(state, trigger, unit, action, context = {}) {
   if (type === "open_menu_tab" || type === "open_context_screen") {
     const tabId = String(action?.menuTab ?? action?.tabId ?? "loadout").trim() || "loadout";
     const screenId = String(action?.screenId ?? action?.contextScreenId ?? tabId).trim() || tabId;
-    return { ok: true, preset: "open_context_screen", triggerId: trigger.id, logicAction: true, menuTab: tabId, screenId, statusText: String(action?.statusText ?? "").trim() };
+    return { ok: true, preset: "open_context_screen", triggerId: trigger.id, logicAction: true, menuTab: tabId, screenId, statusText: String(action?.statusText ?? "").trim(), shopId: String(action?.shopId ?? "").trim() };
   }
 
   if (type === "set_flag") {

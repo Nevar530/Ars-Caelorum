@@ -52,3 +52,17 @@ export function getContextScreenTabId(screenId = "") {
   if (id === "pilot_loadout") return "loadout";
   return id;
 }
+
+export function getContextScreenOptions() {
+  return [
+    { id: "pilot_loadout", label: "Pilot Loadout / Locker" },
+    { id: "telum_loadout", label: "Telum Loadout / Mech Bay" },
+    { id: "shop", label: "Shop" },
+    { id: "mission_board", label: "Mission Board" },
+    { id: "medbay", label: "Medbay" }
+  ];
+}
+
+export function isValidContextScreenId(screenId = "") {
+  return Boolean(normalizeContextScreenId(screenId));
+}

@@ -115,7 +115,10 @@ export function createMissionTriggerRuntime({
 
   function openContextScreenFromTrigger(openMenuResult) {
     const screenId = String(openMenuResult?.screenId ?? openMenuResult?.menuTab ?? "loadout").trim() || "loadout";
-    openContextualScreen(state, screenId, { statusText: openMenuResult?.statusText ?? "" });
+    openContextualScreen(state, screenId, {
+      statusText: openMenuResult?.statusText ?? "",
+      shopId: openMenuResult?.shopId ?? ""
+    });
     if (openMenuResult?.statusText) {
       setGameMenuStatus(state, openMenuResult.statusText);
     }

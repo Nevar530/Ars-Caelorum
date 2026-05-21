@@ -103,6 +103,7 @@ import {
 } from "../builderLoadExisting.js";
 import { buildTileInspectorHtml } from "../workspace/wysiwygWorkspace.js";
 import { getMapHeight, getMapWidth } from "../../map.js";
+import { getContextScreenOptions, normalizeContextScreenId } from "../../ui/contextScreens.js";
 
 export function createBuilderShell() {
   const root = document.createElement("section");
@@ -1653,6 +1654,9 @@ function renderTriggerInspectorTools(builderState, appState) {
   const logicOptions = buildLogicChainOptions(getLogicDefinitions(builderState), tool.logicChainId);
   const dialogueOptions = buildDialogueBlockOptions(builderState, tool.dialogueKey);
   const targetUnitOptions = buildTriggerTargetUnitSelectOptions(builderState, tool.targetUnitId);
+  const contextScreenOptions = buildContextScreenOptions(tool.screenId);
+  const showContextFields = tool.preset === "open_context_screen" || tool.preset === "open_menu_tab";
+  const showShopFields = showContextFields && normalizeContextScreenId(tool.screenId) === "shop";
   const selectedTrigger = Number.isInteger(Number(tool.selectedIndex)) && triggers[Number(tool.selectedIndex)]
     ? triggers[Number(tool.selectedIndex)]
     : null;
@@ -1735,11 +1739,43 @@ function renderTriggerInspectorTools(builderState, appState) {
           <select data-builder-field="trigger-logic-chain-id"${editable ? "" : " disabled"}>${logicOptions}</select>
         </label>
       ` : ""}
+      ${showContextFields ? `
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Context Screen</span>
+          <select data-builder-field="trigger-screen-id"${editable ? "" : " disabled"}>${contextScreenOptions}</select>
+        </label>
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Prompt Label</span>
+          <input type="text" data-builder-field="trigger-interact-label" value="${escapeHtml(tool.interactLabel ?? "INTERACT")}" placeholder="SHOP" spellcheck="false"${editable ? "" : " disabled"}>
+        </label>
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Status Text Optional</span>
+          <input type="text" data-builder-field="trigger-status-text" value="${escapeHtml(tool.statusText ?? "")}" placeholder="Opened terminal" spellcheck="true"${editable ? "" : " disabled"}>
+        </label>
+      ` : ""}
+      ${showShopFields ? `
+        <div class="builder-field-label builder-section-label">Shop Stock</div>
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Shop ID</span>
+          <input type="text" data-builder-field="trigger-shop-id" value="${escapeHtml(tool.shopId ?? "")}" placeholder="wayfarer_basic_shop" spellcheck="false"${editable ? "" : " disabled"}>
+        </label>
+        <label class="builder-form-field builder-form-field-compact">
+          <span>Shop Name</span>
+          <input type="text" data-builder-field="trigger-shop-name" value="${escapeHtml(tool.shopName ?? "")}" placeholder="Wayfarer Supplies" spellcheck="true"${editable ? "" : " disabled"}>
+        </label>
+        <label class="builder-form-field builder-form-field-compact builder-form-field-wide">
+          <span>Stock IDs</span>
+          <textarea data-builder-field="trigger-shop-stock-ids" rows="5" spellcheck="false" placeholder="pilot_armor_light_01&#10;telum_plating_light_01"${editable ? "" : " disabled"}>${escapeHtml(tool.shopStockIds ?? "")}</textarea>
+        </label>
+        <div class="builder-inspector-note builder-note-compact">One stock id per line. The trigger writes/updates this map's shop definition.</div>
+      ` : ""}
       ${needsTargetUnit ? `
         <label class="builder-form-field builder-form-field-compact">
           <span>Target Unit</span>
           <select data-builder-field="trigger-target-unit-id"${editable ? "" : " disabled"}>${targetUnitOptions}</select>
         </label>
+      ` : ""}
+      ${(needsTargetUnit || tool.type === "onInteract") ? `
         <label class="builder-form-field builder-form-field-compact">
           <span>Interact Range</span>
           <input type="number" min="1" step="1" data-builder-field="trigger-interaction-range" value="${escapeHtml(tool.interactionRange ?? 1)}"${editable ? "" : " disabled"}>
@@ -1794,6 +1830,12 @@ function formatTriggerListDetail(trigger) {
     return (trigger?.dialogueKey ? ' · dialogue: ' + trigger.dialogueKey : ' · dialogue: missing') + target;
   }
   if (trigger?.preset === 'run_logic') return trigger?.logicChainId ? ' · logic: ' + trigger.logicChainId : ' · logic: missing';
+  if (trigger?.preset === 'open_context_screen' || trigger?.preset === 'open_menu_tab') {
+    const screen = normalizeContextScreenId(trigger?.screenId ?? trigger?.contextScreenId ?? trigger?.menuTab) || 'missing';
+    const shop = screen === 'shop' ? ' · shop: ' + (trigger?.shopId || 'missing') : '';
+    const target = trigger?.type === 'onUnitInteract' ? ' · unit: ' + (trigger?.targetUnitId || 'missing') : '';
+    return ' · screen: ' + screen + shop + target;
+  }
   return '';
 }
 
@@ -2036,6 +2078,15 @@ function buildSimpleObjectOptions(options, selectedValue) {
     const label = String(option?.label ?? option?.value ?? option ?? "");
     const selected = value === String(selectedValue ?? "") ? " selected" : "";
     return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(label)}</option>`;
+  }).join("");
+}
+
+
+function buildContextScreenOptions(selectedScreenId = "pilot_loadout") {
+  const cleanSelected = normalizeContextScreenId(selectedScreenId) || "pilot_loadout";
+  return getContextScreenOptions().map((option) => {
+    const selected = option.id === cleanSelected ? " selected" : "";
+    return `<option value="${escapeHtml(option.id)}"${selected}>${escapeHtml(option.label)}</option>`;
   }).join("");
 }
 

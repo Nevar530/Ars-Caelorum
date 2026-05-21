@@ -166,7 +166,8 @@
       "targetUnitId": "hub-pax",
       "interactionRange": 2,
       "screenId": "shop",
-      "interactLabel": "SHOP"
+      "interactLabel": "SHOP",
+      "shopId": "wayfarer_basic_shop"
     },
     {
       "id": "open_mech_bay_telum_loadout",
@@ -200,7 +201,8 @@
       ],
       "screenId": "shop",
       "interactionRange": 1,
-      "interactLabel": "SHOP"
+      "interactLabel": "SHOP",
+      "shopId": "wayfarer_basic_shop"
     },
     {
       "id": "open_mission_board",
@@ -1276,5 +1278,24 @@
       "enabled": true
     }
   ],
-  "allowsLoadoutEditing": true
+  "allowsLoadoutEditing": true,
+  "shops": [
+    {
+      "id": "wayfarer_basic_shop",
+      "name": "Wayfarer Supplies",
+      "stock": [
+        "pilot_pistol_01",
+        "pilot_rifle_01",
+        "pilot_smg_01",
+        "pilot_armor_light_01",
+        "pilot_armor_standard_01",
+        "pilot_accessory_targeting_01",
+        "pilot_accessory_reaction_01",
+        "telum_plating_light_01",
+        "telum_plating_standard_01",
+        "telum_system_mobility_01",
+        "telum_system_stabilizer_01"
+      ]
+    }
+  ]
 }

@@ -81,6 +81,7 @@ export function normalizeGameMenuState(state) {
   state.ui.gameMenu.selectedMissionBoardIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedMissionBoardIndex);
   state.ui.gameMenu.selectedSystemIndex = normalizeSystemIndex(state.ui.gameMenu.selectedSystemIndex);
   state.ui.gameMenu.statusText = String(state.ui.gameMenu.statusText ?? "").trim();
+  state.ui.gameMenu.shopId = String(state.ui.gameMenu.shopId ?? "").trim();
 
   return state.ui.gameMenu;
 }
@@ -90,6 +91,7 @@ export function openGameMenu(state) {
   menu.open = true;
   menu.contextScreenId = "";
   menu.loadoutAccess = false;
+  menu.shopId = "";
   menu.activeTab = normalizeTab(menu.activeTab, menu);
 
   const firstPilotId = getVisiblePilotEntries(state)[0]?.id ?? "";
@@ -104,6 +106,7 @@ export function closeGameMenu(state) {
   menu.contextScreenId = "";
   menu.loadoutAccess = false;
   if (menu.activeTab === "loadout") menu.activeTab = "characters";
+  menu.shopId = "";
   menu.loadoutStage = "pilots";
 }
 
@@ -125,6 +128,9 @@ export function openContextualScreen(state, screenId = "pilot_loadout", options 
   if (menu.activeTab === "shop") {
     menu.shopStage = "categories";
     menu.selectedShopItemIndex = 0;
+    menu.shopId = String(options?.shopId ?? "").trim();
+  } else {
+    menu.shopId = "";
   }
   if (options?.statusText) menu.statusText = String(options.statusText ?? "").trim();
   const firstPilotId = getVisiblePilotEntries(state)[0]?.id ?? "";
@@ -773,11 +779,13 @@ function renderShopTab(state) {
   const items = getShopItemsForCategory(state, category);
   menu.selectedShopItemIndex = clampIndex(menu.selectedShopItemIndex, items.length);
   const selectedItem = items[menu.selectedShopItemIndex] ?? null;
+  const shop = getActiveShopDefinition(state, menu.shopId);
+  const shopName = shop?.name ?? (menu.shopId ? menu.shopId : "Shop");
 
   return `
     <div class="terminal-screen terminal-screen--context-list">
       <section class="terminal-panel ${menu.shopStage === "categories" ? "is-focused" : ""}">
-        <div class="terminal-panel-title">Shop</div>
+        <div class="terminal-panel-title">${escapeHtml(shopName)}</div>
         <div class="terminal-row-list">
           ${SHOP_CATEGORIES.map((entry) => `
             <button type="button" class="terminal-row ${entry.key === category.key ? "is-selected" : ""} ${menu.shopStage === "categories" && entry.key === category.key ? "is-cursor" : ""}" data-game-menu-action="select-shop-category" data-shop-category="${escapeHtml(entry.key)}">
@@ -1406,9 +1414,37 @@ function getTelumLoadoutOptions(state, mech, slotKey) {
 }
 
 function getShopItemsForCategory(state, category) {
+  const menu = normalizeGameMenuState(state);
+  const shop = getActiveShopDefinition(state, menu.shopId);
+  const stockIds = Array.isArray(shop?.stock) ? shop.stock : null;
+
+  if (stockIds) {
+    return stockIds
+      .map((id) => getContentEntry(state, id, category.type))
+      .filter((entry) => entry && doesShopEntryMatchCategory(entry, category));
+  }
+
   const inventory = state?.campaign?.inventory ?? {};
   const ids = Array.isArray(inventory?.[category.key]) ? inventory[category.key] : [];
   return ids.map((id) => getContentEntry(state, id, category.type)).filter(Boolean);
+}
+
+function getActiveShopDefinition(state, shopId) {
+  const id = String(shopId ?? "").trim();
+  if (!id) return null;
+  const shops = Array.isArray(state?.map?.shops) ? state.map.shops : [];
+  return shops.find((shop) => String(shop?.id ?? "").trim() === id) ?? null;
+}
+
+function doesShopEntryMatchCategory(entry, category) {
+  if (!entry || !category) return false;
+  const type = category.type;
+  if (type === "weapon") return String(entry.scale ?? "pilot").toLowerCase() !== "mech";
+  if (type === "mechWeapon") return String(entry.scale ?? "pilot").toLowerCase() === "mech";
+  if (type === "armor") return String(entry.scale ?? "pilot").toLowerCase() === "pilot" && String(entry.slot ?? "").toLowerCase() === "armor";
+  if (type === "accessory") return String(entry.scale ?? "pilot").toLowerCase() === "pilot" && String(entry.slot ?? "").toLowerCase() === "accessory";
+  if (type === "mechGear") return String(entry.scale ?? "").toLowerCase() === "mech";
+  return true;
 }
 
 function getMissionBoardEntries(state) {

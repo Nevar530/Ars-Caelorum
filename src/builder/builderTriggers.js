@@ -4,6 +4,7 @@
 // Preset-first trigger authoring. V1 supports simple repeated tile-trigger effects.
 
 import { getTile } from "../map.js";
+import { normalizeContextScreenId } from "../ui/contextScreens.js";
 
 const TRIGGER_PRESETS = [
   { value: "load_map", label: "Load Map / Next Map" },
@@ -52,6 +53,12 @@ function createDefaultTriggerTool() {
     dialogueKey: "intro",
     targetUnitId: "",
     interactionRange: 1,
+    screenId: "pilot_loadout",
+    interactLabel: "INTERACT",
+    shopId: "",
+    shopName: "",
+    shopStockIds: "",
+    statusText: "",
     selectedIndex: -1,
     paintMode: "add"
   };
@@ -77,6 +84,12 @@ export function ensureTriggerToolSettings(builderState) {
   tool.dialogueKey = sanitizeId(tool.dialogueKey ?? "intro") || "intro";
   tool.targetUnitId = sanitizeLooseId(tool.targetUnitId ?? "");
   tool.interactionRange = Math.max(1, normalizeInteger(tool.interactionRange, 1));
+  tool.screenId = normalizeContextScreenId(tool.screenId ?? "pilot_loadout") || "pilot_loadout";
+  tool.interactLabel = sanitizePromptLabel(tool.interactLabel ?? "INTERACT");
+  tool.shopId = sanitizeId(tool.shopId ?? "");
+  tool.shopName = String(tool.shopName ?? "").trim();
+  tool.shopStockIds = normalizeStockText(tool.shopStockIds ?? "");
+  tool.statusText = String(tool.statusText ?? "").trim();
   if (!Number.isInteger(Number(tool.selectedIndex))) tool.selectedIndex = -1;
   if (tool.paintMode !== "erase") tool.paintMode = "add";
 
@@ -112,6 +125,13 @@ export function updateTriggerToolFromFields(builderState, root) {
   tool.dialogueKey = sanitizeId(readField(root, "trigger-dialogue-key", tool.dialogueKey)) || "intro";
   tool.targetUnitId = sanitizeLooseId(readField(root, "trigger-target-unit-id", tool.targetUnitId));
   tool.interactionRange = Math.max(1, normalizeInteger(readField(root, "trigger-interaction-range", tool.interactionRange), tool.interactionRange));
+  const screenId = readField(root, "trigger-screen-id", tool.screenId);
+  tool.screenId = normalizeContextScreenId(screenId) || "pilot_loadout";
+  tool.interactLabel = sanitizePromptLabel(readField(root, "trigger-interact-label", tool.interactLabel));
+  tool.shopId = sanitizeId(readField(root, "trigger-shop-id", tool.shopId));
+  tool.shopName = readField(root, "trigger-shop-name", tool.shopName).trim();
+  tool.shopStockIds = normalizeStockText(readField(root, "trigger-shop-stock-ids", tool.shopStockIds));
+  tool.statusText = readField(root, "trigger-status-text", tool.statusText).trim();
 
   return tool;
 }
@@ -149,6 +169,7 @@ export function addTriggerDefinition(builderState) {
   const triggers = Array.isArray(map.triggers) ? map.triggers : [];
   const baseId = sanitizeId(tool.id) || createTriggerId(tool.preset, triggers);
   const trigger = buildTriggerFromTool(tool, createUniqueTriggerId(baseId, triggers));
+  ensureShopDefinitionFromTool(map, tool);
 
   map.triggers = [...triggers, trigger];
   tool.selectedIndex = map.triggers.length - 1;
@@ -174,6 +195,7 @@ export function updateSelectedTriggerDefinition(builderState) {
     tiles: normalizeTiles(existing.tiles)
   };
 
+  ensureShopDefinitionFromTool(map, tool);
   triggers[index] = updated;
   map.triggers = triggers;
   builderState.dirty = true;
@@ -206,6 +228,13 @@ export function selectTriggerDefinition(builderState, index) {
   tool.dialogueKey = trigger.dialogueKey ?? "intro";
   tool.targetUnitId = trigger.targetUnitId ?? "";
   tool.interactionRange = normalizeInteger(trigger.interactionRange, 1);
+  tool.screenId = normalizeContextScreenId(trigger.screenId ?? trigger.contextScreenId ?? trigger.menuTab ?? "pilot_loadout") || "pilot_loadout";
+  tool.interactLabel = sanitizePromptLabel(trigger.interactLabel ?? trigger.promptLabel ?? "INTERACT");
+  tool.statusText = String(trigger.statusText ?? "").trim();
+  tool.shopId = sanitizeId(trigger.shopId ?? "");
+  const shop = getShopDefinition(ensureMapDraft(builderState), tool.shopId);
+  tool.shopName = String(shop?.name ?? "").trim();
+  tool.shopStockIds = normalizeStockText(Array.isArray(shop?.stock) ? shop.stock.join("\n") : "");
 
   ensureTriggerToolSettings(builderState);
   return { ok: true, message: `Selected trigger ${trigger.id ?? cleanIndex + 1}.` };
@@ -368,6 +397,17 @@ function buildTriggerFromTool(tool, id) {
     trigger.interactionRange = Math.max(1, normalizeInteger(tool.interactionRange, 1));
   }
 
+  if (trigger.type === "onInteract") {
+    trigger.interactionRange = Math.max(1, normalizeInteger(tool.interactionRange, 1));
+  }
+
+  if (trigger.preset === "open_context_screen" || trigger.preset === "open_menu_tab") {
+    trigger.screenId = normalizeContextScreenId(tool.screenId) || "pilot_loadout";
+    if (tool.interactLabel) trigger.interactLabel = sanitizePromptLabel(tool.interactLabel);
+    if (tool.statusText) trigger.statusText = String(tool.statusText).trim();
+    if (trigger.screenId === "shop" && tool.shopId) trigger.shopId = sanitizeId(tool.shopId);
+  }
+
   return trigger;
 }
 
@@ -427,4 +467,72 @@ function sanitizeId(value) {
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, "_")
     .replace(/^_+|_+$/g, "");
+}
+
+function ensureShopDefinitionFromTool(map, tool) {
+  if (!map || tool?.preset !== "open_context_screen") return null;
+  const screenId = normalizeContextScreenId(tool.screenId);
+  if (screenId !== "shop") return null;
+
+  const shopId = sanitizeId(tool.shopId);
+  if (!shopId) return null;
+
+  if (!Array.isArray(map.shops)) map.shops = [];
+  const stock = parseStockIds(tool.shopStockIds);
+  const existing = map.shops.find((shop) => sanitizeId(shop?.id) === shopId);
+  const name = String(tool.shopName ?? "").trim() || humanizeShopId(shopId);
+
+  if (existing) {
+    existing.id = shopId;
+    existing.name = name;
+    existing.stock = stock;
+    return existing;
+  }
+
+  const shop = { id: shopId, name, stock };
+  map.shops.push(shop);
+  return shop;
+}
+
+function getShopDefinition(map, shopId) {
+  const id = sanitizeId(shopId);
+  if (!id || !Array.isArray(map?.shops)) return null;
+  return map.shops.find((shop) => sanitizeId(shop?.id) === id) ?? null;
+}
+
+function parseStockIds(value) {
+  return uniqueIds(String(value ?? "")
+    .split(/[\n,]+/)
+    .map((entry) => sanitizeLooseId(entry))
+    .filter(Boolean));
+}
+
+function normalizeStockText(value) {
+  return parseStockIds(value).join("\n");
+}
+
+function uniqueIds(ids) {
+  const seen = new Set();
+  const clean = [];
+  for (const id of Array.isArray(ids) ? ids : []) {
+    const value = sanitizeLooseId(id);
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    clean.push(value);
+  }
+  return clean;
+}
+
+function sanitizePromptLabel(value) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9 _-]+/g, "")
+    .slice(0, 18);
+}
+
+function humanizeShopId(id) {
+  return String(id ?? "shop")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
