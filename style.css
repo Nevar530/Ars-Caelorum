@@ -5108,21 +5108,21 @@ button:disabled {
 }
 
 .interact-prompt-bg {
-  fill: rgba(8, 14, 18, 0.88);
-  stroke: rgba(151, 221, 210, 0.78);
-  stroke-width: 1;
+  fill: rgba(8, 14, 18, 0.72);
+  stroke: rgba(151, 221, 210, 0.58);
+  stroke-width: 0.75;
 }
 
 .interact-prompt-caret {
-  fill: rgba(151, 221, 210, 0.82);
-  stroke: rgba(8, 14, 18, 0.75);
-  stroke-width: 1;
+  fill: rgba(151, 221, 210, 0.7);
+  stroke: rgba(8, 14, 18, 0.6);
+  stroke-width: 0.75;
 }
 
 .interact-prompt-text {
-  fill: rgba(218, 246, 240, 0.96);
-  font-size: 9px;
+  fill: rgba(218, 246, 240, 0.9);
+  font-size: 7px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   dominant-baseline: middle;
 }

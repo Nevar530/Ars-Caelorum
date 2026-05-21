@@ -32,23 +32,23 @@ export function drawInteractPrompt(state, parent) {
   group.setAttribute("class", "interact-prompt");
   group.setAttribute("transform", `translate(${Math.round(projected.x)}, ${Math.round(projected.y + offsetY)})`);
 
-  const text = `[ENTER] ${label}`;
-  const width = Math.max(72, Math.min(132, 42 + (text.length * 6)));
+  const text = String(label || "INTERACT").toUpperCase();
+  const width = Math.max(34, Math.min(84, 16 + (text.length * 5)));
   const bg = svgEl("rect");
   bg.setAttribute("x", String(-width / 2));
-  bg.setAttribute("y", "-16");
+  bg.setAttribute("y", "-12");
   bg.setAttribute("width", String(width));
-  bg.setAttribute("height", "18");
+  bg.setAttribute("height", "13");
   bg.setAttribute("rx", "2");
   bg.setAttribute("class", "interact-prompt-bg");
   group.appendChild(bg);
 
   const marker = svgEl("path");
-  marker.setAttribute("d", "M -4 8 L 0 14 L 4 8 Z");
+  marker.setAttribute("d", "M -3 5 L 0 9 L 3 5 Z");
   marker.setAttribute("class", "interact-prompt-caret");
   group.appendChild(marker);
 
-  const textEl = makeText(0, -4, text, "interact-prompt-text");
+  const textEl = makeText(0, -5, text, "interact-prompt-text");
   textEl.setAttribute("text-anchor", "middle");
   group.appendChild(textEl);
 
