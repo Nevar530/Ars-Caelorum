@@ -256,17 +256,40 @@ export function renderGameMenu(state) {
   const menu = normalizeGameMenuState(state);
   if (!menu.open) return "";
 
+  if (menu.activeTab === "loadout") {
+    return `
+      <div class="game-menu-backdrop" role="dialog" aria-modal="true" aria-label="Ship Locker">
+        <section class="game-menu-card game-menu-card--terminal game-menu-card--context">
+          <header class="game-menu-header game-menu-header--terminal">
+            <div>
+              <div class="game-menu-kicker">Ship / Shop Terminal</div>
+              <h2 class="game-menu-title">Loadout</h2>
+            </div>
+            <button type="button" class="game-menu-close" data-game-menu-action="close">Close (I)</button>
+          </header>
+          <div class="game-menu-body game-menu-body--terminal game-menu-body--context">
+            ${renderActiveTab(state, menu.activeTab)}
+          </div>
+          <footer class="game-menu-footer game-menu-footer--terminal">
+            <span>↑/↓ select · Enter open/equip · ← back · I close</span>
+            <span>Ship/shop equipment only.</span>
+          </footer>
+        </section>
+      </div>
+    `;
+  }
+
   return `
     <div class="game-menu-backdrop" role="dialog" aria-modal="true" aria-label="Game Menu">
-      <section class="game-menu-card">
-        <header class="game-menu-header">
+      <section class="game-menu-card game-menu-card--terminal">
+        <header class="game-menu-header game-menu-header--terminal">
           <div>
             <div class="game-menu-kicker">Campaign Menu</div>
             <h2 class="game-menu-title">Ars Caelorum</h2>
           </div>
           <button type="button" class="game-menu-close" data-game-menu-action="close">Close (I)</button>
         </header>
-        <nav class="game-menu-tabs" aria-label="Campaign menu tabs">
+        <nav class="game-menu-tabs game-menu-tabs--terminal" aria-label="Campaign menu tabs">
           ${getVisibleTabs(menu).map((tab) => `
             <button
               type="button"
@@ -276,12 +299,12 @@ export function renderGameMenu(state) {
             >${escapeHtml(tab.label)}</button>
           `).join("")}
         </nav>
-        <div class="game-menu-body">
+        <div class="game-menu-body game-menu-body--terminal">
           ${renderActiveTab(state, menu.activeTab)}
         </div>
-        <footer class="game-menu-footer">
-          <span>${menu.activeTab === "loadout" ? "↑/↓ select - Enter opens/equips - ← backs up - I closes" : "I closes menu - Q/E switches tabs - Arrows navigate current tab - Enter confirms"}</span>
-          <span>${menu.activeTab === "loadout" ? "Ship/shop equipment only." : menu.activeTab === "system" ? "System actions are keyboard-first." : "Stat changes apply when a mission/map loads."}</span>
+        <footer class="game-menu-footer game-menu-footer--terminal">
+          <span>I/Esc close · Q/E tabs · ↑/↓ select · Enter confirm</span>
+          <span>${menu.activeTab === "system" ? "System actions are keyboard-first." : "Readout screen. Gear changes use ship/shop terminals."}</span>
         </footer>
       </section>
     </div>
@@ -308,27 +331,30 @@ function renderCharactersTab(state) {
   menu.selectedPilotId = selected.id;
 
   return `
-    <div class="game-menu-grid game-menu-grid--characters">
-      <aside class="game-menu-list" aria-label="Pilot list">
-        ${renderPilotGroups(pilots, selected.id)}
-      </aside>
-      <section class="game-menu-detail">
-        <div class="game-menu-detail-head">
-          <div>
-            <h3>${escapeHtml(selected.name)}</h3>
-            <p>${escapeHtml(selected.role || "Pilot")}</p>
-          </div>
-          <div class="game-menu-level-pill">Level ${escapeHtml(selected.level)}</div>
+    <div class="terminal-screen terminal-screen--characters">
+      <section class="terminal-panel terminal-panel--list" aria-label="Pilot list">
+        <div class="terminal-panel-title">Crew</div>
+        <div class="terminal-row-list">
+          ${pilots.map((pilot) => renderCompactPilotRow(pilot, selected.id)).join("")}
         </div>
-        <div class="game-menu-stat-points">Unspent Stat Points: <strong>${escapeHtml(selected.statPoints)}</strong></div>
-        <div class="game-menu-stat-grid">
+      </section>
+
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">${escapeHtml(selected.name)} / ${escapeHtml(selected.role || "Pilot")}</div>
+        <div class="terminal-strip">
+          <span>Lv ${escapeHtml(selected.level)}</span>
+          <span>SP ${escapeHtml(selected.statPoints)}</span>
+          <span>${escapeHtml(getPilotStatusLabel(selected))}</span>
+        </div>
+        <div class="terminal-row-list terminal-row-list--stats">
           ${PILOT_STAT_KEYS.map((statKey) => renderStatRow(selected, statKey, menu.selectedStatKey)).join("")}
         </div>
+      </section>
+
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Gear / Abilities</div>
         ${renderPilotLoadoutPanel(state, selected)}
-        <div class="game-menu-subpanel">
-          <h4>Abilities</h4>
-          <p>Ability unlocks and active ability slots are not built yet. Current target: 4 active abilities.</p>
-        </div>
+        <div class="terminal-note">Ability slots pending. Target: 4 active abilities.</div>
       </section>
     </div>
   `;
@@ -457,16 +483,26 @@ function renderPilotLoadoutPanel(state, pilot) {
   ];
 
   return `
-    <div class="game-menu-subpanel">
-      <h4>Pilot Gear</h4>
-      <ul class="game-menu-id-list">
-        ${rows.map(([label, id, type]) => `
-          <li><strong>${escapeHtml(label)}:</strong> ${renderEquipmentName(state, id, type)}</li>
-        `).join("")}
-      </ul>
+    <div class="terminal-row-list">
+      ${rows.map(([label, id, type]) => `
+        <div class="terminal-static-row">
+          <span>${escapeHtml(label)}</span>
+          <b>${renderEquipmentText(state, id, type)}</b>
+        </div>
+      `).join("")}
     </div>
   `;
 }
+
+function renderEquipmentText(state, id, type) {
+  const clean = String(id ?? "").trim();
+  if (!clean) return "Empty";
+  const entry = getContentEntry(state, clean, type);
+  const name = entry?.name ?? clean;
+  const modifierText = renderModifierText(entry?.modifiers);
+  return `${escapeHtml(name)}${modifierText ? ` · ${escapeHtml(modifierText)}` : ""}`;
+}
+
 
 function renderEquipmentName(state, id, type) {
   const clean = String(id ?? "").trim();
@@ -487,6 +523,38 @@ function renderCatalogIdList(state, items, type, emptyText) {
     return `<li><strong>${escapeHtml(name)}</strong><br><span class="game-menu-muted">${escapeHtml(itemId)}${modifierText ? ` - ${escapeHtml(modifierText)}` : ""}</span></li>`;
   }).join("")}</ul>`;
 }
+
+function renderCatalogRows(state, items, type, emptyText) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!list.length) return `<div class="terminal-empty">${escapeHtml(emptyText)}</div>`;
+  return `<div class="terminal-row-list">${list.map((itemId) => {
+    const entry = getContentEntry(state, itemId, type);
+    const name = entry?.name ?? itemId;
+    const modifierText = renderModifierText(entry?.modifiers);
+    return `<div class="terminal-static-row"><span>${escapeHtml(name)}</span><b>${escapeHtml(modifierText || itemId)}</b></div>`;
+  }).join("")}</div>`;
+}
+
+function renderMissionRows(state, items, emptyText) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!list.length) return `<div class="terminal-empty">${escapeHtml(emptyText)}</div>`;
+  return `<div class="terminal-row-list">${list.map((missionId) => {
+    const name = getMissionDisplayName(state, missionId);
+    return `<div class="terminal-static-row"><span>${escapeHtml(name)}</span><b>${escapeHtml(missionId)}</b></div>`;
+  }).join("")}</div>`;
+}
+
+function renderObjectiveRows(objectives, emptyText) {
+  const list = Array.isArray(objectives) ? objectives : [];
+  if (!list.length) return `<div class="terminal-empty">${escapeHtml(emptyText)}</div>`;
+  return `<div class="terminal-row-list">${list.map((objective) => {
+    const done = Boolean(objective?.completed);
+    const required = Math.max(1, Number(objective?.required ?? 1) || 1);
+    const progress = required > 1 ? `${Number(objective?.progress ?? 0) || 0}/${required}` : "";
+    return `<div class="terminal-static-row"><span>${done ? "✓" : "□"} ${escapeHtml(objective?.label ?? objective?.id ?? "Objective")}</span><b>${escapeHtml(progress)}</b></div>`;
+  }).join("")}</div>`;
+}
+
 
 function getContentEntry(state, id, type) {
   const clean = String(id ?? "").trim();
@@ -511,16 +579,6 @@ function renderModifierText(modifiers) {
     .join(", ");
 }
 
-function renderPilotGroups(pilots, selectedId) {
-  const activePilots = pilots.filter((pilot) => pilot.active);
-  const inactivePilots = pilots.filter((pilot) => !pilot.active);
-
-  return [
-    renderPilotGroup("Active Crew", activePilots, selectedId, "No active crew on this map."),
-    renderPilotGroup("Inactive Crew", inactivePilots, selectedId, "No inactive recruited crew.")
-  ].join("");
-}
-
 function renderPilotGroup(title, pilots, selectedId, emptyText) {
   return `
     <div class="game-menu-list-group">
@@ -533,18 +591,23 @@ function renderPilotGroup(title, pilots, selectedId, emptyText) {
 }
 
 function renderPilotRow(pilot, selectedId) {
+  return renderCompactPilotRow(pilot, selectedId);
+}
+
+function renderCompactPilotRow(pilot, selectedId) {
   return `
     <button
       type="button"
-      class="game-menu-list-row ${pilot.id === selectedId ? "is-selected" : ""} ${pilot.active ? "is-active-crew" : ""}"
+      class="terminal-row ${pilot.id === selectedId ? "is-cursor" : ""} ${pilot.active ? "is-active" : ""}"
       data-game-menu-action="select-pilot"
       data-pilot-id="${escapeHtml(pilot.id)}"
     >
       <span>${escapeHtml(pilot.name)}</span>
-      <b>${escapeHtml(getPilotStatusLabel(pilot))} - Lv ${escapeHtml(pilot.level)}</b>
+      <b>${escapeHtml(getPilotStatusLabel(pilot))} · Lv ${escapeHtml(pilot.level)}</b>
     </button>
   `;
 }
+
 
 function getPilotStatusLabel(pilot) {
   if (pilot.active) return "Active";
@@ -560,21 +623,19 @@ function renderStatRow(pilot, statKey, selectedStatKey) {
   const capped = Number.isFinite(cap) && bonus >= cap;
   const disabled = pilot.statPoints <= 0 || capped;
   const helper = statKey === "core"
-    ? `Runtime Core HP: ${total * 5}`
+    ? `Core HP ${total * 5}`
     : Number.isFinite(cap)
       ? `Cap ${cap}`
-      : "Direct value";
+      : "Value";
 
   return `
-    <div class="game-menu-stat-row ${statKey === selectedStatKey ? "is-selected" : ""}">
-      <div>
-        <div class="game-menu-stat-name">${escapeHtml(STAT_LABELS[statKey] ?? statKey)}</div>
-        <div class="game-menu-stat-help">Base ${escapeHtml(base)} + Bonus ${escapeHtml(bonus)} - ${escapeHtml(helper)}</div>
-      </div>
-      <div class="game-menu-stat-value">${escapeHtml(total)}</div>
+    <div class="terminal-row terminal-row--stat ${statKey === selectedStatKey ? "is-cursor" : ""}">
+      <span>${escapeHtml(STAT_LABELS[statKey] ?? statKey)}</span>
+      <b>${escapeHtml(base)}+${escapeHtml(bonus)} = ${escapeHtml(total)}</b>
+      <em>${escapeHtml(helper)}</em>
       <button
         type="button"
-        class="game-menu-small-button"
+        class="terminal-mini-button"
         data-game-menu-action="spend-stat"
         data-pilot-id="${escapeHtml(pilot.id)}"
         data-stat-key="${escapeHtml(statKey)}"
@@ -583,6 +644,7 @@ function renderStatRow(pilot, statKey, selectedStatKey) {
     </div>
   `;
 }
+
 
 function renderInventoryTab(state) {
   const inventory = state?.campaign?.inventory ?? {};
@@ -593,15 +655,31 @@ function renderInventoryTab(state) {
   const accessories = Array.isArray(inventory.accessories) ? inventory.accessories : [];
 
   return `
-    <div class="game-menu-stack">
-      <div class="game-menu-subpanel"><h3>Credits</h3><p class="game-menu-big-number">${escapeHtml(credits)}</p></div>
-      <div class="game-menu-subpanel"><h3>Items</h3>${renderCatalogIdList(state, items, "item", "No items yet.")}</div>
-      <div class="game-menu-subpanel"><h3>Weapons</h3>${renderCatalogIdList(state, weapons, "weapon", "No stored weapons yet.")}</div>
-      <div class="game-menu-subpanel"><h3>Armor</h3>${renderCatalogIdList(state, armor, "armor", "No armor inventory yet.")}</div>
-      <div class="game-menu-subpanel"><h3>Accessories</h3>${renderCatalogIdList(state, accessories, "accessory", "No accessories yet.")}</div>
+    <div class="terminal-screen terminal-screen--inventory">
+      <section class="terminal-panel terminal-panel--status">
+        <div class="terminal-panel-title">Credits</div>
+        <div class="terminal-big-value">${escapeHtml(credits)}</div>
+      </section>
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Weapons</div>
+        ${renderCatalogRows(state, weapons, "weapon", "No stored weapons.")}
+      </section>
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Armor</div>
+        ${renderCatalogRows(state, armor, "armor", "No armor.")}
+      </section>
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Accessories</div>
+        ${renderCatalogRows(state, accessories, "accessory", "No accessories.")}
+      </section>
+      <section class="terminal-panel terminal-panel--wide">
+        <div class="terminal-panel-title">Items</div>
+        ${renderCatalogRows(state, items, "item", "No items.")}
+      </section>
     </div>
   `;
 }
+
 
 function renderMissionsTab(state) {
   const campaign = state?.campaign ?? {};
@@ -613,49 +691,89 @@ function renderMissionsTab(state) {
   const objectives = getMissionObjectiveStatus(state);
 
   return `
-    <div class="game-menu-stack">
-      <div class="game-menu-subpanel">
-        <h3>Current Mission</h3>
-        <p><strong>${escapeHtml(currentMissionName)}</strong></p>
-        <p class="game-menu-muted">${escapeHtml(currentMissionId)} - Map ${escapeHtml(activeMapId)}</p>
-      </div>
-      <div class="game-menu-subpanel"><h3>Active Objectives</h3>${renderObjectiveList(objectives, "No active objectives.")}</div>
-      <div class="game-menu-subpanel"><h3>Unlocked Missions</h3>${renderMissionIdList(state, unlocked, "No unlocked missions.")}</div>
-      <div class="game-menu-subpanel"><h3>Completed Missions</h3>${renderMissionIdList(state, completed, "No completed missions yet.")}</div>
+    <div class="terminal-screen terminal-screen--missions">
+      <section class="terminal-panel terminal-panel--wide">
+        <div class="terminal-panel-title">Current</div>
+        <div class="terminal-record">
+          <strong>${escapeHtml(currentMissionName)}</strong>
+          <span>${escapeHtml(currentMissionId)} · Map ${escapeHtml(activeMapId)}</span>
+        </div>
+      </section>
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Objectives</div>
+        ${renderObjectiveRows(objectives, "No active objectives.")}
+      </section>
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Unlocked</div>
+        ${renderMissionRows(state, unlocked, "No unlocked missions.")}
+      </section>
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Completed</div>
+        ${renderMissionRows(state, completed, "No completed missions.")}
+      </section>
     </div>
   `;
 }
 
+
 function renderLoreTab() {
   return `
-    <div class="game-menu-subpanel">
-      <h3>Lore</h3>
-      <p>Codex entries will live here: corporations, pilots, Telum, Magi, Aether, mission intel, and world terms.</p>
+    <div class="terminal-screen terminal-screen--lore">
+      <section class="terminal-panel terminal-panel--wide">
+        <div class="terminal-panel-title">Codex</div>
+        <div class="terminal-record">
+          <strong>Not Built</strong>
+          <span>Corporations, pilots, Telum, Magi, Aether, mission intel, and world terms will live here.</span>
+        </div>
+      </section>
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Queue</div>
+        <div class="terminal-row-list">
+          <div class="terminal-static-row"><span>Kholer Corp</span><b>Pending</b></div>
+          <div class="terminal-static-row"><span>Gabrielle Agency</span><b>Pending</b></div>
+          <div class="terminal-static-row"><span>Telum Frames</span><b>Pending</b></div>
+        </div>
+      </section>
     </div>
   `;
 }
+
 
 function renderSystemTab(state) {
   const menu = normalizeGameMenuState(state);
   const difficulty = state?.campaign?.difficulty ?? "normal";
   return `
-    <div class="game-menu-stack">
-      <div class="game-menu-subpanel"><h3>Campaign</h3><p>Difficulty: ${escapeHtml(titleCase(difficulty))}</p><p>Campaign state saves after rewards, stat spending, and manual Save.</p></div>
-      <div class="game-menu-subpanel"><h3>Controls</h3><p>Arrow Up/Down chooses an action. Enter confirms. I or Esc closes this menu.</p></div>
-      <div class="game-menu-actions game-menu-actions--stack">
-        ${SYSTEM_ACTIONS.map((action, index) => `
-          <button
-            type="button"
-            class="game-menu-system-action ${index === menu.selectedSystemIndex ? "is-selected" : ""}"
-            data-game-menu-action="system-action"
-            data-system-action="${escapeHtml(action.id)}"
-          >${escapeHtml(action.label)}</button>
-        `).join("")}
-      </div>
-      ${menu.statusText ? `<div class="game-menu-subpanel game-menu-status">${escapeHtml(menu.statusText)}</div>` : ""}
+    <div class="terminal-screen terminal-screen--system">
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Campaign</div>
+        <div class="terminal-row-list">
+          <div class="terminal-static-row"><span>Difficulty</span><b>${escapeHtml(titleCase(difficulty))}</b></div>
+          <div class="terminal-static-row"><span>Save Rule</span><b>Manual / Rewards</b></div>
+          <div class="terminal-static-row"><span>Gear Rule</span><b>Ship / Shop Only</b></div>
+        </div>
+      </section>
+      <section class="terminal-panel terminal-panel--wide">
+        <div class="terminal-panel-title">Actions</div>
+        <div class="terminal-row-list">
+          ${SYSTEM_ACTIONS.map((action, index) => `
+            <button
+              type="button"
+              class="terminal-row terminal-row--action ${index === menu.selectedSystemIndex ? "is-cursor" : ""}"
+              data-game-menu-action="system-action"
+              data-system-action="${escapeHtml(action.id)}"
+            ><span>${escapeHtml(action.label)}</span><b>Enter</b></button>
+          `).join("")}
+        </div>
+      </section>
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Controls</div>
+        <div class="terminal-note">↑/↓ choose action. Enter confirms. I or Esc closes.</div>
+        ${menu.statusText ? `<div class="terminal-status">${escapeHtml(menu.statusText)}</div>` : ""}
+      </section>
     </div>
   `;
 }
+
 
 function getVisiblePilotEntries(state) {
   const definitions = Array.isArray(state?.content?.pilots) ? state.content.pilots : [];
