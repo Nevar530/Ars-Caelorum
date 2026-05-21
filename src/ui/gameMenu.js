@@ -46,6 +46,7 @@ export function normalizeGameMenuState(state) {
   state.ui.gameMenu.activeTab = normalizeTab(state.ui.gameMenu.activeTab, state.ui.gameMenu);
   state.ui.gameMenu.selectedPilotId = String(state.ui.gameMenu.selectedPilotId ?? "").trim();
   state.ui.gameMenu.selectedStatKey = normalizeStatKey(state.ui.gameMenu.selectedStatKey);
+  state.ui.gameMenu.characterStage = normalizeCharacterStage(state.ui.gameMenu.characterStage);
   state.ui.gameMenu.selectedLoadoutSlot = normalizeLoadoutSlot(state.ui.gameMenu.selectedLoadoutSlot);
   state.ui.gameMenu.selectedLoadoutOptionIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedLoadoutOptionIndex);
   state.ui.gameMenu.loadoutStage = normalizeLoadoutStage(state.ui.gameMenu.loadoutStage);
@@ -121,11 +122,21 @@ export function moveGameMenuSelection(state, delta) {
 
   if (menu.activeTab !== "characters") return false;
 
+  const step = Math.sign(delta || 0);
+  if (!step) return false;
+
+  if (menu.characterStage === "stats") {
+    const currentStatIndex = Math.max(0, PILOT_STAT_KEYS.findIndex((key) => key === menu.selectedStatKey));
+    const nextStatIndex = (currentStatIndex + step + PILOT_STAT_KEYS.length) % PILOT_STAT_KEYS.length;
+    menu.selectedStatKey = PILOT_STAT_KEYS[nextStatIndex];
+    return true;
+  }
+
   const pilots = getVisiblePilotEntries(state);
   if (!pilots.length) return false;
 
   const currentIndex = Math.max(0, pilots.findIndex((pilot) => pilot.id === menu.selectedPilotId));
-  const nextIndex = (currentIndex + Math.sign(delta || 0) + pilots.length) % pilots.length;
+  const nextIndex = (currentIndex + step + pilots.length) % pilots.length;
   menu.selectedPilotId = pilots[nextIndex].id;
   return true;
 }
@@ -139,10 +150,20 @@ export function moveGameMenuStatSelection(state, delta) {
 
   if (menu.activeTab !== "characters") return false;
 
-  const currentIndex = Math.max(0, PILOT_STAT_KEYS.findIndex((key) => key === menu.selectedStatKey));
-  const nextIndex = (currentIndex + Math.sign(delta || 0) + PILOT_STAT_KEYS.length) % PILOT_STAT_KEYS.length;
-  menu.selectedStatKey = PILOT_STAT_KEYS[nextIndex];
-  return true;
+  const step = Math.sign(delta || 0);
+  if (!step) return false;
+
+  if (step < 0 && menu.characterStage === "stats") {
+    menu.characterStage = "pilots";
+    return true;
+  }
+
+  if (step > 0 && menu.characterStage === "pilots") {
+    menu.characterStage = "stats";
+    return true;
+  }
+
+  return false;
 }
 
 export function confirmGameMenuSelection(state) {
@@ -161,6 +182,10 @@ export function confirmGameMenuSelection(state) {
   }
 
   if (menu.activeTab !== "characters") return { ok: false, reason: "no_confirm_action" };
+  if (menu.characterStage === "pilots") {
+    menu.characterStage = "stats";
+    return { ok: false, reason: "open_character_stats" };
+  }
   return spendPilotStatPoint(state, menu.selectedPilotId, menu.selectedStatKey);
 }
 
@@ -303,7 +328,7 @@ export function renderGameMenu(state) {
           ${renderActiveTab(state, menu.activeTab)}
         </div>
         <footer class="game-menu-footer game-menu-footer--terminal">
-          <span>I/Esc close · Q/E tabs · ↑/↓ select · Enter confirm</span>
+          <span>I/Esc close · Q/E tabs · ↑/↓ select · Enter opens/confirms · ← back</span>
           <span>${menu.activeTab === "system" ? "System actions are keyboard-first." : "Readout screen. Gear changes use ship/shop terminals."}</span>
         </footer>
       </section>
@@ -335,7 +360,7 @@ function renderCharactersTab(state) {
       <section class="terminal-panel terminal-panel--list" aria-label="Pilot list">
         <div class="terminal-panel-title">Crew</div>
         <div class="terminal-row-list">
-          ${pilots.map((pilot) => renderCompactPilotRow(pilot, selected.id)).join("")}
+          ${pilots.map((pilot) => renderCompactPilotRow(pilot, selected.id, menu.characterStage === "pilots")).join("")}
         </div>
       </section>
 
@@ -347,7 +372,7 @@ function renderCharactersTab(state) {
           <span>${escapeHtml(getPilotStatusLabel(selected))}</span>
         </div>
         <div class="terminal-row-list terminal-row-list--stats">
-          ${PILOT_STAT_KEYS.map((statKey) => renderStatRow(selected, statKey, menu.selectedStatKey)).join("")}
+          ${PILOT_STAT_KEYS.map((statKey) => renderStatRow(selected, statKey, menu.selectedStatKey, menu.characterStage === "stats")).join("")}
         </div>
       </section>
 
@@ -594,11 +619,11 @@ function renderPilotRow(pilot, selectedId) {
   return renderCompactPilotRow(pilot, selectedId);
 }
 
-function renderCompactPilotRow(pilot, selectedId) {
+function renderCompactPilotRow(pilot, selectedId, focusColumn = true) {
   return `
     <button
       type="button"
-      class="terminal-row ${pilot.id === selectedId ? "is-cursor" : ""} ${pilot.active ? "is-active" : ""}"
+      class="terminal-row ${pilot.id === selectedId ? "is-selected" : ""} ${focusColumn && pilot.id === selectedId ? "is-cursor" : ""} ${pilot.active ? "is-active" : ""}"
       data-game-menu-action="select-pilot"
       data-pilot-id="${escapeHtml(pilot.id)}"
     >
@@ -615,7 +640,7 @@ function getPilotStatusLabel(pilot) {
   return "Inactive";
 }
 
-function renderStatRow(pilot, statKey, selectedStatKey) {
+function renderStatRow(pilot, statKey, selectedStatKey, focusColumn = true) {
   const base = pilot.baseStats[statKey] ?? 0;
   const bonus = pilot.statBonuses[statKey] ?? 0;
   const total = pilot.totalStats[statKey] ?? (base + bonus);
@@ -629,7 +654,7 @@ function renderStatRow(pilot, statKey, selectedStatKey) {
       : "Value";
 
   return `
-    <div class="terminal-row terminal-row--stat ${statKey === selectedStatKey ? "is-cursor" : ""}">
+    <div class="terminal-row terminal-row--stat ${statKey === selectedStatKey ? "is-selected" : ""} ${focusColumn && statKey === selectedStatKey ? "is-cursor" : ""}">
       <span>${escapeHtml(STAT_LABELS[statKey] ?? statKey)}</span>
       <b>${escapeHtml(base)}+${escapeHtml(bonus)} = ${escapeHtml(total)}</b>
       <em>${escapeHtml(helper)}</em>
@@ -949,6 +974,11 @@ function normalizeTab(tabId, menu = {}) {
   const id = String(tabId ?? "characters").trim().toLowerCase();
   if (id === "loadout" && menu?.loadoutAccess) return "loadout";
   return TABS.some((tab) => tab.id === id) ? id : "characters";
+}
+
+function normalizeCharacterStage(stage) {
+  const value = String(stage ?? "pilots").trim();
+  return ["pilots", "stats"].includes(value) ? value : "pilots";
 }
 
 function normalizeLoadoutStage(stage) {
