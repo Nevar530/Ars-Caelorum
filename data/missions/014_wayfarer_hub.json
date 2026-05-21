@@ -33,13 +33,6 @@
       "team": "player",
       "label": "Talk to Theo",
       "briefingText": "Walk to Theo on the bridge and press Action."
-    },
-    {
-      "id": "open_loadout",
-      "type": "trigger_complete",
-      "team": "player",
-      "label": "Open the loadout locker",
-      "briefingText": "Use the locker or talk to Pax to open Loadout."
     }
   ],
   "triggers": [],

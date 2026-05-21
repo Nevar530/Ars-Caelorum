@@ -125,6 +125,7 @@ async function init() {
     state,
     gameController,
     loadMapDefinitionByPath,
+    openGameMenuTab: (tabId) => gameMenuController.openTab?.(tabId),
     logDev
   });
 

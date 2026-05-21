@@ -31,7 +31,7 @@
       },
       {
         "x": 7,
-        "y": 2
+        "y": 4
       }
     ]
   },
@@ -86,11 +86,11 @@
       "briefingText": "Walk to Theo on the bridge and press Action."
     },
     {
-      "id": "open_loadout",
+      "id": "open_loadout_locker",
       "type": "trigger_complete",
       "team": "player",
       "label": "Open the loadout locker",
-      "briefingText": "Use the grass-marked locker tile or talk to Pax to open Loadout."
+      "briefingText": "Use the ship locker or talk to Pax to change gear."
     }
   ],
   "triggers": [
@@ -116,15 +116,14 @@
       "interactionRange": 2
     },
     {
-      "id": "open_loadout_locker",
+      "id": "open_locker_loadout",
       "name": "Open Equipment Locker",
       "type": "onInteract",
       "team": "player",
       "once": false,
       "preset": "open_menu_tab",
       "menuTab": "loadout",
-      "statusText": "Equipment locker open. Loadout changes are ship/shop only.",
-      "completeObjectiveId": "open_loadout",
+      "completeObjectiveId": "open_loadout_locker",
       "tiles": [
         {
           "x": 1,
@@ -134,14 +133,13 @@
     },
     {
       "id": "talk_to_pax_loadout",
-      "name": "Talk to Pax - Loadout",
+      "name": "Talk to Pax About Gear",
       "type": "onUnitInteract",
       "team": "player",
       "once": false,
       "preset": "open_menu_tab",
       "menuTab": "loadout",
-      "statusText": "Pax has the loadout locker open. Change gear before leaving the ship.",
-      "completeObjectiveId": "open_loadout",
+      "completeObjectiveId": "open_loadout_locker",
       "targetUnitId": "hub-pax",
       "interactionRange": 2
     }
@@ -167,7 +165,7 @@
       "layer": "ground"
     },
     {
-      "id": "equipment_locker_marker",
+      "id": "equipment_locker",
       "name": "Equipment Locker",
       "spriteId": "",
       "x": 1,
@@ -430,7 +428,7 @@
       "movementClass": "clear",
       "spawnId": null,
       "detail": null,
-      "summary": "Equipment locker action tile"
+      "summary": "Equipment locker test tile"
     },
     {
       "x": 2,

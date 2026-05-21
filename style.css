@@ -4538,190 +4538,85 @@ button:disabled {
   font-size: 0.82rem;
 }
 
-/* =========================================
-   CAMPAIGN LOADOUT TAB - HUB / SHOP ONLY
-   Compact equipped-slot + gear-list layout
-========================================= */
-
-.game-menu-tabs {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
-.game-menu-grid--loadout {
+/* Compact game-style loadout screen */
+.game-menu-loadout {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
-  gap: 10px;
-}
-
-.game-menu-list--compact {
-  gap: 5px;
-}
-
-.game-menu-list--compact .game-menu-list-row {
-  min-height: 0;
-  padding: 8px 10px;
-  border-radius: 7px;
-  font-size: 12px;
-}
-
-.game-menu-detail--loadout {
-  padding: 10px;
-  border-radius: 10px;
-}
-
-.game-menu-loadout-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 26px;
-  margin-bottom: 8px;
-  padding: 0 2px;
-  color: #f6f1d5;
-}
-
-.game-menu-loadout-bar strong {
-  font-size: 15px;
-  line-height: 1;
-}
-
-.game-menu-loadout-bar span {
-  color: var(--info);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-}
-
-.game-menu-loadout-two-panel {
-  display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: 150px 230px 1fr;
   gap: 8px;
-  min-height: 260px;
+  min-height: 280px;
 }
 
-.game-menu-equipped-panel,
-.game-menu-gear-panel {
-  min-width: 0;
-}
-
-.game-menu-panel-label {
-  margin: 0 0 5px;
-  color: rgba(231, 221, 184, 0.7);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-}
-
-.game-menu-equipped-slots,
-.game-menu-gear-list {
-  display: grid;
+.game-menu-loadout-pilots,
+.game-menu-loadout-slots,
+.game-menu-loadout-options {
+  display: flex;
+  flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
-.game-menu-equipped-slot,
-.game-menu-gear-row {
+.game-menu-panel-title {
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.78;
+  margin: 0 0 4px;
+}
+
+.game-menu-loadout-pilot,
+.game-menu-loadout-slot,
+.game-menu-loadout-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 7px;
-  background: rgba(15, 25, 36, 0.9);
-  color: var(--text);
+  padding: 5px 7px;
+  border: 1px solid rgba(180, 210, 230, 0.22);
+  border-radius: 5px;
+  background: rgba(5, 12, 18, 0.52);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
   text-align: left;
   cursor: pointer;
 }
 
-.game-menu-equipped-slot {
-  display: grid;
-  grid-template-columns: 74px minmax(0, 1fr);
-  gap: 2px 8px;
-  align-items: center;
-  min-height: 42px;
-  padding: 6px 8px;
-}
-
-.game-menu-equipped-slot span {
-  color: rgba(231, 221, 184, 0.62);
+.game-menu-loadout-pilot b,
+.game-menu-loadout-slot b,
+.game-menu-loadout-option b {
   font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 600;
+  opacity: 0.72;
+  white-space: nowrap;
 }
 
-.game-menu-equipped-slot strong {
-  min-width: 0;
+.game-menu-loadout-pilot span,
+.game-menu-loadout-slot span,
+.game-menu-loadout-option span {
   overflow: hidden;
-  color: #f6f1d5;
-  font-size: 12px;
-  line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.game-menu-equipped-slot small {
-  grid-column: 2;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 10px;
-  line-height: 1.1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.game-menu-loadout-pilot.is-selected,
+.game-menu-loadout-slot.is-selected,
+.game-menu-loadout-option.is-equipped {
+  border-color: rgba(130, 220, 255, 0.68);
+  background: rgba(30, 90, 120, 0.42);
 }
 
-.game-menu-equipped-slot.is-selected {
-  border-color: rgba(240, 176, 0, 0.78);
-  background: rgba(75, 58, 23, 0.48);
-  box-shadow: inset 3px 0 0 rgba(240, 176, 0, 0.75);
-}
-
-.game-menu-gear-list {
-  max-height: 302px;
-  overflow: auto;
-}
-
-.game-menu-gear-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-  min-height: 32px;
-  padding: 6px 8px;
-}
-
-.game-menu-gear-row:hover:not(:disabled) {
-  border-color: rgba(119, 209, 255, 0.48);
-  background: rgba(30, 48, 64, 0.86);
-}
-
-.game-menu-gear-row.is-equipped {
-  border-color: rgba(119, 209, 255, 0.62);
-  background: rgba(40, 67, 76, 0.7);
-}
-
-.game-menu-gear-row:disabled {
+.game-menu-loadout-option:disabled {
   cursor: default;
-  opacity: 0.55;
+  opacity: 0.62;
 }
 
-.game-menu-gear-name {
-  min-width: 0;
-  overflow: hidden;
-  font-size: 12px;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.game-menu-gear-stat {
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.game-menu-loadout-note {
-  margin-top: 7px;
-  color: rgba(231, 221, 184, 0.62);
+.game-menu-lockline {
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 210, 120, 0.22);
+  border-radius: 4px;
+  background: rgba(90, 60, 20, 0.26);
   font-size: 11px;
+  opacity: 0.82;
 }
-

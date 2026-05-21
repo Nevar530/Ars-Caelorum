@@ -2,56 +2,51 @@
   {
     "id": "pilot_armor_light_01",
     "name": "Light Pilot Armor",
-    "category": "gear",
     "scale": "pilot",
     "slot": "armor",
     "modifiers": {
       "shield": 4
     },
-    "description": "Light personal armor. Adds a small pilot shield buffer."
+    "description": "Light armor with a small shield reserve."
   },
   {
     "id": "pilot_armor_standard_01",
     "name": "Standard Pilot Armor",
-    "category": "gear",
     "scale": "pilot",
     "slot": "armor",
     "modifiers": {
       "shield": 7
     },
-    "description": "Baseline pilot armor. Reliable shield protection without movement changes."
+    "description": "Standard pilot armor and field shield harness."
   },
   {
-    "id": "pilot_accessory_servo_assist_01",
+    "id": "pilot_accessory_servo_01",
     "name": "Servo Assist Harness",
-    "category": "gear",
     "scale": "pilot",
     "slot": "accessory",
     "modifiers": {
       "move": 1
     },
-    "description": "Assist harness that improves on-foot movement."
+    "description": "Movement booster for on-foot repositioning."
   },
   {
-    "id": "pilot_accessory_targeting_stabilizer_01",
+    "id": "pilot_accessory_targeting_01",
     "name": "Targeting Stabilizer",
-    "category": "gear",
     "scale": "pilot",
     "slot": "accessory",
     "modifiers": {
       "targeting": 1
     },
-    "description": "Stabilization package that improves pilot targeting."
+    "description": "Stabilizes pilot weapon aim."
   },
   {
-    "id": "pilot_accessory_reaction_booster_01",
+    "id": "pilot_accessory_reaction_01",
     "name": "Reaction Booster",
-    "category": "gear",
     "scale": "pilot",
     "slot": "accessory",
     "modifiers": {
       "reaction": 1
     },
-    "description": "Neural assist package that improves pilot reaction."
+    "description": "Improves pilot reaction timing."
   }
 ]
