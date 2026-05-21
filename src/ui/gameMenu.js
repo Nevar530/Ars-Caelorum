@@ -6,12 +6,13 @@ import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
 
 const TABS = Object.freeze([
   { id: "characters", label: "Characters" },
-  { id: "loadout", label: "Loadout" },
   { id: "inventory", label: "Inventory" },
   { id: "missions", label: "Missions" },
   { id: "lore", label: "Lore" },
   { id: "system", label: "System" }
 ]);
+
+const LOADOUT_TAB = Object.freeze({ id: "loadout", label: "Loadout" });
 
 const LOADOUT_SLOTS = Object.freeze([
   { key: "armor", label: "Armor", type: "armor" },
@@ -41,10 +42,13 @@ export function normalizeGameMenuState(state) {
   }
 
   state.ui.gameMenu.open = Boolean(state.ui.gameMenu.open);
-  state.ui.gameMenu.activeTab = normalizeTab(state.ui.gameMenu.activeTab);
+  state.ui.gameMenu.loadoutAccess = Boolean(state.ui.gameMenu.loadoutAccess);
+  state.ui.gameMenu.activeTab = normalizeTab(state.ui.gameMenu.activeTab, state.ui.gameMenu);
   state.ui.gameMenu.selectedPilotId = String(state.ui.gameMenu.selectedPilotId ?? "").trim();
   state.ui.gameMenu.selectedStatKey = normalizeStatKey(state.ui.gameMenu.selectedStatKey);
   state.ui.gameMenu.selectedLoadoutSlot = normalizeLoadoutSlot(state.ui.gameMenu.selectedLoadoutSlot);
+  state.ui.gameMenu.selectedLoadoutOptionIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedLoadoutOptionIndex);
+  state.ui.gameMenu.loadoutStage = normalizeLoadoutStage(state.ui.gameMenu.loadoutStage);
   state.ui.gameMenu.selectedSystemIndex = normalizeSystemIndex(state.ui.gameMenu.selectedSystemIndex);
   state.ui.gameMenu.statusText = String(state.ui.gameMenu.statusText ?? "").trim();
 
@@ -54,7 +58,7 @@ export function normalizeGameMenuState(state) {
 export function openGameMenu(state) {
   const menu = normalizeGameMenuState(state);
   menu.open = true;
-  menu.activeTab = normalizeTab(menu.activeTab);
+  menu.activeTab = normalizeTab(menu.activeTab, menu);
 
   const firstPilotId = getVisiblePilotEntries(state)[0]?.id ?? "";
   if (!menu.selectedPilotId && firstPilotId) {
@@ -63,7 +67,11 @@ export function openGameMenu(state) {
 }
 
 export function closeGameMenu(state) {
-  normalizeGameMenuState(state).open = false;
+  const menu = normalizeGameMenuState(state);
+  menu.open = false;
+  menu.loadoutAccess = false;
+  if (menu.activeTab === "loadout") menu.activeTab = "characters";
+  menu.loadoutStage = "pilots";
 }
 
 export function toggleGameMenu(state) {
@@ -78,14 +86,24 @@ export function toggleGameMenu(state) {
 
 export function setGameMenuTab(state, tabId) {
   const menu = normalizeGameMenuState(state);
-  menu.activeTab = normalizeTab(tabId);
+  const id = String(tabId ?? "").trim().toLowerCase();
+  if (id === "loadout") {
+    menu.loadoutAccess = true;
+    menu.activeTab = "loadout";
+    menu.loadoutStage = "pilots";
+    menu.selectedLoadoutOptionIndex = 0;
+    return;
+  }
+  menu.activeTab = normalizeTab(id, menu);
 }
 
 export function moveGameMenuTab(state, delta) {
   const menu = normalizeGameMenuState(state);
-  const index = Math.max(0, TABS.findIndex((tab) => tab.id === menu.activeTab));
-  const nextIndex = (index + delta + TABS.length) % TABS.length;
-  menu.activeTab = TABS[nextIndex].id;
+  if (menu.activeTab === "loadout") return true;
+  const tabs = getVisibleTabs(menu);
+  const index = Math.max(0, tabs.findIndex((tab) => tab.id === menu.activeTab));
+  const nextIndex = (index + delta + tabs.length) % tabs.length;
+  menu.activeTab = tabs[nextIndex].id;
 }
 
 export function moveGameMenuSelection(state, delta) {
@@ -97,7 +115,11 @@ export function moveGameMenuSelection(state, delta) {
     return true;
   }
 
-  if (menu.activeTab !== "characters" && menu.activeTab !== "loadout") return false;
+  if (menu.activeTab === "loadout") {
+    return moveLoadoutSelection(state, delta);
+  }
+
+  if (menu.activeTab !== "characters") return false;
 
   const pilots = getVisiblePilotEntries(state);
   if (!pilots.length) return false;
@@ -112,10 +134,7 @@ export function moveGameMenuStatSelection(state, delta) {
   const menu = normalizeGameMenuState(state);
 
   if (menu.activeTab === "loadout") {
-    const currentIndex = Math.max(0, LOADOUT_SLOTS.findIndex((slot) => slot.key === menu.selectedLoadoutSlot));
-    const nextIndex = (currentIndex + Math.sign(delta || 0) + LOADOUT_SLOTS.length) % LOADOUT_SLOTS.length;
-    menu.selectedLoadoutSlot = LOADOUT_SLOTS[nextIndex].key;
-    return true;
+    return moveLoadoutStage(state, delta);
   }
 
   if (menu.activeTab !== "characters") return false;
@@ -138,7 +157,7 @@ export function confirmGameMenuSelection(state) {
   }
 
   if (menu.activeTab === "loadout") {
-    return { ok: false, reason: "select_gear_from_list" };
+    return confirmLoadoutSelection(state);
   }
 
   if (menu.activeTab !== "characters") return { ok: false, reason: "no_confirm_action" };
@@ -150,13 +169,28 @@ export function selectGameMenuPilot(state, pilotId) {
   if (!id) return false;
   const exists = getVisiblePilotEntries(state).some((entry) => entry.id === id);
   if (!exists) return false;
-  normalizeGameMenuState(state).selectedPilotId = id;
+  const menu = normalizeGameMenuState(state);
+  menu.selectedPilotId = id;
+  if (menu.activeTab === "loadout") {
+    menu.loadoutStage = "slots";
+    menu.selectedLoadoutOptionIndex = 0;
+  }
   return true;
 }
 
 export function selectGameMenuLoadoutSlot(state, slotKey) {
   const slot = normalizeLoadoutSlot(slotKey);
-  normalizeGameMenuState(state).selectedLoadoutSlot = slot;
+  const menu = normalizeGameMenuState(state);
+  menu.selectedLoadoutSlot = slot;
+  menu.selectedLoadoutOptionIndex = 0;
+  if (menu.activeTab === "loadout") menu.loadoutStage = "gear";
+  return true;
+}
+
+export function selectGameMenuLoadoutOption(state, index) {
+  const menu = normalizeGameMenuState(state);
+  menu.selectedLoadoutOptionIndex = normalizeLoadoutOptionIndex(index);
+  if (menu.activeTab === "loadout") menu.loadoutStage = "gear";
   return true;
 }
 
@@ -233,7 +267,7 @@ export function renderGameMenu(state) {
           <button type="button" class="game-menu-close" data-game-menu-action="close">Close (I)</button>
         </header>
         <nav class="game-menu-tabs" aria-label="Campaign menu tabs">
-          ${TABS.map((tab) => `
+          ${getVisibleTabs(menu).map((tab) => `
             <button
               type="button"
               class="game-menu-tab ${tab.id === menu.activeTab ? "is-active" : ""}"
@@ -246,8 +280,8 @@ export function renderGameMenu(state) {
           ${renderActiveTab(state, menu.activeTab)}
         </div>
         <footer class="game-menu-footer">
-          <span>I closes menu · Q/E switches tabs · Arrows navigate current tab · Enter confirms</span>
-          <span>${menu.activeTab === "system" ? "System actions are keyboard-first." : "Stat changes apply when a mission/map loads."}</span>
+          <span>${menu.activeTab === "loadout" ? "↑/↓ select - Enter opens/equips - ← backs up - I closes" : "I closes menu - Q/E switches tabs - Arrows navigate current tab - Enter confirms"}</span>
+          <span>${menu.activeTab === "loadout" ? "Ship/shop equipment only." : menu.activeTab === "system" ? "System actions are keyboard-first." : "Stat changes apply when a mission/map loads."}</span>
         </footer>
       </section>
     </div>
@@ -312,42 +346,64 @@ function renderLoadoutTab(state) {
   const menu = normalizeGameMenuState(state);
   const selected = pilots.find((pilot) => pilot.id === menu.selectedPilotId) ?? pilots[0];
   menu.selectedPilotId = selected.id;
+
   const selectedSlot = normalizeLoadoutSlot(menu.selectedLoadoutSlot);
   menu.selectedLoadoutSlot = selectedSlot;
   const slotMeta = LOADOUT_SLOTS.find((slot) => slot.key === selectedSlot) ?? LOADOUT_SLOTS[0];
   const options = getLoadoutOptions(state, selected, selectedSlot);
+  menu.selectedLoadoutOptionIndex = clampIndex(menu.selectedLoadoutOptionIndex, options.length);
+  const stage = normalizeLoadoutStage(menu.loadoutStage);
+  menu.loadoutStage = stage;
 
   return `
-    <div class="game-menu-grid game-menu-grid--loadout">
-      <aside class="game-menu-list game-menu-list--compact" aria-label="Pilot loadout list">
-        ${renderPilotGroups(pilots, selected.id)}
-      </aside>
-      <section class="game-menu-detail game-menu-detail--loadout">
-        <div class="game-menu-loadout-bar">
-          <strong>${escapeHtml(selected.name)}</strong>
-          <span>${editable ? "SHIP LOCKER" : "LOCKED"}</span>
-        </div>
-        <div class="game-menu-loadout-two-panel">
-          <div class="game-menu-equipped-panel">
-            <div class="game-menu-panel-label">Equipped</div>
-            <div class="game-menu-equipped-slots">
-              ${LOADOUT_SLOTS.map((slot) => renderLoadoutEquippedSlot(state, selected, slot, selectedSlot === slot.key)).join("")}
-            </div>
+    <div class="loadout-console ${editable ? "" : "is-locked"}">
+      <div class="loadout-console-head">
+        <strong>Ship Locker</strong>
+        <span>${editable ? "EDIT" : "LOCKED"}</span>
+      </div>
+      <div class="loadout-console-grid">
+        <section class="loadout-column ${stage === "pilots" ? "is-focused" : ""}">
+          <div class="loadout-column-title">Pilot</div>
+          <div class="loadout-row-list">
+            ${pilots.map((pilot) => renderLoadoutPilotRow(pilot, selected.id, stage === "pilots")).join("")}
           </div>
-          <div class="game-menu-gear-panel">
-            <div class="game-menu-panel-label">${escapeHtml(slotMeta.label)} Options</div>
-            <div class="game-menu-gear-list ${editable ? "" : "is-locked"}">
-              ${options.map((option) => renderLoadoutOptionButton(state, selected, slotMeta, option, editable, selected.loadout?.[selectedSlot] ?? "")).join("")}
-            </div>
+        </section>
+        <section class="loadout-column ${stage === "slots" ? "is-focused" : ""}">
+          <div class="loadout-column-title">Gear Slots</div>
+          <div class="loadout-row-list">
+            ${LOADOUT_SLOTS.map((slot) => renderLoadoutSlotRow(state, selected, slot, selectedSlot === slot.key, stage === "slots")).join("")}
           </div>
-        </div>
-        <div class="game-menu-loadout-note">${editable ? "Select a slot, then choose gear." : "Gear changes are available only at ship/shop prep points."}</div>
-      </section>
+        </section>
+        <section class="loadout-column ${stage === "gear" ? "is-focused" : ""}">
+          <div class="loadout-column-title">${escapeHtml(slotMeta.label)} Options</div>
+          <div class="loadout-row-list">
+            ${stage === "gear"
+              ? options.map((option, index) => renderLoadoutGearRow(state, selected, slotMeta, option, editable, selected.loadout?.[selectedSlot] ?? "", index, menu.selectedLoadoutOptionIndex === index)).join("")
+              : `<div class="loadout-empty-row">Enter on a gear slot to choose equipment.</div>`}
+          </div>
+        </section>
+      </div>
+      ${menu.statusText ? `<div class="loadout-status">${escapeHtml(menu.statusText)}</div>` : ""}
     </div>
   `;
 }
 
-function renderLoadoutEquippedSlot(state, pilot, slot, selected) {
+function renderLoadoutPilotRow(pilot, selectedId, focusColumn) {
+  const selected = pilot.id === selectedId;
+  return `
+    <button
+      type="button"
+      class="loadout-row ${selected ? "is-selected" : ""} ${focusColumn && selected ? "is-cursor" : ""}"
+      data-game-menu-action="select-pilot"
+      data-pilot-id="${escapeHtml(pilot.id)}"
+    >
+      <span>${escapeHtml(pilot.name)}</span>
+      <b>Lv ${escapeHtml(pilot.level)}</b>
+    </button>
+  `;
+}
+
+function renderLoadoutSlotRow(state, pilot, slot, selected, focusColumn) {
   const currentId = pilot?.loadout?.[slot.key] ?? "";
   const entry = getContentEntry(state, currentId, slot.type);
   const name = entry?.name ?? (currentId || "Empty");
@@ -356,18 +412,17 @@ function renderLoadoutEquippedSlot(state, pilot, slot, selected) {
   return `
     <button
       type="button"
-      class="game-menu-equipped-slot ${selected ? "is-selected" : ""}"
+      class="loadout-row ${selected ? "is-selected" : ""} ${focusColumn && selected ? "is-cursor" : ""}"
       data-game-menu-action="select-loadout-slot"
       data-loadout-slot="${escapeHtml(slot.key)}"
     >
       <span>${escapeHtml(slot.label)}</span>
-      <strong>${escapeHtml(name)}</strong>
-      ${modifierText ? `<small>${escapeHtml(modifierText)}</small>` : ""}
+      <b>${escapeHtml(name)}${modifierText ? ` - ${escapeHtml(modifierText)}` : ""}</b>
     </button>
   `;
 }
 
-function renderLoadoutOptionButton(state, pilot, slot, option, editable, currentId) {
+function renderLoadoutGearRow(state, pilot, slot, option, editable, currentId, index, selected) {
   const active = String(option.id ?? "") === String(currentId ?? "");
   const disabled = !editable || Boolean(option.disabled);
   const entry = option.id ? getContentEntry(state, option.id, slot.type) : null;
@@ -377,15 +432,16 @@ function renderLoadoutOptionButton(state, pilot, slot, option, editable, current
   return `
     <button
       type="button"
-      class="game-menu-gear-row ${active ? "is-equipped" : ""}"
+      class="loadout-row ${selected ? "is-cursor" : ""} ${active ? "is-equipped" : ""}"
       data-game-menu-action="set-loadout-slot"
       data-pilot-id="${escapeHtml(pilot.id)}"
       data-loadout-slot="${escapeHtml(slot.key)}"
+      data-loadout-option-index="${escapeHtml(index)}"
       data-equipment-id="${escapeHtml(option.id ?? "")}"
       ${disabled ? "disabled" : ""}
     >
-      <span class="game-menu-gear-name">${active ? "✓ " : ""}${escapeHtml(label)}</span>
-      <span class="game-menu-gear-stat">${escapeHtml(detail)}</span>
+      <span>${active ? "* " : ""}${escapeHtml(label)}</span>
+      <b>${escapeHtml(detail)}</b>
     </button>
   `;
 }
@@ -428,7 +484,7 @@ function renderCatalogIdList(state, items, type, emptyText) {
     const entry = getContentEntry(state, itemId, type);
     const name = entry?.name ?? itemId;
     const modifierText = renderModifierText(entry?.modifiers);
-    return `<li><strong>${escapeHtml(name)}</strong><br><span class="game-menu-muted">${escapeHtml(itemId)}${modifierText ? ` · ${escapeHtml(modifierText)}` : ""}</span></li>`;
+    return `<li><strong>${escapeHtml(name)}</strong><br><span class="game-menu-muted">${escapeHtml(itemId)}${modifierText ? ` - ${escapeHtml(modifierText)}` : ""}</span></li>`;
   }).join("")}</ul>`;
 }
 
@@ -485,7 +541,7 @@ function renderPilotRow(pilot, selectedId) {
       data-pilot-id="${escapeHtml(pilot.id)}"
     >
       <span>${escapeHtml(pilot.name)}</span>
-      <b>${escapeHtml(getPilotStatusLabel(pilot))} · Lv ${escapeHtml(pilot.level)}</b>
+      <b>${escapeHtml(getPilotStatusLabel(pilot))} - Lv ${escapeHtml(pilot.level)}</b>
     </button>
   `;
 }
@@ -513,7 +569,7 @@ function renderStatRow(pilot, statKey, selectedStatKey) {
     <div class="game-menu-stat-row ${statKey === selectedStatKey ? "is-selected" : ""}">
       <div>
         <div class="game-menu-stat-name">${escapeHtml(STAT_LABELS[statKey] ?? statKey)}</div>
-        <div class="game-menu-stat-help">Base ${escapeHtml(base)} + Bonus ${escapeHtml(bonus)} · ${escapeHtml(helper)}</div>
+        <div class="game-menu-stat-help">Base ${escapeHtml(base)} + Bonus ${escapeHtml(bonus)} - ${escapeHtml(helper)}</div>
       </div>
       <div class="game-menu-stat-value">${escapeHtml(total)}</div>
       <button
@@ -561,7 +617,7 @@ function renderMissionsTab(state) {
       <div class="game-menu-subpanel">
         <h3>Current Mission</h3>
         <p><strong>${escapeHtml(currentMissionName)}</strong></p>
-        <p class="game-menu-muted">${escapeHtml(currentMissionId)} · Map ${escapeHtml(activeMapId)}</p>
+        <p class="game-menu-muted">${escapeHtml(currentMissionId)} - Map ${escapeHtml(activeMapId)}</p>
       </div>
       <div class="game-menu-subpanel"><h3>Active Objectives</h3>${renderObjectiveList(objectives, "No active objectives.")}</div>
       <div class="game-menu-subpanel"><h3>Unlocked Missions</h3>${renderMissionIdList(state, unlocked, "No unlocked missions.")}</div>
@@ -767,9 +823,94 @@ function normalizeStatKey(statKey) {
   return PILOT_STAT_KEYS.includes(key) ? key : PILOT_STAT_KEYS[0];
 }
 
-function normalizeTab(tabId) {
+function getVisibleTabs(menu = {}) {
+  return menu?.loadoutAccess ? [TABS[0], LOADOUT_TAB, ...TABS.slice(1)] : TABS;
+}
+
+function normalizeTab(tabId, menu = {}) {
   const id = String(tabId ?? "characters").trim().toLowerCase();
+  if (id === "loadout" && menu?.loadoutAccess) return "loadout";
   return TABS.some((tab) => tab.id === id) ? id : "characters";
+}
+
+function normalizeLoadoutStage(stage) {
+  const value = String(stage ?? "pilots").trim();
+  return ["pilots", "slots", "gear"].includes(value) ? value : "pilots";
+}
+
+function normalizeLoadoutOptionIndex(value) {
+  return Math.max(0, Math.trunc(Number(value ?? 0) || 0));
+}
+
+function clampIndex(value, length) {
+  const count = Math.max(0, Math.trunc(Number(length ?? 0) || 0));
+  if (count <= 0) return 0;
+  return Math.max(0, Math.min(normalizeLoadoutOptionIndex(value), count - 1));
+}
+
+function moveLoadoutSelection(state, delta) {
+  const menu = normalizeGameMenuState(state);
+  const step = Math.sign(delta || 0);
+  if (!step) return false;
+
+  if (menu.loadoutStage === "gear") {
+    const selected = getVisiblePilotEntries(state).find((pilot) => pilot.id === menu.selectedPilotId);
+    const options = getLoadoutOptions(state, selected, menu.selectedLoadoutSlot);
+    if (!options.length) return false;
+    menu.selectedLoadoutOptionIndex = (clampIndex(menu.selectedLoadoutOptionIndex, options.length) + step + options.length) % options.length;
+    return true;
+  }
+
+  if (menu.loadoutStage === "slots") {
+    const currentIndex = Math.max(0, LOADOUT_SLOTS.findIndex((slot) => slot.key === menu.selectedLoadoutSlot));
+    const nextIndex = (currentIndex + step + LOADOUT_SLOTS.length) % LOADOUT_SLOTS.length;
+    menu.selectedLoadoutSlot = LOADOUT_SLOTS[nextIndex].key;
+    menu.selectedLoadoutOptionIndex = 0;
+    return true;
+  }
+
+  const pilots = getVisiblePilotEntries(state);
+  if (!pilots.length) return false;
+  const currentIndex = Math.max(0, pilots.findIndex((pilot) => pilot.id === menu.selectedPilotId));
+  const nextIndex = (currentIndex + step + pilots.length) % pilots.length;
+  menu.selectedPilotId = pilots[nextIndex].id;
+  menu.selectedLoadoutOptionIndex = 0;
+  return true;
+}
+
+function moveLoadoutStage(state, delta) {
+  const menu = normalizeGameMenuState(state);
+  const step = Math.sign(delta || 0);
+  if (!step) return false;
+
+  const order = ["pilots", "slots", "gear"];
+  const currentIndex = Math.max(0, order.indexOf(menu.loadoutStage));
+  const nextIndex = Math.max(0, Math.min(order.length - 1, currentIndex + step));
+  menu.loadoutStage = order[nextIndex];
+  if (menu.loadoutStage === "gear") menu.selectedLoadoutOptionIndex = clampIndex(menu.selectedLoadoutOptionIndex, getLoadoutOptions(state, getVisiblePilotEntries(state).find((pilot) => pilot.id === menu.selectedPilotId), menu.selectedLoadoutSlot).length);
+  return true;
+}
+
+function confirmLoadoutSelection(state) {
+  const menu = normalizeGameMenuState(state);
+  if (menu.loadoutStage === "pilots") {
+    menu.loadoutStage = "slots";
+    return { ok: false, reason: "open_loadout_slots" };
+  }
+  if (menu.loadoutStage === "slots") {
+    menu.loadoutStage = "gear";
+    menu.selectedLoadoutOptionIndex = 0;
+    return { ok: false, reason: "open_loadout_gear" };
+  }
+
+  const pilotId = menu.selectedPilotId;
+  const slot = menu.selectedLoadoutSlot;
+  const pilot = getVisiblePilotEntries(state).find((entry) => entry.id === pilotId);
+  const options = getLoadoutOptions(state, pilot, slot);
+  const index = clampIndex(menu.selectedLoadoutOptionIndex, options.length);
+  const option = options[index];
+  if (!option || option.disabled) return { ok: false, reason: "invalid_equipment" };
+  return setPilotLoadoutChoice(state, pilotId, slot, option.id ?? "");
 }
 
 function normalizeSystemIndex(value) {

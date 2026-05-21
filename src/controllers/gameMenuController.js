@@ -6,6 +6,7 @@ import {
   moveGameMenuSelection,
   moveGameMenuStatSelection,
   moveGameMenuTab,
+  selectGameMenuLoadoutOption,
   selectGameMenuLoadoutSlot,
   selectGameMenuPilot,
   selectGameMenuSystemAction,
@@ -136,6 +137,7 @@ export function createGameMenuController({
     }
 
     if (action === "set-loadout-slot") {
+      selectGameMenuLoadoutOption(state, button.dataset.loadoutOptionIndex);
       const result = setPilotLoadoutChoice(state, button.dataset.pilotId, button.dataset.loadoutSlot, button.dataset.equipmentId);
       if (result?.ok) save();
       render?.();
