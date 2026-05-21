@@ -138,7 +138,7 @@ export function confirmGameMenuSelection(state) {
   }
 
   if (menu.activeTab === "loadout") {
-    return cyclePilotLoadoutSlot(state, menu.selectedPilotId, menu.selectedLoadoutSlot, 1);
+    return { ok: false, reason: "select_gear_from_list" };
   }
 
   if (menu.activeTab !== "characters") return { ok: false, reason: "no_confirm_action" };
@@ -151,6 +151,12 @@ export function selectGameMenuPilot(state, pilotId) {
   const exists = getVisiblePilotEntries(state).some((entry) => entry.id === id);
   if (!exists) return false;
   normalizeGameMenuState(state).selectedPilotId = id;
+  return true;
+}
+
+export function selectGameMenuLoadoutSlot(state, slotKey) {
+  const slot = normalizeLoadoutSlot(slotKey);
+  normalizeGameMenuState(state).selectedLoadoutSlot = slot;
   return true;
 }
 
@@ -209,21 +215,6 @@ export function setPilotLoadoutChoice(state, pilotId, slotKey, equipmentId) {
     ? "Loadout updated. Re-place that unit so deployment uses the new gear."
     : "Loadout updated.";
   return { ok: true, type: "loadout", pilotId: id, slotKey: slot, equipmentId: match.id ?? "", removedPlacedRuntime };
-}
-
-export function cyclePilotLoadoutSlot(state, pilotId, slotKey, delta = 1) {
-  if (!canEditLoadoutsInSafePrep(state)) return { ok: false, reason: "loadout_locked" };
-
-  const id = String(pilotId ?? "").trim();
-  const slot = normalizeLoadoutSlot(slotKey);
-  const loadout = getPilotMenuLoadout(state, id);
-  const options = getLoadoutOptions(state, { id, loadout }, slot).filter((option) => !option.disabled);
-  if (!id || options.length <= 1) return { ok: false, reason: "no_options" };
-
-  const currentId = String(loadout?.[slot] ?? "");
-  const currentIndex = Math.max(0, options.findIndex((option) => String(option.id ?? "") === currentId));
-  const nextIndex = (currentIndex + Math.sign(delta || 1) + options.length) % options.length;
-  return setPilotLoadoutChoice(state, id, slot, options[nextIndex].id ?? "");
 }
 
 
@@ -321,78 +312,80 @@ function renderLoadoutTab(state) {
   const menu = normalizeGameMenuState(state);
   const selected = pilots.find((pilot) => pilot.id === menu.selectedPilotId) ?? pilots[0];
   menu.selectedPilotId = selected.id;
+  const selectedSlot = normalizeLoadoutSlot(menu.selectedLoadoutSlot);
+  menu.selectedLoadoutSlot = selectedSlot;
+  const slotMeta = LOADOUT_SLOTS.find((slot) => slot.key === selectedSlot) ?? LOADOUT_SLOTS[0];
+  const options = getLoadoutOptions(state, selected, selectedSlot);
 
   return `
-    <div class="game-menu-grid game-menu-grid--characters">
-      <aside class="game-menu-list" aria-label="Pilot loadout list">
+    <div class="game-menu-grid game-menu-grid--loadout">
+      <aside class="game-menu-list game-menu-list--compact" aria-label="Pilot loadout list">
         ${renderPilotGroups(pilots, selected.id)}
       </aside>
-      <section class="game-menu-detail">
-        <div class="game-menu-detail-head">
-          <div>
-            <h3>${escapeHtml(selected.name)} Loadout</h3>
-            <p>${editable ? "Mission-start prep: gear changes are allowed before Begin Mission only." : "Read-only. Gear cannot be changed after the mission starts."}</p>
+      <section class="game-menu-detail game-menu-detail--loadout">
+        <div class="game-menu-loadout-bar">
+          <strong>${escapeHtml(selected.name)}</strong>
+          <span>${editable ? "SHIP LOCKER" : "LOCKED"}</span>
+        </div>
+        <div class="game-menu-loadout-two-panel">
+          <div class="game-menu-equipped-panel">
+            <div class="game-menu-panel-label">Equipped</div>
+            <div class="game-menu-equipped-slots">
+              ${LOADOUT_SLOTS.map((slot) => renderLoadoutEquippedSlot(state, selected, slot, selectedSlot === slot.key)).join("")}
+            </div>
           </div>
-          <div class="game-menu-level-pill">${editable ? "PREP" : "LOCKED"}</div>
+          <div class="game-menu-gear-panel">
+            <div class="game-menu-panel-label">${escapeHtml(slotMeta.label)} Options</div>
+            <div class="game-menu-gear-list ${editable ? "" : "is-locked"}">
+              ${options.map((option) => renderLoadoutOptionButton(state, selected, slotMeta, option, editable, selected.loadout?.[selectedSlot] ?? "")).join("")}
+            </div>
+          </div>
         </div>
-        <div class="game-menu-loadout-grid">
-          ${LOADOUT_SLOTS.map((slot) => renderLoadoutSlotEditor(state, selected, slot, editable, menu.selectedLoadoutSlot === slot.key)).join("")}
-        </div>
-        <div class="game-menu-subpanel">
-          <h4>Rule</h4>
-          <p>Loadout changes are available only at ship/shop prep points. Active missions display gear but will not swap it.</p>
-        </div>
+        <div class="game-menu-loadout-note">${editable ? "Select a slot, then choose gear." : "Gear changes are available only at ship/shop prep points."}</div>
       </section>
     </div>
   `;
 }
 
-function renderLoadoutSlotEditor(state, pilot, slot, editable, selected) {
+function renderLoadoutEquippedSlot(state, pilot, slot, selected) {
   const currentId = pilot?.loadout?.[slot.key] ?? "";
-  const currentName = renderEquipmentName(state, currentId, slot.type);
-  const options = getLoadoutOptions(state, pilot, slot.key);
+  const entry = getContentEntry(state, currentId, slot.type);
+  const name = entry?.name ?? (currentId || "Empty");
+  const modifierText = renderModifierText(entry?.modifiers);
 
   return `
-    <div class="game-menu-loadout-slot ${selected ? "is-selected" : ""}">
-      <div class="game-menu-loadout-slot-head">
-        <div>
-          <h4>${escapeHtml(slot.label)}</h4>
-          <p>${currentName}</p>
-        </div>
-        <button
-          type="button"
-          class="game-menu-small-button"
-          data-game-menu-action="cycle-loadout-slot"
-          data-pilot-id="${escapeHtml(pilot.id)}"
-          data-loadout-slot="${escapeHtml(slot.key)}"
-          ${editable && options.length > 1 ? "" : "disabled"}
-        >Cycle</button>
-      </div>
-      <div class="game-menu-loadout-options">
-        ${options.map((option) => renderLoadoutOptionButton(state, pilot, slot, option, editable, currentId)).join("")}
-      </div>
-    </div>
+    <button
+      type="button"
+      class="game-menu-equipped-slot ${selected ? "is-selected" : ""}"
+      data-game-menu-action="select-loadout-slot"
+      data-loadout-slot="${escapeHtml(slot.key)}"
+    >
+      <span>${escapeHtml(slot.label)}</span>
+      <strong>${escapeHtml(name)}</strong>
+      ${modifierText ? `<small>${escapeHtml(modifierText)}</small>` : ""}
+    </button>
   `;
 }
 
 function renderLoadoutOptionButton(state, pilot, slot, option, editable, currentId) {
   const active = String(option.id ?? "") === String(currentId ?? "");
   const disabled = !editable || Boolean(option.disabled);
-  const label = option.id ? getEquipmentPlainName(state, option.id, slot.type) : "Empty";
-  const detail = option.id ? renderModifierText(getContentEntry(state, option.id, slot.type)?.modifiers) : "No accessory equipped";
+  const entry = option.id ? getContentEntry(state, option.id, slot.type) : null;
+  const label = entry?.name ?? (option.id ? option.id : "Empty");
+  const detail = option.id ? renderModifierText(entry?.modifiers) : "None";
 
   return `
     <button
       type="button"
-      class="game-menu-loadout-option ${active ? "is-equipped" : ""}"
+      class="game-menu-gear-row ${active ? "is-equipped" : ""}"
       data-game-menu-action="set-loadout-slot"
       data-pilot-id="${escapeHtml(pilot.id)}"
       data-loadout-slot="${escapeHtml(slot.key)}"
       data-equipment-id="${escapeHtml(option.id ?? "")}"
       ${disabled ? "disabled" : ""}
     >
-      <span>${active ? "✓ " : ""}${escapeHtml(label)}</span>
-      ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
+      <span class="game-menu-gear-name">${active ? "✓ " : ""}${escapeHtml(label)}</span>
+      <span class="game-menu-gear-stat">${escapeHtml(detail)}</span>
     </button>
   `;
 }
