@@ -4,7 +4,7 @@
 // Keeps script.js as boot/wiring while trigger loading/effects stay in mission modules.
 
 import { normalizeMapDefinition } from "../map.js";
-import { openGameMenu, setGameMenuStatus, setGameMenuTab } from "../ui/gameMenu.js";
+import { openContextualScreen, setGameMenuStatus } from "../ui/gameMenu.js";
 import { resolveMissionEventTriggers, resolveOnUnitEnterZoneTriggers } from "./missionTriggers.js";
 
 export function createMissionTriggerRuntime({
@@ -54,9 +54,9 @@ export function createMissionTriggerRuntime({
       return { handled: true, interrupt: true, result: loadMapResult };
     }
 
-    const openMenuResult = results.find((result) => result?.preset === "open_menu_tab");
+    const openMenuResult = results.find((result) => result?.preset === "open_context_screen" || result?.preset === "open_menu_tab");
     if (openMenuResult) {
-      openMenuTabFromTrigger(openMenuResult);
+      openContextScreenFromTrigger(openMenuResult);
       return { handled: true, interrupt: true, result: openMenuResult };
     }
 
@@ -100,8 +100,8 @@ export function createMissionTriggerRuntime({
         logDev(`Trigger ${result.triggerId} completed objective ${result.completeObjectiveId}.`);
       } else if (result?.preset === "start_dialogue") {
         logDev(`Trigger ${result.triggerId} started dialogue ${result.dialogueKey}.`);
-      } else if (result?.preset === "open_menu_tab") {
-        logDev(`Trigger ${result.triggerId} opened menu tab ${result.menuTab ?? "loadout"}.`);
+      } else if (result?.preset === "open_context_screen" || result?.preset === "open_menu_tab") {
+        logDev(`Trigger ${result.triggerId} opened context screen ${result.screenId ?? result.menuTab ?? "loadout"}.`);
       } else if (result?.preset === "set_flag") {
         logDev(`Trigger ${result.triggerId} set flag ${result.flagId} to ${result.value}.`);
       } else if (result?.preset === "give_item" || result?.preset === "remove_item") {
@@ -113,10 +113,9 @@ export function createMissionTriggerRuntime({
   }
 
 
-  function openMenuTabFromTrigger(openMenuResult) {
-    const tabId = String(openMenuResult?.menuTab ?? "loadout").trim() || "loadout";
-    openGameMenu(state);
-    setGameMenuTab(state, tabId);
+  function openContextScreenFromTrigger(openMenuResult) {
+    const screenId = String(openMenuResult?.screenId ?? openMenuResult?.menuTab ?? "loadout").trim() || "loadout";
+    openContextualScreen(state, screenId, { statusText: openMenuResult?.statusText ?? "" });
     if (openMenuResult?.statusText) {
       setGameMenuStatus(state, openMenuResult.statusText);
     }

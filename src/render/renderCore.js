@@ -17,6 +17,7 @@ import {
 import { drawSceneLosPreview } from "./renderLosOverlay.js";
 import { buildTerrainSceneItems, buildMapEdgeSceneItems, buildStructureSceneItems, buildUnitSceneItems } from "./renderSceneBuilders.js";
 import { buildTileOverlayStyleMap } from "./renderTileStyles.js";
+import { drawInteractPrompt } from "../ui/interactPrompt.js";
 import { compareSceneItems } from "./renderSceneMath.js";
 
 export function renderAll(state, refs) {
@@ -84,6 +85,7 @@ export function renderIso(state, refs) {
 
   drawSceneActiveUnitOverlay(state, worldUi);
   drawSceneLosPreview(state, worldUi);
+  drawInteractPrompt(state, worldUi);
 
   for (const item of unitStatusTagItems) {
     drawIsoStatusPlate(worldUi, item.unit, item.x, item.y);

@@ -13,6 +13,7 @@ const SUPPORTED_PRESETS = new Set([
   "end_mission",
   "start_dialogue",
   "open_menu_tab",
+  "open_context_screen",
   "run_logic"
 ]);
 
@@ -65,7 +66,7 @@ export function resolveMissionEventTriggers(state, eventType, context = {}) {
     if (trigger.type !== type) continue;
     if (!SUPPORTED_PRESETS.has(trigger.preset)) continue;
     if (unit && !doesTeamMatch(trigger.team ?? "player", unit.team ?? "player")) continue;
-    if (ZONE_TRIGGER_TYPES.has(type) && !triggerHasTile(trigger, unitX, unitY)) continue;
+    if (ZONE_TRIGGER_TYPES.has(type) && !triggerHasTileForEvent(trigger, type, unitX, unitY)) continue;
     if (type === "onUnitInteract" && !doesUnitInteractMatch(state, trigger, unit)) continue;
 
     const firedKey = `${mapId}:${type}:${trigger.id}`;
@@ -147,13 +148,15 @@ function applyTriggerPreset(state, trigger, unit, context = {}) {
     };
   }
 
-  if (trigger.preset === "open_menu_tab") {
+  if (trigger.preset === "open_menu_tab" || trigger.preset === "open_context_screen") {
     const tabId = String(trigger.menuTab ?? trigger.tabId ?? "loadout").trim() || "loadout";
+    const screenId = String(trigger.screenId ?? trigger.contextScreenId ?? tabId).trim() || tabId;
     return {
       ok: true,
-      preset: "open_menu_tab",
+      preset: "open_context_screen",
       triggerId: trigger.id,
       menuTab: tabId,
+      screenId,
       statusText: String(trigger.statusText ?? "").trim()
     };
   }
@@ -267,9 +270,10 @@ function applyLogicAction(state, trigger, unit, action, context = {}) {
     return { ok: started, preset: "start_dialogue", triggerId: trigger.id, logicAction: true, dialogueKey };
   }
 
-  if (type === "open_menu_tab") {
+  if (type === "open_menu_tab" || type === "open_context_screen") {
     const tabId = String(action?.menuTab ?? action?.tabId ?? "loadout").trim() || "loadout";
-    return { ok: true, preset: "open_menu_tab", triggerId: trigger.id, logicAction: true, menuTab: tabId, statusText: String(action?.statusText ?? "").trim() };
+    const screenId = String(action?.screenId ?? action?.contextScreenId ?? tabId).trim() || tabId;
+    return { ok: true, preset: "open_context_screen", triggerId: trigger.id, logicAction: true, menuTab: tabId, screenId, statusText: String(action?.statusText ?? "").trim() };
   }
 
   if (type === "set_flag") {
@@ -372,6 +376,24 @@ function doesUnitInteractMatch(state, trigger, sourceUnit) {
   const range = Math.max(1, Math.trunc(Number(trigger?.interactionRange ?? 1) || 1));
   const distance = Math.abs(sourceX - targetX) + Math.abs(sourceY - targetY);
   return distance <= range;
+}
+
+function triggerHasTileForEvent(trigger, eventType, x, y) {
+  if (eventType !== "onInteract") return triggerHasTile(trigger, x, y);
+  return triggerHasTileInRange(trigger, x, y);
+}
+
+function triggerHasTileInRange(trigger, x, y) {
+  if (!Number.isInteger(x) || !Number.isInteger(y)) return false;
+  const range = Math.max(0, Math.trunc(Number(trigger?.interactionRange ?? 0) || 0));
+  for (const tile of Array.isArray(trigger?.tiles) ? trigger.tiles : []) {
+    const tileX = Number(tile?.x);
+    const tileY = Number(tile?.y);
+    if (!Number.isFinite(tileX) || !Number.isFinite(tileY)) continue;
+    const distance = Math.abs(tileX - x) + Math.abs(tileY - y);
+    if (distance <= range) return true;
+  }
+  return false;
 }
 
 function triggerHasTile(trigger, x, y) {

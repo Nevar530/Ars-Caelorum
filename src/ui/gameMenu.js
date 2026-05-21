@@ -3,6 +3,7 @@
 import { PILOT_STAT_CAPS, PILOT_STAT_KEYS, setPilotLoadoutSlot } from "../campaign/campaignState.js";
 import { normalizePilotLoadout } from "../content/unitLoadout.js";
 import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
+import { getContextScreenTabId, getContextScreenTitle, normalizeContextScreenId } from "./contextScreens.js";
 
 const TABS = Object.freeze([
   { id: "characters", label: "Characters" },
@@ -43,6 +44,7 @@ export function normalizeGameMenuState(state) {
 
   state.ui.gameMenu.open = Boolean(state.ui.gameMenu.open);
   state.ui.gameMenu.loadoutAccess = Boolean(state.ui.gameMenu.loadoutAccess);
+  state.ui.gameMenu.contextScreenId = normalizeContextScreenId(state.ui.gameMenu.contextScreenId);
   state.ui.gameMenu.activeTab = normalizeTab(state.ui.gameMenu.activeTab, state.ui.gameMenu);
   state.ui.gameMenu.selectedPilotId = String(state.ui.gameMenu.selectedPilotId ?? "").trim();
   state.ui.gameMenu.selectedStatKey = normalizeStatKey(state.ui.gameMenu.selectedStatKey);
@@ -59,6 +61,8 @@ export function normalizeGameMenuState(state) {
 export function openGameMenu(state) {
   const menu = normalizeGameMenuState(state);
   menu.open = true;
+  menu.contextScreenId = "";
+  menu.loadoutAccess = false;
   menu.activeTab = normalizeTab(menu.activeTab, menu);
 
   const firstPilotId = getVisiblePilotEntries(state)[0]?.id ?? "";
@@ -70,9 +74,27 @@ export function openGameMenu(state) {
 export function closeGameMenu(state) {
   const menu = normalizeGameMenuState(state);
   menu.open = false;
+  menu.contextScreenId = "";
   menu.loadoutAccess = false;
   if (menu.activeTab === "loadout") menu.activeTab = "characters";
   menu.loadoutStage = "pilots";
+}
+
+export function openContextualScreen(state, screenId = "pilot_loadout", options = {}) {
+  const id = normalizeContextScreenId(screenId) || "pilot_loadout";
+  const menu = normalizeGameMenuState(state);
+  menu.open = true;
+  menu.contextScreenId = id;
+  menu.activeTab = getContextScreenTabId(id);
+  menu.loadoutAccess = id === "pilot_loadout";
+  if (menu.activeTab === "loadout") {
+    menu.loadoutStage = "pilots";
+    menu.selectedLoadoutOptionIndex = 0;
+  }
+  if (options?.statusText) menu.statusText = String(options.statusText ?? "").trim();
+  const firstPilotId = getVisiblePilotEntries(state)[0]?.id ?? "";
+  if (!menu.selectedPilotId && firstPilotId) menu.selectedPilotId = firstPilotId;
+  return id;
 }
 
 export function toggleGameMenu(state) {
@@ -89,10 +111,7 @@ export function setGameMenuTab(state, tabId) {
   const menu = normalizeGameMenuState(state);
   const id = String(tabId ?? "").trim().toLowerCase();
   if (id === "loadout") {
-    menu.loadoutAccess = true;
-    menu.activeTab = "loadout";
-    menu.loadoutStage = "pilots";
-    menu.selectedLoadoutOptionIndex = 0;
+    openContextualScreen(state, "pilot_loadout");
     return;
   }
   menu.activeTab = normalizeTab(id, menu);
@@ -100,7 +119,7 @@ export function setGameMenuTab(state, tabId) {
 
 export function moveGameMenuTab(state, delta) {
   const menu = normalizeGameMenuState(state);
-  if (menu.activeTab === "loadout") return true;
+  if (menu.contextScreenId || menu.activeTab === "loadout") return true;
   const tabs = getVisibleTabs(menu);
   const index = Math.max(0, tabs.findIndex((tab) => tab.id === menu.activeTab));
   const nextIndex = (index + delta + tabs.length) % tabs.length;
@@ -281,23 +300,25 @@ export function renderGameMenu(state) {
   const menu = normalizeGameMenuState(state);
   if (!menu.open) return "";
 
-  if (menu.activeTab === "loadout") {
+  if (menu.contextScreenId) {
+    const title = getContextScreenTitle(menu.contextScreenId);
+    const tabId = getContextScreenTabId(menu.contextScreenId);
     return `
-      <div class="game-menu-backdrop" role="dialog" aria-modal="true" aria-label="Ship Locker">
+      <div class="game-menu-backdrop" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
         <section class="game-menu-card game-menu-card--terminal game-menu-card--context">
           <header class="game-menu-header game-menu-header--terminal">
             <div>
-              <div class="game-menu-kicker">Ship / Shop Terminal</div>
-              <h2 class="game-menu-title">Loadout</h2>
+              <div class="game-menu-kicker">Context Terminal</div>
+              <h2 class="game-menu-title">${escapeHtml(title)}</h2>
             </div>
             <button type="button" class="game-menu-close" data-game-menu-action="close">Close (I)</button>
           </header>
           <div class="game-menu-body game-menu-body--terminal game-menu-body--context">
-            ${renderActiveTab(state, menu.activeTab)}
+            ${renderActiveTab(state, tabId)}
           </div>
           <footer class="game-menu-footer game-menu-footer--terminal">
             <span>↑/↓ select · Enter open/equip · ← back · I close</span>
-            <span>Ship/shop equipment only.</span>
+            <span>Opened from map interaction.</span>
           </footer>
         </section>
       </div>

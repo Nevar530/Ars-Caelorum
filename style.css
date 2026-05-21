@@ -5100,3 +5100,29 @@ button:disabled {
     grid-column: auto;
   }
 }
+
+/* Compact map-space prompt for contextual story interactions. */
+.interact-prompt {
+  pointer-events: none;
+  font-family: "Courier New", Consolas, monospace;
+}
+
+.interact-prompt-bg {
+  fill: rgba(8, 14, 18, 0.88);
+  stroke: rgba(151, 221, 210, 0.78);
+  stroke-width: 1;
+}
+
+.interact-prompt-caret {
+  fill: rgba(151, 221, 210, 0.82);
+  stroke: rgba(8, 14, 18, 0.75);
+  stroke-width: 1;
+}
+
+.interact-prompt-text {
+  fill: rgba(218, 246, 240, 0.96);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  dominant-baseline: middle;
+}

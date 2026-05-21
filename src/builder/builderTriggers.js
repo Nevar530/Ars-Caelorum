@@ -11,7 +11,8 @@ const TRIGGER_PRESETS = [
   { value: "complete_objective", label: "Complete Objective" },
   { value: "end_mission", label: "End Mission" },
   { value: "start_dialogue", label: "Start Dialogue" },
-  { value: "open_menu_tab", label: "Open Menu Tab" },
+  { value: "open_context_screen", label: "Open Context Screen" },
+  { value: "open_menu_tab", label: "Open Menu Tab (Legacy)" },
   { value: "run_logic", label: "Run Logic Chain" }
 ];
 

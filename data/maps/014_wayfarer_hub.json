@@ -121,15 +121,17 @@
       "type": "onInteract",
       "team": "player",
       "once": false,
-      "preset": "open_menu_tab",
-      "menuTab": "loadout",
+      "preset": "open_context_screen",
       "completeObjectiveId": "open_loadout_locker",
       "tiles": [
         {
           "x": 1,
           "y": 2
         }
-      ]
+      ],
+      "screenId": "pilot_loadout",
+      "interactionRange": 1,
+      "interactLabel": "LOCKER"
     },
     {
       "id": "talk_to_pax_loadout",
@@ -137,11 +139,12 @@
       "type": "onUnitInteract",
       "team": "player",
       "once": false,
-      "preset": "open_menu_tab",
-      "menuTab": "loadout",
+      "preset": "open_context_screen",
       "completeObjectiveId": "open_loadout_locker",
       "targetUnitId": "hub-pax",
-      "interactionRange": 2
+      "interactionRange": 2,
+      "screenId": "pilot_loadout",
+      "interactLabel": "GEAR"
     }
   ],
   "logic": [],
