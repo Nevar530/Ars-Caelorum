@@ -5,6 +5,7 @@
 
 const MODIFIER_KEYS = Object.freeze(["shield", "move", "core", "abilityPoints", "targeting", "reaction"]);
 const PILOT_GEAR_SLOT_KEYS = Object.freeze(["armor", "accessory"]);
+const MECH_GEAR_SLOT_KEYS = Object.freeze(["plating", "system", "armor", "core", "accessory"]);
 
 export function getLoadoutModifiers(content = {}, loadout = {}, unitType = "pilot") {
   const modifiers = createEmptyModifiers();
@@ -43,7 +44,7 @@ function buildEquipmentCatalog(content = {}, unitType = "pilot") {
 
 function getEquippedGearIds(loadout = {}, unitType = "pilot") {
   if (unitType !== "pilot") {
-    return [loadout.armor, loadout.core, loadout.accessory].map(cleanId).filter(Boolean);
+    return MECH_GEAR_SLOT_KEYS.map((slot) => cleanId(loadout?.[slot])).filter(Boolean);
   }
 
   return PILOT_GEAR_SLOT_KEYS.map((slot) => cleanId(loadout?.[slot])).filter(Boolean);

@@ -10,9 +10,16 @@ const SCREEN_ALIASES = Object.freeze({
   ship_locker: "pilot_loadout",
   locker: "pilot_loadout",
   shop: "shop",
+  store: "shop",
+  vendor: "shop",
   telum_loadout: "telum_loadout",
   mech_loadout: "telum_loadout",
-  mission_board: "mission_board"
+  mechbay: "telum_loadout",
+  mech_bay: "telum_loadout",
+  telum_bay: "telum_loadout",
+  mission_board: "mission_board",
+  missionboard: "mission_board",
+  board: "mission_board"
 });
 
 const VALID_CONTEXT_SCREENS = new Set([

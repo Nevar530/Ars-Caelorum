@@ -1,7 +1,7 @@
 // src/ui/gameMenu.js
 
-import { PILOT_STAT_CAPS, PILOT_STAT_KEYS, setPilotLoadoutSlot } from "../campaign/campaignState.js";
-import { normalizePilotLoadout } from "../content/unitLoadout.js";
+import { PILOT_STAT_CAPS, PILOT_STAT_KEYS, setMechLoadoutSlot, setPilotLoadoutSlot } from "../campaign/campaignState.js";
+import { normalizeMechLoadout, normalizePilotLoadout } from "../content/unitLoadout.js";
 import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
 import { getContextScreenTabId, getContextScreenTitle, normalizeContextScreenId } from "./contextScreens.js";
 
@@ -15,11 +15,30 @@ const TABS = Object.freeze([
 
 const LOADOUT_TAB = Object.freeze({ id: "loadout", label: "Loadout" });
 
+const CONTEXT_TAB_IDS = Object.freeze(["loadout", "telum_loadout", "shop", "mission_board", "medbay"]);
+
 const LOADOUT_SLOTS = Object.freeze([
   { key: "armor", label: "Armor", type: "armor" },
   { key: "accessory", label: "Accessory", type: "accessory" },
   { key: "primaryWeapon", label: "Primary", type: "weapon" },
   { key: "secondaryWeapon", label: "Secondary", type: "weapon" }
+]);
+
+const TELUM_LOADOUT_SLOTS = Object.freeze([
+  { key: "plating", label: "Plating", type: "mechGear" },
+  { key: "system", label: "System", type: "mechGear" },
+  { key: "primaryWeapon", label: "Primary", type: "mechWeapon" },
+  { key: "secondaryWeapon", label: "Secondary", type: "mechWeapon" },
+  { key: "supportWeapon", label: "Support", type: "mechWeapon" }
+]);
+
+const SHOP_CATEGORIES = Object.freeze([
+  { key: "weapons", label: "Pilot Weapons", type: "weapon" },
+  { key: "armor", label: "Pilot Armor", type: "armor" },
+  { key: "accessories", label: "Accessories", type: "accessory" },
+  { key: "mechWeapons", label: "Telum Weapons", type: "mechWeapon" },
+  { key: "mechGear", label: "Telum Gear", type: "mechGear" },
+  { key: "items", label: "Items", type: "item" }
 ]);
 
 const SYSTEM_ACTIONS = Object.freeze([
@@ -52,6 +71,14 @@ export function normalizeGameMenuState(state) {
   state.ui.gameMenu.selectedLoadoutSlot = normalizeLoadoutSlot(state.ui.gameMenu.selectedLoadoutSlot);
   state.ui.gameMenu.selectedLoadoutOptionIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedLoadoutOptionIndex);
   state.ui.gameMenu.loadoutStage = normalizeLoadoutStage(state.ui.gameMenu.loadoutStage);
+  state.ui.gameMenu.selectedMechId = String(state.ui.gameMenu.selectedMechId ?? "").trim();
+  state.ui.gameMenu.selectedTelumLoadoutSlot = normalizeTelumLoadoutSlot(state.ui.gameMenu.selectedTelumLoadoutSlot);
+  state.ui.gameMenu.selectedTelumLoadoutOptionIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedTelumLoadoutOptionIndex);
+  state.ui.gameMenu.telumLoadoutStage = normalizeLoadoutStage(state.ui.gameMenu.telumLoadoutStage);
+  state.ui.gameMenu.selectedShopCategory = normalizeShopCategory(state.ui.gameMenu.selectedShopCategory);
+  state.ui.gameMenu.selectedShopItemIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedShopItemIndex);
+  state.ui.gameMenu.shopStage = normalizeShopStage(state.ui.gameMenu.shopStage);
+  state.ui.gameMenu.selectedMissionBoardIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedMissionBoardIndex);
   state.ui.gameMenu.selectedSystemIndex = normalizeSystemIndex(state.ui.gameMenu.selectedSystemIndex);
   state.ui.gameMenu.statusText = String(state.ui.gameMenu.statusText ?? "").trim();
 
@@ -91,9 +118,19 @@ export function openContextualScreen(state, screenId = "pilot_loadout", options 
     menu.loadoutStage = "pilots";
     menu.selectedLoadoutOptionIndex = 0;
   }
+  if (menu.activeTab === "telum_loadout") {
+    menu.telumLoadoutStage = "pilots";
+    menu.selectedTelumLoadoutOptionIndex = 0;
+  }
+  if (menu.activeTab === "shop") {
+    menu.shopStage = "categories";
+    menu.selectedShopItemIndex = 0;
+  }
   if (options?.statusText) menu.statusText = String(options.statusText ?? "").trim();
   const firstPilotId = getVisiblePilotEntries(state)[0]?.id ?? "";
   if (!menu.selectedPilotId && firstPilotId) menu.selectedPilotId = firstPilotId;
+  const firstMechId = getVisibleMechEntries(state)[0]?.id ?? "";
+  if (!menu.selectedMechId && firstMechId) menu.selectedMechId = firstMechId;
   return id;
 }
 
@@ -139,6 +176,18 @@ export function moveGameMenuSelection(state, delta) {
     return moveLoadoutSelection(state, delta);
   }
 
+  if (menu.activeTab === "telum_loadout") {
+    return moveTelumLoadoutSelection(state, delta);
+  }
+
+  if (menu.activeTab === "shop") {
+    return moveShopSelection(state, delta);
+  }
+
+  if (menu.activeTab === "mission_board") {
+    return moveMissionBoardSelection(state, delta);
+  }
+
   if (menu.activeTab !== "characters") return false;
 
   const step = Math.sign(delta || 0);
@@ -165,6 +214,14 @@ export function moveGameMenuStatSelection(state, delta) {
 
   if (menu.activeTab === "loadout") {
     return moveLoadoutStage(state, delta);
+  }
+
+  if (menu.activeTab === "telum_loadout") {
+    return moveTelumLoadoutStage(state, delta);
+  }
+
+  if (menu.activeTab === "shop") {
+    return moveShopStage(state, delta);
   }
 
   if (menu.activeTab !== "characters") return false;
@@ -198,6 +255,18 @@ export function confirmGameMenuSelection(state) {
 
   if (menu.activeTab === "loadout") {
     return confirmLoadoutSelection(state);
+  }
+
+  if (menu.activeTab === "telum_loadout") {
+    return confirmTelumLoadoutSelection(state);
+  }
+
+  if (menu.activeTab === "shop") {
+    return confirmShopSelection(state);
+  }
+
+  if (menu.activeTab === "mission_board") {
+    return confirmMissionBoardSelection(state);
   }
 
   if (menu.activeTab !== "characters") return { ok: false, reason: "no_confirm_action" };
@@ -235,6 +304,51 @@ export function selectGameMenuLoadoutOption(state, index) {
   const menu = normalizeGameMenuState(state);
   menu.selectedLoadoutOptionIndex = normalizeLoadoutOptionIndex(index);
   if (menu.activeTab === "loadout") menu.loadoutStage = "gear";
+  return true;
+}
+
+export function selectGameMenuMech(state, mechId) {
+  const id = String(mechId ?? "").trim();
+  if (!id) return false;
+  const exists = getVisibleMechEntries(state).some((entry) => entry.id === id);
+  if (!exists) return false;
+  const menu = normalizeGameMenuState(state);
+  menu.selectedMechId = id;
+  if (menu.activeTab === "telum_loadout") {
+    menu.telumLoadoutStage = "slots";
+    menu.selectedTelumLoadoutOptionIndex = 0;
+  }
+  return true;
+}
+
+export function selectGameMenuTelumLoadoutSlot(state, slotKey) {
+  const slot = normalizeTelumLoadoutSlot(slotKey);
+  const menu = normalizeGameMenuState(state);
+  menu.selectedTelumLoadoutSlot = slot;
+  menu.selectedTelumLoadoutOptionIndex = 0;
+  if (menu.activeTab === "telum_loadout") menu.telumLoadoutStage = "gear";
+  return true;
+}
+
+export function selectGameMenuTelumLoadoutOption(state, index) {
+  const menu = normalizeGameMenuState(state);
+  menu.selectedTelumLoadoutOptionIndex = normalizeLoadoutOptionIndex(index);
+  if (menu.activeTab === "telum_loadout") menu.telumLoadoutStage = "gear";
+  return true;
+}
+
+export function selectGameMenuShopCategory(state, categoryKey) {
+  const menu = normalizeGameMenuState(state);
+  menu.selectedShopCategory = normalizeShopCategory(categoryKey);
+  menu.selectedShopItemIndex = 0;
+  if (menu.activeTab === "shop") menu.shopStage = "items";
+  return true;
+}
+
+export function selectGameMenuMissionBoardIndex(state, index) {
+  const missions = getMissionBoardEntries(state);
+  const menu = normalizeGameMenuState(state);
+  menu.selectedMissionBoardIndex = clampIndex(index, missions.length);
   return true;
 }
 
@@ -293,6 +407,25 @@ export function setPilotLoadoutChoice(state, pilotId, slotKey, equipmentId) {
     ? "Loadout updated. Re-place that unit so deployment uses the new gear."
     : "Loadout updated.";
   return { ok: true, type: "loadout", pilotId: id, slotKey: slot, equipmentId: match.id ?? "", removedPlacedRuntime };
+}
+
+export function setMechLoadoutChoice(state, mechId, slotKey, equipmentId) {
+  if (!canEditLoadoutsInSafePrep(state)) return { ok: false, reason: "loadout_locked" };
+
+  const id = String(mechId ?? "").trim();
+  const slot = normalizeTelumLoadoutSlot(slotKey);
+  const options = getTelumLoadoutOptions(state, { id, loadout: getMechMenuLoadout(state, id) }, slot);
+  const cleanEquipmentId = String(equipmentId ?? "").trim();
+  const match = options.find((option) => String(option.id ?? "") === cleanEquipmentId && !option.disabled);
+  if (!match) return { ok: false, reason: "invalid_equipment" };
+
+  const result = setMechLoadoutSlot(state?.campaign, id, slot, match.id ?? "", getMechMenuLoadout(state, id));
+  if (!result?.ok) return result ?? { ok: false, reason: "mech_loadout_update_failed" };
+
+  const menu = normalizeGameMenuState(state);
+  menu.selectedTelumLoadoutSlot = slot;
+  menu.statusText = "Telum loadout updated.";
+  return { ok: true, type: "telum_loadout", mechId: id, slotKey: slot, equipmentId: match.id ?? "" };
 }
 
 
@@ -359,6 +492,9 @@ export function renderGameMenu(state) {
 
 function renderActiveTab(state, tabId) {
   if (tabId === "loadout") return renderLoadoutTab(state);
+  if (tabId === "telum_loadout") return renderTelumLoadoutTab(state);
+  if (tabId === "shop") return renderShopTab(state);
+  if (tabId === "mission_board") return renderMissionBoardTab(state);
   if (tabId === "inventory") return renderInventoryTab(state);
   if (tabId === "missions") return renderMissionsTab(state);
   if (tabId === "lore") return renderLoreTab();
@@ -519,6 +655,205 @@ function renderLoadoutGearRow(state, pilot, slot, option, editable, currentId, i
 }
 
 
+function renderTelumLoadoutTab(state) {
+  const mechs = getVisibleMechEntries(state);
+  const editable = canEditLoadoutsInSafePrep(state);
+
+  if (!mechs.length) {
+    return `<div class="game-menu-empty">No Telum frames available.</div>`;
+  }
+
+  const menu = normalizeGameMenuState(state);
+  const selected = mechs.find((mech) => mech.id === menu.selectedMechId) ?? mechs[0];
+  menu.selectedMechId = selected.id;
+
+  const selectedSlot = normalizeTelumLoadoutSlot(menu.selectedTelumLoadoutSlot);
+  menu.selectedTelumLoadoutSlot = selectedSlot;
+  const slotMeta = TELUM_LOADOUT_SLOTS.find((slot) => slot.key === selectedSlot) ?? TELUM_LOADOUT_SLOTS[0];
+  const options = getTelumLoadoutOptions(state, selected, selectedSlot);
+  menu.selectedTelumLoadoutOptionIndex = clampIndex(menu.selectedTelumLoadoutOptionIndex, options.length);
+  const stage = normalizeLoadoutStage(menu.telumLoadoutStage);
+  menu.telumLoadoutStage = stage;
+
+  return `
+    <div class="loadout-console ${editable ? "" : "is-locked"}">
+      <div class="loadout-console-head">
+        <strong>Mech Bay</strong>
+        <span>${editable ? "EDIT" : "LOCKED"}</span>
+      </div>
+      <div class="loadout-console-grid loadout-console-grid--telum">
+        <section class="loadout-column ${stage === "pilots" ? "is-focused" : ""}">
+          <div class="loadout-column-title">Telum</div>
+          <div class="loadout-row-list">
+            ${mechs.map((mech) => renderTelumFrameRow(mech, selected.id, stage === "pilots")).join("")}
+          </div>
+        </section>
+        <section class="loadout-column ${stage === "slots" ? "is-focused" : ""}">
+          <div class="loadout-column-title">Mounts</div>
+          <div class="loadout-row-list">
+            ${TELUM_LOADOUT_SLOTS.map((slot) => renderTelumSlotRow(state, selected, slot, selectedSlot === slot.key, stage === "slots")).join("")}
+          </div>
+        </section>
+        <section class="loadout-column ${stage === "gear" ? "is-focused" : ""}">
+          <div class="loadout-column-title">${escapeHtml(slotMeta.label)} Options</div>
+          <div class="loadout-row-list">
+            ${stage === "gear"
+              ? options.map((option, index) => renderTelumGearRow(state, selected, slotMeta, option, editable, selected.loadout?.[selectedSlot] ?? "", index, menu.selectedTelumLoadoutOptionIndex === index)).join("")
+              : `<div class="loadout-empty-row">Enter on a mount to choose equipment.</div>`}
+          </div>
+        </section>
+      </div>
+      ${menu.statusText ? `<div class="loadout-status">${escapeHtml(menu.statusText)}</div>` : ""}
+    </div>
+  `;
+}
+
+function renderTelumFrameRow(mech, selectedId, focusColumn) {
+  const selected = mech.id === selectedId;
+  return `
+    <button
+      type="button"
+      class="loadout-row ${selected ? "is-selected" : ""} ${focusColumn && selected ? "is-cursor" : ""}"
+      data-game-menu-action="select-mech"
+      data-mech-id="${escapeHtml(mech.id)}"
+    >
+      <span>${escapeHtml(mech.name)}</span>
+      <b>${escapeHtml(mech.class || mech.role || mech.id)}</b>
+    </button>
+  `;
+}
+
+function renderTelumSlotRow(state, mech, slot, selected, focusColumn) {
+  const currentId = mech?.loadout?.[slot.key] ?? "";
+  const entry = getContentEntry(state, currentId, slot.type);
+  const name = entry?.name ?? (currentId || "Empty");
+  const modifierText = renderModifierText(entry?.modifiers);
+
+  return `
+    <button
+      type="button"
+      class="loadout-row ${selected ? "is-selected" : ""} ${focusColumn && selected ? "is-cursor" : ""}"
+      data-game-menu-action="select-telum-loadout-slot"
+      data-loadout-slot="${escapeHtml(slot.key)}"
+    >
+      <span>${escapeHtml(slot.label)}</span>
+      <b>${escapeHtml(name)}${modifierText ? ` - ${escapeHtml(modifierText)}` : ""}</b>
+    </button>
+  `;
+}
+
+function renderTelumGearRow(state, mech, slot, option, editable, currentId, index, selected) {
+  const active = String(option.id ?? "") === String(currentId ?? "");
+  const disabled = !editable || Boolean(option.disabled);
+  const entry = option.id ? getContentEntry(state, option.id, slot.type) : null;
+  const label = entry?.name ?? (option.id ? option.id : "Empty");
+  const detail = option.id ? renderModifierText(entry?.modifiers) || renderWeaponDetail(entry) : "None";
+
+  return `
+    <button
+      type="button"
+      class="loadout-row ${selected ? "is-cursor" : ""} ${active ? "is-equipped" : ""}"
+      data-game-menu-action="set-telum-loadout-slot"
+      data-mech-id="${escapeHtml(mech.id)}"
+      data-loadout-slot="${escapeHtml(slot.key)}"
+      data-loadout-option-index="${escapeHtml(index)}"
+      data-equipment-id="${escapeHtml(option.id ?? "")}"
+      ${disabled ? "disabled" : ""}
+    >
+      <span>${active ? "* " : ""}${escapeHtml(label)}</span>
+      <b>${escapeHtml(detail)}</b>
+    </button>
+  `;
+}
+
+function renderShopTab(state) {
+  const menu = normalizeGameMenuState(state);
+  const category = SHOP_CATEGORIES.find((entry) => entry.key === menu.selectedShopCategory) ?? SHOP_CATEGORIES[0];
+  menu.selectedShopCategory = category.key;
+  const items = getShopItemsForCategory(state, category);
+  menu.selectedShopItemIndex = clampIndex(menu.selectedShopItemIndex, items.length);
+  const selectedItem = items[menu.selectedShopItemIndex] ?? null;
+
+  return `
+    <div class="terminal-screen terminal-screen--context-list">
+      <section class="terminal-panel ${menu.shopStage === "categories" ? "is-focused" : ""}">
+        <div class="terminal-panel-title">Shop</div>
+        <div class="terminal-row-list">
+          ${SHOP_CATEGORIES.map((entry) => `
+            <button type="button" class="terminal-row ${entry.key === category.key ? "is-selected" : ""} ${menu.shopStage === "categories" && entry.key === category.key ? "is-cursor" : ""}" data-game-menu-action="select-shop-category" data-shop-category="${escapeHtml(entry.key)}">
+              <span>${escapeHtml(entry.label)}</span><b>${escapeHtml(getShopItemsForCategory(state, entry).length)}</b>
+            </button>
+          `).join("")}
+        </div>
+      </section>
+      <section class="terminal-panel ${menu.shopStage === "items" ? "is-focused" : ""}">
+        <div class="terminal-panel-title">Stock / ${escapeHtml(category.label)}</div>
+        <div class="terminal-row-list">
+          ${items.length ? items.map((item, index) => renderShopItemRow(state, item, category.type, menu.shopStage === "items" && index === menu.selectedShopItemIndex)).join("") : `<div class="terminal-empty">No stock in this category.</div>`}
+        </div>
+      </section>
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Details</div>
+        ${selectedItem ? renderShopDetail(selectedItem) : `<div class="terminal-empty">Select stock.</div>`}
+        <div class="terminal-note">Shop economy is shell-only in this pass. Buy/sell hooks come after gear authority is stable.</div>
+      </section>
+    </div>
+  `;
+}
+
+function renderShopItemRow(state, item, type, selected) {
+  const detail = renderModifierText(item?.modifiers) || renderWeaponDetail(item) || item?.id || "";
+  return `<button type="button" class="terminal-row ${selected ? "is-cursor" : ""}" disabled><span>${escapeHtml(item?.name ?? item?.id ?? "Item")}</span><b>${escapeHtml(detail)}</b></button>`;
+}
+
+function renderShopDetail(item) {
+  const modifierText = renderModifierText(item?.modifiers);
+  const weaponText = renderWeaponDetail(item);
+  return `
+    <div class="terminal-record terminal-record--stack">
+      <strong>${escapeHtml(item?.name ?? item?.id ?? "Item")}</strong>
+      <span>${escapeHtml(item?.id ?? "")}</span>
+      ${modifierText ? `<span>${escapeHtml(modifierText)}</span>` : ""}
+      ${weaponText ? `<span>${escapeHtml(weaponText)}</span>` : ""}
+      ${item?.description || item?.notes ? `<span>${escapeHtml(item.description ?? item.notes)}</span>` : ""}
+    </div>
+  `;
+}
+
+function renderMissionBoardTab(state) {
+  const missions = getMissionBoardEntries(state);
+  const menu = normalizeGameMenuState(state);
+  menu.selectedMissionBoardIndex = clampIndex(menu.selectedMissionBoardIndex, missions.length);
+  const selected = missions[menu.selectedMissionBoardIndex] ?? null;
+
+  return `
+    <div class="terminal-screen terminal-screen--context-list">
+      <section class="terminal-panel terminal-panel--wide">
+        <div class="terminal-panel-title">Mission Board</div>
+        <div class="terminal-row-list">
+          ${missions.length ? missions.map((mission, index) => `
+            <button type="button" class="terminal-row ${index === menu.selectedMissionBoardIndex ? "is-cursor" : ""}" data-game-menu-action="select-mission-board" data-mission-index="${escapeHtml(index)}">
+              <span>${escapeHtml(mission.name)}</span><b>${escapeHtml(mission.id)}</b>
+            </button>
+          `).join("") : `<div class="terminal-empty">No unlocked missions.</div>`}
+        </div>
+      </section>
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Selected</div>
+        ${selected ? `
+          <div class="terminal-record terminal-record--stack">
+            <strong>${escapeHtml(selected.name)}</strong>
+            <span>${escapeHtml(selected.id)}</span>
+            <span>${selected.completed ? "Completed" : "Available"}</span>
+          </div>
+          <div class="terminal-note">Enter opens the mission select/deployment screen.</div>
+        ` : `<div class="terminal-empty">Select mission.</div>`}
+      </section>
+    </div>
+  `;
+}
+
+
 function renderPilotLoadoutPanel(state, pilot) {
   const loadout = pilot?.loadout ?? {};
   const rows = [
@@ -608,12 +943,22 @@ function getContentEntry(state, id, type) {
   const content = state?.content ?? {};
   const catalogs = type === "weapon"
     ? [content.weapons]
-    : type === "item"
-      ? [content.pilotItems, content.mechItems]
-      : [content.pilotGear];
+    : type === "mechWeapon"
+      ? [content.weapons]
+      : type === "mechGear"
+        ? [content.mechGear]
+        : type === "item"
+          ? [content.pilotItems, content.mechItems]
+          : [content.pilotGear];
   return catalogs
     .flatMap((catalog) => Array.isArray(catalog) ? catalog : [])
-    .find((entry) => String(entry?.id ?? "") === clean && (type === "armor" || type === "accessory" ? entry?.slot === type : true)) ?? null;
+    .find((entry) => {
+      if (String(entry?.id ?? "") !== clean) return false;
+      if (type === "weapon") return String(entry?.scale ?? "pilot") === "pilot";
+      if (type === "mechWeapon") return String(entry?.scale ?? "mech") === "mech";
+      if (type === "armor" || type === "accessory") return entry?.slot === type;
+      return true;
+    }) ?? null;
 }
 
 function renderModifierText(modifiers) {
@@ -699,6 +1044,8 @@ function renderInventoryTab(state) {
   const weapons = Array.isArray(inventory.weapons) ? inventory.weapons : [];
   const armor = Array.isArray(inventory.armor) ? inventory.armor : [];
   const accessories = Array.isArray(inventory.accessories) ? inventory.accessories : [];
+  const mechWeapons = Array.isArray(inventory.mechWeapons) ? inventory.mechWeapons : [];
+  const mechGear = Array.isArray(inventory.mechGear) ? inventory.mechGear : [];
 
   return `
     <div class="terminal-screen terminal-screen--inventory">
@@ -717,6 +1064,14 @@ function renderInventoryTab(state) {
       <section class="terminal-panel">
         <div class="terminal-panel-title">Accessories</div>
         ${renderCatalogRows(state, accessories, "accessory", "No accessories.")}
+      </section>
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Telum Weapons</div>
+        ${renderCatalogRows(state, mechWeapons, "mechWeapon", "No Telum weapons.")}
+      </section>
+      <section class="terminal-panel">
+        <div class="terminal-panel-title">Telum Gear</div>
+        ${renderCatalogRows(state, mechGear, "mechGear", "No Telum gear.")}
       </section>
       <section class="terminal-panel terminal-panel--wide">
         <div class="terminal-panel-title">Items</div>
@@ -869,6 +1224,33 @@ function getActivePlayerControlledPilotIds(state) {
     .filter(Boolean));
 }
 
+function getVisibleMechEntries(state) {
+  const definitions = Array.isArray(state?.content?.mechs) ? state.content.mechs : [];
+  const campaignMechs = state?.campaign?.mechs && typeof state.campaign.mechs === "object" ? state.campaign.mechs : {};
+  const ids = new Set([
+    ...definitions.map((mech) => String(mech?.id ?? "").trim()).filter(Boolean),
+    ...Object.keys(campaignMechs).map((id) => String(id ?? "").trim()).filter(Boolean)
+  ]);
+
+  return [...ids].map((mechId) => {
+    const definition = definitions.find((mech) => mech?.id === mechId) ?? { id: mechId, name: mechId };
+    const progress = campaignMechs[mechId] ?? { unlocked: true };
+    return {
+      id: mechId,
+      name: definition.name ?? mechId,
+      class: definition.class ?? "",
+      role: definition.role ?? "",
+      unlocked: progress?.unlocked !== false,
+      loadout: normalizeMechLoadout(progress?.loadout, {
+        ...(definition.loadout && typeof definition.loadout === "object" ? definition.loadout : {}),
+        weapons: definition.loadout?.weapons ?? definition.weapons ?? []
+      })
+    };
+  })
+    .filter((mech) => mech.unlocked !== false)
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+}
+
 function getMissionDisplayName(state, missionId) {
   const id = String(missionId ?? "").trim();
   const missions = Array.isArray(state?.content?.missionCatalog?.missions) ? state.content.missionCatalog.missions : [];
@@ -971,6 +1353,85 @@ function buildOwnedOptions(state, ids, type, currentId = "") {
     .map((id) => ({ id }));
 }
 
+
+function getMechMenuLoadout(state, mechId) {
+  const definition = (Array.isArray(state?.content?.mechs) ? state.content.mechs : []).find((mech) => mech?.id === mechId) ?? {};
+  const progress = state?.campaign?.mechs?.[mechId] ?? {};
+  const source = progress?.loadout && typeof progress.loadout === "object" ? progress.loadout : {};
+  const fallback = definition.loadout && typeof definition.loadout === "object" ? definition.loadout : {};
+  const sourceWeapons = Array.isArray(source.weapons) ? source.weapons : [];
+  const fallbackWeapons = Array.isArray(fallback.weapons) ? fallback.weapons : (Array.isArray(definition.weapons) ? definition.weapons : []);
+  const primaryWeapon = String(source.primaryWeapon ?? sourceWeapons[0] ?? fallback.primaryWeapon ?? fallbackWeapons[0] ?? "").trim();
+  const secondaryWeapon = String(source.secondaryWeapon ?? sourceWeapons[1] ?? fallback.secondaryWeapon ?? fallbackWeapons[1] ?? "").trim();
+  const supportWeapon = String(source.supportWeapon ?? sourceWeapons[2] ?? fallback.supportWeapon ?? fallbackWeapons[2] ?? "").trim();
+  return {
+    plating: String(source.plating ?? source.armor ?? fallback.plating ?? fallback.armor ?? "").trim(),
+    system: String(source.system ?? fallback.system ?? "").trim(),
+    primaryWeapon,
+    secondaryWeapon,
+    supportWeapon,
+    weapons: [primaryWeapon, secondaryWeapon, supportWeapon].filter(Boolean),
+    abilities: Array.isArray(source.abilities) && source.abilities.length ? [...source.abilities] : (Array.isArray(fallback.abilities) ? [...fallback.abilities] : []),
+    items: Array.isArray(source.items) && source.items.length ? [...source.items] : (Array.isArray(fallback.items) ? [...fallback.items] : [])
+  };
+}
+
+function getTelumLoadoutOptions(state, mech, slotKey) {
+  const slot = normalizeTelumLoadoutSlot(slotKey);
+  const inventory = state?.campaign?.inventory ?? {};
+  const loadout = mech?.loadout ?? getMechMenuLoadout(state, mech?.id);
+  const currentId = String(loadout?.[slot] ?? "").trim();
+
+  if (slot === "plating" || slot === "system") {
+    const base = buildOwnedOptions(state, inventory.mechGear, "mechGear", currentId)
+      .filter((option) => {
+        const entry = getContentEntry(state, option.id, "mechGear");
+        return entry?.slot === slot;
+      });
+    return slot === "system" ? [{ id: "" }, ...base] : base;
+  }
+
+  if (slot === "primaryWeapon" || slot === "secondaryWeapon" || slot === "supportWeapon") {
+    const otherIds = new Set([loadout.primaryWeapon, loadout.secondaryWeapon, loadout.supportWeapon]
+      .map((id) => String(id ?? "").trim())
+      .filter(Boolean));
+    otherIds.delete(currentId);
+    return buildOwnedOptions(state, inventory.mechWeapons, "mechWeapon", currentId).map((option) => ({
+      ...option,
+      disabled: Boolean(option.id && otherIds.has(option.id))
+    }));
+  }
+
+  return [];
+}
+
+function getShopItemsForCategory(state, category) {
+  const inventory = state?.campaign?.inventory ?? {};
+  const ids = Array.isArray(inventory?.[category.key]) ? inventory[category.key] : [];
+  return ids.map((id) => getContentEntry(state, id, category.type)).filter(Boolean);
+}
+
+function getMissionBoardEntries(state) {
+  const campaign = state?.campaign ?? {};
+  const unlocked = Array.isArray(campaign.unlockedMissions) ? campaign.unlockedMissions : [];
+  const completed = new Set(Array.isArray(campaign.completedMissions) ? campaign.completedMissions : []);
+  return unlocked.map((missionId) => ({
+    id: missionId,
+    name: getMissionDisplayName(state, missionId),
+    completed: completed.has(missionId)
+  }));
+}
+
+function renderWeaponDetail(entry) {
+  if (!entry) return "";
+  const range = entry.range && typeof entry.range === "object"
+    ? `${entry.range.min ?? 0}-${entry.range.max ?? 0}`
+    : "";
+  const damage = Number.isFinite(Number(entry.damage)) ? `DMG ${entry.damage}` : "";
+  const parts = [damage, range ? `RNG ${range}` : ""].filter(Boolean);
+  return parts.join(" / ");
+}
+
 function getEquipmentPlainName(state, id, type) {
   const entry = getContentEntry(state, id, type);
   return entry?.name ?? id;
@@ -979,6 +1440,21 @@ function getEquipmentPlainName(state, id, type) {
 function normalizeLoadoutSlot(slotKey) {
   const key = String(slotKey ?? "armor").trim();
   return LOADOUT_SLOTS.some((slot) => slot.key === key) ? key : LOADOUT_SLOTS[0].key;
+}
+
+function normalizeTelumLoadoutSlot(slotKey) {
+  const key = String(slotKey ?? "plating").trim();
+  return TELUM_LOADOUT_SLOTS.some((slot) => slot.key === key) ? key : TELUM_LOADOUT_SLOTS[0].key;
+}
+
+function normalizeShopCategory(categoryKey) {
+  const key = String(categoryKey ?? "weapons").trim();
+  return SHOP_CATEGORIES.some((category) => category.key === key) ? key : SHOP_CATEGORIES[0].key;
+}
+
+function normalizeShopStage(stage) {
+  const value = String(stage ?? "categories").trim();
+  return ["categories", "items"].includes(value) ? value : "categories";
 }
 
 
@@ -993,6 +1469,7 @@ function getVisibleTabs(menu = {}) {
 
 function normalizeTab(tabId, menu = {}) {
   const id = String(tabId ?? "characters").trim().toLowerCase();
+  if (menu?.contextScreenId && CONTEXT_TAB_IDS.includes(id)) return id;
   if (id === "loadout" && menu?.loadoutAccess) return "loadout";
   return TABS.some((tab) => tab.id === id) ? id : "characters";
 }
@@ -1080,6 +1557,135 @@ function confirmLoadoutSelection(state) {
   const option = options[index];
   if (!option || option.disabled) return { ok: false, reason: "invalid_equipment" };
   return setPilotLoadoutChoice(state, pilotId, slot, option.id ?? "");
+}
+
+
+function moveTelumLoadoutSelection(state, delta) {
+  const menu = normalizeGameMenuState(state);
+  const step = Math.sign(delta || 0);
+  if (!step) return false;
+
+  if (menu.telumLoadoutStage === "gear") {
+    const selected = getVisibleMechEntries(state).find((mech) => mech.id === menu.selectedMechId);
+    const options = getTelumLoadoutOptions(state, selected, menu.selectedTelumLoadoutSlot);
+    if (!options.length) return false;
+    menu.selectedTelumLoadoutOptionIndex = (clampIndex(menu.selectedTelumLoadoutOptionIndex, options.length) + step + options.length) % options.length;
+    return true;
+  }
+
+  if (menu.telumLoadoutStage === "slots") {
+    const currentIndex = Math.max(0, TELUM_LOADOUT_SLOTS.findIndex((slot) => slot.key === menu.selectedTelumLoadoutSlot));
+    const nextIndex = (currentIndex + step + TELUM_LOADOUT_SLOTS.length) % TELUM_LOADOUT_SLOTS.length;
+    menu.selectedTelumLoadoutSlot = TELUM_LOADOUT_SLOTS[nextIndex].key;
+    menu.selectedTelumLoadoutOptionIndex = 0;
+    return true;
+  }
+
+  const mechs = getVisibleMechEntries(state);
+  if (!mechs.length) return false;
+  const currentIndex = Math.max(0, mechs.findIndex((mech) => mech.id === menu.selectedMechId));
+  const nextIndex = (currentIndex + step + mechs.length) % mechs.length;
+  menu.selectedMechId = mechs[nextIndex].id;
+  menu.selectedTelumLoadoutOptionIndex = 0;
+  return true;
+}
+
+function moveTelumLoadoutStage(state, delta) {
+  const menu = normalizeGameMenuState(state);
+  const step = Math.sign(delta || 0);
+  if (!step) return false;
+  const order = ["pilots", "slots", "gear"];
+  const currentIndex = Math.max(0, order.indexOf(menu.telumLoadoutStage));
+  const nextIndex = Math.max(0, Math.min(order.length - 1, currentIndex + step));
+  menu.telumLoadoutStage = order[nextIndex];
+  if (menu.telumLoadoutStage === "gear") {
+    const selected = getVisibleMechEntries(state).find((mech) => mech.id === menu.selectedMechId);
+    menu.selectedTelumLoadoutOptionIndex = clampIndex(menu.selectedTelumLoadoutOptionIndex, getTelumLoadoutOptions(state, selected, menu.selectedTelumLoadoutSlot).length);
+  }
+  return true;
+}
+
+function confirmTelumLoadoutSelection(state) {
+  const menu = normalizeGameMenuState(state);
+  if (menu.telumLoadoutStage === "pilots") {
+    menu.telumLoadoutStage = "slots";
+    return { ok: false, reason: "open_telum_loadout_slots" };
+  }
+  if (menu.telumLoadoutStage === "slots") {
+    menu.telumLoadoutStage = "gear";
+    menu.selectedTelumLoadoutOptionIndex = 0;
+    return { ok: false, reason: "open_telum_loadout_gear" };
+  }
+
+  const mechId = menu.selectedMechId;
+  const slot = menu.selectedTelumLoadoutSlot;
+  const mech = getVisibleMechEntries(state).find((entry) => entry.id === mechId);
+  const options = getTelumLoadoutOptions(state, mech, slot);
+  const index = clampIndex(menu.selectedTelumLoadoutOptionIndex, options.length);
+  const option = options[index];
+  if (!option || option.disabled) return { ok: false, reason: "invalid_equipment" };
+  return setMechLoadoutChoice(state, mechId, slot, option.id ?? "");
+}
+
+function moveShopSelection(state, delta) {
+  const menu = normalizeGameMenuState(state);
+  const step = Math.sign(delta || 0);
+  if (!step) return false;
+  if (menu.shopStage === "items") {
+    const category = SHOP_CATEGORIES.find((entry) => entry.key === menu.selectedShopCategory) ?? SHOP_CATEGORIES[0];
+    const items = getShopItemsForCategory(state, category);
+    if (!items.length) return false;
+    menu.selectedShopItemIndex = (clampIndex(menu.selectedShopItemIndex, items.length) + step + items.length) % items.length;
+    return true;
+  }
+  const currentIndex = Math.max(0, SHOP_CATEGORIES.findIndex((entry) => entry.key === menu.selectedShopCategory));
+  const nextIndex = (currentIndex + step + SHOP_CATEGORIES.length) % SHOP_CATEGORIES.length;
+  menu.selectedShopCategory = SHOP_CATEGORIES[nextIndex].key;
+  menu.selectedShopItemIndex = 0;
+  return true;
+}
+
+function moveShopStage(state, delta) {
+  const menu = normalizeGameMenuState(state);
+  const step = Math.sign(delta || 0);
+  if (!step) return false;
+  if (step < 0 && menu.shopStage === "items") {
+    menu.shopStage = "categories";
+    return true;
+  }
+  if (step > 0 && menu.shopStage === "categories") {
+    menu.shopStage = "items";
+    return true;
+  }
+  return false;
+}
+
+function confirmShopSelection(state) {
+  const menu = normalizeGameMenuState(state);
+  if (menu.shopStage === "categories") {
+    menu.shopStage = "items";
+    menu.selectedShopItemIndex = 0;
+    return { ok: false, reason: "open_shop_items" };
+  }
+  menu.statusText = "Shop buy/sell is not active in this build.";
+  return { ok: false, reason: "shop_shell_only" };
+}
+
+function moveMissionBoardSelection(state, delta) {
+  const menu = normalizeGameMenuState(state);
+  const step = Math.sign(delta || 0);
+  const missions = getMissionBoardEntries(state);
+  if (!step || !missions.length) return false;
+  menu.selectedMissionBoardIndex = (clampIndex(menu.selectedMissionBoardIndex, missions.length) + step + missions.length) % missions.length;
+  return true;
+}
+
+function confirmMissionBoardSelection(state) {
+  const missions = getMissionBoardEntries(state);
+  const menu = normalizeGameMenuState(state);
+  if (!missions.length) return { ok: false, reason: "no_missions" };
+  menu.selectedMissionBoardIndex = clampIndex(menu.selectedMissionBoardIndex, missions.length);
+  return { ok: true, type: "missionBoard", action: "missionSelect", missionId: missions[menu.selectedMissionBoardIndex]?.id ?? "" };
 }
 
 function normalizeSystemIndex(value) {

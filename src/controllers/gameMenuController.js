@@ -8,9 +8,15 @@ import {
   moveGameMenuTab,
   selectGameMenuLoadoutOption,
   selectGameMenuLoadoutSlot,
+  selectGameMenuMech,
+  selectGameMenuMissionBoardIndex,
   selectGameMenuPilot,
+  selectGameMenuShopCategory,
   selectGameMenuSystemAction,
+  selectGameMenuTelumLoadoutOption,
+  selectGameMenuTelumLoadoutSlot,
   setGameMenuStatus,
+  setMechLoadoutChoice,
   setPilotLoadoutChoice,
   setGameMenuTab,
   spendPilotStatPoint,
@@ -71,6 +77,14 @@ export function createGameMenuController({
     if (result?.type === "system") {
       handleSystemAction(result.action);
       return;
+    }
+
+    if (result?.type === "missionBoard") {
+      closeGameMenu(state);
+      if (typeof openMissionSelect === "function") {
+        openMissionSelect(result.missionId);
+        return;
+      }
     }
 
     if (result?.ok) save();
@@ -140,6 +154,38 @@ export function createGameMenuController({
       selectGameMenuLoadoutOption(state, button.dataset.loadoutOptionIndex);
       const result = setPilotLoadoutChoice(state, button.dataset.pilotId, button.dataset.loadoutSlot, button.dataset.equipmentId);
       if (result?.ok) save();
+      render?.();
+      return;
+    }
+
+    if (action === "select-mech") {
+      selectGameMenuMech(state, button.dataset.mechId);
+      render?.();
+      return;
+    }
+
+    if (action === "select-telum-loadout-slot") {
+      selectGameMenuTelumLoadoutSlot(state, button.dataset.loadoutSlot);
+      render?.();
+      return;
+    }
+
+    if (action === "set-telum-loadout-slot") {
+      selectGameMenuTelumLoadoutOption(state, button.dataset.loadoutOptionIndex);
+      const result = setMechLoadoutChoice(state, button.dataset.mechId, button.dataset.loadoutSlot, button.dataset.equipmentId);
+      if (result?.ok) save();
+      render?.();
+      return;
+    }
+
+    if (action === "select-shop-category") {
+      selectGameMenuShopCategory(state, button.dataset.shopCategory);
+      render?.();
+      return;
+    }
+
+    if (action === "select-mission-board") {
+      selectGameMenuMissionBoardIndex(state, button.dataset.missionIndex);
       render?.();
       return;
     }

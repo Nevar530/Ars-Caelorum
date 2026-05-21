@@ -3,7 +3,7 @@
 // Persistent campaign authority V2.
 // Campaign state is progression/save truth, not runtime map truth.
 
-export const CAMPAIGN_VERSION = 4;
+export const CAMPAIGN_VERSION = 5;
 export const PILOT_LEVEL_CAP = 20;
 export const PILOT_STAT_CAPS = Object.freeze({
   targeting: 5,
@@ -11,6 +11,7 @@ export const PILOT_STAT_CAPS = Object.freeze({
 });
 export const PILOT_STAT_KEYS = Object.freeze(["core", "abilityPoints", "targeting", "reaction"]);
 export const STARTING_RECRUIT_IDS = Object.freeze(["pilot_skye"]);
+export const STARTING_MECH_IDS = Object.freeze(["mech_a", "mech_b", "mech_c", "mech_d"]);
 
 export function createInitialCampaignState({ defaultMissionId = "000_game_state_tester_mission" } = {}) {
   const missionId = cleanId(defaultMissionId) || "000_game_state_tester_mission";
@@ -21,6 +22,7 @@ export function createInitialCampaignState({ defaultMissionId = "000_game_state_
     completedMissions: [],
     unlockedMissions: [missionId],
     pilots: buildStartingPilots(),
+    mechs: buildStartingMechs(),
     difficulty: "normal",
     inventory: buildStartingInventory(),
     flags: {},
@@ -45,6 +47,7 @@ export function normalizeCampaignState(rawState, options = {}) {
     completedMissions,
     unlockedMissions: unlockedMissions.length ? unlockedMissions : [currentMissionId],
     pilots: normalizePilots({ ...buildStartingPilots(), ...(source.pilots && typeof source.pilots === "object" ? source.pilots : {}) }),
+    mechs: normalizeMechs({ ...buildStartingMechs(), ...(source.mechs && typeof source.mechs === "object" ? source.mechs : {}) }),
     difficulty: normalizeDifficulty(source.difficulty),
     inventory: normalizeInventory(source.inventory, fallback.inventory),
     flags: normalizeRecord(source.flags),
@@ -129,6 +132,23 @@ export function setPilotAvailability(campaignState, pilotId, available = true, d
 
 
 
+export function ensureMechProgress(campaignState, mechId, defaults = {}) {
+  const id = cleanId(mechId);
+  if (!campaignState || !id) return null;
+  if (!campaignState.mechs || typeof campaignState.mechs !== "object" || Array.isArray(campaignState.mechs)) {
+    campaignState.mechs = {};
+  }
+
+  const existing = campaignState.mechs[id];
+  campaignState.mechs[id] = normalizeMechProgress({
+    ...defaults,
+    ...(existing && typeof existing === "object" ? existing : {}),
+    unlocked: existing?.unlocked ?? defaults.unlocked ?? true
+  });
+
+  return campaignState.mechs[id];
+}
+
 export function setPilotLoadoutSlot(campaignState, pilotId, slotKey, equipmentId = "", fallbackLoadout = {}) {
   const id = cleanId(pilotId);
   const slot = cleanId(slotKey);
@@ -155,6 +175,36 @@ export function setPilotLoadoutSlot(campaignState, pilotId, slotKey, equipmentId
 
   progress.loadout = normalizePilotLoadout(current);
   return { ok: true, pilotId: id, slotKey: slot, equipmentId: progress.loadout[slot] ?? "" };
+}
+
+export function setMechLoadoutSlot(campaignState, mechId, slotKey, equipmentId = "", fallbackLoadout = {}) {
+  const id = cleanId(mechId);
+  const slot = cleanId(slotKey);
+  if (!campaignState || !id || !["plating", "system", "primaryWeapon", "secondaryWeapon", "supportWeapon"].includes(slot)) {
+    return { ok: false, reason: "invalid_mech_loadout_slot" };
+  }
+
+  const progress = ensureMechProgress(campaignState, id, { unlocked: true });
+  if (!progress) return { ok: false, reason: "mech_not_found" };
+
+  const current = normalizeMechLoadout({
+    ...(fallbackLoadout && typeof fallbackLoadout === "object" ? fallbackLoadout : {}),
+    ...(progress.loadout && typeof progress.loadout === "object" ? progress.loadout : {})
+  });
+  current[slot] = cleanId(equipmentId) || "";
+
+  if (["primaryWeapon", "secondaryWeapon", "supportWeapon"].includes(slot)) {
+    const seen = new Set();
+    for (const key of ["primaryWeapon", "secondaryWeapon", "supportWeapon"]) {
+      const value = cleanId(current[key]);
+      if (!value) continue;
+      if (seen.has(value) && key !== slot) current[key] = "";
+      seen.add(value);
+    }
+  }
+
+  progress.loadout = normalizeMechLoadout(current);
+  return { ok: true, mechId: id, slotKey: slot, equipmentId: progress.loadout[slot] ?? "" };
 }
 
 export function addPilotLevels(campaignState, pilotId, levels = 1) {
@@ -211,12 +261,18 @@ function buildStartingPilots() {
   return Object.fromEntries(STARTING_RECRUIT_IDS.map((pilotId) => [pilotId, normalizePilotProgress({ recruited: true })]));
 }
 
+function buildStartingMechs() {
+  return Object.fromEntries(STARTING_MECH_IDS.map((mechId) => [mechId, normalizeMechProgress({ unlocked: true })]));
+}
+
 function buildStartingInventory() {
   return {
     currency: 0,
     weapons: ["pilot_pistol_01", "pilot_rifle_01", "pilot_smg_01"],
     armor: ["pilot_armor_light_01", "pilot_armor_standard_01"],
     accessories: ["pilot_accessory_servo_assist_01", "pilot_accessory_targeting_stabilizer_01", "pilot_accessory_reaction_booster_01"],
+    mechWeapons: ["machinegun_01", "melee_01", "srm_01", "lrm_01", "cannon_01"],
+    mechGear: ["telum_plating_light_01", "telum_plating_standard_01", "telum_plating_heavy_01", "telum_system_mobility_01", "telum_system_stabilizer_01"],
     items: []
   };
 }
@@ -234,6 +290,8 @@ function normalizeInventory(inventory, fallbackInventory = {}) {
     weapons: uniqueIds([...(fallback.weapons ?? []), ...(source.weapons ?? [])]),
     armor: uniqueIds([...(fallback.armor ?? []), ...(source.armor ?? [])]),
     accessories: uniqueIds([...(fallback.accessories ?? []), ...(source.accessories ?? [])]),
+    mechWeapons: uniqueIds([...(fallback.mechWeapons ?? []), ...(source.mechWeapons ?? [])]),
+    mechGear: uniqueIds([...(fallback.mechGear ?? []), ...(source.mechGear ?? [])]),
     items: uniqueIds([...(fallback.items ?? []), ...(source.items ?? [])])
   };
 }
@@ -244,6 +302,15 @@ function normalizePilots(pilots) {
     Object.entries(source)
       .map(([pilotId, progress]) => [cleanId(pilotId), normalizePilotProgress(progress)])
       .filter(([pilotId]) => Boolean(pilotId))
+  );
+}
+
+function normalizeMechs(mechs) {
+  const source = mechs && typeof mechs === "object" && !Array.isArray(mechs) ? mechs : {};
+  return Object.fromEntries(
+    Object.entries(source)
+      .map(([mechId, progress]) => [cleanId(mechId), normalizeMechProgress(progress)])
+      .filter(([mechId]) => Boolean(mechId))
   );
 }
 
@@ -261,6 +328,14 @@ export function normalizePilotProgress(progress) {
   };
 }
 
+export function normalizeMechProgress(progress) {
+  const source = progress && typeof progress === "object" ? progress : {};
+  return {
+    loadout: normalizeMechLoadout(source.loadout),
+    unlocked: source.unlocked !== false
+  };
+}
+
 
 function normalizePilotLoadout(loadout) {
   const source = loadout && typeof loadout === "object" ? loadout : {};
@@ -274,6 +349,26 @@ function normalizePilotLoadout(loadout) {
     accessory: cleanId(source.accessory) || "",
     primaryWeapon,
     secondaryWeapon,
+    weapons: normalizedWeapons,
+    abilities: uniqueIds(source.abilities),
+    items: uniqueIds(source.items)
+  };
+}
+
+function normalizeMechLoadout(loadout) {
+  const source = loadout && typeof loadout === "object" ? loadout : {};
+  const weapons = uniqueIds(source.weapons);
+  const primaryWeapon = cleanId(source.primaryWeapon) || weapons[0] || "";
+  const secondaryWeapon = cleanId(source.secondaryWeapon) || weapons[1] || "";
+  const supportWeapon = cleanId(source.supportWeapon) || weapons[2] || "";
+  const normalizedWeapons = uniqueIds([primaryWeapon, secondaryWeapon, supportWeapon]);
+
+  return {
+    plating: cleanId(source.plating) || cleanId(source.armor) || "",
+    system: cleanId(source.system) || "",
+    primaryWeapon,
+    secondaryWeapon,
+    supportWeapon,
     weapons: normalizedWeapons,
     abilities: uniqueIds(source.abilities),
     items: uniqueIds(source.items)

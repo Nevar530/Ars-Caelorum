@@ -91,6 +91,27 @@
       "team": "player",
       "label": "Open the loadout locker",
       "briefingText": "Use the ship locker or talk to Pax to change gear."
+    },
+    {
+      "id": "open_telum_terminal",
+      "type": "trigger_complete",
+      "label": "Check the Telum bay terminal",
+      "triggerId": "open_mech_bay_telum_loadout",
+      "optional": true
+    },
+    {
+      "id": "open_shop_terminal",
+      "type": "trigger_complete",
+      "label": "Check Pax's shop terminal",
+      "triggerId": "open_shop_terminal",
+      "optional": true
+    },
+    {
+      "id": "open_mission_board",
+      "type": "trigger_complete",
+      "label": "Check the mission board",
+      "triggerId": "open_mission_board",
+      "optional": true
     }
   ],
   "triggers": [
@@ -113,7 +134,8 @@
       "dialogueKey": "theo_mission_check",
       "completeObjectiveId": "talk_to_theo",
       "targetUnitId": "hub-theo",
-      "interactionRange": 2
+      "interactionRange": 2,
+      "interactLabel": "TALK"
     },
     {
       "id": "open_locker_loadout",
@@ -135,7 +157,7 @@
     },
     {
       "id": "talk_to_pax_loadout",
-      "name": "Talk to Pax About Gear",
+      "name": "Talk to Pax About Supplies",
       "type": "onUnitInteract",
       "team": "player",
       "once": false,
@@ -143,8 +165,59 @@
       "completeObjectiveId": "open_loadout_locker",
       "targetUnitId": "hub-pax",
       "interactionRange": 2,
-      "screenId": "pilot_loadout",
-      "interactLabel": "GEAR"
+      "screenId": "shop",
+      "interactLabel": "SHOP"
+    },
+    {
+      "id": "open_mech_bay_telum_loadout",
+      "name": "Open Mech Bay Terminal",
+      "type": "onInteract",
+      "team": "player",
+      "once": false,
+      "preset": "open_context_screen",
+      "tiles": [
+        {
+          "x": 3,
+          "y": 2
+        }
+      ],
+      "screenId": "telum_loadout",
+      "interactionRange": 1,
+      "interactLabel": "MECH BAY"
+    },
+    {
+      "id": "open_shop_terminal",
+      "name": "Open Shop Terminal",
+      "type": "onInteract",
+      "team": "player",
+      "once": false,
+      "preset": "open_context_screen",
+      "tiles": [
+        {
+          "x": 2,
+          "y": 5
+        }
+      ],
+      "screenId": "shop",
+      "interactionRange": 1,
+      "interactLabel": "SHOP"
+    },
+    {
+      "id": "open_mission_board",
+      "name": "Open Mission Board",
+      "type": "onInteract",
+      "team": "player",
+      "once": false,
+      "preset": "open_context_screen",
+      "tiles": [
+        {
+          "x": 6,
+          "y": 3
+        }
+      ],
+      "screenId": "mission_board",
+      "interactionRange": 1,
+      "interactLabel": "BOARD"
     }
   ],
   "logic": [],
@@ -153,7 +226,7 @@
     {
       "id": "bridge_console",
       "name": "Bridge Terminal",
-      "spriteId": "",
+      "spriteId": "art/props/prop_terminal_001.png",
       "x": 5,
       "y": 3,
       "footprintW": 2,
@@ -170,19 +243,70 @@
     {
       "id": "equipment_locker",
       "name": "Equipment Locker",
-      "spriteId": "",
+      "spriteId": "art/props/prop_terminal_001.png",
       "x": 1,
       "y": 2,
       "footprintW": 1,
       "footprintH": 1,
       "height": 0,
-      "visualHeight": 0,
+      "visualHeight": 28,
       "blocksMovement": false,
       "scale": 1,
       "mirrorX": false,
       "offsetX": 0,
       "offsetY": 0,
       "layer": "ground"
+    },
+    {
+      "spriteId": "art/props/prop_terminal_001.png",
+      "footprintW": 1,
+      "footprintH": 1,
+      "height": 0,
+      "visualHeight": 28,
+      "blocksMovement": false,
+      "scale": 1,
+      "mirrorX": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "layer": "ground",
+      "id": "mech_bay_terminal",
+      "name": "Mech Bay Terminal",
+      "x": 3,
+      "y": 2
+    },
+    {
+      "spriteId": "art/props/prop_terminal_001.png",
+      "footprintW": 1,
+      "footprintH": 1,
+      "height": 0,
+      "visualHeight": 28,
+      "blocksMovement": false,
+      "scale": 1,
+      "mirrorX": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "layer": "ground",
+      "id": "shop_terminal",
+      "name": "Shop Terminal",
+      "x": 2,
+      "y": 5
+    },
+    {
+      "spriteId": "art/props/prop_terminal_001.png",
+      "footprintW": 1,
+      "footprintH": 1,
+      "height": 0,
+      "visualHeight": 28,
+      "blocksMovement": false,
+      "scale": 1,
+      "mirrorX": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "layer": "ground",
+      "id": "mission_board_terminal",
+      "name": "Mission Board",
+      "x": 6,
+      "y": 3
     }
   ],
   "defaults": {

@@ -1,9 +1,10 @@
 // src/content/unitLoadout.js
 
 export const PILOT_GEAR_SLOTS = Object.freeze(["armor", "accessory", "primaryWeapon", "secondaryWeapon"]);
+export const MECH_GEAR_SLOTS = Object.freeze(["plating", "system", "primaryWeapon", "secondaryWeapon", "supportWeapon"]);
 
 const DEFAULT_PILOT_SLOTS = Object.freeze({ armor: 1, accessory: 1, primaryWeapon: 1, secondaryWeapon: 1, ability: 3 });
-const DEFAULT_MECH_SLOTS = Object.freeze({ weapon: 0, ability: 1, item: 2 });
+const DEFAULT_MECH_SLOTS = Object.freeze({ plating: 1, system: 1, primaryWeapon: 1, secondaryWeapon: 1, supportWeapon: 1, ability: 1, item: 2 });
 
 function cloneArray(value) {
   return Array.isArray(value) ? [...value] : [];
@@ -36,7 +37,6 @@ export function getDefaultSlotsForUnit(unitType, definition = {}) {
 
   return {
     ...DEFAULT_MECH_SLOTS,
-    weapon: Array.isArray(definition.weapons) ? definition.weapons.length : DEFAULT_MECH_SLOTS.weapon,
     ...cloneObject(definition.slots)
   };
 }
@@ -62,6 +62,30 @@ export function normalizePilotLoadout(loadout = {}, fallback = {}) {
   };
 }
 
+export function normalizeMechLoadout(loadout = {}, fallback = {}) {
+  const source = cloneObject(loadout);
+  const fallbackSource = cloneObject(fallback);
+  const sourceWeapons = cloneArray(source.weapons);
+  const fallbackWeapons = cloneArray(fallbackSource.weapons);
+
+  const primaryWeapon = firstId(source.primaryWeapon, sourceWeapons[0], fallbackSource.primaryWeapon, fallbackWeapons[0]);
+  const secondaryWeapon = firstId(source.secondaryWeapon, sourceWeapons[1], fallbackSource.secondaryWeapon, fallbackWeapons[1]);
+  const supportWeapon = firstId(source.supportWeapon, sourceWeapons[2], fallbackSource.supportWeapon, fallbackWeapons[2]);
+  const weapons = [primaryWeapon, secondaryWeapon, supportWeapon].filter(Boolean);
+
+  return {
+    plating: firstId(source.plating, source.armor, fallbackSource.plating, fallbackSource.armor),
+    system: firstId(source.system, fallbackSource.system),
+    primaryWeapon,
+    secondaryWeapon,
+    supportWeapon,
+    weapons,
+    abilities: cloneArray(source.abilities?.length ? source.abilities : fallbackSource.abilities),
+    items: cloneArray(source.items?.length ? source.items : fallbackSource.items),
+    hardpoints: cloneArray(source.hardpoints?.length ? source.hardpoints : fallbackSource.hardpoints)
+  };
+}
+
 export function buildRuntimeLoadout(unitType, definition = {}, overrides = {}) {
   const definitionLoadout = cloneObject(definition.loadout);
   const overrideLoadout = cloneObject(overrides.loadout);
@@ -76,13 +100,13 @@ export function buildRuntimeLoadout(unitType, definition = {}, overrides = {}) {
     return normalizePilotLoadout(overrideLoadout, legacyDefinitionLoadout);
   }
 
-  return {
-    weapons: cloneArray(overrideLoadout.weapons ?? definitionLoadout.weapons ?? definition.weapons),
-    armor: overrideLoadout.armor ?? definitionLoadout.armor ?? null,
-    abilities: cloneArray(overrideLoadout.abilities ?? definitionLoadout.abilities ?? definition.abilities),
-    items: cloneArray(overrideLoadout.items ?? definitionLoadout.items ?? []),
-    hardpoints: cloneArray(overrideLoadout.hardpoints ?? definitionLoadout.hardpoints ?? [])
+  const legacyDefinitionLoadout = {
+    ...definitionLoadout,
+    weapons: definitionLoadout.weapons ?? definition.weapons,
+    abilities: definitionLoadout.abilities ?? definition.abilities,
+    items: definitionLoadout.items ?? []
   };
+  return normalizeMechLoadout(overrideLoadout, legacyDefinitionLoadout);
 }
 
 export function buildRuntimeInventory(definition = {}, overrides = {}) {
@@ -100,7 +124,9 @@ export function buildRuntimeInventory(definition = {}, overrides = {}) {
 
 export function getEquippedWeaponIds(unit) {
   const loadout = unit?.loadout ?? {};
-  const slottedWeapons = [loadout.primaryWeapon, loadout.secondaryWeapon].map(cleanId).filter(Boolean);
+  const slottedWeapons = unit?.unitType === "mech"
+    ? [loadout.primaryWeapon, loadout.secondaryWeapon, loadout.supportWeapon].map(cleanId).filter(Boolean)
+    : [loadout.primaryWeapon, loadout.secondaryWeapon].map(cleanId).filter(Boolean);
   if (slottedWeapons.length) return slottedWeapons;
 
   const loadoutWeapons = cloneArray(loadout.weapons).filter(Boolean);

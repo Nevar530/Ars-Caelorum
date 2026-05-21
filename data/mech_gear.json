@@ -1,0 +1,54 @@
+[
+  {
+    "id": "telum_plating_light_01",
+    "name": "Light Telum Plating",
+    "scale": "mech",
+    "slot": "plating",
+    "modifiers": {
+      "shield": 3,
+      "move": 1
+    },
+    "description": "Light armor package that keeps a Telum moving."
+  },
+  {
+    "id": "telum_plating_standard_01",
+    "name": "Standard Telum Plating",
+    "scale": "mech",
+    "slot": "plating",
+    "modifiers": {
+      "shield": 6
+    },
+    "description": "Baseline protective plating for field work."
+  },
+  {
+    "id": "telum_plating_heavy_01",
+    "name": "Heavy Telum Plating",
+    "scale": "mech",
+    "slot": "plating",
+    "modifiers": {
+      "shield": 9,
+      "move": -1
+    },
+    "description": "Heavy armor package. Slower, harder to crack."
+  },
+  {
+    "id": "telum_system_mobility_01",
+    "name": "Mobility Servo Suite",
+    "scale": "mech",
+    "slot": "system",
+    "modifiers": {
+      "move": 1
+    },
+    "description": "Servo tuning package for faster repositioning."
+  },
+  {
+    "id": "telum_system_stabilizer_01",
+    "name": "Fire Stabilizer Array",
+    "scale": "mech",
+    "slot": "system",
+    "modifiers": {
+      "targeting": 1
+    },
+    "description": "Targeting stabilizers for mounted weapons."
+  }
+]

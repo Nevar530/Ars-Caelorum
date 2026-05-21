@@ -4,7 +4,7 @@ import { getMapSpawns, getMapStartState } from "./map.js";
 import { buildRuntimeInventory, buildRuntimeLoadout, getDefaultSlotsForUnit } from "./content/unitLoadout.js";
 import { getLoadoutModifiers } from "./content/equipmentModifiers.js";
 import { buildEnemyPilotRuntimeOverrides, buildEnemyScalingContext } from "./campaign/enemyScaling.js";
-import { getCampaignPilotLoadout } from "./campaign/campaignLoadouts.js";
+import { getCampaignMechLoadout, getCampaignPilotLoadout } from "./campaign/campaignLoadouts.js";
 
 const PILOT_CORE_MULTIPLIER = 5;
 const PILOT_TARGETING_CAP = 5;
@@ -214,6 +214,20 @@ function buildPilotRuntimeOverrides(pilotDefinition, campaignState) {
   };
 }
 
+function buildMechRuntimeOverrides(mechDefinition, campaignState) {
+  return {
+    loadout: getCampaignMechLoadout(campaignState, mechDefinition)
+  };
+}
+
+function pickPilotControlStats(overrides = {}) {
+  return {
+    reaction: overrides.reaction,
+    targeting: overrides.targeting,
+    abilityPoints: overrides.abilityPoints
+  };
+}
+
 function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
   const mechDefinitions = Array.isArray(content?.mechs) ? content.mechs : [];
   const pilotDefinitions = Array.isArray(content?.pilots) ? content.pilots : [];
@@ -265,6 +279,8 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
       mapScaling
     }) : null;
     const pilotRuntimeOverrides = enemyPilotRuntimeOverrides ?? playerPilotRuntimeOverrides;
+    const mechRuntimeOverrides = mech && team === "player" ? buildMechRuntimeOverrides(mech, campaignState) : {};
+    const pilotControlStats = pickPilotControlStats(pilotRuntimeOverrides);
 
     const pilotInstanceId = pilot
       ? (deployment?.pilotInstanceId ?? `${team}-pilot-${pilot.id}`)
@@ -288,6 +304,7 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
       }
 
       const mechUnit = createMechInstance(mech, {
+        ...mechRuntimeOverrides,
         instanceId: mechInstanceId,
         content,
         x: mechPos.x,
@@ -344,7 +361,8 @@ function buildUnitsFromStartState(content, map, spawnIndex, options = {}) {
     }
 
     const mechUnit = createMechInstance(mech, {
-      ...pilotRuntimeOverrides,
+      ...pilotControlStats,
+      ...mechRuntimeOverrides,
       content,
       instanceId: mechInstanceId,
       x: mechPos.x,
