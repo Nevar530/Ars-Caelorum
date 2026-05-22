@@ -6,7 +6,7 @@ export function createState({
   map,
   units = null,
   mechs = [],
-  content = { mechs: [], weapons: [], sigils: [], attacks: [], pilots: [], pilotAbilities: [], mechAbilities: [], pilotItems: [], mechItems: [], pilotGear: [], mechGear: [], spawnPoints: [], mapCatalog: null, missionCatalog: null, defaultMap: null },
+  content = { mechs: [], weapons: [], sigils: [], attacks: [], pilots: [], abilities: [], pilotAbilities: [], mechAbilities: [], pilotItems: [], mechItems: [], pilotGear: [], mechGear: [], spawnPoints: [], mapCatalog: null, missionCatalog: null, defaultMap: null },
   campaign = null
 }) {
   const runtimeUnits = Array.isArray(units)

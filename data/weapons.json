@@ -19,7 +19,7 @@
       "kind": "single"
     },
     "damage": 10,
-    "notes": "Melee attack. Valid targets are forward, left, and right adjacent tiles.",
+    "notes": "Melee attack. Valid targets are any occupied tile one tile outside the attacker footprint; large Telum target from the 3x3 edge, not center.",
     "price": 500
   },
   {

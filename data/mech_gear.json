@@ -40,7 +40,8 @@
     "scale": "mech",
     "slot": "system",
     "modifiers": {
-      "move": 1
+      "move": 1,
+      "abilityPoints": 1
     },
     "description": "Servo tuning package for faster repositioning.",
     "price": 650
@@ -54,6 +55,9 @@
       "targeting": 1
     },
     "description": "Targeting stabilizers for mounted weapons.",
-    "price": 650
+    "price": 650,
+    "grantsAbilities": [
+      "fire_bomb"
+    ]
   }
 ]

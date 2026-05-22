@@ -1,0 +1,71 @@
+[
+  {
+    "id": "patch_up",
+    "name": "Patch Up",
+    "sourceContext": "pilot",
+    "targetType": "other",
+    "targetTeam": "ally",
+    "cost": 1,
+    "fireArc": { "kind": "fan", "range": 8 },
+    "range": { "min": 1, "max": 1 },
+    "losType": "direct",
+    "targetingMode": "direct_tile",
+    "effect": {
+      "kind": "heal",
+      "type": "restore_core_percent_max",
+      "amount": 50
+    },
+    "description": "Heal an allied unit for 50% of its maximum core. Uses normal range, arc, and LOS targeting."
+  },
+  {
+    "id": "field_focus",
+    "name": "Field Focus",
+    "sourceContext": "pilot",
+    "targetType": "self",
+    "targetTeam": "self",
+    "cost": 1,
+    "effect": {
+      "kind": "buff",
+      "type": "restore_shield",
+      "amount": 2
+    },
+    "description": "Stabilize and recover 2 shield on foot. Self-targeted."
+  },
+  {
+    "id": "fire_bomb",
+    "name": "Fire Bomb",
+    "sourceContext": "telum",
+    "targetType": "aoe",
+    "targetTeam": "tile",
+    "cost": 2,
+    "type": "missile",
+    "weaponType": "missile",
+    "fireArc": { "kind": "fan", "range": 20 },
+    "range": { "min": 1, "max": 8 },
+    "losType": "missile",
+    "targetingMode": "fire_arc_tile",
+    "effect": { "kind": "circle", "radius": 3 },
+    "damage": 10,
+    "splashDamage": {
+      "center": 10,
+      "ring1": 10,
+      "ring2": 10,
+      "ring3": 10
+    },
+    "description": "SRM-style Telum ability. Deals 10 damage in a radius 3 area using normal launcher targeting, arc, and LOS rules."
+  },
+  {
+    "id": "telum_patch_routine",
+    "name": "Patch Routine",
+    "sourceContext": "telum",
+    "targetType": "self",
+    "targetTeam": "self",
+    "cost": 1,
+    "effect": {
+      "kind": "heal",
+      "type": "restore_core",
+      "amount": 3
+    },
+    "description": "Restore 3 core to the active Telum. Self-targeted."
+  }
+]

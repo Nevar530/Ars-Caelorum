@@ -16,7 +16,7 @@ import { getPrimaryOccupantAt } from "../scale/occupancy.js";
 import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
 import { evaluateMissionResult } from "../mission/missionState.js";
 import { resolveEnterMech, resolveExitMech } from "../vehicles/mechEmbarkActions.js";
-import { resolveSelectedAbility, resolveSelectedItem } from "../actions/actionResolver.js";
+import { resolveSelectedAbility, resolveSelectedItem, spendAbilityPoints } from "../actions/actionResolver.js";
 
 export function createCombatController({
   state,
@@ -142,6 +142,10 @@ export function createCombatController({
     }
   }
 
+  function isDamageAbilityProfile(profile) {
+    return profile?.actionKind === "ability" && (Number(profile.damage ?? 0) > 0 || profile.weaponType === "missile");
+  }
+
   function handleConfirmedTarget(activeUnit, selectedAttack) {
     const targetX = state.focus.x;
     const targetY = state.focus.y;
@@ -164,9 +168,32 @@ export function createCombatController({
       );
     }
 
-    const weapon = state.content.weapons.find(
-      (entry) => entry.id === state.ui.action.lastConfirmed?.attackId
-    );
+    const isAbilityAction = selectedAttack?.actionKind === "ability";
+    const selectedAbility = state.ui.action.selectedAbility;
+    const weapon = isAbilityAction
+      ? selectedAttack
+      : state.content.weapons.find(
+        (entry) => entry.id === state.ui.action.lastConfirmed?.attackId
+      );
+
+    if (isAbilityAction && !isDamageAbilityProfile(selectedAttack)) {
+      const resolved = resolveSelectedAbility(state, selectedAbility, { targetUnit });
+      if (applyResolvedSupportAction(resolved)) {
+        return true;
+      }
+      logDev(resolved?.log ?? "Ability could not resolve.");
+      render();
+      return false;
+    }
+
+    if (isAbilityAction) {
+      const spend = spendAbilityPoints(activeUnit, selectedAbility);
+      if (!spend.ok) {
+        logDev(`${selectedAbility?.label ?? selectedAttack.name} needs ${spend.cost} AP.`);
+        render();
+        return false;
+      }
+    }
 
     const hitResult = resolveHit(
       state,
@@ -374,6 +401,11 @@ export function createCombatController({
         }
 
         if (selectedAbility?.source === "content") {
+          if (state.ui.mode === "action-target") {
+            render();
+            return;
+          }
+
           const resolved = resolveSelectedAbility(state, selectedAbility);
           if (applyResolvedSupportAction(resolved)) {
             return;

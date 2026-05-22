@@ -1,13 +1,40 @@
 [
   {
-    "id": "pilot_heal_01",
-    "name": "Field Mend",
-    "kind": "support",
-    "target": "self",
+    "id": "patch_up",
+    "name": "Patch Up",
+    "sourceContext": "pilot",
+    "targetType": "other",
+    "targetTeam": "ally",
+    "cost": 1,
+    "fireArc": {
+      "kind": "fan",
+      "range": 8
+    },
+    "range": {
+      "min": 1,
+      "max": 1
+    },
+    "losType": "direct",
+    "targetingMode": "direct_tile",
     "effect": {
-      "type": "restore_core",
+      "kind": "heal",
+      "type": "restore_core_percent_max",
+      "amount": 50
+    },
+    "description": "Heal an allied unit for 50% of its maximum core. Uses normal range, arc, and LOS targeting."
+  },
+  {
+    "id": "field_focus",
+    "name": "Field Focus",
+    "sourceContext": "pilot",
+    "targetType": "self",
+    "targetTeam": "self",
+    "cost": 1,
+    "effect": {
+      "kind": "buff",
+      "type": "restore_shield",
       "amount": 2
     },
-    "description": "Simple pilot self-heal ability foundation entry."
+    "description": "Stabilize and recover 2 shield on foot. Self-targeted."
   }
 ]

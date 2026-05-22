@@ -5260,3 +5260,20 @@ button:disabled {
   font-size: 10px;
   font-style: italic;
 }
+
+/* Ability/AP compact HUD additions */
+.hud-active-vitals {
+  grid-template-columns: repeat(3, minmax(64px, 1fr));
+}
+
+.hud-vital--ap .hud-vital-track i,
+.hud-vital--p-ap .hud-vital-track i {
+  background: linear-gradient(90deg, rgba(190,137,255,.65), rgba(190,137,255,.95));
+}
+
+.hud-menu-cost {
+  float: right;
+  opacity: .72;
+  font-size: 9px;
+  letter-spacing: .04em;
+}

@@ -79,6 +79,40 @@ export function normalizeWeaponToActionProfile(weapon) {
   };
 }
 
+export function normalizeAbilityToActionProfile(ability) {
+  const targetType = ability.targetType ?? ability.target ?? "self";
+  const type = ability.type ?? ability.weaponType ?? (targetType === "aoe" ? "missile" : "direct");
+  const range = ability.range ?? { min: 1, max: targetType === "aoe" ? DEFAULT_MISSILE_MAX_RANGE : DEFAULT_DIRECT_MAX_RANGE };
+  const targetingMode = ability.targetingMode
+    ?? (targetType === "aoe" ? "fire_arc_tile" : "direct_tile");
+
+  return {
+    id: ability.id,
+    name: ability.name,
+    actionKind: "ability",
+    abilityId: ability.id,
+    definition: ability,
+    scale: ability.sourceContext === "pilot" ? "pilot" : "mech",
+    weaponType: type === "missile" ? "missile" : "direct",
+    fireArc: ability.fireArc ?? { kind: "fan", range: DEFAULT_FIRE_ARC_RANGE },
+    targeting: {
+      kind: targetingMode,
+      minRange: range.min ?? 1,
+      maxRange: range.max ?? (type === "missile" ? DEFAULT_MISSILE_MAX_RANGE : DEFAULT_DIRECT_MAX_RANGE)
+    },
+    targetTeam: ability.targetTeam ?? (targetType === "other" ? "ally" : "enemy"),
+    targetType,
+    effect: ability.targetType === "aoe"
+      ? (ability.effect ?? { kind: "circle", radius: 3 })
+      : (ability.effect?.kind && ["single", "circle", "cone"].includes(ability.effect.kind) ? ability.effect : { kind: "single" }),
+    abilityEffect: ability.effect ?? null,
+    losType: ability.losType ?? (type === "missile" ? "missile" : "direct"),
+    damage: ability.damage ?? 0,
+    splashDamage: ability.splashDamage ?? {},
+    cost: Math.max(0, Math.trunc(Number(ability.cost ?? 0) || 0))
+  };
+}
+
 export function snapFocusToFirstValidTarget(state) {
   const first = state.ui.action.validTargetTiles[0];
   if (!first) return;

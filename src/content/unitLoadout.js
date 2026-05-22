@@ -135,9 +135,10 @@ export function getEquippedWeaponIds(unit) {
 }
 
 export function getEquippedAbilityIds(unit) {
-  const loadoutAbilities = cloneArray(unit?.loadout?.abilities).filter(Boolean);
-  if (loadoutAbilities.length) return loadoutAbilities;
-  return cloneArray(unit?.abilities).filter(Boolean);
+  return [...new Set([
+    ...cloneArray(unit?.abilities),
+    ...cloneArray(unit?.loadout?.abilities)
+  ].filter(Boolean))];
 }
 
 export function getEquippedItemIds(unit) {

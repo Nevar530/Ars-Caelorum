@@ -42,6 +42,41 @@ function getDefinitionById(items, id, fallbackIndex = 0) {
   return items.find((item) => item.id === id) ?? items[fallbackIndex] ?? null;
 }
 
+function uniqueIds(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map((value) => String(value ?? "").trim()).filter(Boolean))];
+}
+
+function getAbilityIdsUnlockedByLevel(definition = {}, level = 1) {
+  const progression = Array.isArray(definition.abilityProgression) ? definition.abilityProgression : [];
+  const currentLevel = Math.max(1, Math.trunc(Number(level ?? 1) || 1));
+
+  return progression
+    .filter((entry) => Math.max(1, Math.trunc(Number(entry?.level ?? 1) || 1)) <= currentLevel)
+    .map((entry) => entry?.abilityId)
+    .filter(Boolean);
+}
+
+function getLoadoutGrantedAbilityIds(content = {}, loadout = {}, unitType = "pilot") {
+  const gearCatalog = unitType === "pilot"
+    ? [...(content.pilotGear ?? []), ...(content.weapons ?? [])]
+    : [...(content.mechGear ?? []), ...(content.weapons ?? [])];
+  const ids = unitType === "pilot"
+    ? [loadout.armor, loadout.accessory, loadout.primaryWeapon, loadout.secondaryWeapon]
+    : [loadout.plating, loadout.system, loadout.primaryWeapon, loadout.secondaryWeapon, loadout.supportWeapon];
+
+  const granted = [];
+  for (const id of ids) {
+    const cleanId = String(id ?? "").trim();
+    if (!cleanId) continue;
+    const item = gearCatalog.find((entry) => entry?.id === cleanId);
+    if (Array.isArray(item?.grantsAbilities)) {
+      granted.push(...item.grantsAbilities);
+    }
+  }
+
+  return uniqueIds(granted);
+}
+
 function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
   const isPilot = unitType === "pilot";
   const slots = getDefaultSlotsForUnit(unitType, definition);
@@ -60,6 +95,13 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
     ? [...loadout.weapons]
     : (Array.isArray(definition?.weapons) ? [...definition.weapons] : []);
   const move = Math.max(0, Number(overrides.move ?? definition.move ?? (isPilot ? 4 : 4)) + equipmentModifiers.move);
+  const unitLevel = Math.max(1, Math.trunc(Number(overrides.level ?? definition.level ?? 1) || 1));
+  const maxAbilityPoints = Math.max(0, Math.trunc(Number(overrides.abilityPoints ?? definition.abilityPoints ?? 0) || 0) + equipmentModifiers.abilityPoints);
+  const naturalAbilities = uniqueIds([
+    ...(Array.isArray(definition.abilities) ? definition.abilities : []),
+    ...getAbilityIdsUnlockedByLevel(definition, unitLevel),
+    ...getLoadoutGrantedAbilityIds(overrides.content ?? {}, loadout, unitType)
+  ]);
 
   return {
     unitType,
@@ -101,16 +143,17 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
         ? [...definition.attackProfileIds]
         : mapWeaponIdsToAttackProfileIds(weaponIds),
 
-    abilities: Array.isArray(definition.abilities) ? [...definition.abilities] : [],
+    abilities: naturalAbilities,
     tubes: Array.isArray(definition.tubes) ? [...definition.tubes] : [],
     items: Array.isArray(definition.items) ? [...definition.items] : [],
 
     pilotId: overrides.pilotId ?? null,
     pilotName: overrides.pilotName ?? null,
-    level: Math.max(1, Math.trunc(Number(overrides.level ?? definition.level ?? 1) || 1)),
+    level: unitLevel,
     reaction: clampStat(Number(overrides.reaction ?? definition.reaction ?? 0) + equipmentModifiers.reaction, isPilot ? PILOT_REACTION_CAP : null),
     targeting: clampStat(Number(overrides.targeting ?? definition.targeting ?? 0) + equipmentModifiers.targeting, isPilot ? PILOT_TARGETING_CAP : null),
-    abilityPoints: Math.max(0, Math.trunc(Number(overrides.abilityPoints ?? definition.abilityPoints ?? 0) || 0) + equipmentModifiers.abilityPoints),
+    abilityPoints: maxAbilityPoints,
+    maxAbilityPoints,
 
     team: overrides.team ?? "player",
     controlType: normalizeControlType(overrides.controlType, overrides.team ?? "player"),
@@ -145,8 +188,7 @@ export function createMechInstance(definition, overrides = {}) {
     pilotId: pilot?.id ?? overrides.pilotId ?? null,
     pilotName: pilot?.name ?? overrides.pilotName ?? null,
     reaction: overrides.reaction ?? pilot?.reaction ?? 0,
-    targeting: overrides.targeting ?? pilot?.targeting ?? 0,
-    abilityPoints: overrides.abilityPoints ?? pilot?.abilityPoints ?? 0
+    targeting: overrides.targeting ?? pilot?.targeting ?? 0
   }, "mech");
 }
 
@@ -223,8 +265,7 @@ function buildMechRuntimeOverrides(mechDefinition, campaignState) {
 function pickPilotControlStats(overrides = {}) {
   return {
     reaction: overrides.reaction,
-    targeting: overrides.targeting,
-    abilityPoints: overrides.abilityPoints
+    targeting: overrides.targeting
   };
 }
 

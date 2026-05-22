@@ -4,10 +4,7 @@ import { getPrimaryOccupantAt } from "../scale/occupancy.js";
 import { isOccupiedTileBlockedForDirectTargeting, isUnitDirectlyTargetable } from "./targetLegality.js";
 import { getBoardUnits } from "../actors/actorResolver.js";
 import { getUnitOccupiedCells, getUnitFootprintBounds } from "../scale/scaleMath.js";
-import {
-  getCardinalAdjacentTilesForFacing,
-  uniqueBoardTiles
-} from "./fireArc.js";
+import { uniqueBoardTiles } from "./fireArc.js";
 
 export const DEFAULT_DIRECT_MAX_RANGE = 20;
 export const DEFAULT_MISSILE_MAX_RANGE = 20;
@@ -81,6 +78,46 @@ export function manhattanDistance(x0, y0, x1, y1) {
   return Math.abs(x1 - x0) + Math.abs(y1 - y0);
 }
 
+function unitMatchesTargetTeam(attacker, unit, targetTeam = "enemy") {
+  if (!unit || !attacker) return false;
+  switch (targetTeam) {
+    case "ally":
+      return unit.team === attacker.team && unit.instanceId !== attacker.instanceId;
+    case "any":
+      return unit.instanceId !== attacker.instanceId;
+    case "self":
+      return unit.instanceId === attacker.instanceId;
+    case "tile":
+      return true;
+    case "enemy":
+    default:
+      return unit.team !== attacker.team;
+  }
+}
+
+function getAdjacentTilesOutsideFootprint(unit) {
+  const cells = getTargetFootprintCells(unit);
+  const occupied = new Set(cells.map((cell) => `${cell.x},${cell.y}`));
+  const results = [];
+
+  for (const cell of cells) {
+    for (const delta of [
+      { x: 0, y: -1 },
+      { x: 1, y: 0 },
+      { x: 0, y: 1 },
+      { x: -1, y: 0 }
+    ]) {
+      const x = cell.x + delta.x;
+      const y = cell.y + delta.y;
+      if (x < 0 || y < 0) continue;
+      if (occupied.has(`${x},${y}`)) continue;
+      results.push({ x, y });
+    }
+  }
+
+  return uniqueBoardTiles(results);
+}
+
 export function getTilesInRangeBand(x, y, minRange, maxRange) {
   const results = [];
 
@@ -117,7 +154,7 @@ export function getWeaponCandidateTiles(state, mech, profile) {
 
   switch (targetingKind) {
     case "cardinal_adjacent":
-      return getCardinalAdjacentTilesForFacing(mech.x, mech.y, mech.facing)
+      return getAdjacentTilesOutsideFootprint(mech)
         .map((tile) => {
           const targetEntry = getPrimaryOccupantAt(state, tile.x, tile.y, "base", {
             excludeUnitId: mech.instanceId
@@ -126,7 +163,7 @@ export function getWeaponCandidateTiles(state, mech, profile) {
 
           if (!targetUnit) return null;
           if (!isUnitDirectlyTargetable(targetUnit, state)) return null;
-          if (targetUnit.team === mech.team) return null;
+          if (!unitMatchesTargetTeam(mech, targetUnit, profile.targetTeam ?? "enemy")) return null;
 
           return makeUnitTargetTile(mech.x, mech.y, targetUnit);
         })
@@ -139,7 +176,7 @@ export function getWeaponCandidateTiles(state, mech, profile) {
         if (!unit) return [];
         if (unit.instanceId === mech.instanceId) return [];
         if (!isUnitDirectlyTargetable(unit, state)) return [];
-        if (unit.team === mech.team) return [];
+        if (!unitMatchesTargetTeam(mech, unit, profile.targetTeam ?? "enemy")) return [];
 
         const targetTile = makeUnitTargetTile(mech.x, mech.y, unit);
         const distance = Number(targetTile.targetDistance ?? 0);
@@ -174,6 +211,7 @@ export function getWeaponCandidateTiles(state, mech, profile) {
           continue;
         }
 
+        if (!unitMatchesTargetTeam(mech, targetUnit, profile.targetTeam ?? "enemy")) continue;
         if (seenTargetUnits.has(targetUnit.instanceId)) continue;
         seenTargetUnits.add(targetUnit.instanceId);
 

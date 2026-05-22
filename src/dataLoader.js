@@ -7,8 +7,9 @@ export async function loadGameData() {
     sigils,
     attacks,
     pilots,
-    pilotAbilities,
-    mechAbilities,
+    abilities,
+    pilotAbilities: normalizeAbilityCatalog(abilities, pilotAbilities, "pilot"),
+    mechAbilities: normalizeAbilityCatalog(abilities, mechAbilities, "telum"),
     pilotItems,
     mechItems,
     pilotGear,
@@ -24,6 +25,7 @@ export async function loadGameData() {
     loadJson("./data/sigils.json"),
     loadJson("./data/attacks.json"),
     loadJson("./data/pilots.json"),
+    loadJson("./data/abilities.json").catch(() => []),
     loadJson("./data/pilot_abilities.json").catch(() => []),
     loadJson("./data/mech_abilities.json").catch(() => []),
     loadJson("./data/pilot_items.json").catch(() => []),
@@ -46,8 +48,9 @@ export async function loadGameData() {
     sigils,
     attacks,
     pilots,
-    pilotAbilities,
-    mechAbilities,
+    abilities,
+    pilotAbilities: normalizeAbilityCatalog(abilities, pilotAbilities, "pilot"),
+    mechAbilities: normalizeAbilityCatalog(abilities, mechAbilities, "telum"),
     pilotItems,
     mechItems,
     pilotGear,
@@ -70,6 +73,13 @@ export async function loadMapDefinitionByPath(path) {
 export async function loadMissionDefinitionByPath(path) {
   if (!path) return null;
   return loadJson(path);
+}
+
+function normalizeAbilityCatalog(abilities, fallback, context) {
+  const unified = Array.isArray(abilities) ? abilities : [];
+  const matching = unified.filter((ability) => ability?.sourceContext === context);
+  if (matching.length) return matching;
+  return Array.isArray(fallback) ? fallback : [];
 }
 
 async function loadJson(path) {

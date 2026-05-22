@@ -14,7 +14,9 @@
       "melee_01",
       "srm_01"
     ],
-    "abilities": [],
+    "abilities": [
+      "fire_bomb"
+    ],
     "tubes": [],
     "defaultFacing": "S",
     "image": null,
@@ -35,11 +37,14 @@
         "melee_01",
         "srm_01"
       ],
-      "abilities": []
+      "abilities": [
+        "fire_bomb"
+      ]
     },
     "inventory": {
       "items": []
-    }
+    },
+    "abilityPoints": 2
   },
   {
     "id": "mech_b",
@@ -81,7 +86,8 @@
     },
     "inventory": {
       "items": []
-    }
+    },
+    "abilityPoints": 2
   },
   {
     "id": "mech_c",
@@ -98,7 +104,9 @@
       "melee_01",
       "srm_01"
     ],
-    "abilities": [],
+    "abilities": [
+      "telum_patch_routine"
+    ],
     "tubes": [],
     "defaultFacing": "S",
     "image": null,
@@ -120,7 +128,8 @@
         "srm_01"
       ],
       "abilities": [
-        "mech_repair_01"
+        "mech_repair_01",
+        "telum_patch_routine"
       ]
     },
     "inventory": {
@@ -128,7 +137,8 @@
         "nano_repair_tube",
         "test_tube"
       ]
-    }
+    },
+    "abilityPoints": 3
   },
   {
     "id": "mech_d",
@@ -170,6 +180,7 @@
     },
     "inventory": {
       "items": []
-    }
+    },
+    "abilityPoints": 2
   }
 ]

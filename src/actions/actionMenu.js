@@ -3,7 +3,7 @@
 import { getUnitById } from "../mechs.js";
 import { getActiveActor, getActiveBody } from "../actors/actorResolver.js";
 import { canEmbarkedPilotExitMech, canPilotBoardMech, getMechForEmbarkedPilot, getValidRearExitTile } from "../vehicles/mechEmbarkRules.js";
-import { normalizeWeaponToActionProfile, snapFocusToFirstValidTarget, updateActionTargetPreview } from "../targeting/targetingResolver.js";
+import { normalizeAbilityToActionProfile, normalizeWeaponToActionProfile, snapFocusToFirstValidTarget, updateActionTargetPreview } from "../targeting/targetingResolver.js";
 import { getEquippedAbilityIds, getEquippedItemIds, getEquippedWeaponIds } from "../content/unitLoadout.js";
 
 function getActiveUnit(state) {
@@ -40,7 +40,10 @@ function mapDefinitionToMenuEntry(definition, kind = "ability") {
     description: definition.description ?? "",
     kind,
     source: "content",
-    target: definition.target ?? "self",
+    target: definition.targetType ?? definition.target ?? "self",
+    targetType: definition.targetType ?? definition.target ?? "self",
+    targetTeam: definition.targetTeam ?? null,
+    cost: Math.max(0, Math.trunc(Number(definition.cost ?? 0) || 0)),
     effect: definition.effect ?? null,
     enabled: true,
     definition
@@ -154,6 +157,9 @@ export function getSelectedAbilityMenuItems(state) {
     if (isDisabledMech) {
       item.enabled = false;
       item.disabledReason = "disabled_mech";
+    } else if (Number(activeBody.abilityPoints ?? 0) < Number(item.cost ?? 0)) {
+      item.enabled = false;
+      item.disabledReason = "no_ap";
     }
     items.push(item);
   }
@@ -199,10 +205,20 @@ export function confirmAbilitySelection(state) {
 
   state.ui.action.selectedAbility = chosen;
   state.ui.action.selectedItem = null;
-  state.ui.mode = "idle";
-  state.selection.action = null;
   state.ui.commandMenu.open = false;
   state.ui.commandMenu.index = 0;
+
+  if (chosen.source === "content" && chosen.targetType !== "self") {
+    state.ui.action.selectedAction = normalizeAbilityToActionProfile(chosen.definition);
+    state.ui.mode = "action-target";
+    state.selection.action = "ability";
+    updateActionTargetPreview(state);
+    snapFocusToFirstValidTarget(state);
+    return true;
+  }
+
+  state.ui.mode = "idle";
+  state.selection.action = null;
 
   return true;
 }
@@ -377,14 +393,18 @@ export function confirmActionTarget(state) {
 
 export function cancelActionState(state) {
   if (state.ui.mode === "action-target") {
-    state.ui.mode = "action-attack-select";
+    const previousAction = state.selection.action;
+    state.ui.mode = previousAction === "ability" ? "action-ability-select" : "action-attack-select";
     state.ui.action.selectedAction = null;
     state.ui.action.fireArcTiles = [];
     state.ui.action.evaluatedTargetTiles = [];
     state.ui.action.validTargetTiles = [];
     state.ui.action.effectTiles = [];
-    state.ui.action.selectedAbility = null;
+    if (previousAction !== "ability") {
+      state.ui.action.selectedAbility = null;
+    }
     state.ui.action.selectedItem = null;
+    state.selection.action = previousAction === "ability" ? "ability" : "attack";
     return true;
   }
 

@@ -30,7 +30,8 @@
       "move": 1
     },
     "description": "Movement booster for on-foot repositioning.",
-    "price": 180
+    "price": 180,
+    "grantsAbilities": []
   },
   {
     "id": "pilot_accessory_targeting_01",
@@ -52,6 +53,10 @@
       "reaction": 1
     },
     "description": "Improves pilot reaction timing.",
-    "price": 200
+    "price": 200,
+    "rarity": "rare",
+    "grantsAbilities": [
+      "field_focus"
+    ]
   }
 ]

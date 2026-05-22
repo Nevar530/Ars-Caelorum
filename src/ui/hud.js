@@ -136,6 +136,7 @@ function renderActivePanel(state) {
               <div class="hud-active-vitals">
                 ${vitalBar("SHD", activeBody.shield, activeBody.maxShield, "shield")}
                 ${vitalBar("CORE", activeBody.core, activeBody.maxCore, "core")}
+                ${vitalBar("AP", activeBody.abilityPoints, activeBody.maxAbilityPoints ?? activeBody.abilityPoints, "ap")}
               </div>
             </div>
           </div>
@@ -151,6 +152,7 @@ function renderActivePanel(state) {
             <div class="hud-embarked-name">Pilot: ${escapeHtml(pilot.name)}</div>
             ${vitalBar("P-SHD", pilot.shield, pilot.maxShield, "shield")}
             ${vitalBar("P-CORE", pilot.core, pilot.maxCore, "core")}
+            ${vitalBar("P-AP", pilot.abilityPoints, pilot.maxAbilityPoints ?? pilot.abilityPoints, "ap")}
           </div>
         ` : ""}
       </div>
@@ -641,7 +643,7 @@ function renderAbilityMenu(state) {
             class="hud-menu-button ${isSelected ? "is-selected" : ""} ${isDisabled ? "is-disabled" : ""}"
             ${isDisabled ? "disabled" : ""}
           >
-            ${isSelected ? "▶ " : ""}${escapeHtml(a.label)}
+            ${isSelected ? "▶ " : ""}${escapeHtml(a.label)}${Number(a.cost ?? 0) > 0 ? ` <span class="hud-menu-cost">AP ${escapeHtml(a.cost)}</span>` : ""}
           </button>
         `;
       }).join("")}
@@ -678,7 +680,7 @@ function renderItemMenu(state) {
             class="hud-menu-button ${isSelected ? "is-selected" : ""} ${isDisabled ? "is-disabled" : ""}"
             ${isDisabled ? "disabled" : ""}
           >
-            ${isSelected ? "▶ " : ""}${escapeHtml(a.label)}
+            ${isSelected ? "▶ " : ""}${escapeHtml(a.label)}${Number(a.cost ?? 0) > 0 ? ` <span class="hud-menu-cost">AP ${escapeHtml(a.cost)}</span>` : ""}
           </button>
         `;
       }).join("")}

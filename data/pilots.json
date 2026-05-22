@@ -44,7 +44,13 @@
     "inventory": {
       "items": []
     },
-    "campaignRoster": true
+    "campaignRoster": true,
+    "abilityProgression": [
+      {
+        "level": 1,
+        "abilityId": "field_focus"
+      }
+    ]
   },
   {
     "id": "pilot_eve",
@@ -91,7 +97,8 @@
     "inventory": {
       "items": []
     },
-    "campaignRoster": true
+    "campaignRoster": true,
+    "abilityProgression": []
   },
   {
     "id": "pilot_theo",
@@ -138,7 +145,8 @@
     "inventory": {
       "items": []
     },
-    "campaignRoster": true
+    "campaignRoster": true,
+    "abilityProgression": []
   },
   {
     "id": "pilot_pax",
@@ -185,7 +193,13 @@
     "inventory": {
       "items": []
     },
-    "campaignRoster": true
+    "campaignRoster": true,
+    "abilityProgression": [
+      {
+        "level": 1,
+        "abilityId": "patch_up"
+      }
+    ]
   },
   {
     "id": "pilot_quinn",
@@ -232,7 +246,13 @@
     "inventory": {
       "items": []
     },
-    "campaignRoster": true
+    "campaignRoster": true,
+    "abilityProgression": [
+      {
+        "level": 1,
+        "abilityId": "patch_up"
+      }
+    ]
   },
   {
     "id": "pilot_revaele",
@@ -279,7 +299,13 @@
     "inventory": {
       "items": []
     },
-    "campaignRoster": true
+    "campaignRoster": true,
+    "abilityProgression": [
+      {
+        "level": 1,
+        "abilityId": "field_focus"
+      }
+    ]
   },
   {
     "id": "pilot_axis",
@@ -326,7 +352,8 @@
     "inventory": {
       "items": []
     },
-    "campaignRoster": true
+    "campaignRoster": true,
+    "abilityProgression": []
   },
   {
     "id": "pilot_biggs",
