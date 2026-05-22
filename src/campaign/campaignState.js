@@ -3,7 +3,7 @@
 // Persistent campaign authority V2.
 // Campaign state is progression/save truth, not runtime map truth.
 
-export const CAMPAIGN_VERSION = 6;
+export const CAMPAIGN_VERSION = 5;
 export const PILOT_LEVEL_CAP = 20;
 export const PILOT_STAT_CAPS = Object.freeze({
   targeting: 5,
@@ -158,7 +158,7 @@ export function ensureMechProgress(campaignState, mechId, defaults = {}) {
 export function setPilotLoadoutSlot(campaignState, pilotId, slotKey, equipmentId = "", fallbackLoadout = {}) {
   const id = cleanId(pilotId);
   const slot = cleanId(slotKey);
-  if (!campaignState || !id || !["armor", "accessory", "primaryWeapon", "secondaryWeapon"].includes(slot)) {
+  if (!campaignState || !id || !isPilotLoadoutSlot(slot)) {
     return { ok: false, reason: "invalid_loadout_slot" };
   }
 
@@ -169,14 +169,14 @@ export function setPilotLoadoutSlot(campaignState, pilotId, slotKey, equipmentId
     ...(fallbackLoadout && typeof fallbackLoadout === "object" ? fallbackLoadout : {}),
     ...(progress.loadout && typeof progress.loadout === "object" ? progress.loadout : {})
   });
-  current[slot] = cleanId(equipmentId) || "";
-
-  if (slot === "primaryWeapon" && current.primaryWeapon && current.primaryWeapon === current.secondaryWeapon) {
-    current.secondaryWeapon = "";
-  }
-
-  if (slot === "secondaryWeapon" && current.secondaryWeapon && current.secondaryWeapon === current.primaryWeapon) {
-    current.primaryWeapon = "";
+  if (slot.startsWith("item")) {
+    const index = Math.max(0, Math.min(4, Math.trunc(Number(slot.replace("item", "")) || 1) - 1));
+    const items = normalizeItemIds(current.items);
+    while (items.length <= index) items.push("");
+    items[index] = cleanId(equipmentId) || "";
+    current.items = items.filter(Boolean);
+  } else {
+    current[slot] = cleanId(equipmentId) || "";
   }
 
   progress.loadout = normalizePilotLoadout(current);
@@ -186,7 +186,7 @@ export function setPilotLoadoutSlot(campaignState, pilotId, slotKey, equipmentId
 export function setMechLoadoutSlot(campaignState, mechId, slotKey, equipmentId = "", fallbackLoadout = {}) {
   const id = cleanId(mechId);
   const slot = cleanId(slotKey);
-  if (!campaignState || !id || !["plating", "system", "primaryWeapon", "secondaryWeapon", "supportWeapon"].includes(slot)) {
+  if (!campaignState || !id || !isMechLoadoutSlot(slot)) {
     return { ok: false, reason: "invalid_mech_loadout_slot" };
   }
 
@@ -197,16 +197,14 @@ export function setMechLoadoutSlot(campaignState, mechId, slotKey, equipmentId =
     ...(fallbackLoadout && typeof fallbackLoadout === "object" ? fallbackLoadout : {}),
     ...(progress.loadout && typeof progress.loadout === "object" ? progress.loadout : {})
   });
-  current[slot] = cleanId(equipmentId) || "";
-
-  if (["primaryWeapon", "secondaryWeapon", "supportWeapon"].includes(slot)) {
-    const seen = new Set();
-    for (const key of ["primaryWeapon", "secondaryWeapon", "supportWeapon"]) {
-      const value = cleanId(current[key]);
-      if (!value) continue;
-      if (seen.has(value) && key !== slot) current[key] = "";
-      seen.add(value);
-    }
+  if (slot.startsWith("item")) {
+    const index = Math.max(0, Math.min(1, Math.trunc(Number(slot.replace("item", "")) || 1) - 1));
+    const items = normalizeItemIds(current.items);
+    while (items.length <= index) items.push("");
+    items[index] = cleanId(equipmentId) || "";
+    current.items = items.filter(Boolean);
+  } else {
+    current[slot] = cleanId(equipmentId) || "";
   }
 
   progress.loadout = normalizeMechLoadout(current);
@@ -291,29 +289,34 @@ function normalizeDifficulty(value) {
 function normalizeInventory(inventory, fallbackInventory = {}) {
   const source = inventory && typeof inventory === "object" ? inventory : {};
   const fallback = fallbackInventory && typeof fallbackInventory === "object" ? fallbackInventory : {};
+  const useSourceBucket = (bucket) => Object.prototype.hasOwnProperty.call(source, bucket);
   return {
     currency: Math.max(0, Math.trunc(Number(source.currency ?? fallback.currency ?? 0) || 0)),
-    weapons: normalizeStackedIds(Array.isArray(source.weapons) ? source.weapons : fallback.weapons),
-    armor: normalizeStackedIds(Array.isArray(source.armor) ? source.armor : fallback.armor),
-    accessories: normalizeStackedIds(Array.isArray(source.accessories) ? source.accessories : fallback.accessories),
-    mechWeapons: normalizeStackedIds(Array.isArray(source.mechWeapons) ? source.mechWeapons : fallback.mechWeapons),
-    mechGear: normalizeStackedIds(Array.isArray(source.mechGear) ? source.mechGear : fallback.mechGear),
-    items: normalizeStackedIds(Array.isArray(source.items) ? source.items : fallback.items)
+    weapons: normalizeInventoryIds(useSourceBucket("weapons") ? source.weapons : fallback.weapons),
+    armor: normalizeInventoryIds(useSourceBucket("armor") ? source.armor : fallback.armor),
+    accessories: normalizeInventoryIds(useSourceBucket("accessories") ? source.accessories : fallback.accessories),
+    mechWeapons: normalizeInventoryIds(useSourceBucket("mechWeapons") ? source.mechWeapons : fallback.mechWeapons),
+    mechGear: normalizeInventoryIds(useSourceBucket("mechGear") ? source.mechGear : fallback.mechGear),
+    items: normalizeInventoryIds(useSourceBucket("items") ? source.items : fallback.items)
   };
 }
 
-function normalizeStackedIds(ids, maxPerId = 99) {
+function normalizeInventoryIds(ids) {
   const counts = new Map();
-  const result = [];
+  const output = [];
   for (const rawId of Array.isArray(ids) ? ids : []) {
     const id = cleanId(rawId);
     if (!id) continue;
-    const current = counts.get(id) ?? 0;
-    if (current >= maxPerId) continue;
-    counts.set(id, current + 1);
-    result.push(id);
+    const nextCount = (counts.get(id) ?? 0) + 1;
+    if (nextCount > 99) continue;
+    counts.set(id, nextCount);
+    output.push(id);
   }
-  return result;
+  return output;
+}
+
+function normalizeItemIds(ids) {
+  return normalizeInventoryIds(ids);
 }
 
 function normalizePilots(pilots) {
@@ -371,8 +374,12 @@ function normalizePilotLoadout(loadout) {
     secondaryWeapon,
     weapons: normalizedWeapons,
     abilities: uniqueIds(source.abilities),
-    items: uniqueIds(source.items)
+    items: normalizeItemIds(source.items)
   };
+}
+
+function isPilotLoadoutSlot(slot) {
+  return ["armor", "accessory", "primaryWeapon", "secondaryWeapon", "item1", "item2", "item3", "item4", "item5"].includes(slot);
 }
 
 function normalizeMechLoadout(loadout) {
@@ -391,8 +398,12 @@ function normalizeMechLoadout(loadout) {
     supportWeapon,
     weapons: normalizedWeapons,
     abilities: uniqueIds(source.abilities),
-    items: uniqueIds(source.items)
+    items: normalizeItemIds(source.items)
   };
+}
+
+function isMechLoadoutSlot(slot) {
+  return ["plating", "system", "primaryWeapon", "secondaryWeapon", "supportWeapon", "item1", "item2"].includes(slot);
 }
 
 function normalizeStatBonuses(value) {

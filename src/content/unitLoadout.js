@@ -10,6 +10,10 @@ function cloneArray(value) {
   return Array.isArray(value) ? [...value] : [];
 }
 
+function cloneIdArray(value) {
+  return cloneArray(value).map((id) => cleanId(id)).filter(Boolean);
+}
+
 function cloneObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? { ...value } : {};
 }
@@ -57,8 +61,8 @@ export function normalizePilotLoadout(loadout = {}, fallback = {}) {
     primaryWeapon,
     secondaryWeapon,
     weapons,
-    abilities: cloneArray(source.abilities?.length ? source.abilities : fallbackSource.abilities),
-    items: cloneArray(source.items?.length ? source.items : fallbackSource.items)
+    abilities: cloneIdArray(source.abilities?.length ? source.abilities : fallbackSource.abilities),
+    items: cloneIdArray(source.items?.length ? source.items : fallbackSource.items)
   };
 }
 
@@ -80,8 +84,8 @@ export function normalizeMechLoadout(loadout = {}, fallback = {}) {
     secondaryWeapon,
     supportWeapon,
     weapons,
-    abilities: cloneArray(source.abilities?.length ? source.abilities : fallbackSource.abilities),
-    items: cloneArray(source.items?.length ? source.items : fallbackSource.items),
+    abilities: cloneIdArray(source.abilities?.length ? source.abilities : fallbackSource.abilities),
+    items: cloneIdArray(source.items?.length ? source.items : fallbackSource.items),
     hardpoints: cloneArray(source.hardpoints?.length ? source.hardpoints : fallbackSource.hardpoints)
   };
 }

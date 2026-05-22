@@ -21,7 +21,12 @@ const LOADOUT_SLOTS = Object.freeze([
   { key: "armor", label: "Armor", type: "armor" },
   { key: "accessory", label: "Accessory", type: "accessory" },
   { key: "primaryWeapon", label: "Primary", type: "weapon" },
-  { key: "secondaryWeapon", label: "Secondary", type: "weapon" }
+  { key: "secondaryWeapon", label: "Secondary", type: "weapon" },
+  { key: "item1", label: "Item 1", type: "item" },
+  { key: "item2", label: "Item 2", type: "item" },
+  { key: "item3", label: "Item 3", type: "item" },
+  { key: "item4", label: "Item 4", type: "item" },
+  { key: "item5", label: "Item 5", type: "item" }
 ]);
 
 const TELUM_LOADOUT_SLOTS = Object.freeze([
@@ -29,7 +34,9 @@ const TELUM_LOADOUT_SLOTS = Object.freeze([
   { key: "system", label: "System", type: "mechGear" },
   { key: "primaryWeapon", label: "Primary", type: "mechWeapon" },
   { key: "secondaryWeapon", label: "Secondary", type: "mechWeapon" },
-  { key: "supportWeapon", label: "Support", type: "mechWeapon" }
+  { key: "supportWeapon", label: "Support", type: "mechWeapon" },
+  { key: "item1", label: "Item 1", type: "item" },
+  { key: "item2", label: "Item 2", type: "item" }
 ]);
 
 const SHOP_CATEGORIES = Object.freeze([
@@ -84,6 +91,7 @@ export function normalizeGameMenuState(state) {
   state.ui.gameMenu.selectedSystemIndex = normalizeSystemIndex(state.ui.gameMenu.selectedSystemIndex);
   state.ui.gameMenu.statusText = String(state.ui.gameMenu.statusText ?? "").trim();
   state.ui.gameMenu.shopId = String(state.ui.gameMenu.shopId ?? "").trim();
+  state.ui.gameMenu.shopBuyback = normalizeShopBuyback(state.ui.gameMenu.shopBuyback);
 
   return state.ui.gameMenu;
 }
@@ -109,6 +117,7 @@ export function closeGameMenu(state) {
   menu.loadoutAccess = false;
   if (menu.activeTab === "loadout") menu.activeTab = "characters";
   menu.shopId = "";
+  menu.shopBuyback = [];
   menu.loadoutStage = "pilots";
 }
 
@@ -132,6 +141,7 @@ export function openContextualScreen(state, screenId = "pilot_loadout", options 
     menu.shopMode = "buy";
     menu.selectedShopItemIndex = 0;
     menu.shopId = String(options?.shopId ?? "").trim();
+    menu.shopBuyback = [];
   } else {
     menu.shopId = "";
   }
@@ -621,7 +631,7 @@ function renderLoadoutTab(state) {
           <div class="loadout-column-title">${escapeHtml(slotMeta.label)} Options</div>
           <div class="loadout-row-list">
             ${stage === "gear"
-              ? options.map((option, index) => renderLoadoutGearRow(state, selected, slotMeta, option, editable, selected.loadout?.[selectedSlot] ?? "", index, menu.selectedLoadoutOptionIndex === index)).join("")
+              ? options.map((option, index) => renderLoadoutGearRow(state, selected, slotMeta, option, editable, getPilotSlotValue(selected.loadout, selectedSlot), index, menu.selectedLoadoutOptionIndex === index)).join("")
               : `<div class="loadout-empty-row">Enter on a gear slot to choose equipment.</div>`}
           </div>
         </section>
@@ -647,10 +657,10 @@ function renderLoadoutPilotRow(pilot, selectedId, focusColumn) {
 }
 
 function renderLoadoutSlotRow(state, pilot, slot, selected, focusColumn) {
-  const currentId = pilot?.loadout?.[slot.key] ?? "";
+  const currentId = getPilotSlotValue(pilot?.loadout, slot.key);
   const entry = getContentEntry(state, currentId, slot.type);
   const name = entry?.name ?? (currentId || "Empty");
-  const modifierText = renderModifierText(entry?.modifiers);
+  const modifierText = slot.type === "item" ? renderItemEffect(entry?.effect) : renderModifierText(entry?.modifiers);
 
   return `
     <button
@@ -670,7 +680,9 @@ function renderLoadoutGearRow(state, pilot, slot, option, editable, currentId, i
   const disabled = !editable || Boolean(option.disabled);
   const entry = option.id ? getContentEntry(state, option.id, slot.type) : null;
   const label = entry?.name ?? (option.id ? option.id : "Empty");
-  const detail = option.id ? renderModifierText(entry?.modifiers) : "None";
+  const countText = option.id ? renderStorageCountText(option) : "";
+  const detailBase = option.id ? renderLoadoutOptionDetail(entry, slot.type) : "None";
+  const detail = [detailBase, countText].filter(Boolean).join(" · ");
 
   return `
     <button
@@ -733,7 +745,7 @@ function renderTelumLoadoutTab(state) {
           <div class="loadout-column-title">${escapeHtml(slotMeta.label)} Options</div>
           <div class="loadout-row-list">
             ${stage === "gear"
-              ? options.map((option, index) => renderTelumGearRow(state, selected, slotMeta, option, editable, selected.loadout?.[selectedSlot] ?? "", index, menu.selectedTelumLoadoutOptionIndex === index)).join("")
+              ? options.map((option, index) => renderTelumGearRow(state, selected, slotMeta, option, editable, getMechSlotValue(selected.loadout, selectedSlot), index, menu.selectedTelumLoadoutOptionIndex === index)).join("")
               : `<div class="loadout-empty-row">Enter on a mount to choose equipment.</div>`}
           </div>
         </section>
@@ -759,10 +771,10 @@ function renderTelumFrameRow(mech, selectedId, focusColumn) {
 }
 
 function renderTelumSlotRow(state, mech, slot, selected, focusColumn) {
-  const currentId = mech?.loadout?.[slot.key] ?? "";
+  const currentId = getMechSlotValue(mech?.loadout, slot.key);
   const entry = getContentEntry(state, currentId, slot.type);
   const name = entry?.name ?? (currentId || "Empty");
-  const modifierText = renderModifierText(entry?.modifiers);
+  const modifierText = slot.type === "item" ? renderItemEffect(entry?.effect) : renderModifierText(entry?.modifiers);
 
   return `
     <button
@@ -782,7 +794,9 @@ function renderTelumGearRow(state, mech, slot, option, editable, currentId, inde
   const disabled = !editable || Boolean(option.disabled);
   const entry = option.id ? getContentEntry(state, option.id, slot.type) : null;
   const label = entry?.name ?? (option.id ? option.id : "Empty");
-  const detail = option.id ? renderModifierText(entry?.modifiers) || renderWeaponDetail(entry) : "None";
+  const countText = option.id ? renderStorageCountText(option) : "";
+  const detailBase = option.id ? renderLoadoutOptionDetail(entry, slot.type) : "None";
+  const detail = [detailBase, countText].filter(Boolean).join(" · ");
 
   return `
     <button
@@ -821,18 +835,18 @@ function renderShopTab(state) {
           <button type="button" class="terminal-tab ${menu.shopMode === "buy" ? "is-selected" : ""}" data-game-menu-action="select-shop-mode" data-shop-mode="buy">BUY</button>
           <button type="button" class="terminal-tab ${menu.shopMode === "sell" ? "is-selected" : ""}" data-game-menu-action="select-shop-mode" data-shop-mode="sell">SELL</button>
         </div>
-        <div class="terminal-row-list terminal-row-list--compact">
+        <div class="terminal-row-list">
           ${SHOP_CATEGORIES.map((entry) => `
             <button type="button" class="terminal-row ${entry.key === category.key ? "is-selected" : ""} ${menu.shopStage === "categories" && entry.key === category.key ? "is-cursor" : ""}" data-game-menu-action="select-shop-category" data-shop-category="${escapeHtml(entry.key)}">
               <span>${escapeHtml(entry.label)}</span><b>${escapeHtml(getShopItemsForCategory(state, entry).length)}</b>
             </button>
           `).join("")}
         </div>
-        <div class="terminal-note">Left/Right switches BUY/SELL. Enter opens list.</div>
+        <div class="terminal-note">Left/Right toggles BUY/SELL. Enter opens list.</div>
       </section>
       <section class="terminal-panel ${menu.shopStage === "items" ? "is-focused" : ""}">
         <div class="terminal-panel-title">${escapeHtml(modeLabel)} / ${escapeHtml(category.label)}</div>
-        <div class="terminal-row-list terminal-row-list--compact">
+        <div class="terminal-row-list">
           ${items.length ? items.map((item, index) => renderShopItemRow(state, item, category.type, menu.shopStage === "items" && index === menu.selectedShopItemIndex, index)).join("") : `<div class="terminal-empty">No ${menu.shopMode === "sell" ? "unequipped items" : "stock"} in this category.</div>`}
         </div>
       </section>
@@ -847,11 +861,12 @@ function renderShopTab(state) {
 
 function renderShopItemRow(state, item, type, selected, displayIndex = 0) {
   const entry = item?.entry ?? item;
-  const price = getEntryPrice(entry);
+  const price = Math.max(0, Math.trunc(Number(item?.price ?? (item?.mode === "sell" ? getSellPrice(entry) : getEntryPrice(entry))) || 0));
   const qty = Number.isFinite(Number(item?.qty)) ? Math.max(0, Math.trunc(Number(item.qty))) : null;
+  const tag = item?.source === "buyback" ? "REBUY" : (item?.mode === "sell" ? "SELL" : "BUY");
   const detail = item?.mode === "sell"
-    ? `${price} CR${qty !== null ? ` / AVAIL ${qty}` : ""}`
-    : `${price} CR${qty !== null ? ` / QTY ${qty}` : ""}`;
+    ? `${price} CR${qty !== null ? ` / AV ${qty}` : ""}`
+    : `${tag} ${price} CR${qty !== null && item?.source !== "buyback" ? ` / QTY ${qty}` : ""}`;
   return `<button type="button" class="terminal-row ${selected ? "is-cursor" : ""}" data-game-menu-action="select-shop-item" data-shop-item-index="${escapeHtml(displayIndex)}"><span>${escapeHtml(entry?.name ?? entry?.id ?? "Item")}</span><b>${escapeHtml(detail)}</b></button>`;
 }
 
@@ -860,21 +875,21 @@ function renderShopDetail(item, mode = "buy") {
   const modifierText = renderModifierText(entry?.modifiers);
   const weaponText = renderWeaponDetail(entry);
   const effectText = renderItemEffect(entry?.effect);
-  const price = getEntryPrice(entry);
-  const actionLabel = mode === "sell" ? "Sell" : "Buy";
+  const price = Math.max(0, Math.trunc(Number(item?.price ?? (mode === "sell" ? getSellPrice(entry) : getEntryPrice(entry))) || 0));
+  const actionLabel = mode === "sell" ? "Sell" : (item?.source === "buyback" ? "Rebuy" : "Buy");
   const qty = Number.isFinite(Number(item?.qty)) ? Math.max(0, Math.trunc(Number(item.qty))) : null;
   return `
     <div class="terminal-record terminal-record--stack">
       <strong>${escapeHtml(entry?.name ?? entry?.id ?? "Item")}</strong>
-      <span>${escapeHtml(entry?.id ?? "")}</span>
-      <span>${escapeHtml(price)} CR${qty !== null ? ` / ${mode === "sell" ? "Available" : "Shop Qty"} ${escapeHtml(qty)}` : ""}</span>
+      <span>${escapeHtml(price)} CR${qty !== null && mode !== "sell" && item?.source !== "buyback" ? ` / Shop Qty ${escapeHtml(qty)}` : ""}${qty !== null && mode === "sell" ? ` / Unequipped ${escapeHtml(qty)}` : ""}</span>
+      ${item?.source === "buyback" ? `<span>Buyback: available until this shop screen closes.</span>` : ""}
       ${modifierText ? `<span>${escapeHtml(modifierText)}</span>` : ""}
       ${weaponText ? `<span>${escapeHtml(weaponText)}</span>` : ""}
       ${effectText ? `<span>${escapeHtml(effectText)}</span>` : ""}
       ${entry?.description || entry?.notes ? `<span>${escapeHtml(entry.description ?? entry.notes)}</span>` : ""}
     </div>
     <button type="button" class="terminal-row terminal-row--action is-cursor" data-game-menu-action="confirm-shop-item"><span>${escapeHtml(actionLabel)}</span><b>ENTER</b></button>
-    <div class="terminal-note">${escapeHtml(actionLabel)} uses the item JSON price. Shops author availability and quantity only.</div>
+    <div class="terminal-note">Sell value is 75%. Rebuy is temporary and clears when leaving shop.</div>
   `;
 }
 
@@ -967,32 +982,20 @@ function renderCatalogIdList(state, items, type, emptyText) {
 }
 
 function renderCatalogRows(state, items, type, emptyText) {
-  const stacks = buildInventoryStacks(items);
-  if (!stacks.length) return `<div class="terminal-empty">${escapeHtml(emptyText)}</div>`;
-  const className = type === "weapon" || type === "mechWeapon"
-    ? "terminal-row-list terminal-row-list--weapons"
-    : "terminal-row-list";
-  return `<div class="${className}">${stacks.map((stack) => {
+  const list = Array.isArray(items) ? items.map((id) => String(id ?? "").trim()).filter(Boolean) : [];
+  if (!list.length) return `<div class="terminal-empty">${escapeHtml(emptyText)}</div>`;
+  const equippedCounts = getEquippedInventoryCounts(state);
+  const rows = buildInventoryStacks(list);
+  return `<div class="terminal-row-list">${rows.map((stack) => {
     const entry = getContentEntry(state, stack.id, type);
-    const name = entry?.name ?? "Unknown";
+    const name = entry?.name ?? stack.id;
     const detail = getCatalogRowDetail(entry, type);
-    const countText = stack.qty > 1 ? ` x${stack.qty}` : "";
-    const status = entry ? `${detail}${countText}` : `MISSING DATA${countText}`;
-    if (type === "weapon" || type === "mechWeapon") {
-      return `<div class="terminal-static-row terminal-static-row--weapon"><span>${escapeHtml(name)}</span><b>${escapeHtml(status)}</b></div>`;
-    }
+    const equipped = equippedCounts.get(stack.id) ?? 0;
+    const available = Math.max(0, stack.qty - equipped);
+    const countText = `STO ${available}/${stack.qty}${equipped ? ` EQ ${equipped}` : ""}`;
+    const status = entry ? [detail, countText].filter(Boolean).join(" · ") : `MISSING DATA · ${countText}`;
     return `<div class="terminal-static-row"><span>${escapeHtml(name)}</span><b>${escapeHtml(status)}</b></div>`;
   }).join("")}</div>`;
-}
-
-function buildInventoryStacks(items) {
-  const counts = new Map();
-  for (const rawId of Array.isArray(items) ? items : []) {
-    const id = String(rawId ?? "").trim();
-    if (!id) continue;
-    counts.set(id, Math.min(99, (counts.get(id) ?? 0) + 1));
-  }
-  return [...counts.entries()].map(([id, qty]) => ({ id, qty }));
 }
 
 function getCatalogRowDetail(entry, type) {
@@ -1152,6 +1155,10 @@ function renderInventoryTab(state) {
 
   return `
     <div class="terminal-screen terminal-screen--inventory">
+      <section class="terminal-panel terminal-panel--status">
+        <div class="terminal-panel-title">Credits</div>
+        <div class="terminal-big-value">${escapeHtml(credits)}</div>
+      </section>
       <section class="terminal-panel">
         <div class="terminal-panel-title">Weapons</div>
         ${renderCatalogRows(state, weapons, "weapon", "No stored weapons.")}
@@ -1172,10 +1179,9 @@ function renderInventoryTab(state) {
         <div class="terminal-panel-title">Telum Gear</div>
         ${renderCatalogRows(state, mechGear, "mechGear", "No Telum gear.")}
       </section>
-      <section class="terminal-panel terminal-panel--inventory-items">
+      <section class="terminal-panel terminal-panel--wide">
         <div class="terminal-panel-title">Items</div>
         ${renderCatalogRows(state, items, "item", "No items.")}
-        <div class="terminal-credit-strip"><span>CR</span><b>${escapeHtml(credits)}</b></div>
       </section>
     </div>
   `;
@@ -1424,7 +1430,7 @@ function getLoadoutOptions(state, pilot, slotKey) {
   const slot = normalizeLoadoutSlot(slotKey);
   const inventory = state?.campaign?.inventory ?? {};
   const loadout = pilot?.loadout ?? getPilotMenuLoadout(state, pilot?.id);
-  const currentId = String(loadout?.[slot] ?? "").trim();
+  const currentId = getPilotSlotValue(loadout, slot);
 
   if (slot === "armor") {
     return buildOwnedOptions(state, inventory.armor, "armor", currentId);
@@ -1435,22 +1441,80 @@ function getLoadoutOptions(state, pilot, slotKey) {
   }
 
   if (slot === "primaryWeapon" || slot === "secondaryWeapon") {
-    const otherSlot = slot === "primaryWeapon" ? "secondaryWeapon" : "primaryWeapon";
-    const otherWeaponId = String(loadout?.[otherSlot] ?? "").trim();
-    return buildOwnedOptions(state, inventory.weapons, "weapon", currentId).map((option) => ({
-      ...option,
-      disabled: Boolean(option.id && otherWeaponId && option.id === otherWeaponId)
-    }));
+    return buildOwnedOptions(state, inventory.weapons, "weapon", currentId);
+  }
+
+  if (slot.startsWith("item")) {
+    return [{ id: "" }, ...buildOwnedOptions(state, inventory.items, "item", currentId)];
   }
 
   return [];
 }
 
 function buildOwnedOptions(state, ids, type, currentId = "") {
-  const merged = [...new Set([...(Array.isArray(ids) ? ids : []), currentId].map((id) => String(id ?? "").trim()).filter(Boolean))];
-  return merged
-    .filter((id) => Boolean(getContentEntry(state, id, type)))
-    .map((id) => ({ id }));
+  const equippedCounts = getEquippedInventoryCounts(state);
+  const stacks = buildInventoryStacks(Array.isArray(ids) ? ids : []);
+  const current = String(currentId ?? "").trim();
+  if (current && !stacks.some((stack) => stack.id === current)) {
+    stacks.push({ id: current, qty: 0 });
+  }
+  return stacks
+    .filter((stack) => Boolean(getContentEntry(state, stack.id, type)))
+    .map((stack) => {
+      const equippedQty = equippedCounts.get(stack.id) ?? 0;
+      const availableQty = Math.max(0, stack.qty - equippedQty);
+      return {
+        id: stack.id,
+        ownedQty: stack.qty,
+        equippedQty,
+        availableQty,
+        disabled: Boolean(stack.id && stack.id !== current && availableQty <= 0)
+      };
+    });
+}
+
+function getPilotSlotValue(loadout, slotKey) {
+  const slot = String(slotKey ?? "").trim();
+  if (slot.startsWith("item")) {
+    const index = Math.max(0, Math.trunc(Number(slot.replace("item", "")) || 1) - 1);
+    return String((Array.isArray(loadout?.items) ? loadout.items : [])[index] ?? "").trim();
+  }
+  return String(loadout?.[slot] ?? "").trim();
+}
+
+function getMechSlotValue(loadout, slotKey) {
+  const slot = String(slotKey ?? "").trim();
+  if (slot.startsWith("item")) {
+    const index = Math.max(0, Math.trunc(Number(slot.replace("item", "")) || 1) - 1);
+    return String((Array.isArray(loadout?.items) ? loadout.items : [])[index] ?? "").trim();
+  }
+  return String(loadout?.[slot] ?? "").trim();
+}
+
+function renderLoadoutOptionDetail(entry, type) {
+  if (!entry) return "";
+  if (type === "weapon" || type === "mechWeapon") return renderWeaponDetail(entry);
+  if (type === "item") return renderItemEffect(entry.effect) || entry.description || "Item";
+  return renderModifierText(entry.modifiers) || entry.description || "Gear";
+}
+
+function renderStorageCountText(option) {
+  const owned = Math.max(0, Math.trunc(Number(option?.ownedQty ?? 0) || 0));
+  const equipped = Math.max(0, Math.trunc(Number(option?.equippedQty ?? 0) || 0));
+  const available = Math.max(0, Math.trunc(Number(option?.availableQty ?? 0) || 0));
+  return `STO ${available}/${owned}${equipped ? ` EQ ${equipped}` : ""}`;
+}
+
+function buildInventoryStacks(ids) {
+  const counts = new Map();
+  for (const rawId of Array.isArray(ids) ? ids : []) {
+    const id = String(rawId ?? "").trim();
+    if (!id) continue;
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([id, qty]) => ({ id, qty }))
+    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: "base" }));
 }
 
 
@@ -1472,7 +1536,7 @@ function getMechMenuLoadout(state, mechId) {
     supportWeapon,
     weapons: [primaryWeapon, secondaryWeapon, supportWeapon].filter(Boolean),
     abilities: Array.isArray(source.abilities) && source.abilities.length ? [...source.abilities] : (Array.isArray(fallback.abilities) ? [...fallback.abilities] : []),
-    items: Array.isArray(source.items) && source.items.length ? [...source.items] : (Array.isArray(fallback.items) ? [...fallback.items] : [])
+    items: (Array.isArray(source.items) && source.items.length ? [...source.items] : (Array.isArray(fallback.items) ? [...fallback.items] : [])).map((id) => String(id ?? "").trim()).filter(Boolean)
   };
 }
 
@@ -1480,7 +1544,7 @@ function getTelumLoadoutOptions(state, mech, slotKey) {
   const slot = normalizeTelumLoadoutSlot(slotKey);
   const inventory = state?.campaign?.inventory ?? {};
   const loadout = mech?.loadout ?? getMechMenuLoadout(state, mech?.id);
-  const currentId = String(loadout?.[slot] ?? "").trim();
+  const currentId = getMechSlotValue(loadout, slot);
 
   if (slot === "plating" || slot === "system") {
     const base = buildOwnedOptions(state, inventory.mechGear, "mechGear", currentId)
@@ -1492,14 +1556,11 @@ function getTelumLoadoutOptions(state, mech, slotKey) {
   }
 
   if (slot === "primaryWeapon" || slot === "secondaryWeapon" || slot === "supportWeapon") {
-    const otherIds = new Set([loadout.primaryWeapon, loadout.secondaryWeapon, loadout.supportWeapon]
-      .map((id) => String(id ?? "").trim())
-      .filter(Boolean));
-    otherIds.delete(currentId);
-    return buildOwnedOptions(state, inventory.mechWeapons, "mechWeapon", currentId).map((option) => ({
-      ...option,
-      disabled: Boolean(option.id && otherIds.has(option.id))
-    }));
+    return buildOwnedOptions(state, inventory.mechWeapons, "mechWeapon", currentId);
+  }
+
+  if (slot.startsWith("item")) {
+    return [{ id: "" }, ...buildOwnedOptions(state, inventory.items, "item", currentId)];
   }
 
   return [];
@@ -1516,25 +1577,34 @@ function getBuyableItemsForCategory(state, category) {
   const menu = normalizeGameMenuState(state);
   const shop = getActiveShopDefinition(state, menu.shopId);
   const stock = normalizeShopStock(shop?.stock);
+  const buybackRows = (Array.isArray(menu.shopBuyback) ? menu.shopBuyback : [])
+    .map((buybackEntry, index) => {
+      if (buybackEntry.categoryKey !== category.key) return null;
+      const entry = getContentEntry(state, buybackEntry.itemId, category.type);
+      if (!entry || !doesShopEntryMatchCategory(entry, category)) return null;
+      return { itemId: buybackEntry.itemId, index, entry, mode: "buy", source: "buyback", price: buybackEntry.price, bucket: buybackEntry.bucket, qty: 1 };
+    })
+    .filter(Boolean);
 
-  return stock
+  const stockRows = stock
     .map((stockEntry, index) => {
       const entry = getContentEntry(state, stockEntry.itemId, category.type);
       if (!entry || !doesShopEntryMatchCategory(entry, category)) return null;
       if (Number.isFinite(stockEntry.qty) && stockEntry.qty <= 0) return null;
-      return { ...stockEntry, index, entry, mode: "buy" };
+      return { ...stockEntry, index, entry, mode: "buy", source: "stock", price: getEntryPrice(entry) };
     })
     .filter(Boolean);
+
+  return [...buybackRows, ...stockRows];
 }
 
 function getSellableItemsForCategory(state, category) {
   const inventory = state?.campaign?.inventory ?? {};
   const ids = getInventoryIdsForCategory(inventory, category.key);
   const equippedCounts = getEquippedInventoryCounts(state);
-  const stacks = buildInventoryStacks(ids);
   const rows = [];
 
-  stacks.forEach((stack) => {
+  buildInventoryStacks(ids).forEach((stack) => {
     const equippedQty = equippedCounts.get(stack.id) ?? 0;
     const availableQty = Math.max(0, stack.qty - equippedQty);
     if (availableQty <= 0) return;
@@ -1592,14 +1662,12 @@ function getEquippedInventoryCounts(state) {
 
   for (const pilot of getVisiblePilotEntries(state)) {
     const loadout = getPilotMenuLoadout(state, pilot.id);
-    [loadout.armor, loadout.accessory, loadout.primaryWeapon, loadout.secondaryWeapon]
-      .forEach(add);
+    [loadout.armor, loadout.accessory, loadout.primaryWeapon, loadout.secondaryWeapon].forEach(add);
     (Array.isArray(loadout.items) ? loadout.items : []).forEach(add);
   }
   for (const mech of getVisibleMechEntries(state)) {
     const loadout = getMechMenuLoadout(state, mech.id);
-    [loadout.plating, loadout.system, loadout.primaryWeapon, loadout.secondaryWeapon, loadout.supportWeapon]
-      .forEach(add);
+    [loadout.plating, loadout.system, loadout.primaryWeapon, loadout.secondaryWeapon, loadout.supportWeapon].forEach(add);
     (Array.isArray(loadout.items) ? loadout.items : []).forEach(add);
   }
   return counts;
@@ -1619,6 +1687,10 @@ function doesShopEntryMatchCategory(entry, category) {
 
 function getEntryPrice(entry) {
   return Math.max(0, Math.trunc(Number(entry?.price ?? 0) || 0));
+}
+
+function getSellPrice(entry) {
+  return Math.max(0, Math.floor(getEntryPrice(entry) * 0.75));
 }
 
 function renderItemEffect(effect) {
@@ -1652,9 +1724,7 @@ function confirmShopSelection(state) {
 function countInventoryId(ids, itemId) {
   const clean = String(itemId ?? "").trim();
   if (!clean) return 0;
-  return (Array.isArray(ids) ? ids : [])
-    .filter((id) => String(id ?? "").trim() === clean)
-    .length;
+  return (Array.isArray(ids) ? ids : []).filter((id) => String(id ?? "").trim() === clean).length;
 }
 
 function buyShopItem(state, category, row) {
@@ -1664,7 +1734,7 @@ function buyShopItem(state, category, row) {
   const bucket = getInventoryBucketForCategory(category.key);
   if (!Array.isArray(inventory[bucket])) inventory[bucket] = [];
 
-  const price = getEntryPrice(row.entry);
+  const price = Math.max(0, Math.trunc(Number(row.price ?? getEntryPrice(row.entry)) || 0));
   const credits = Math.max(0, Math.trunc(Number(inventory.currency ?? 0) || 0));
   if (credits < price) {
     normalizeGameMenuState(state).statusText = `Need ${price} CR. Current credits: ${credits}.`;
@@ -1675,6 +1745,22 @@ function buyShopItem(state, category, row) {
   if (ownedQty >= 99) {
     normalizeGameMenuState(state).statusText = "Ship storage limit reached: 99.";
     return { ok: false, reason: "storage_stack_full" };
+  }
+
+  if (row.source === "buyback") {
+    const menu = normalizeGameMenuState(state);
+    const buybackIndex = Math.max(0, Math.trunc(Number(row.index ?? -1) || -1));
+    const buybackEntry = Array.isArray(menu.shopBuyback) ? menu.shopBuyback[buybackIndex] : null;
+    if (!buybackEntry || buybackEntry.itemId !== row.itemId) {
+      menu.statusText = "Buyback item is no longer available.";
+      return { ok: false, reason: "buyback_missing" };
+    }
+    inventory.currency = credits - price;
+    inventory[bucket].push(row.itemId);
+    menu.shopBuyback.splice(buybackIndex, 1);
+    menu.statusText = `Rebought ${row.entry.name ?? row.itemId} for ${price} CR.`;
+    menu.selectedShopItemIndex = clampIndex(menu.selectedShopItemIndex, getShopItemsForCategory(state, category).length);
+    return { ok: true, reason: "rebought_item" };
   }
 
   const shop = getActiveShopDefinition(state, normalizeGameMenuState(state).shopId);
@@ -1706,18 +1792,20 @@ function sellShopItem(state, category, row) {
   const availableQty = Math.max(0, totalQty - equippedQty);
   if (availableQty <= 0) {
     normalizeGameMenuState(state).statusText = "No unequipped stock available.";
-    return { ok: false, reason: "not_owned" };
+    return { ok: false, reason: "equipped_or_missing" };
   }
   const index = inventory[bucket].findIndex((id) => String(id ?? "").trim() === row.itemId);
   if (index < 0) {
     normalizeGameMenuState(state).statusText = "Item is no longer in ship storage.";
     return { ok: false, reason: "not_owned" };
   }
-  const price = getEntryPrice(row.entry);
+  const price = getSellPrice(row.entry);
   inventory[bucket].splice(index, 1);
   inventory.currency = Math.max(0, Math.trunc(Number(inventory.currency ?? 0) || 0)) + price;
   const menu = normalizeGameMenuState(state);
-  menu.statusText = `Sold ${row.entry.name ?? row.itemId} for ${price} CR.`;
+  if (!Array.isArray(menu.shopBuyback)) menu.shopBuyback = [];
+  menu.shopBuyback.push({ itemId: row.itemId, bucket, price, categoryKey: category.key });
+  menu.statusText = `Sold ${row.entry.name ?? row.itemId} for ${price} CR. Rebuy before leaving shop.`;
   menu.selectedShopItemIndex = clampIndex(menu.selectedShopItemIndex, getShopItemsForCategory(state, category).length);
   return { ok: true, reason: "sold_item" };
 }
