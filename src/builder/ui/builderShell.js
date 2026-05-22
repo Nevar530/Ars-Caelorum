@@ -1512,8 +1512,10 @@ function renderShopStockChecklist(appState, tool, editable) {
   return `
     <div class="builder-form-field-wide builder-shop-stock-list">
       ${groups.map((group) => `
-        <div class="builder-field-label builder-section-label">${escapeHtml(group.label)}</div>
-        ${group.items.length ? group.items.map((item) => renderShopStockItemRow(item, selected, editable)).join("") : `<div class="builder-inspector-note builder-note-compact">No entries in loaded JSON.</div>`}
+        <div class="builder-shop-stock-group">
+          <div class="builder-shop-stock-group-label">${escapeHtml(group.label)}</div>
+          ${group.items.length ? group.items.map((item) => renderShopStockItemRow(item, selected, editable)).join("") : `<div class="builder-shop-stock-empty">No entries in loaded JSON.</div>`}
+        </div>
       `).join("")}
     </div>
   `;
@@ -1523,17 +1525,13 @@ function renderShopStockItemRow(item, selected, editable) {
   const id = String(item?.id ?? "").trim();
   const checked = selected.has(id);
   const qty = selected.get(id) ?? 1;
-  const price = Math.max(0, Math.trunc(Number(item?.price ?? 0) || 0));
   const detail = renderBuilderItemDetail(item);
   return `
-    <div class="builder-static-row builder-shop-stock-row">
-      <label class="builder-form-check">
-        <input type="checkbox" data-builder-field="trigger-shop-stock-check" data-shop-stock-id="${escapeHtml(id)}"${checked ? " checked" : ""}${editable ? "" : " disabled"}>
-        <span>${escapeHtml(item?.name ?? id)}</span>
-      </label>
-      <input type="number" min="1" step="1" data-builder-field="trigger-shop-stock-qty" data-shop-stock-qty="${escapeHtml(id)}" value="${escapeHtml(qty)}"${checked && editable ? "" : " disabled"}>
-      <b>${escapeHtml(price)} CR</b>
-      <em>${escapeHtml(detail)}</em>
+    <div class="builder-shop-stock-row">
+      <input class="builder-shop-stock-check" type="checkbox" data-builder-field="trigger-shop-stock-check" data-shop-stock-id="${escapeHtml(id)}"${checked ? " checked" : ""}${editable ? "" : " disabled"} aria-label="Add ${escapeHtml(item?.name ?? id)} to shop">
+      <span class="builder-shop-stock-name" title="${escapeHtml(id)}">${escapeHtml(item?.name ?? id)}</span>
+      <span class="builder-shop-stock-effect">${escapeHtml(detail)}</span>
+      <input class="builder-shop-stock-qty" type="number" min="1" step="1" data-builder-field="trigger-shop-stock-qty" data-shop-stock-qty="${escapeHtml(id)}" value="${escapeHtml(qty)}"${checked && editable ? "" : " disabled"} aria-label="Qty for ${escapeHtml(item?.name ?? id)}">
     </div>
   `;
 }
@@ -1851,7 +1849,7 @@ function renderTriggerInspectorTools(builderState, appState) {
         </label>
         <input type="hidden" data-builder-field="trigger-shop-stock-ids" value="${escapeHtml(tool.shopStockIds ?? "")}">
         ${renderShopStockChecklist(appState, tool, editable)}
-        <div class="builder-inspector-note builder-note-compact">Check items to add them to this shop. Qty is shop stock count. Price/effects come from item JSON.</div>
+        <div class="builder-inspector-note builder-note-compact">Check items to add them to this shop. Qty is shop stock count. Item effects come from item JSON.</div>
       ` : ""}
       ${needsTargetUnit ? `
         <label class="builder-form-field builder-form-field-compact">

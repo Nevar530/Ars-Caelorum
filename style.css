@@ -5164,3 +5164,99 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================
+   MISSION BUILDER — COMPACT SHOP STOCK AUTHORING
+========================================= */
+
+.builder-shop-stock-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 0;
+}
+
+.builder-shop-stock-group {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.builder-shop-stock-group-label {
+  margin: 6px 0 2px;
+  padding: 3px 0 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(220, 232, 241, 0.72);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.builder-shop-stock-row {
+  display: grid;
+  grid-template-columns: 16px minmax(86px, 0.82fr) minmax(110px, 1fr) 38px;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 20px;
+  padding: 1px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  color: #dbe6ef;
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.builder-shop-stock-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.builder-shop-stock-check {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+}
+
+.builder-shop-stock-name,
+.builder-shop-stock-effect {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.builder-shop-stock-name {
+  color: #edf4fb;
+  font-weight: 600;
+}
+
+.builder-shop-stock-effect {
+  color: rgba(213, 226, 237, 0.78);
+  font-style: normal;
+}
+
+.builder-shop-stock-qty {
+  width: 36px;
+  min-width: 0;
+  height: 18px;
+  padding: 0 3px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #edf4fb;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: right;
+  box-sizing: border-box;
+}
+
+.builder-shop-stock-qty:disabled {
+  opacity: 0.35;
+}
+
+.builder-shop-stock-empty {
+  padding: 2px 2px 3px 21px;
+  color: rgba(213, 226, 237, 0.48);
+  font-size: 10px;
+  font-style: italic;
+}
