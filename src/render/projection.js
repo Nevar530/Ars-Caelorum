@@ -40,7 +40,7 @@ export const LOS_HEIGHT_PROFILES = {
 
 export function ensureCameraState(state) {
   if (!state.camera) {
-    state.camera = { angle: 0 };
+    state.camera = {};
   }
 
   if (typeof state.camera.offsetX !== "number") {

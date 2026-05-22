@@ -30,8 +30,8 @@ export function renderIso(state, refs) {
   const { worldScene, worldUi } = refs;
   const { map } = state;
 
-  worldScene.innerHTML = "";
-  worldUi.innerHTML = "";
+  worldScene.replaceChildren();
+  worldUi.replaceChildren();
 
   const reachableMap = new Map();
 

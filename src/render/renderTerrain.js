@@ -252,7 +252,6 @@ function drawIsoTerrainCell(state, item, parent) {
     fallbackColor: colors.top,
     strokeColor: darkerTerrainGridStroke(colors.top),
     imagePath: sprites.top,
-    textureRotation: 0
   });
 
   if (tileOverlayStyle?.fill) {
@@ -441,7 +440,6 @@ function drawIsoTerrainTop({
   fallbackColor,
   strokeColor,
   imagePath,
-  textureRotation = 0
 }) {
   const fallbackPolygon = makePolygon(points, "tile-top", fallbackColor);
   fallbackPolygon.setAttribute("stroke", "none");
@@ -466,8 +464,7 @@ function drawIsoTerrainTop({
       topLeft: points[3],
       topAxisEnd: points[0],
       sideAxisEnd: points[2],
-      imagePath,
-      textureRotation
+      imagePath
     });
 
     parentGroup.appendChild(textureGroup);
@@ -484,7 +481,6 @@ function appendSkewedTopTexture({
   topAxisEnd,
   sideAxisEnd,
   imagePath,
-  textureRotation = 0
 }) {
   const ux = topAxisEnd.x - topLeft.x;
   const uy = topAxisEnd.y - topLeft.y;
@@ -501,43 +497,13 @@ function appendSkewedTopTexture({
   image.setAttribute("href", imagePath);
   image.setAttributeNS("http://www.w3.org/1999/xlink", "href", imagePath);
 
-  const baseA = ux / sourceSize;
-  const baseB = uy / sourceSize;
-  const baseC = vx / sourceSize;
-  const baseD = vy / sourceSize;
-  const baseE = topLeft.x;
-  const baseF = topLeft.y;
-
-  const rot = getFixedTopTextureRotation(textureRotation);
-  const radians = (rot * Math.PI) / 2;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  const center = sourceSize / 2;
-
-  // Rotate the source texture in tile-local space first, then map it into
-  // the existing isometric top diamond. This keeps art inside the clip while
-  // preventing directional top details from staying pinned to screen corners.
-  const rotA = cos;
-  const rotB = sin;
-  const rotC = -sin;
-  const rotD = cos;
-  const rotE = center - (cos * center) + (sin * center);
-  const rotF = center - (sin * center) - (cos * center);
-
-  const a = (baseA * rotA) + (baseC * rotB);
-  const b = (baseB * rotA) + (baseD * rotB);
-  const c = (baseA * rotC) + (baseC * rotD);
-  const d = (baseB * rotC) + (baseD * rotD);
-  const e = (baseA * rotE) + (baseC * rotF) + baseE;
-  const f = (baseB * rotE) + (baseD * rotF) + baseF;
-
-  image.setAttribute("transform", `matrix(${a} ${b} ${c} ${d} ${e} ${f})`);
+  image.setAttribute(
+    "transform",
+    `matrix(${ux / sourceSize} ${uy / sourceSize} ${vx / sourceSize} ${vy / sourceSize} ${topLeft.x} ${topLeft.y})`
+  );
   parentGroup.appendChild(image);
 }
 
-function getFixedTopTextureRotation(_unusedTextureRotation = 0) {
-  return 0;
-}
 
 function drawIsoTerrainFace({
   parentGroup,

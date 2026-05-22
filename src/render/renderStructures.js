@@ -2,7 +2,7 @@
 //
 // Structure Render V3
 // Board truth: structure cells + real world edge parts + separate roof.
-// No prefab boxes. No left/right face swapping. Rotation only changes projection.
+// No prefab boxes. Fixed authored iso; unit facing remains separate.
 
 import { RENDER_CONFIG } from "../config.js";
 import { svgEl, makePolygon, makeText } from "../utils.js";
@@ -474,7 +474,6 @@ function makeRoofItems(state, structure) {
       cell,
       points,
       imagePath: structure.roofSprite,
-      textureRotation: 0,
       // Roofs are sorted by their base footprint, not by their visual rise.
       // A taller/farther roof should not draw over a closer wall just because
       // its artwork is higher on screen.
@@ -730,7 +729,7 @@ function drawRoof(item, parent) {
   group.appendChild(fallback);
 
   if (item.imagePath) {
-    appendProjectedRoofImage(group, item.points, item.imagePath, item.textureRotation);
+    appendProjectedRoofImage(group, item.points, item.imagePath);
   }
 
   const outline = makePolygon(item.points, "structure-roof-outline", "none");
@@ -824,7 +823,7 @@ function getOppositeWorldFace(worldFace) {
 }
 
 
-function appendProjectedRoofImage(parentGroup, points, imagePath, textureRotation = 0) {
+function appendProjectedRoofImage(parentGroup, points, imagePath) {
   const id = `structure-roof-clip-${clipId += 1}`;
   const clip = svgEl("clipPath");
   clip.setAttribute("id", id);
@@ -855,35 +854,13 @@ function appendProjectedRoofImage(parentGroup, points, imagePath, textureRotatio
   const vx = sideAxisEnd.x - topLeft.x;
   const vy = sideAxisEnd.y - topLeft.y;
 
-  const baseA = ux / size;
-  const baseB = uy / size;
-  const baseC = vx / size;
-  const baseD = vy / size;
-
-  const rot = getFixedTextureRotation(textureRotation);
-  const radians = (rot * Math.PI) / 2;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  const center = size / 2;
-
-  const rotE = center - (cos * center) + (sin * center);
-  const rotF = center - (sin * center) - (cos * center);
-
-  const a = (baseA * cos) + (baseC * sin);
-  const b = (baseB * cos) + (baseD * sin);
-  const c = (baseA * -sin) + (baseC * cos);
-  const d = (baseB * -sin) + (baseD * cos);
-  const e = (baseA * rotE) + (baseC * rotF) + topLeft.x;
-  const f = (baseB * rotE) + (baseD * rotF) + topLeft.y;
-
-  image.setAttribute("transform", `matrix(${a} ${b} ${c} ${d} ${e} ${f})`);
+  image.setAttribute(
+    "transform",
+    `matrix(${ux / size} ${uy / size} ${vx / size} ${vy / size} ${topLeft.x} ${topLeft.y})`
+  );
 
   group.appendChild(image);
   parentGroup.appendChild(group);
-}
-
-function getFixedTextureRotation(_unusedTextureRotation = 0) {
-  return 0;
 }
 
 function appendProjectedImage(parentGroup, points, imagePath, layerName, sourceWidth, sourceHeight) {
