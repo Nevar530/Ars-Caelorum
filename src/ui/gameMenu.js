@@ -1594,12 +1594,19 @@ function getBuyableItemsForCategory(state, category) {
     })
     .filter(Boolean);
 
+  const buybackReserved = new Map();
+  for (const row of buybackRows) {
+    buybackReserved.set(row.itemId, (buybackReserved.get(row.itemId) ?? 0) + 1);
+  }
+
   const stockRows = stock
     .map((stockEntry, index) => {
       const entry = getContentEntry(state, stockEntry.itemId, category.type);
       if (!entry || !doesShopEntryMatchCategory(entry, category)) return null;
-      if (Number.isFinite(stockEntry.qty) && stockEntry.qty <= 0) return null;
-      return { ...stockEntry, index, entry, mode: "buy", source: "stock", price: getEntryPrice(entry) };
+      const reservedQty = buybackReserved.get(stockEntry.itemId) ?? 0;
+      const qty = Math.max(0, Math.trunc(Number(stockEntry.qty) || 0) - reservedQty);
+      if (qty <= 0) return null;
+      return { ...stockEntry, qty, index, entry, mode: "buy", source: "stock", price: getEntryPrice(entry) };
     })
     .filter(Boolean);
 
@@ -1626,15 +1633,55 @@ function getSellableItemsForCategory(state, category) {
 
 function normalizeShopStock(stock) {
   if (!Array.isArray(stock)) return [];
-  return stock
-    .map((entry) => {
-      if (typeof entry === "string") return { itemId: entry.trim(), qty: 1 };
-      const itemId = String(entry?.itemId ?? entry?.id ?? "").trim();
-      const qtyRaw = entry?.qty ?? entry?.quantity ?? 1;
-      const qty = Math.max(0, Math.trunc(Number(qtyRaw) || 0));
-      return { itemId, qty };
-    })
-    .filter((entry) => entry.itemId);
+  const byId = new Map();
+  const order = [];
+  for (const entry of stock) {
+    const itemId = typeof entry === "string"
+      ? entry.trim()
+      : String(entry?.itemId ?? entry?.id ?? "").trim();
+    if (!itemId) continue;
+    const qtyRaw = typeof entry === "string" ? 1 : (entry?.qty ?? entry?.quantity ?? 1);
+    const qty = Math.max(0, Math.trunc(Number(qtyRaw) || 0));
+    if (!byId.has(itemId)) order.push(itemId);
+    byId.set(itemId, Math.min(99, (byId.get(itemId) ?? 0) + qty));
+  }
+  return order.map((itemId) => ({ itemId, qty: byId.get(itemId) ?? 0 })).filter((entry) => entry.qty > 0);
+}
+
+function writeShopStock(shop, stock) {
+  if (!shop || typeof shop !== "object") return;
+  shop.stock = normalizeShopStock(stock);
+}
+
+function addShopStockItem(shop, itemId, qty = 1) {
+  if (!shop || typeof shop !== "object") return false;
+  const clean = String(itemId ?? "").trim();
+  if (!clean) return false;
+  const amount = Math.max(0, Math.trunc(Number(qty) || 0));
+  if (!amount) return false;
+  const stock = normalizeShopStock(shop.stock);
+  const existing = stock.find((entry) => entry.itemId === clean);
+  if (existing) {
+    existing.qty = Math.min(99, existing.qty + amount);
+  } else {
+    stock.push({ itemId: clean, qty: Math.min(99, amount) });
+  }
+  writeShopStock(shop, stock);
+  return true;
+}
+
+function removeShopStockItem(shop, itemId, qty = 1) {
+  if (!shop || typeof shop !== "object") return false;
+  const clean = String(itemId ?? "").trim();
+  if (!clean) return false;
+  const amount = Math.max(0, Math.trunc(Number(qty) || 0));
+  if (!amount) return false;
+  const stock = normalizeShopStock(shop.stock);
+  const existing = stock.find((entry) => entry.itemId === clean);
+  if (!existing || existing.qty < amount) return false;
+  existing.qty -= amount;
+  writeShopStock(shop, stock);
+  return true;
 }
 
 function getActiveShopDefinition(state, shopId) {
@@ -1763,6 +1810,8 @@ function buyShopItem(state, category, row) {
       menu.statusText = "Buyback item is no longer available.";
       return { ok: false, reason: "buyback_missing" };
     }
+    const shop = getActiveShopDefinition(state, menu.shopId);
+    removeShopStockItem(shop, row.itemId, 1);
     inventory.currency = credits - price;
     inventory[bucket].push(row.itemId);
     menu.shopBuyback.splice(buybackIndex, 1);
@@ -1772,17 +1821,13 @@ function buyShopItem(state, category, row) {
   }
 
   const shop = getActiveShopDefinition(state, normalizeGameMenuState(state).shopId);
-  const stock = normalizeShopStock(shop?.stock);
-  const stockEntry = stock[row.index];
-  if (!stockEntry || stockEntry.qty <= 0) {
+  if (!removeShopStockItem(shop, row.itemId, 1)) {
     normalizeGameMenuState(state).statusText = "Shop stock is empty.";
     return { ok: false, reason: "stock_empty" };
   }
 
   inventory.currency = credits - price;
   inventory[bucket].push(row.itemId);
-  stockEntry.qty = Math.max(0, stockEntry.qty - 1);
-  if (shop) shop.stock = stock;
   const menu = normalizeGameMenuState(state);
   menu.statusText = `Bought ${row.entry.name ?? row.itemId} for ${price} CR. Sent to ship storage.`;
   menu.selectedShopItemIndex = clampIndex(menu.selectedShopItemIndex, getShopItemsForCategory(state, category).length);
@@ -1811,6 +1856,8 @@ function sellShopItem(state, category, row) {
   inventory[bucket].splice(index, 1);
   inventory.currency = Math.max(0, Math.trunc(Number(inventory.currency ?? 0) || 0)) + price;
   const menu = normalizeGameMenuState(state);
+  const shop = getActiveShopDefinition(state, menu.shopId);
+  addShopStockItem(shop, row.itemId, 1);
   if (!Array.isArray(menu.shopBuyback)) menu.shopBuyback = [];
   menu.shopBuyback.push({ itemId: row.itemId, bucket, price, categoryKey: category.key });
   menu.statusText = `Sold ${row.entry.name ?? row.itemId} for ${price} CR. Rebuy before leaving shop.`;
