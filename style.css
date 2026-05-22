@@ -5178,6 +5178,58 @@ button:disabled {
   grid-template-columns: minmax(210px, 0.8fr) minmax(360px, 1.2fr) minmax(260px, 0.85fr);
 }
 
+.terminal-screen--shop {
+  grid-template-columns: minmax(190px, 0.62fr) minmax(390px, 1.28fr) minmax(260px, 0.78fr);
+}
+
+.terminal-panel--shop-nav {
+  min-width: 0;
+}
+
+.terminal-tab-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 3px;
+  padding: 2px;
+  border: 1px solid rgba(180, 210, 230, 0.10);
+  background: rgba(4, 12, 18, 0.48);
+}
+
+.terminal-tab {
+  min-height: 24px;
+  border: 1px solid rgba(180, 210, 230, 0.10);
+  border-radius: 0;
+  background: rgba(9, 21, 31, 0.58);
+  color: rgba(210, 225, 235, 0.68);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.terminal-tab:hover,
+.terminal-tab.is-selected {
+  border-color: rgba(240, 176, 0, 0.44);
+  background: rgba(82, 64, 20, 0.54);
+  color: rgba(246, 241, 213, 0.94);
+}
+
+.terminal-credit-mini {
+  float: right;
+  color: rgba(231, 221, 184, 0.68);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.terminal-row-list--compact .terminal-row {
+  min-height: 26px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
 .terminal-panel.is-focused {
   border-color: rgba(240, 176, 0, 0.55);
 }

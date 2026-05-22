@@ -814,23 +814,25 @@ function renderShopTab(state) {
   const modeLabel = menu.shopMode === "sell" ? "Sell" : "Buy";
 
   return `
-    <div class="terminal-screen terminal-screen--context-list">
-      <section class="terminal-panel ${menu.shopStage === "categories" ? "is-focused" : ""}">
-        <div class="terminal-panel-title">${escapeHtml(shopName)} / ${escapeHtml(modeLabel)}</div>
-        <div class="terminal-row-list">
-          <button type="button" class="terminal-row ${menu.shopMode === "buy" ? "is-selected" : ""}" data-game-menu-action="select-shop-mode" data-shop-mode="buy"><span>Buy Stock</span><b>${escapeHtml(credits)} CR</b></button>
-          <button type="button" class="terminal-row ${menu.shopMode === "sell" ? "is-selected" : ""}" data-game-menu-action="select-shop-mode" data-shop-mode="sell"><span>Sell Unequipped</span><b>${escapeHtml(credits)} CR</b></button>
+    <div class="terminal-screen terminal-screen--context-list terminal-screen--shop">
+      <section class="terminal-panel terminal-panel--shop-nav ${menu.shopStage === "categories" ? "is-focused" : ""}">
+        <div class="terminal-panel-title">${escapeHtml(shopName)} <span class="terminal-credit-mini">${escapeHtml(credits)} CR</span></div>
+        <div class="terminal-tab-strip terminal-tab-strip--shop" role="tablist" aria-label="Shop mode">
+          <button type="button" class="terminal-tab ${menu.shopMode === "buy" ? "is-selected" : ""}" data-game-menu-action="select-shop-mode" data-shop-mode="buy">BUY</button>
+          <button type="button" class="terminal-tab ${menu.shopMode === "sell" ? "is-selected" : ""}" data-game-menu-action="select-shop-mode" data-shop-mode="sell">SELL</button>
+        </div>
+        <div class="terminal-row-list terminal-row-list--compact">
           ${SHOP_CATEGORIES.map((entry) => `
             <button type="button" class="terminal-row ${entry.key === category.key ? "is-selected" : ""} ${menu.shopStage === "categories" && entry.key === category.key ? "is-cursor" : ""}" data-game-menu-action="select-shop-category" data-shop-category="${escapeHtml(entry.key)}">
               <span>${escapeHtml(entry.label)}</span><b>${escapeHtml(getShopItemsForCategory(state, entry).length)}</b>
             </button>
           `).join("")}
         </div>
-        <div class="terminal-note">Left on category toggles Buy/Sell. Right/Enter opens list.</div>
+        <div class="terminal-note">Left/Right switches BUY/SELL. Enter opens list.</div>
       </section>
       <section class="terminal-panel ${menu.shopStage === "items" ? "is-focused" : ""}">
         <div class="terminal-panel-title">${escapeHtml(modeLabel)} / ${escapeHtml(category.label)}</div>
-        <div class="terminal-row-list">
+        <div class="terminal-row-list terminal-row-list--compact">
           ${items.length ? items.map((item, index) => renderShopItemRow(state, item, category.type, menu.shopStage === "items" && index === menu.selectedShopItemIndex, index)).join("") : `<div class="terminal-empty">No ${menu.shopMode === "sell" ? "unequipped items" : "stock"} in this category.</div>`}
         </div>
       </section>
