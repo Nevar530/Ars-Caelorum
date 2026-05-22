@@ -7,7 +7,7 @@
 
 import { parseSpawnId, SPAWN_TEAMS } from "../maps/mapSpawns.js";
 import { getDefaultControlTypeForSpawnTeam } from "./builderSpawns.js";
-import { isPilotAvailableForBuilderRoster } from "./builderRoster.js";
+import { isMechOwnedForBuilderRoster, isPilotAvailableForBuilderRoster } from "./builderRoster.js";
 
 const START_TYPES = ["pilot", "emptyMech"];
 const CONTROL_TYPES = ["PC", "CPU"];
@@ -31,7 +31,7 @@ export function ensureUnitToolSettings(builderState, appState = null) {
 
   const tool = builderState.unitTool;
   const pilots = getPilotOptions(appState, builderState);
-  const mechs = getMechOptions(appState);
+  const mechs = getMechOptions(appState, builderState);
 
   tool.startType = START_TYPES.includes(tool.startType) ? tool.startType : "pilot";
   tool.team = SPAWN_TEAMS.includes(tool.team) ? tool.team : "player";
@@ -249,12 +249,22 @@ export function getPilotOptions(appState = null, builderState = null) {
     .filter((pilot) => pilot.id);
 }
 
-export function getMechOptions(appState = null) {
+export function getMechOptions(appState = null, builderState = null) {
   const mechs = Array.isArray(appState?.content?.mechs) ? appState.content.mechs : [];
-  return mechs.map((mech) => ({
-    id: String(mech?.id ?? "").trim(),
-    label: String(mech?.name ?? mech?.id ?? "Mech").trim()
-  })).filter((mech) => mech.id);
+  const tool = builderState?.unitTool ?? {};
+  const shouldFilterOwned =
+    String(tool.team ?? "player") === "player"
+    && String(tool.controlType ?? "PC") === "PC";
+
+  return mechs
+    .filter((mech) => {
+      if (!shouldFilterOwned) return true;
+      return isMechOwnedForBuilderRoster(builderState, mech?.id);
+    })
+    .map((mech) => ({
+      id: String(mech?.id ?? "").trim(),
+      label: String(mech?.name ?? mech?.id ?? "Mech").trim()
+    })).filter((mech) => mech.id);
 }
 
 function inferTeamControlFromTool(builderState, tool) {

@@ -187,18 +187,34 @@ function getKnownMissionIds(appState, mission) {
 
 
 function validateActiveRoster(result, mission, appState = null) {
-  const roster = mission?.activeRoster?.pilots && typeof mission.activeRoster.pilots === "object"
+  const pilotRoster = mission?.activeRoster?.pilots && typeof mission.activeRoster.pilots === "object"
     ? mission.activeRoster.pilots
     : {};
-  const known = new Set(getContentIds(appState?.content?.pilots));
-  for (const [pilotId, state] of Object.entries(roster)) {
+  const mechRoster = mission?.activeRoster?.mechs && typeof mission.activeRoster.mechs === "object"
+    ? mission.activeRoster.mechs
+    : {};
+  const knownPilots = new Set(getContentIds(appState?.content?.pilots));
+  const knownMechs = new Set(getContentIds(appState?.content?.mechs));
+
+  for (const [pilotId, state] of Object.entries(pilotRoster)) {
     const id = cleanString(pilotId);
     if (!id) continue;
-    if (known.size && !known.has(id)) {
+    if (knownPilots.size && !knownPilots.has(id)) {
       addWarning(result, "ROSTER_UNKNOWN_PILOT", `Active roster references unknown pilot "${id}".`);
     }
     if (state?.available === true && state?.recruited !== true) {
       addWarning(result, "ROSTER_AVAILABLE_NOT_RECRUITED", `Active roster marks "${id}" available without recruited=true.`);
+    }
+  }
+
+  for (const [mechId, state] of Object.entries(mechRoster)) {
+    const id = cleanString(mechId);
+    if (!id) continue;
+    if (knownMechs.size && !knownMechs.has(id)) {
+      addWarning(result, "ROSTER_UNKNOWN_MECH", `Active roster references unknown Telum "${id}".`);
+    }
+    if (state?.owned !== true && state?.owned !== false) {
+      addWarning(result, "ROSTER_MECH_OWNED_MISSING", `Active roster Telum "${id}" should explicitly set owned true/false.`);
     }
   }
 }
@@ -210,6 +226,17 @@ function getMissionAvailablePilotIds(mission) {
   const ids = new Set();
   for (const [pilotId, state] of Object.entries(roster)) {
     if (state?.recruited === true && state?.available !== false) ids.add(cleanString(pilotId));
+  }
+  return ids;
+}
+
+function getMissionOwnedMechIds(mission) {
+  const roster = mission?.activeRoster?.mechs && typeof mission.activeRoster.mechs === "object"
+    ? mission.activeRoster.mechs
+    : {};
+  const ids = new Set();
+  for (const [mechId, state] of Object.entries(roster)) {
+    if (state?.owned === true) ids.add(cleanString(mechId));
   }
   return ids;
 }
@@ -303,6 +330,12 @@ function validateDeployments(result, map, appState, objectives = [], mission = n
 
     if (hasMech && mechIds.size && !mechIds.has(entry.mechDefinitionId)) {
       addError(result, "DEPLOYMENT_BAD_MECH_REF", `${label} references missing mechDefinitionId "${entry.mechDefinitionId}".`);
+    }
+    if (hasMech && team === "player" && controlType === "PC") {
+      const ownedMechs = getMissionOwnedMechIds(mission);
+      if (ownedMechs.size && !ownedMechs.has(cleanString(entry.mechDefinitionId))) {
+        addWarning(result, "DEPLOYMENT_MECH_NOT_OWNED", `${label} uses player Telum "${entry.mechDefinitionId}" but that Telum is not owned in the active roster.`);
+      }
     }
 
     if (!hasPilot && !hasMech) {

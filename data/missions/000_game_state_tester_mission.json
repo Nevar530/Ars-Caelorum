@@ -438,5 +438,21 @@
     "onDefeat": {
       "action": "restart"
     }
+  },
+  "activeRoster": {
+    "pilots": {
+      "pilot_skye": {
+        "recruited": true,
+        "available": true
+      }
+    },
+    "mechs": {
+      "telum_skye": {
+        "owned": true
+      },
+      "telum_eve": {
+        "owned": true
+      }
+    }
   }
 }

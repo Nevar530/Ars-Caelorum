@@ -4,7 +4,7 @@
 // the campaign roster, but this module only mutates campaign progress records. It
 // does not touch runtime units, pilot definitions, or map data.
 
-import { recruitPilot, setPilotAvailability, setPilotRecruitment } from "./campaignState.js";
+import { recruitPilot, setMechOwnership, setPilotAvailability, setPilotRecruitment } from "./campaignState.js";
 
 export function recruitPlayerTeamDeployments(campaignState, mapDefinition) {
   if (!campaignState || !mapDefinition) return [];
@@ -40,6 +40,7 @@ export function applyMissionRosterState(campaignState, missionDefinition, conten
   if (!campaignState || !missionDefinition) return [];
   const roster = normalizeMissionActiveRoster(missionDefinition.activeRoster);
   const pilotEntries = roster.pilots;
+  const mechEntries = roster.mechs;
   const changed = [];
 
   for (const [pilotId, state] of Object.entries(pilotEntries)) {
@@ -60,6 +61,14 @@ export function applyMissionRosterState(campaignState, missionDefinition, conten
     if (state.available === false && campaignState.pilots?.[pilotId]?.recruited !== false) {
       const progress = setPilotAvailability(campaignState, pilotId, false);
       if (progress) changed.push(pilotId);
+    }
+  }
+
+  for (const [mechId, state] of Object.entries(mechEntries)) {
+    if (!isKnownCampaignMech(content, mechId)) continue;
+    if (state.owned === true || state.owned === false) {
+      const progress = setMechOwnership(campaignState, mechId, state.owned === true);
+      if (progress) changed.push(mechId);
     }
   }
 
@@ -85,11 +94,17 @@ function normalizeMissionActiveRoster(activeRoster) {
   const pilots = source.pilots && typeof source.pilots === "object" && !Array.isArray(source.pilots)
     ? source.pilots
     : {};
+  const mechs = source.mechs && typeof source.mechs === "object" && !Array.isArray(source.mechs)
+    ? source.mechs
+    : {};
 
   return {
     pilots: Object.fromEntries(Object.entries(pilots)
       .map(([pilotId, value]) => [String(pilotId ?? "").trim(), normalizeRosterPilotState(value)])
-      .filter(([pilotId]) => Boolean(pilotId)))
+      .filter(([pilotId]) => Boolean(pilotId))),
+    mechs: Object.fromEntries(Object.entries(mechs)
+      .map(([mechId, value]) => [String(mechId ?? "").trim(), normalizeRosterMechState(value)])
+      .filter(([mechId]) => Boolean(mechId)))
   };
 }
 
@@ -100,9 +115,22 @@ function normalizeRosterPilotState(value) {
   return { recruited, available };
 }
 
+function normalizeRosterMechState(value) {
+  const source = value && typeof value === "object" ? value : {};
+  const owned = source.owned === true ? true : source.owned === false ? false : null;
+  return { owned };
+}
+
 function isKnownCampaignPilot(content, pilotId) {
   const pilots = Array.isArray(content?.pilots) ? content.pilots : [];
   if (!pilots.length) return true;
   const found = pilots.find((pilot) => String(pilot?.id ?? "").trim() === pilotId);
   return Boolean(found?.campaignRoster === true || found);
+}
+
+function isKnownCampaignMech(content, mechId) {
+  const mechs = Array.isArray(content?.mechs) ? content.mechs : [];
+  if (!mechs.length) return true;
+  const found = mechs.find((mech) => String(mech?.id ?? "").trim() === mechId);
+  return Boolean(found);
 }

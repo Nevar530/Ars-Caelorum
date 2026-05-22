@@ -112,6 +112,7 @@ export function ensureMissionPackageDraft(builderState) {
   mission.briefing.text = sanitizeName(mission.briefing.text, DEFAULT_BRIEFING_BODY);
   mission.results = normalizeResults(mission.results);
   mission.rewards = normalizeRewards(mission.rewards);
+  mission.activeRoster = normalizeActiveRoster(mission.activeRoster);
   mission.allowsLoadoutEditing = Boolean(mission.allowsLoadoutEditing);
   mission.campaignFlow = normalizeCampaignFlow(mission.campaignFlow);
   mission.dialogue = mission.dialogue ?? createDefaultDialogue();
@@ -145,6 +146,7 @@ export function createDefaultMissionPackage({ mapId = "new_map", mapName = "New 
     dialogue: createDefaultDialogue(),
     results: normalizeResults(null),
     rewards: normalizeRewards(null),
+    activeRoster: normalizeActiveRoster(null),
     allowsLoadoutEditing: false,
     campaignFlow: normalizeCampaignFlow(null)
   };
@@ -856,11 +858,17 @@ function normalizeActiveRoster(activeRoster) {
   const pilots = source.pilots && typeof source.pilots === "object" && !Array.isArray(source.pilots)
     ? source.pilots
     : { pilot_skye: { recruited: true, available: true } };
+  const mechs = source.mechs && typeof source.mechs === "object" && !Array.isArray(source.mechs)
+    ? source.mechs
+    : { telum_skye: { owned: true }, telum_eve: { owned: true } };
 
   return {
     pilots: Object.fromEntries(Object.entries(pilots)
       .map(([pilotId, state]) => [sanitizeId(pilotId, ""), normalizeRosterPilotState(state)])
-      .filter(([pilotId]) => Boolean(pilotId)))
+      .filter(([pilotId]) => Boolean(pilotId))),
+    mechs: Object.fromEntries(Object.entries(mechs)
+      .map(([mechId, state]) => [sanitizeId(mechId, ""), normalizeRosterMechState(state)])
+      .filter(([mechId]) => Boolean(mechId)))
   };
 }
 
@@ -870,6 +878,13 @@ function normalizeRosterPilotState(state) {
   return {
     recruited,
     available: recruited && source.available !== false
+  };
+}
+
+function normalizeRosterMechState(state) {
+  const source = state && typeof state === "object" ? state : {};
+  return {
+    owned: source.owned === true
   };
 }
 

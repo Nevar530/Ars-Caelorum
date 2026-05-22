@@ -53,6 +53,7 @@ import {
 } from "../builderUnits.js";
 import {
   ensureRosterToolSettings,
+  getCampaignMechRows,
   getCampaignRosterRows
 } from "../builderRoster.js";
 import {
@@ -1248,15 +1249,16 @@ function renderPropSpritePreview(spriteId, label) {
 }
 
 function renderRosterInspectorTools(builderState, appState) {
-  const roster = ensureRosterToolSettings(builderState);
-  const rows = getCampaignRosterRows(builderState, appState);
+  ensureRosterToolSettings(builderState);
+  const pilotRows = getCampaignRosterRows(builderState, appState);
+  const mechRows = getCampaignMechRows(builderState, appState);
   const editable = builderState.workspaceMode === "builder-map";
 
-  if (!rows.length) {
+  if (!pilotRows.length && !mechRows.length) {
     return `
       <div class="builder-inspector-card">
         <div class="builder-field-label">Active Roster</div>
-        <div class="builder-inspector-note">No campaignRoster pilots found in pilots.json.</div>
+        <div class="builder-inspector-note">No campaignRoster pilots or campaignMech Telum found in data.</div>
       </div>
     `;
   }
@@ -1264,25 +1266,45 @@ function renderRosterInspectorTools(builderState, appState) {
   return `
     <div class="builder-inspector-card builder-grid-card">
       <div class="builder-field-label">Active Roster</div>
-      <div class="builder-inspector-note builder-note-compact">Recruited means the pilot exists in campaign state. Available means the pilot can be deployed by player-team PC starts. Skye defaults to recruited/available.</div>
-      <div class="builder-unit-start-list">
-        ${rows.map((pilot) => `
-          <div class="builder-unit-start-row">
-            <div>
-              <strong>${escapeHtml(pilot.name)}</strong>
-              <small>${escapeHtml(pilot.id)}${pilot.role ? " · " + escapeHtml(pilot.role) : ""}</small>
+      <div class="builder-inspector-note builder-note-compact">Pilots use recruited/available. Telum use owned. Owned Telum appear in the Mech Bay loadout screen and player-team deployment authoring.</div>
+      ${pilotRows.length ? `
+        <div class="builder-subsection-title">Pilots</div>
+        <div class="builder-unit-start-list">
+          ${pilotRows.map((pilot) => `
+            <div class="builder-unit-start-row">
+              <div>
+                <strong>${escapeHtml(pilot.name)}</strong>
+                <small>${escapeHtml(pilot.id)}${pilot.role ? " · " + escapeHtml(pilot.role) : ""}</small>
+              </div>
+              <label class="builder-form-check builder-form-check-inline">
+                <input type="checkbox" data-builder-field="roster-recruited" data-pilot-id="${escapeHtml(pilot.id)}"${pilot.recruited ? " checked" : ""}${editable ? "" : " disabled"}>
+                <span>Recruited</span>
+              </label>
+              <label class="builder-form-check builder-form-check-inline">
+                <input type="checkbox" data-builder-field="roster-available" data-pilot-id="${escapeHtml(pilot.id)}"${pilot.available ? " checked" : ""}${editable && pilot.recruited ? "" : " disabled"}>
+                <span>Available</span>
+              </label>
             </div>
-            <label class="builder-form-check builder-form-check-inline">
-              <input type="checkbox" data-builder-field="roster-recruited" data-pilot-id="${escapeHtml(pilot.id)}"${pilot.recruited ? " checked" : ""}${editable ? "" : " disabled"}>
-              <span>Recruited</span>
-            </label>
-            <label class="builder-form-check builder-form-check-inline">
-              <input type="checkbox" data-builder-field="roster-available" data-pilot-id="${escapeHtml(pilot.id)}"${pilot.available ? " checked" : ""}${editable && pilot.recruited ? "" : " disabled"}>
-              <span>Available</span>
-            </label>
-          </div>
-        `).join("")}
-      </div>
+          `).join("")}
+        </div>
+      ` : ""}
+      ${mechRows.length ? `
+        <div class="builder-subsection-title">Telum</div>
+        <div class="builder-unit-start-list">
+          ${mechRows.map((mech) => `
+            <div class="builder-unit-start-row">
+              <div>
+                <strong>${escapeHtml(mech.name)}</strong>
+                <small>${escapeHtml(mech.id)}${mech.className || mech.role ? " · " + escapeHtml([mech.className, mech.role].filter(Boolean).join(" / ")) : ""}</small>
+              </div>
+              <label class="builder-form-check builder-form-check-inline">
+                <input type="checkbox" data-builder-field="roster-mech-owned" data-mech-id="${escapeHtml(mech.id)}"${mech.owned ? " checked" : ""}${editable ? "" : " disabled"}>
+                <span>Owned</span>
+              </label>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
     </div>
   `;
 }
@@ -1291,7 +1313,7 @@ function renderUnitInspectorTools(builderState, appState) {
   const tool = ensureUnitToolSettings(builderState, appState) ?? {};
   const editable = builderState.workspaceMode === "builder-map";
   const pilots = getPilotOptions(appState, builderState);
-  const mechs = getMechOptions(appState);
+  const mechs = getMechOptions(appState, builderState);
   const spawns = getSpawnIdOptions(builderState);
   const starts = getUnitStartAssignments(builderState);
   const isEmptyMech = tool.startType === "emptyMech";

@@ -1,5 +1,103 @@
 [
   {
+    "id": "telum_skye",
+    "name": "Skye's Telum",
+    "variant": "A",
+    "class": "balanced",
+    "role": "line",
+    "core": 18,
+    "shield": 6,
+    "aether": 3,
+    "move": 9,
+    "weapons": [
+      "machinegun_01",
+      "melee_01",
+      "srm_01"
+    ],
+    "abilities": [
+      "fire_bomb"
+    ],
+    "tubes": [],
+    "defaultFacing": "S",
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/mech/hero_001_NE.png",
+        "NW": "art/mech/hero_001_NW.png"
+      }
+    },
+    "slots": {
+      "weapon": 3,
+      "ability": 1,
+      "item": 10
+    },
+    "loadout": {
+      "weapons": [
+        "machinegun_01",
+        "melee_01",
+        "srm_01"
+      ],
+      "abilities": [
+        "fire_bomb"
+      ]
+    },
+    "inventory": {
+      "items": []
+    },
+    "abilityPoints": 2,
+    "campaignMech": true,
+    "ownerPilotId": "pilot_skye"
+  },
+  {
+    "id": "telum_eve",
+    "name": "Eve's Telum",
+    "variant": "A",
+    "class": "balanced",
+    "role": "line",
+    "core": 18,
+    "shield": 6,
+    "aether": 3,
+    "move": 9,
+    "weapons": [
+      "machinegun_01",
+      "melee_01",
+      "srm_01"
+    ],
+    "abilities": [
+      "fire_bomb"
+    ],
+    "tubes": [],
+    "defaultFacing": "S",
+    "image": null,
+    "render": {
+      "sprites": {
+        "NE": "art/mech/hero_001_NE.png",
+        "NW": "art/mech/hero_001_NW.png"
+      }
+    },
+    "slots": {
+      "weapon": 3,
+      "ability": 1,
+      "item": 10
+    },
+    "loadout": {
+      "weapons": [
+        "machinegun_01",
+        "melee_01",
+        "srm_01"
+      ],
+      "abilities": [
+        "fire_bomb"
+      ]
+    },
+    "inventory": {
+      "items": []
+    },
+    "abilityPoints": 2,
+    "campaignMech": true,
+    "ownerPilotId": "pilot_eve"
+  },
+  {
     "id": "mech_a",
     "name": "Mech A",
     "variant": "A",
@@ -29,7 +127,7 @@
     "slots": {
       "weapon": 3,
       "ability": 1,
-      "item": 2
+      "item": 10
     },
     "loadout": {
       "weapons": [
@@ -44,7 +142,8 @@
     "inventory": {
       "items": []
     },
-    "abilityPoints": 2
+    "abilityPoints": 2,
+    "campaignMech": false
   },
   {
     "id": "mech_b",
@@ -74,7 +173,7 @@
     "slots": {
       "weapon": 3,
       "ability": 1,
-      "item": 2
+      "item": 10
     },
     "loadout": {
       "weapons": [
@@ -87,7 +186,8 @@
     "inventory": {
       "items": []
     },
-    "abilityPoints": 2
+    "abilityPoints": 2,
+    "campaignMech": false
   },
   {
     "id": "mech_c",
@@ -119,7 +219,7 @@
     "slots": {
       "weapon": 3,
       "ability": 1,
-      "item": 2
+      "item": 10
     },
     "loadout": {
       "weapons": [
@@ -138,7 +238,8 @@
         "test_tube"
       ]
     },
-    "abilityPoints": 3
+    "abilityPoints": 3,
+    "campaignMech": false
   },
   {
     "id": "mech_d",
@@ -168,7 +269,7 @@
     "slots": {
       "weapon": 3,
       "ability": 1,
-      "item": 2
+      "item": 10
     },
     "loadout": {
       "weapons": [
@@ -181,6 +282,7 @@
     "inventory": {
       "items": []
     },
-    "abilityPoints": 2
+    "abilityPoints": 2,
+    "campaignMech": false
   }
 ]

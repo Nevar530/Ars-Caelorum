@@ -161,6 +161,10 @@ export function buildMissionDefinitionForExport(mapDefinition, mission = null, m
     activeRoster: cloneJson(mission?.activeRoster ?? {
       pilots: {
         pilot_skye: { recruited: true, available: true }
+      },
+      mechs: {
+        telum_skye: { owned: true },
+        telum_eve: { owned: true }
       }
     })
   };

@@ -1500,27 +1500,26 @@ function getActivePlayerControlledPilotIds(state) {
 function getVisibleMechEntries(state) {
   const definitions = Array.isArray(state?.content?.mechs) ? state.content.mechs : [];
   const campaignMechs = state?.campaign?.mechs && typeof state.campaign.mechs === "object" ? state.campaign.mechs : {};
-  const ids = new Set([
-    ...definitions.map((mech) => String(mech?.id ?? "").trim()).filter(Boolean),
-    ...Object.keys(campaignMechs).map((id) => String(id ?? "").trim()).filter(Boolean)
-  ]);
 
-  return [...ids].map((mechId) => {
-    const definition = definitions.find((mech) => mech?.id === mechId) ?? { id: mechId, name: mechId };
-    const progress = campaignMechs[mechId] ?? { unlocked: true };
-    return {
-      id: mechId,
-      name: definition.name ?? mechId,
-      class: definition.class ?? "",
-      role: definition.role ?? "",
-      unlocked: progress?.unlocked !== false,
-      loadout: normalizeMechLoadout(progress?.loadout, {
-        ...(definition.loadout && typeof definition.loadout === "object" ? definition.loadout : {}),
-        weapons: definition.loadout?.weapons ?? definition.weapons ?? []
-      })
-    };
-  })
-    .filter((mech) => mech.unlocked !== false)
+  return Object.entries(campaignMechs)
+    .map(([mechId, progress]) => {
+      const id = String(mechId ?? "").trim();
+      const definition = definitions.find((mech) => String(mech?.id ?? "").trim() === id) ?? { id, name: id };
+      const owned = progress?.owned === true;
+      return {
+        id,
+        name: definition.name ?? id,
+        class: definition.class ?? "",
+        role: definition.role ?? "",
+        owned,
+        unlocked: owned,
+        loadout: normalizeMechLoadout(progress?.loadout, {
+          ...(definition.loadout && typeof definition.loadout === "object" ? definition.loadout : {}),
+          weapons: definition.loadout?.weapons ?? definition.weapons ?? []
+        })
+      };
+    })
+    .filter((mech) => mech.id && mech.owned)
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
 }
 

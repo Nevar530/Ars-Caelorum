@@ -3,7 +3,7 @@
 // Persistent campaign authority V2.
 // Campaign state is progression/save truth, not runtime map truth.
 
-export const CAMPAIGN_VERSION = 5;
+export const CAMPAIGN_VERSION = 6;
 export const PILOT_LEVEL_CAP = 20;
 export const PILOT_STAT_CAPS = Object.freeze({
   targeting: 5,
@@ -11,7 +11,7 @@ export const PILOT_STAT_CAPS = Object.freeze({
 });
 export const PILOT_STAT_KEYS = Object.freeze(["core", "abilityPoints", "targeting", "reaction"]);
 export const STARTING_RECRUIT_IDS = Object.freeze(["pilot_skye"]);
-export const STARTING_MECH_IDS = Object.freeze(["mech_a", "mech_b", "mech_c", "mech_d"]);
+export const STARTING_MECH_IDS = Object.freeze(["telum_skye", "telum_eve"]);
 
 const EQUIPMENT_ID_ALIASES = Object.freeze({
   pilot_accessory_servo_assist_01: "pilot_accessory_servo_01",
@@ -149,10 +149,18 @@ export function ensureMechProgress(campaignState, mechId, defaults = {}) {
   campaignState.mechs[id] = normalizeMechProgress({
     ...defaults,
     ...(existing && typeof existing === "object" ? existing : {}),
-    unlocked: existing?.unlocked ?? defaults.unlocked ?? true
+    owned: existing?.owned ?? defaults.owned ?? false
   });
 
   return campaignState.mechs[id];
+}
+
+export function setMechOwnership(campaignState, mechId, owned = true, defaults = {}) {
+  const progress = ensureMechProgress(campaignState, mechId, { ...defaults, owned: Boolean(owned) });
+  if (!progress) return null;
+  progress.owned = Boolean(owned);
+  progress.unlocked = progress.owned;
+  return progress;
 }
 
 export function setPilotLoadoutSlot(campaignState, pilotId, slotKey, equipmentId = "", fallbackLoadout = {}) {
@@ -190,7 +198,7 @@ export function setMechLoadoutSlot(campaignState, mechId, slotKey, equipmentId =
     return { ok: false, reason: "invalid_mech_loadout_slot" };
   }
 
-  const progress = ensureMechProgress(campaignState, id, { unlocked: true });
+  const progress = ensureMechProgress(campaignState, id, { owned: true });
   if (!progress) return { ok: false, reason: "mech_not_found" };
 
   const current = normalizeMechLoadout({
@@ -266,7 +274,7 @@ function buildStartingPilots() {
 }
 
 function buildStartingMechs() {
-  return Object.fromEntries(STARTING_MECH_IDS.map((mechId) => [mechId, normalizeMechProgress({ unlocked: true })]));
+  return Object.fromEntries(STARTING_MECH_IDS.map((mechId) => [mechId, normalizeMechProgress({ owned: true })]));
 }
 
 function buildStartingInventory() {
@@ -355,7 +363,8 @@ export function normalizeMechProgress(progress) {
   const source = progress && typeof progress === "object" ? progress : {};
   return {
     loadout: normalizeMechLoadout(source.loadout),
-    unlocked: source.unlocked !== false
+    owned: source.owned === true,
+    unlocked: source.owned === true
   };
 }
 
