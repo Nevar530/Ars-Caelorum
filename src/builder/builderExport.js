@@ -105,6 +105,7 @@ export function buildMapDefinitionForExport(map) {
     height,
     mode: String(map?.mode ?? "combat").trim().toLowerCase() === "story" ? "story" : "combat",
     showPhaseBriefing: Boolean(map?.showPhaseBriefing),
+    allowsLoadoutEditing: Boolean(map?.allowsLoadoutEditing),
     phaseBriefing: normalizePhaseBriefing(map),
     terrainTypes: normalizeTerrainTypes(map?.terrainTypes, tiles),
     defaults: normalizeMapDefaults(map),
@@ -115,6 +116,7 @@ export function buildMapDefinitionForExport(map) {
     startState: normalizeStartState(map?.startState),
     structures: sanitizeStructuresForExport(map?.structures ?? []),
     props: sanitizePropsForExport(map?.props ?? []),
+    shops: sanitizeShopsForExport(map?.shops ?? []),
     npcBehaviors: cloneJson(map?.npcBehaviors ?? []),
     tiles
   };
@@ -150,6 +152,8 @@ export function buildMissionDefinitionForExport(mapDefinition, mission = null, m
       victory: { title: "Victory", text: "Mission complete." },
       defeat: { title: "Defeat", text: "Mission failed." }
     },
+    rewards: normalizeRewardsForExport(mission?.rewards),
+    allowsLoadoutEditing: Boolean(mission?.allowsLoadoutEditing),
     campaignFlow: cloneJson(mission?.campaignFlow ?? {
       onVictory: { action: "continue", loadMissionId: "" },
       onDefeat: { action: "restart" }
@@ -176,6 +180,8 @@ export function buildMissionPackageDefinition({ missionDefinition, mapDefinition
     logic: cloneJson(missionDefinition?.logic ?? []),
     dialogue: cloneJson(missionDefinition?.dialogue ?? {}),
     results: cloneJson(missionDefinition?.results ?? {}),
+    rewards: cloneJson(missionDefinition?.rewards ?? {}),
+    allowsLoadoutEditing: Boolean(missionDefinition?.allowsLoadoutEditing),
     campaignFlow: cloneJson(missionDefinition?.campaignFlow ?? {}),
     activeRoster: cloneJson(missionDefinition?.activeRoster ?? {})
   };
@@ -428,7 +434,7 @@ function sanitizePropsForExport(props) {
     clean.footprintW = Math.max(1, Math.round(Number(clean.footprintW ?? clean.w ?? clean.width ?? 1)));
     clean.footprintH = Math.max(1, Math.round(Number(clean.footprintH ?? clean.h ?? clean.heightTiles ?? 1)));
     clean.height = Math.max(0, Number(clean.height ?? clean.losHeight ?? clean.heightLevels ?? 0));
-    clean.visualHeight = Math.max(0, Number(clean.visualHeight ?? clean.visualHeightLevels ?? clean.height ?? 0));
+    clean.visualHeight = Math.max(0, Number(clean.visualHeight ?? clean.visualHeightLevels ?? 0));
     clean.blocksMovement = clean.blocksMovement !== false;
     clean.scale = Math.max(0.1, Number(clean.scale ?? 1));
     clean.spriteId = String(clean.spriteId ?? clean.sprite ?? clean.image ?? "prop_car_001.png").trim() || "prop_car_001.png";
@@ -448,6 +454,51 @@ function sanitizePropsForExport(props) {
   });
 }
 
+function sanitizeShopsForExport(shops) {
+  if (!Array.isArray(shops)) return [];
+
+  return shops
+    .map((shop) => {
+      const id = sanitizeId(shop?.id ?? shop?.shopId, "");
+      if (!id) return null;
+      const stock = Array.isArray(shop?.stock) ? shop.stock : [];
+      return {
+        id,
+        name: sanitizeName(shop?.name ?? shop?.label ?? id, id),
+        stock: stock
+          .map((entry) => {
+            const itemId = sanitizeId(typeof entry === "string" ? entry : entry?.itemId ?? entry?.id, "");
+            if (!itemId) return null;
+            const qty = Math.max(1, Math.trunc(Number((typeof entry === "string" ? 1 : entry?.qty ?? entry?.quantity ?? 1)) || 1));
+            return { itemId, qty };
+          })
+          .filter(Boolean)
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeRewardsForExport(rewards) {
+  return {
+    victory: normalizeRewardBlock(rewards?.victory),
+    defeat: normalizeRewardBlock(rewards?.defeat)
+  };
+}
+
+function normalizeRewardBlock(reward) {
+  const clean = reward && typeof reward === "object" && !Array.isArray(reward) ? reward : {};
+  return {
+    currency: Math.max(0, Math.trunc(Number(clean.currency ?? 0) || 0)),
+    items: normalizeIdList(clean.items),
+    unlocks: normalizeIdList(clean.unlocks),
+    recruits: normalizeIdList(clean.recruits),
+    levelMilestone: Math.max(0, Math.trunc(Number(clean.levelMilestone ?? 0) || 0))
+  };
+}
+
+function normalizeIdList(values) {
+  return Array.isArray(values) ? values.map((value) => sanitizeId(value, "")).filter(Boolean) : [];
+}
 
 function normalizeDialogue(dialogue) {
   const source = dialogue && typeof dialogue === "object" && !Array.isArray(dialogue) ? dialogue : createDefaultDialogue();

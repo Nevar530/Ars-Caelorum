@@ -50,6 +50,16 @@ export function attachMapMetadata(map, metadata = {}) {
       writable: true,
       configurable: true
     },
+    shops: {
+      value: structuredClone(metadata.shops ?? map.shops ?? []),
+      writable: true,
+      configurable: true
+    },
+    allowsLoadoutEditing: {
+      value: Boolean(metadata.allowsLoadoutEditing ?? map.allowsLoadoutEditing ?? false),
+      writable: true,
+      configurable: true
+    },
     npcBehaviors: {
       value: structuredClone(metadata.npcBehaviors ?? map.npcBehaviors ?? []),
       writable: true,
@@ -208,6 +218,8 @@ export function cloneMapDefinition(sourceMap = null) {
     return attachMapMetadata(clonedRows, {
       structures: sourceMap.structures,
       props: sourceMap.props,
+      shops: sourceMap.shops,
+      allowsLoadoutEditing: sourceMap.allowsLoadoutEditing,
       id: sourceMap.id,
       name: sourceMap.name,
       width: sourceMap.width,

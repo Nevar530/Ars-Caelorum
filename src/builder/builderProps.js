@@ -18,7 +18,7 @@ export function ensurePropToolSettings(builderState, appState = null) {
   tool.footprintW = clampWhole(tool.footprintW, 1, 1, 12);
   tool.footprintH = clampWhole(tool.footprintH, 1, 1, 12);
   tool.height = clampNumber(tool.height, 1, 0, 99);
-  tool.visualHeight = clampNumber(tool.visualHeight, tool.height, 0, 99);
+  tool.visualHeight = clampNumber(tool.visualHeight, 0, 0, 99);
   tool.blocksMovement = tool.blocksMovement !== false;
   tool.scale = clampNumber(tool.scale, 1, 0.1, 8);
   tool.mirrorX = Boolean(tool.mirrorX);
@@ -244,7 +244,7 @@ function createDefaultPropTool(appState, builderState) {
     footprintW: 2,
     footprintH: 1,
     height: 1,
-    visualHeight: 1,
+    visualHeight: 0,
     blocksMovement: true,
     scale: 1,
     mirrorX: false,

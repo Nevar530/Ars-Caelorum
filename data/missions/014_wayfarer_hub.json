@@ -181,6 +181,21 @@
       "action": "restart"
     }
   },
-  "rewards": {},
+  "rewards": {
+    "victory": {
+      "currency": 0,
+      "items": [],
+      "unlocks": [],
+      "levelMilestone": 0,
+      "recruits": []
+    },
+    "defeat": {
+      "currency": 0,
+      "items": [],
+      "unlocks": [],
+      "levelMilestone": 0,
+      "recruits": []
+    }
+  },
   "allowsLoadoutEditing": true
 }

@@ -100,7 +100,46 @@ function validateMissionPackageBasics(result, mission, maps, appState = null) {
   }
 
   validateCampaignFlow(result, mission, appState);
+  validateMissionRewards(result, mission, appState);
   validateActiveRoster(result, mission, appState);
+}
+
+
+function validateMissionRewards(result, mission, appState = null) {
+  const rewards = mission?.rewards ?? {};
+  const knownMissions = getKnownMissionIds(appState, mission);
+  const knownPilots = new Set(getContentIds(appState?.content?.pilots));
+  const knownItems = new Set([
+    ...getContentIds(appState?.content?.weapons),
+    ...getContentIds(appState?.content?.pilotGear),
+    ...getContentIds(appState?.content?.mechGear),
+    ...getContentIds(appState?.content?.pilotItems),
+    ...getContentIds(appState?.content?.mechItems)
+  ]);
+
+  for (const resultKey of ["victory", "defeat"]) {
+    const reward = rewards?.[resultKey];
+    if (!reward) continue;
+    const label = `${resultKey} reward`;
+    const currency = Number(reward.currency ?? 0);
+    const levelMilestone = Number(reward.levelMilestone ?? 0);
+    if (!Number.isFinite(currency) || currency < 0) addError(result, "REWARD_BAD_CURRENCY", `${label} has invalid credits.`);
+    if (!Number.isFinite(levelMilestone) || levelMilestone < 0) addError(result, "REWARD_BAD_LEVEL", `${label} has invalid level milestone.`);
+
+    for (const missionId of normalizeRewardIds(reward.unlocks)) {
+      if (knownMissions.size && !knownMissions.has(missionId)) addWarning(result, "REWARD_UNKNOWN_UNLOCK", `${label} unlocks unknown mission "${missionId}".`);
+    }
+    for (const pilotId of normalizeRewardIds(reward.recruits)) {
+      if (knownPilots.size && !knownPilots.has(pilotId)) addWarning(result, "REWARD_UNKNOWN_RECRUIT", `${label} recruits unknown pilot "${pilotId}".`);
+    }
+    for (const itemId of normalizeRewardIds(reward.items)) {
+      if (knownItems.size && !knownItems.has(itemId)) addWarning(result, "REWARD_UNKNOWN_ITEM", `${label} grants unknown item "${itemId}".`);
+    }
+  }
+}
+
+function normalizeRewardIds(value) {
+  return Array.isArray(value) ? value.map((entry) => cleanString(entry)).filter(Boolean) : [];
 }
 
 function validateCampaignFlow(result, mission, appState = null) {

@@ -5393,3 +5393,47 @@ button:disabled {
   text-overflow: ellipsis;
   text-transform: uppercase;
 }
+
+.builder-compact-checklist {
+  border: 1px solid rgba(135, 174, 198, 0.18);
+  background: rgba(4, 12, 17, 0.45);
+  margin-top: 4px;
+  padding: 4px 6px;
+}
+
+.builder-compact-check-row {
+  display: grid;
+  grid-template-columns: 16px minmax(90px, 1fr) minmax(60px, auto);
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+  padding: 1px 0;
+  font-size: 10px;
+  line-height: 1.1;
+  border-top: 1px solid rgba(135, 174, 198, 0.08);
+}
+
+.builder-compact-check-row:first-of-type {
+  border-top: 0;
+}
+
+.builder-compact-check-row input {
+  width: 11px;
+  height: 11px;
+  margin: 0;
+}
+
+.builder-compact-check-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.builder-compact-check-row span {
+  color: rgba(231, 224, 194, 0.66);
+  font-size: 9px;
+  text-align: right;
+  white-space: nowrap;
+}

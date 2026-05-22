@@ -28,7 +28,7 @@ export function normalizeProp(raw) {
   const footprintW = clampWhole(raw?.footprintW ?? raw?.w ?? raw?.width ?? 1, 1, 12, 1);
   const footprintH = clampWhole(raw?.footprintH ?? raw?.h ?? raw?.heightTiles ?? 1, 1, 12, 1);
   const height = clampNumber(raw?.height ?? raw?.losHeight ?? raw?.heightLevels ?? 0, 0, 99, 0);
-  const visualHeight = clampNumber(raw?.visualHeight ?? raw?.visualHeightLevels ?? height, 0, 99, height);
+  const visualHeight = clampNumber(raw?.visualHeight ?? raw?.visualHeightLevels ?? 0, 0, 99, 0);
   const scale = clampNumber(raw?.scale, 0.1, 8, 1);
   const offsetX = clampWhole(raw?.offsetX, -2048, 2048, 0);
   const offsetY = clampWhole(raw?.offsetY, -2048, 2048, 0);

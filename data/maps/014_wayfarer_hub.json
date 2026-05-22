@@ -97,21 +97,24 @@
       "type": "trigger_complete",
       "label": "Check the Telum bay terminal",
       "triggerId": "open_mech_bay_telum_loadout",
-      "optional": true
+      "optional": true,
+      "briefingText": "Use the Telum bay terminal to review Telum loadouts."
     },
     {
       "id": "open_shop_terminal",
       "type": "trigger_complete",
       "label": "Check Pax's shop terminal",
       "triggerId": "open_shop_terminal",
-      "optional": true
+      "optional": true,
+      "briefingText": "Use Pax's shop terminal to review available supplies."
     },
     {
       "id": "open_mission_board",
       "type": "trigger_complete",
       "label": "Check the mission board",
       "triggerId": "open_mission_board",
-      "optional": true
+      "optional": true,
+      "briefingText": "Use the mission board to choose the next authored mission."
     }
   ],
   "triggers": [
@@ -240,7 +243,7 @@
       "mirrorX": false,
       "offsetX": 0,
       "offsetY": 0,
-      "layer": "ground"
+      "layer": "samePlane"
     },
     {
       "id": "equipment_locker",
@@ -257,7 +260,7 @@
       "mirrorX": false,
       "offsetX": 0,
       "offsetY": 0,
-      "layer": "ground"
+      "layer": "samePlane"
     },
     {
       "spriteId": "art/props/prop_terminal_001.png",
@@ -270,7 +273,7 @@
       "mirrorX": false,
       "offsetX": 0,
       "offsetY": 0,
-      "layer": "ground",
+      "layer": "samePlane",
       "id": "mech_bay_terminal",
       "name": "Mech Bay Terminal",
       "x": 3,
@@ -287,7 +290,7 @@
       "mirrorX": false,
       "offsetX": 0,
       "offsetY": 0,
-      "layer": "ground",
+      "layer": "samePlane",
       "id": "shop_terminal",
       "name": "Shop Terminal",
       "x": 2,
@@ -304,7 +307,7 @@
       "mirrorX": false,
       "offsetX": 0,
       "offsetY": 0,
-      "layer": "ground",
+      "layer": "samePlane",
       "id": "mission_board_terminal",
       "name": "Mission Board",
       "x": 6,

@@ -629,6 +629,10 @@ function renderMapInspectorTools(builderState, appState) {
         <input type="checkbox" data-builder-field="active-map-show-phase-briefing"${checked}${editable ? "" : " disabled"}>
       </label>
       <label class="builder-form-field builder-form-field-compact">
+        <span>Safe Prep Context</span>
+        <input type="checkbox" data-builder-field="active-map-allows-loadout-editing"${map?.allowsLoadoutEditing ? " checked" : ""}${editable ? "" : " disabled"}>
+      </label>
+      <label class="builder-form-field builder-form-field-compact">
         <span>Width</span>
         <input type="number" data-builder-field="active-map-width" value="${escapeHtml(width)}" min="4" max="96" step="1"${editable ? "" : " disabled"}>
       </label>
@@ -800,10 +804,15 @@ function renderResultsInspectorTools(builderState, appState) {
   const victoryLoadMissionId = mission.campaignFlow?.onVictory?.loadMissionId ?? "";
   const defeatAction = mission.campaignFlow?.onDefeat?.action ?? "restart";
   const defeatLoadMissionId = mission.campaignFlow?.onDefeat?.loadMissionId ?? "";
+  const prepChecked = mission.allowsLoadoutEditing ? " checked" : "";
 
   return `
     <div class="builder-inspector-card builder-results-tool-card builder-grid-card">
       <div class="builder-field-label">Mission Results</div>
+      <label class="builder-form-field builder-form-field-compact">
+        <span>Mission Safe Prep</span>
+        <input type="checkbox" data-builder-field="package-allows-loadout-editing"${prepChecked}${editable ? "" : " disabled"}>
+      </label>
       <label class="builder-form-field builder-form-field-compact">
         <span>Victory Title</span>
         <input type="text" data-builder-field="package-victory-title" value="${escapeHtml(mission.results?.victory?.title ?? "Victory")}" spellcheck="true"${editable ? "" : " disabled"}>
@@ -850,8 +859,81 @@ function renderResultsInspectorTools(builderState, appState) {
           ${buildMissionSelectOptions(missionOptions, defeatLoadMissionId)}
         </select>
       </label>
+      ${renderRewardAuthoringTools(mission, appState, editable)}
     </div>
   `;
+}
+
+
+function renderRewardAuthoringTools(mission, appState, editable) {
+  const rewards = mission.rewards ?? {};
+  const victory = rewards.victory ?? {};
+  const defeat = rewards.defeat ?? {};
+  const missionOptions = buildCampaignMissionOptions(appState, null).filter((option) => option?.id && option.id !== mission.id);
+  const pilotOptions = buildRewardPilotOptions(appState);
+  const itemOptions = buildRewardItemOptions(appState);
+
+  return `
+    <div class="builder-field-label builder-section-label">Victory Rewards</div>
+    <label class="builder-form-field builder-form-field-compact">
+      <span>Credits</span>
+      <input type="number" data-builder-field="package-victory-reward-currency" value="${escapeHtml(victory.currency ?? 0)}" min="0" step="1"${editable ? "" : " disabled"}>
+    </label>
+    <label class="builder-form-field builder-form-field-compact">
+      <span>Level Milestone</span>
+      <input type="number" data-builder-field="package-victory-reward-level" value="${escapeHtml(victory.levelMilestone ?? 0)}" min="0" max="20" step="1"${editable ? "" : " disabled"}>
+    </label>
+    ${renderCompactCheckboxList("Unlock Missions", "package-victory-reward-unlock", missionOptions, victory.unlocks, editable)}
+    ${renderCompactCheckboxList("Recruit Pilots", "package-victory-reward-recruit", pilotOptions, victory.recruits, editable)}
+    ${renderCompactCheckboxList("Grant Items", "package-victory-reward-item", itemOptions, victory.items, editable)}
+    <div class="builder-field-label builder-section-label">Defeat Rewards</div>
+    <label class="builder-form-field builder-form-field-compact">
+      <span>Credits</span>
+      <input type="number" data-builder-field="package-defeat-reward-currency" value="${escapeHtml(defeat.currency ?? 0)}" min="0" step="1"${editable ? "" : " disabled"}>
+    </label>
+    ${renderCompactCheckboxList("Unlock Missions", "package-defeat-reward-unlock", missionOptions, defeat.unlocks, editable)}
+    ${renderCompactCheckboxList("Recruit Pilots", "package-defeat-reward-recruit", pilotOptions, defeat.recruits, editable)}
+    ${renderCompactCheckboxList("Grant Items", "package-defeat-reward-item", itemOptions, defeat.items, editable)}
+  `;
+}
+
+function renderCompactCheckboxList(label, fieldName, options, selectedValues = [], editable = true) {
+  const list = Array.isArray(options) ? options : [];
+  const selected = new Set(Array.isArray(selectedValues) ? selectedValues : []);
+  if (!list.length) return '<div class="builder-inspector-note builder-note-compact">No ' + escapeHtml(label.toLowerCase()) + ' available.</div>';
+  return '<div class="builder-compact-checklist"><div class="builder-field-label">' + escapeHtml(label) + '</div>' +
+    list.map((option) => {
+      const id = String(option?.id ?? '').trim();
+      if (!id) return '';
+      const checked = selected.has(id) ? ' checked' : '';
+      const summary = option?.summary ? '<span>' + escapeHtml(option.summary) + '</span>' : '';
+      return '<label class="builder-compact-check-row"><input type="checkbox" data-builder-field="' + escapeHtml(fieldName) + '" value="' + escapeHtml(id) + '"' + checked + (editable ? '' : ' disabled') + '><strong>' + escapeHtml(option.label ?? id) + '</strong>' + summary + '</label>';
+    }).join('') + '</div>';
+}
+
+function buildRewardPilotOptions(appState) {
+  const pilots = appState?.content?.pilots;
+  const list = Array.isArray(pilots) ? pilots : Object.values(pilots ?? {});
+  return list.map((pilot) => ({ id: pilot?.id, label: pilot?.name ?? pilot?.id, summary: pilot?.role ?? '' })).filter((entry) => entry.id);
+}
+
+function buildRewardItemOptions(appState) {
+  return [
+    ...buildRewardItemGroup(appState?.content?.weapons, 'Weapon'),
+    ...buildRewardItemGroup(appState?.content?.pilotGear, 'Pilot Gear'),
+    ...buildRewardItemGroup(appState?.content?.mechGear, 'Telum Gear'),
+    ...buildRewardItemGroup(appState?.content?.pilotItems, 'Item'),
+    ...buildRewardItemGroup(appState?.content?.mechItems, 'Telum Item')
+  ];
+}
+
+function buildRewardItemGroup(source, groupLabel) {
+  const list = Array.isArray(source) ? source : Object.values(source ?? {});
+  return list.map((item) => ({
+    id: item?.id,
+    label: item?.name ?? item?.id,
+    summary: groupLabel
+  })).filter((entry) => entry.id);
 }
 
 function buildCampaignMissionOptions(appState, builderState) {

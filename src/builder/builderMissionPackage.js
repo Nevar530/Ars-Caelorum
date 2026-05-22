@@ -111,6 +111,8 @@ export function ensureMissionPackageDraft(builderState) {
   mission.briefing.title = sanitizeName(mission.briefing.title, mission.name);
   mission.briefing.text = sanitizeName(mission.briefing.text, DEFAULT_BRIEFING_BODY);
   mission.results = normalizeResults(mission.results);
+  mission.rewards = normalizeRewards(mission.rewards);
+  mission.allowsLoadoutEditing = Boolean(mission.allowsLoadoutEditing);
   mission.campaignFlow = normalizeCampaignFlow(mission.campaignFlow);
   mission.dialogue = mission.dialogue ?? createDefaultDialogue();
 
@@ -142,6 +144,8 @@ export function createDefaultMissionPackage({ mapId = "new_map", mapName = "New 
     objectives: [],
     dialogue: createDefaultDialogue(),
     results: normalizeResults(null),
+    rewards: normalizeRewards(null),
+    allowsLoadoutEditing: false,
     campaignFlow: normalizeCampaignFlow(null)
   };
   applyObjectivePresetToMission(mission, "defeat_all");
@@ -169,6 +173,8 @@ export function readMissionPackageFields(builderState, root) {
   const victoryText = sanitizeName(readField(root, "package-victory-text", mission.results?.victory?.text), "Mission complete.");
   const defeatTitle = sanitizeName(readField(root, "package-defeat-title", mission.results?.defeat?.title), "Defeat");
   const defeatText = sanitizeName(readField(root, "package-defeat-text", mission.results?.defeat?.text), "Mission failed.");
+  const allowsLoadoutEditing = readChecked(root, "package-allows-loadout-editing", Boolean(mission.allowsLoadoutEditing));
+  const rewards = readRewardFields(root, mission.rewards);
   const victoryAction = normalizeVictoryFlowAction(readField(root, "package-victory-flow-action", mission.campaignFlow?.onVictory?.action));
   const victoryLoadMissionId = sanitizeId(readField(root, "package-victory-load-mission-id", mission.campaignFlow?.onVictory?.loadMissionId), "");
   const defeatAction = normalizeDefeatFlowAction(readField(root, "package-defeat-flow-action", mission.campaignFlow?.onDefeat?.action));
@@ -194,6 +200,8 @@ export function readMissionPackageFields(builderState, root) {
     victory: { title: victoryTitle, text: victoryText },
     defeat: { title: defeatTitle, text: defeatText }
   };
+  mission.rewards = rewards;
+  mission.allowsLoadoutEditing = allowsLoadoutEditing;
   mission.campaignFlow = normalizeCampaignFlow({
     onVictory: { action: victoryAction, loadMissionId: victoryLoadMissionId },
     onDefeat: { action: defeatAction, loadMissionId: defeatLoadMissionId }
@@ -220,6 +228,7 @@ export function readMapSettingsFields(builderState, root, appState = null) {
   const nextMapName = sanitizeName(readField(root, "active-map-name", map.name), map.name || titleFromId(nextMapId));
   const nextMapMode = normalizeMapMode(readField(root, "active-map-mode", map.mode ?? "combat"));
   const showPhaseBriefing = readChecked(root, "active-map-show-phase-briefing", Boolean(map.showPhaseBriefing));
+  const allowsLoadoutEditing = readChecked(root, "active-map-allows-loadout-editing", Boolean(map.allowsLoadoutEditing));
   const phaseBriefingTitle = sanitizeName(readField(root, "active-map-phase-title", map.phaseBriefing?.title ?? map.name), map.name || nextMapName);
   const phaseBriefingSubtitle = sanitizeName(readField(root, "active-map-phase-subtitle", map.phaseBriefing?.subtitle ?? map.phaseBriefing?.location ?? map.id), map.id || nextMapId);
   const phaseBriefingText = sanitizeName(readField(root, "active-map-phase-text", map.phaseBriefing?.text ?? ""), "Review the current phase objectives, then continue.");
@@ -254,6 +263,7 @@ export function readMapSettingsFields(builderState, root, appState = null) {
   map.name = nextMapName;
   map.mode = nextMapMode;
   map.showPhaseBriefing = showPhaseBriefing;
+  map.allowsLoadoutEditing = allowsLoadoutEditing;
   map.phaseBriefing = {
     title: phaseBriefingTitle,
     subtitle: phaseBriefingSubtitle,
@@ -753,6 +763,57 @@ function buildBriefingObjectiveLines(objectives) {
   return (Array.isArray(objectives) ? objectives : [])
     .map((objective) => String(objective?.briefingText ?? objective?.label ?? objective?.id ?? "Objective").trim())
     .filter(Boolean);
+}
+
+function readRewardFields(root, currentRewards = null) {
+  const current = normalizeRewards(currentRewards);
+  return {
+    victory: {
+      currency: clampWholeNumber(readField(root, "package-victory-reward-currency", current.victory.currency), 0, 0, 999999),
+      levelMilestone: clampWholeNumber(readField(root, "package-victory-reward-level", current.victory.levelMilestone), 0, 0, 20),
+      unlocks: readCheckedValueList(root, "package-victory-reward-unlock", current.victory.unlocks),
+      recruits: readCheckedValueList(root, "package-victory-reward-recruit", current.victory.recruits),
+      items: readCheckedValueList(root, "package-victory-reward-item", current.victory.items)
+    },
+    defeat: {
+      currency: clampWholeNumber(readField(root, "package-defeat-reward-currency", current.defeat.currency), 0, 0, 999999),
+      levelMilestone: 0,
+      unlocks: readCheckedValueList(root, "package-defeat-reward-unlock", current.defeat.unlocks),
+      recruits: readCheckedValueList(root, "package-defeat-reward-recruit", current.defeat.recruits),
+      items: readCheckedValueList(root, "package-defeat-reward-item", current.defeat.items)
+    }
+  };
+}
+
+function readCheckedValueList(root, fieldName, fallback = []) {
+  const fields = root ? [...root.querySelectorAll(`[data-builder-field="${fieldName}"]`)] : [];
+  if (!fields.length) return normalizeIdList(fallback);
+  return fields
+    .filter((field) => field?.checked)
+    .map((field) => sanitizeId(field.value, ""))
+    .filter(Boolean);
+}
+
+function normalizeRewards(rewards) {
+  return {
+    victory: normalizeRewardBlock(rewards?.victory),
+    defeat: normalizeRewardBlock(rewards?.defeat)
+  };
+}
+
+function normalizeRewardBlock(reward) {
+  const clean = reward && typeof reward === "object" && !Array.isArray(reward) ? reward : {};
+  return {
+    currency: clampWholeNumber(clean.currency, 0, 0, 999999),
+    items: normalizeIdList(clean.items),
+    unlocks: normalizeIdList(clean.unlocks),
+    recruits: normalizeIdList(clean.recruits),
+    levelMilestone: clampWholeNumber(clean.levelMilestone, 0, 0, 20)
+  };
+}
+
+function normalizeIdList(values) {
+  return Array.isArray(values) ? values.map((value) => sanitizeId(value, "")).filter(Boolean) : [];
 }
 
 function normalizeResults(results) {
