@@ -1843,11 +1843,6 @@ function getActiveShopDefinition(state, shopId) {
   return shops.find((shop) => String(shop?.id ?? "").trim() === id) ?? null;
 }
 
-function getInventoryIdsForCategory(inventory, categoryKey) {
-  const key = String(categoryKey ?? "").trim();
-  const ids = Array.isArray(inventory?.[key]) ? inventory[key] : [];
-  return ids.map((id) => String(id ?? "").trim()).filter(Boolean);
-}
 
 function getInventoryBucketForCategory(categoryKey) {
   const key = String(categoryKey ?? "").trim();
