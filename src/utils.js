@@ -25,3 +25,8 @@ export function makeText(x, y, text, className) {
   textEl.textContent = text;
   return textEl;
 }
+
+
+export function getTileDistance(x1, y1, x2, y2) {
+  return Math.max(Math.abs(Number(x2) - Number(x1)), Math.abs(Number(y2) - Number(y1)));
+}

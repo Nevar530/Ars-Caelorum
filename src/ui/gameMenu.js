@@ -416,6 +416,13 @@ export function selectGameMenuShopItem(state, index) {
   return true;
 }
 
+export function selectGameMenuInventoryItem(state, index) {
+  const entries = getInventoryDisplayEntries(state);
+  const menu = normalizeGameMenuState(state);
+  menu.selectedInventoryIndex = clampIndex(index, entries.length);
+  return entries.length > 0;
+}
+
 export function selectGameMenuMissionBoardIndex(state, index) {
   const missions = getMissionBoardEntries(state);
   const menu = normalizeGameMenuState(state);
