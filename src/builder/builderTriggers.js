@@ -130,7 +130,7 @@ export function updateTriggerToolFromFields(builderState, root) {
   tool.interactLabel = sanitizePromptLabel(readField(root, "trigger-interact-label", tool.interactLabel));
   tool.shopId = sanitizeId(readField(root, "trigger-shop-id", tool.shopId));
   tool.shopName = readField(root, "trigger-shop-name", tool.shopName).trim();
-  tool.shopStockIds = normalizeStockText(readField(root, "trigger-shop-stock-ids", tool.shopStockIds));
+  tool.shopStockIds = readShopStockFields(root, tool.shopStockIds);
   tool.statusText = readField(root, "trigger-status-text", tool.statusText).trim();
 
   return tool;
@@ -234,7 +234,7 @@ export function selectTriggerDefinition(builderState, index) {
   tool.shopId = sanitizeId(trigger.shopId ?? "");
   const shop = getShopDefinition(ensureMapDraft(builderState), tool.shopId);
   tool.shopName = String(shop?.name ?? "").trim();
-  tool.shopStockIds = normalizeStockText(Array.isArray(shop?.stock) ? shop.stock.join("\n") : "");
+  tool.shopStockIds = normalizeStockText(shop?.stock ?? "");
 
   ensureTriggerToolSettings(builderState);
   return { ok: true, message: `Selected trigger ${trigger.id ?? cleanIndex + 1}.` };
@@ -478,7 +478,7 @@ function ensureShopDefinitionFromTool(map, tool) {
   if (!shopId) return null;
 
   if (!Array.isArray(map.shops)) map.shops = [];
-  const stock = parseStockIds(tool.shopStockIds);
+  const stock = parseStockEntries(tool.shopStockIds);
   const existing = map.shops.find((shop) => sanitizeId(shop?.id) === shopId);
   const name = String(tool.shopName ?? "").trim() || humanizeShopId(shopId);
 
@@ -500,28 +500,54 @@ function getShopDefinition(map, shopId) {
   return map.shops.find((shop) => sanitizeId(shop?.id) === id) ?? null;
 }
 
-function parseStockIds(value) {
-  return uniqueIds(String(value ?? "")
-    .split(/[\n,]+/)
-    .map((entry) => sanitizeLooseId(entry))
-    .filter(Boolean));
+function readShopStockFields(root, fallback = "") {
+  const checkboxNodes = Array.from(root?.querySelectorAll?.("[data-shop-stock-id]") ?? []);
+  if (!checkboxNodes.length) return normalizeStockText(readField(root, "trigger-shop-stock-ids", fallback));
+
+  const lines = [];
+  for (const checkbox of checkboxNodes) {
+    if (!checkbox.checked) continue;
+    const itemId = sanitizeLooseId(checkbox.dataset.shopStockId);
+    if (!itemId) continue;
+    const qtyNode = root.querySelector?.(`[data-shop-stock-qty="${cssEscape(itemId)}"]`);
+    const qty = Math.max(1, normalizeInteger(qtyNode?.value ?? 1, 1));
+    lines.push(`${itemId}|${qty}`);
+  }
+  return normalizeStockText(lines.join("\n"));
 }
 
-function normalizeStockText(value) {
-  return parseStockIds(value).join("\n");
-}
+function parseStockEntries(value) {
+  const entries = Array.isArray(value)
+    ? value
+    : String(value ?? "")
+      .split(/[\n,]+/)
+      .map((entry) => sanitizeLooseId(entry))
+      .filter(Boolean);
 
-function uniqueIds(ids) {
   const seen = new Set();
   const clean = [];
-  for (const id of Array.isArray(ids) ? ids : []) {
-    const value = sanitizeLooseId(id);
-    if (!value || seen.has(value)) continue;
-    seen.add(value);
-    clean.push(value);
+  for (const entry of entries) {
+    const source = typeof entry === "object" && entry
+      ? `${entry.itemId ?? entry.id ?? ""}|${entry.qty ?? entry.quantity ?? 1}`
+      : String(entry ?? "");
+    const [rawId, rawQty] = source.split("|");
+    const itemId = sanitizeLooseId(rawId);
+    if (!itemId || seen.has(itemId)) continue;
+    seen.add(itemId);
+    clean.push({ itemId, qty: Math.max(1, normalizeInteger(rawQty ?? 1, 1)) });
   }
   return clean;
 }
+
+function normalizeStockText(value) {
+  return parseStockEntries(value).map((entry) => `${entry.itemId}|${entry.qty}`).join("\n");
+}
+
+function cssEscape(value) {
+  if (globalThis.CSS?.escape) return globalThis.CSS.escape(String(value ?? ""));
+  return String(value ?? "").replace(/"/g, "\\\"");
+}
+
 
 function sanitizePromptLabel(value) {
   return String(value ?? "")

@@ -1506,6 +1506,92 @@ function renderSpawnInspectorTools(builderState, appState) {
   `;
 }
 
+function renderShopStockChecklist(appState, tool, editable) {
+  const selected = parseShopStockToolText(tool?.shopStockIds);
+  const groups = getShopStockGroups(appState);
+  return `
+    <div class="builder-form-field-wide builder-shop-stock-list">
+      ${groups.map((group) => `
+        <div class="builder-field-label builder-section-label">${escapeHtml(group.label)}</div>
+        ${group.items.length ? group.items.map((item) => renderShopStockItemRow(item, selected, editable)).join("") : `<div class="builder-inspector-note builder-note-compact">No entries in loaded JSON.</div>`}
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderShopStockItemRow(item, selected, editable) {
+  const id = String(item?.id ?? "").trim();
+  const checked = selected.has(id);
+  const qty = selected.get(id) ?? 1;
+  const price = Math.max(0, Math.trunc(Number(item?.price ?? 0) || 0));
+  const detail = renderBuilderItemDetail(item);
+  return `
+    <div class="builder-static-row builder-shop-stock-row">
+      <label class="builder-form-check">
+        <input type="checkbox" data-builder-field="trigger-shop-stock-check" data-shop-stock-id="${escapeHtml(id)}"${checked ? " checked" : ""}${editable ? "" : " disabled"}>
+        <span>${escapeHtml(item?.name ?? id)}</span>
+      </label>
+      <input type="number" min="1" step="1" data-builder-field="trigger-shop-stock-qty" data-shop-stock-qty="${escapeHtml(id)}" value="${escapeHtml(qty)}"${checked && editable ? "" : " disabled"}>
+      <b>${escapeHtml(price)} CR</b>
+      <em>${escapeHtml(detail)}</em>
+    </div>
+  `;
+}
+
+function getShopStockGroups(appState) {
+  const content = appState?.content ?? {};
+  const weapons = Array.isArray(content.weapons) ? content.weapons : [];
+  const pilotWeapons = weapons.filter((entry) => String(entry?.scale ?? "pilot").toLowerCase() !== "mech");
+  const telumWeapons = weapons.filter((entry) => String(entry?.scale ?? "pilot").toLowerCase() === "mech");
+  const pilotGear = Array.isArray(content.pilotGear) ? content.pilotGear : [];
+  const telumGear = Array.isArray(content.mechGear) ? content.mechGear : [];
+  const items = [
+    ...(Array.isArray(content.pilotItems) ? content.pilotItems : []),
+    ...(Array.isArray(content.mechItems) ? content.mechItems : [])
+  ].filter((entry) => String(entry?.kind ?? "consumable").toLowerCase() === "consumable");
+  return [
+    { label: "Pilot Weapons", items: pilotWeapons },
+    { label: "Pilot Gear", items: pilotGear },
+    { label: "Telum Weapons", items: telumWeapons },
+    { label: "Telum Gear", items: telumGear },
+    { label: "Items / Consumables", items }
+  ];
+}
+
+function parseShopStockToolText(value) {
+  const map = new Map();
+  const lines = Array.isArray(value)
+    ? value
+    : String(value ?? "").split(/[\n,]+/);
+  for (const line of lines) {
+    const source = typeof line === "object" && line
+      ? `${line.itemId ?? line.id ?? ""}|${line.qty ?? line.quantity ?? 1}`
+      : String(line ?? "");
+    const [rawId, rawQty] = source.split("|");
+    const id = String(rawId ?? "").trim();
+    if (!id) continue;
+    map.set(id, Math.max(1, Math.trunc(Number(rawQty ?? 1) || 1)));
+  }
+  return map;
+}
+
+function renderBuilderItemDetail(item) {
+  if (!item || typeof item !== "object") return "";
+  if (item.modifiers && typeof item.modifiers === "object") {
+    return Object.entries(item.modifiers)
+      .map(([key, value]) => `${Number(value) > 0 ? "+" : ""}${value} ${key}`)
+      .join(" / ");
+  }
+  if (Number.isFinite(Number(item.damage))) {
+    const range = item.range && typeof item.range === "object" ? ` RNG ${item.range.min ?? 0}-${item.range.max ?? 0}` : "";
+    return `DMG ${item.damage}${range}`;
+  }
+  if (item.effect && typeof item.effect === "object") {
+    return `${String(item.effect.type ?? item.effect.kind ?? "effect").replace(/_/g, " ")} ${item.effect.amount ?? ""}`.trim();
+  }
+  return String(item.description ?? item.notes ?? "").slice(0, 48);
+}
+
 function buildSimpleOptions(values, selectedValue) {
   return values.map((value) => {
     const selected = String(value) === String(selectedValue) ? " selected" : "";
@@ -1763,11 +1849,9 @@ function renderTriggerInspectorTools(builderState, appState) {
           <span>Shop Name</span>
           <input type="text" data-builder-field="trigger-shop-name" value="${escapeHtml(tool.shopName ?? "")}" placeholder="Wayfarer Supplies" spellcheck="true"${editable ? "" : " disabled"}>
         </label>
-        <label class="builder-form-field builder-form-field-compact builder-form-field-wide">
-          <span>Stock IDs</span>
-          <textarea data-builder-field="trigger-shop-stock-ids" rows="5" spellcheck="false" placeholder="pilot_armor_light_01&#10;telum_plating_light_01"${editable ? "" : " disabled"}>${escapeHtml(tool.shopStockIds ?? "")}</textarea>
-        </label>
-        <div class="builder-inspector-note builder-note-compact">One stock id per line. The trigger writes/updates this map's shop definition.</div>
+        <input type="hidden" data-builder-field="trigger-shop-stock-ids" value="${escapeHtml(tool.shopStockIds ?? "")}">
+        ${renderShopStockChecklist(appState, tool, editable)}
+        <div class="builder-inspector-note builder-note-compact">Check items to add them to this shop. Qty is shop stock count. Price/effects come from item JSON.</div>
       ` : ""}
       ${needsTargetUnit ? `
         <label class="builder-form-field builder-form-field-compact">

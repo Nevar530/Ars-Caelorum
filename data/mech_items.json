@@ -9,7 +9,8 @@
       "amount": 4
     },
     "charges": 1,
-    "description": "Mech consumable repair item foundation entry."
+    "description": "Mech consumable repair item foundation entry.",
+    "price": 120
   },
   {
     "id": "test_tube",
@@ -21,6 +22,7 @@
       "amount": 2
     },
     "charges": 1,
-    "description": "Mech test item for self core damage."
+    "description": "Mech test item for self core damage.",
+    "price": 1
   }
 ]

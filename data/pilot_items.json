@@ -9,7 +9,8 @@
       "amount": 3
     },
     "charges": 1,
-    "description": "Pilot consumable heal item foundation entry."
+    "description": "Pilot consumable heal item foundation entry.",
+    "price": 75
   },
   {
     "id": "test_spray",
@@ -21,6 +22,7 @@
       "amount": 2
     },
     "charges": 1,
-    "description": "Pilot test item for self core damage."
+    "description": "Pilot test item for self core damage.",
+    "price": 1
   }
 ]

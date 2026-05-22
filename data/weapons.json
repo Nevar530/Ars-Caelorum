@@ -19,7 +19,8 @@
       "kind": "single"
     },
     "damage": 10,
-    "notes": "Melee attack. Valid targets are forward, left, and right adjacent tiles."
+    "notes": "Melee attack. Valid targets are forward, left, and right adjacent tiles.",
+    "price": 500
   },
   {
     "id": "machinegun_01",
@@ -41,7 +42,8 @@
       "kind": "single"
     },
     "damage": 10,
-    "notes": "Direct fire weapon."
+    "notes": "Direct fire weapon.",
+    "price": 700
   },
   {
     "id": "pistol_01",
@@ -63,7 +65,8 @@
       "kind": "single"
     },
     "damage": 5,
-    "notes": "Direct fire sidearm."
+    "notes": "Direct fire sidearm.",
+    "price": 150
   },
   {
     "id": "rifle_01",
@@ -85,7 +88,8 @@
       "kind": "single"
     },
     "damage": 15,
-    "notes": "Direct fire rifle."
+    "notes": "Direct fire rifle.",
+    "price": 320
   },
   {
     "id": "cannon_01",
@@ -107,7 +111,8 @@
       "kind": "single"
     },
     "damage": 20,
-    "notes": "Heavy direct fire weapon."
+    "notes": "Heavy direct fire weapon.",
+    "price": 1200
   },
   {
     "id": "srm_01",
@@ -136,7 +141,8 @@
       "ring2": 5,
       "ring3": 0
     },
-    "notes": "Targets a center tile. Fire arc checks center tile only. Splash radius 3 from center."
+    "notes": "Targets a center tile. Fire arc checks center tile only. Splash radius 3 from center.",
+    "price": 900
   },
   {
     "id": "lrm_01",
@@ -166,7 +172,8 @@
       "ring3": 5,
       "ring4": 0
     },
-    "notes": "Targets a center tile. Fire arc checks center tile only. Splash radius 4 from center."
+    "notes": "Targets a center tile. Fire arc checks center tile only. Splash radius 4 from center.",
+    "price": 1100
   },
   {
     "id": "sniper_01",
@@ -188,9 +195,9 @@
       "kind": "single"
     },
     "damage": 20,
-    "notes": "Long-range precision weapon."
+    "notes": "Long-range precision weapon.",
+    "price": 1000
   },
-
   {
     "id": "pilot_pistol_01",
     "name": "Sidearm",
@@ -211,7 +218,8 @@
       "kind": "single"
     },
     "damage": 3,
-    "notes": "Basic pilot sidearm for LOS and action testing."
+    "notes": "Basic pilot sidearm for LOS and action testing.",
+    "price": 90
   },
   {
     "id": "pilot_rifle_01",
@@ -233,7 +241,8 @@
       "kind": "single"
     },
     "damage": 4,
-    "notes": "Pilot carbine with slightly longer effective range."
+    "notes": "Pilot carbine with slightly longer effective range.",
+    "price": 180
   },
   {
     "id": "pilot_smg_01",
@@ -255,6 +264,7 @@
       "kind": "single"
     },
     "damage": 3,
-    "notes": "Short-range pilot weapon for close combat testing."
+    "notes": "Short-range pilot weapon for close combat testing.",
+    "price": 160
   }
 ]

@@ -8,7 +8,8 @@
       "shield": 3,
       "move": 1
     },
-    "description": "Light armor package that keeps a Telum moving."
+    "description": "Light armor package that keeps a Telum moving.",
+    "price": 450
   },
   {
     "id": "telum_plating_standard_01",
@@ -18,7 +19,8 @@
     "modifiers": {
       "shield": 6
     },
-    "description": "Baseline protective plating for field work."
+    "description": "Baseline protective plating for field work.",
+    "price": 700
   },
   {
     "id": "telum_plating_heavy_01",
@@ -29,7 +31,8 @@
       "shield": 9,
       "move": -1
     },
-    "description": "Heavy armor package. Slower, harder to crack."
+    "description": "Heavy armor package. Slower, harder to crack.",
+    "price": 950
   },
   {
     "id": "telum_system_mobility_01",
@@ -39,7 +42,8 @@
     "modifiers": {
       "move": 1
     },
-    "description": "Servo tuning package for faster repositioning."
+    "description": "Servo tuning package for faster repositioning.",
+    "price": 650
   },
   {
     "id": "telum_system_stabilizer_01",
@@ -49,6 +53,7 @@
     "modifiers": {
       "targeting": 1
     },
-    "description": "Targeting stabilizers for mounted weapons."
+    "description": "Targeting stabilizers for mounted weapons.",
+    "price": 650
   }
 ]

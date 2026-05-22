@@ -78,6 +78,7 @@ export function normalizeGameMenuState(state) {
   state.ui.gameMenu.selectedShopCategory = normalizeShopCategory(state.ui.gameMenu.selectedShopCategory);
   state.ui.gameMenu.selectedShopItemIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedShopItemIndex);
   state.ui.gameMenu.shopStage = normalizeShopStage(state.ui.gameMenu.shopStage);
+  state.ui.gameMenu.shopMode = normalizeShopMode(state.ui.gameMenu.shopMode);
   state.ui.gameMenu.selectedMissionBoardIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedMissionBoardIndex);
   state.ui.gameMenu.missionBoardStage = normalizeMissionBoardStage(state.ui.gameMenu.missionBoardStage);
   state.ui.gameMenu.selectedSystemIndex = normalizeSystemIndex(state.ui.gameMenu.selectedSystemIndex);
@@ -128,6 +129,7 @@ export function openContextualScreen(state, screenId = "pilot_loadout", options 
   }
   if (menu.activeTab === "shop") {
     menu.shopStage = "categories";
+    menu.shopMode = "buy";
     menu.selectedShopItemIndex = 0;
     menu.shopId = String(options?.shopId ?? "").trim();
   } else {
@@ -357,6 +359,23 @@ export function selectGameMenuShopCategory(state, categoryKey) {
   menu.selectedShopCategory = normalizeShopCategory(categoryKey);
   menu.selectedShopItemIndex = 0;
   if (menu.activeTab === "shop") menu.shopStage = "items";
+  return true;
+}
+
+export function selectGameMenuShopMode(state, mode) {
+  const menu = normalizeGameMenuState(state);
+  menu.shopMode = normalizeShopMode(mode);
+  menu.shopStage = "categories";
+  menu.selectedShopItemIndex = 0;
+  return true;
+}
+
+export function selectGameMenuShopItem(state, index) {
+  const menu = normalizeGameMenuState(state);
+  const category = SHOP_CATEGORIES.find((entry) => entry.key === menu.selectedShopCategory) ?? SHOP_CATEGORIES[0];
+  const items = getShopItemsForCategory(state, category);
+  menu.selectedShopItemIndex = clampIndex(index, items.length);
+  menu.shopStage = "items";
   return true;
 }
 
@@ -791,50 +810,69 @@ function renderShopTab(state) {
   const selectedItem = items[menu.selectedShopItemIndex] ?? null;
   const shop = getActiveShopDefinition(state, menu.shopId);
   const shopName = shop?.name ?? (menu.shopId ? menu.shopId : "Shop");
+  const credits = Math.max(0, Math.trunc(Number(state?.campaign?.inventory?.currency ?? 0) || 0));
+  const modeLabel = menu.shopMode === "sell" ? "Sell" : "Buy";
 
   return `
     <div class="terminal-screen terminal-screen--context-list">
       <section class="terminal-panel ${menu.shopStage === "categories" ? "is-focused" : ""}">
-        <div class="terminal-panel-title">${escapeHtml(shopName)}</div>
+        <div class="terminal-panel-title">${escapeHtml(shopName)} / ${escapeHtml(modeLabel)}</div>
         <div class="terminal-row-list">
+          <button type="button" class="terminal-row ${menu.shopMode === "buy" ? "is-selected" : ""}" data-game-menu-action="select-shop-mode" data-shop-mode="buy"><span>Buy Stock</span><b>${escapeHtml(credits)} CR</b></button>
+          <button type="button" class="terminal-row ${menu.shopMode === "sell" ? "is-selected" : ""}" data-game-menu-action="select-shop-mode" data-shop-mode="sell"><span>Sell Unequipped</span><b>${escapeHtml(credits)} CR</b></button>
           ${SHOP_CATEGORIES.map((entry) => `
             <button type="button" class="terminal-row ${entry.key === category.key ? "is-selected" : ""} ${menu.shopStage === "categories" && entry.key === category.key ? "is-cursor" : ""}" data-game-menu-action="select-shop-category" data-shop-category="${escapeHtml(entry.key)}">
               <span>${escapeHtml(entry.label)}</span><b>${escapeHtml(getShopItemsForCategory(state, entry).length)}</b>
             </button>
           `).join("")}
         </div>
+        <div class="terminal-note">Left on category toggles Buy/Sell. Right/Enter opens list.</div>
       </section>
       <section class="terminal-panel ${menu.shopStage === "items" ? "is-focused" : ""}">
-        <div class="terminal-panel-title">Stock / ${escapeHtml(category.label)}</div>
+        <div class="terminal-panel-title">${escapeHtml(modeLabel)} / ${escapeHtml(category.label)}</div>
         <div class="terminal-row-list">
-          ${items.length ? items.map((item, index) => renderShopItemRow(state, item, category.type, menu.shopStage === "items" && index === menu.selectedShopItemIndex)).join("") : `<div class="terminal-empty">No stock in this category.</div>`}
+          ${items.length ? items.map((item, index) => renderShopItemRow(state, item, category.type, menu.shopStage === "items" && index === menu.selectedShopItemIndex, index)).join("") : `<div class="terminal-empty">No ${menu.shopMode === "sell" ? "unequipped items" : "stock"} in this category.</div>`}
         </div>
       </section>
       <section class="terminal-panel">
         <div class="terminal-panel-title">Details</div>
-        ${selectedItem ? renderShopDetail(selectedItem) : `<div class="terminal-empty">Select stock.</div>`}
-        <div class="terminal-note">Shop economy is shell-only in this pass. Buy/sell hooks come after gear authority is stable.</div>
+        ${selectedItem ? renderShopDetail(selectedItem, menu.shopMode) : `<div class="terminal-empty">Select ${menu.shopMode === "sell" ? "owned item" : "stock"}.</div>`}
+        ${menu.statusText ? `<div class="terminal-status">${escapeHtml(menu.statusText)}</div>` : ""}
       </section>
     </div>
   `;
 }
 
-function renderShopItemRow(state, item, type, selected) {
-  const detail = renderModifierText(item?.modifiers) || renderWeaponDetail(item) || item?.id || "";
-  return `<button type="button" class="terminal-row ${selected ? "is-cursor" : ""}" disabled><span>${escapeHtml(item?.name ?? item?.id ?? "Item")}</span><b>${escapeHtml(detail)}</b></button>`;
+function renderShopItemRow(state, item, type, selected, displayIndex = 0) {
+  const entry = item?.entry ?? item;
+  const price = getEntryPrice(entry);
+  const qty = Number.isFinite(Number(item?.qty)) ? Math.max(0, Math.trunc(Number(item.qty))) : null;
+  const detail = item?.mode === "sell"
+    ? `${price} CR`
+    : `${price} CR${qty !== null ? ` / QTY ${qty}` : ""}`;
+  return `<button type="button" class="terminal-row ${selected ? "is-cursor" : ""}" data-game-menu-action="select-shop-item" data-shop-item-index="${escapeHtml(displayIndex)}"><span>${escapeHtml(entry?.name ?? entry?.id ?? "Item")}</span><b>${escapeHtml(detail)}</b></button>`;
 }
 
-function renderShopDetail(item) {
-  const modifierText = renderModifierText(item?.modifiers);
-  const weaponText = renderWeaponDetail(item);
+function renderShopDetail(item, mode = "buy") {
+  const entry = item?.entry ?? item;
+  const modifierText = renderModifierText(entry?.modifiers);
+  const weaponText = renderWeaponDetail(entry);
+  const effectText = renderItemEffect(entry?.effect);
+  const price = getEntryPrice(entry);
+  const actionLabel = mode === "sell" ? "Sell" : "Buy";
+  const qty = Number.isFinite(Number(item?.qty)) ? Math.max(0, Math.trunc(Number(item.qty))) : null;
   return `
     <div class="terminal-record terminal-record--stack">
-      <strong>${escapeHtml(item?.name ?? item?.id ?? "Item")}</strong>
-      <span>${escapeHtml(item?.id ?? "")}</span>
+      <strong>${escapeHtml(entry?.name ?? entry?.id ?? "Item")}</strong>
+      <span>${escapeHtml(entry?.id ?? "")}</span>
+      <span>${escapeHtml(price)} CR${qty !== null && mode !== "sell" ? ` / Shop Qty ${escapeHtml(qty)}` : ""}</span>
       ${modifierText ? `<span>${escapeHtml(modifierText)}</span>` : ""}
       ${weaponText ? `<span>${escapeHtml(weaponText)}</span>` : ""}
-      ${item?.description || item?.notes ? `<span>${escapeHtml(item.description ?? item.notes)}</span>` : ""}
+      ${effectText ? `<span>${escapeHtml(effectText)}</span>` : ""}
+      ${entry?.description || entry?.notes ? `<span>${escapeHtml(entry.description ?? entry.notes)}</span>` : ""}
     </div>
+    <button type="button" class="terminal-row terminal-row--action is-cursor" data-game-menu-action="confirm-shop-item"><span>${escapeHtml(actionLabel)}</span><b>ENTER</b></button>
+    <div class="terminal-note">${escapeHtml(actionLabel)} uses the item JSON price. Shops author availability and quantity only.</div>
   `;
 }
 
@@ -1428,18 +1466,53 @@ function getTelumLoadoutOptions(state, mech, slotKey) {
 
 function getShopItemsForCategory(state, category) {
   const menu = normalizeGameMenuState(state);
+  return menu.shopMode === "sell"
+    ? getSellableItemsForCategory(state, category)
+    : getBuyableItemsForCategory(state, category);
+}
+
+function getBuyableItemsForCategory(state, category) {
+  const menu = normalizeGameMenuState(state);
   const shop = getActiveShopDefinition(state, menu.shopId);
-  const stockIds = Array.isArray(shop?.stock) ? shop.stock : null;
+  const stock = normalizeShopStock(shop?.stock);
 
-  if (stockIds) {
-    return stockIds
-      .map((id) => getContentEntry(state, id, category.type))
-      .filter((entry) => entry && doesShopEntryMatchCategory(entry, category));
-  }
+  return stock
+    .map((stockEntry, index) => {
+      const entry = getContentEntry(state, stockEntry.itemId, category.type);
+      if (!entry || !doesShopEntryMatchCategory(entry, category)) return null;
+      if (Number.isFinite(stockEntry.qty) && stockEntry.qty <= 0) return null;
+      return { ...stockEntry, index, entry, mode: "buy" };
+    })
+    .filter(Boolean);
+}
 
+function getSellableItemsForCategory(state, category) {
   const inventory = state?.campaign?.inventory ?? {};
-  const ids = Array.isArray(inventory?.[category.key]) ? inventory[category.key] : [];
-  return ids.map((id) => getContentEntry(state, id, category.type)).filter(Boolean);
+  const ids = getInventoryIdsForCategory(inventory, category.key);
+  const equipped = getEquippedInventoryIds(state);
+  const rows = [];
+
+  ids.forEach((id, inventoryIndex) => {
+    if (category.key !== "items" && equipped.has(id)) return;
+    const entry = getContentEntry(state, id, category.type);
+    if (!entry || !doesShopEntryMatchCategory(entry, category)) return;
+    rows.push({ itemId: id, index: inventoryIndex, entry, mode: "sell", qty: null });
+  });
+
+  return rows;
+}
+
+function normalizeShopStock(stock) {
+  if (!Array.isArray(stock)) return [];
+  return stock
+    .map((entry) => {
+      if (typeof entry === "string") return { itemId: entry.trim(), qty: 1 };
+      const itemId = String(entry?.itemId ?? entry?.id ?? "").trim();
+      const qtyRaw = entry?.qty ?? entry?.quantity ?? 1;
+      const qty = Math.max(0, Math.trunc(Number(qtyRaw) || 0));
+      return { itemId, qty };
+    })
+    .filter((entry) => entry.itemId);
 }
 
 function getActiveShopDefinition(state, shopId) {
@@ -1447,6 +1520,37 @@ function getActiveShopDefinition(state, shopId) {
   if (!id) return null;
   const shops = Array.isArray(state?.map?.shops) ? state.map.shops : [];
   return shops.find((shop) => String(shop?.id ?? "").trim() === id) ?? null;
+}
+
+function getInventoryIdsForCategory(inventory, categoryKey) {
+  const key = String(categoryKey ?? "").trim();
+  const ids = Array.isArray(inventory?.[key]) ? inventory[key] : [];
+  return ids.map((id) => String(id ?? "").trim()).filter(Boolean);
+}
+
+function getInventoryBucketForCategory(categoryKey) {
+  const key = String(categoryKey ?? "").trim();
+  if (["weapons", "armor", "accessories", "mechWeapons", "mechGear", "items"].includes(key)) return key;
+  return "items";
+}
+
+function getEquippedInventoryIds(state) {
+  const equipped = new Set();
+  for (const pilot of getVisiblePilotEntries(state)) {
+    const loadout = getPilotMenuLoadout(state, pilot.id);
+    [loadout.armor, loadout.accessory, loadout.primaryWeapon, loadout.secondaryWeapon]
+      .map((id) => String(id ?? "").trim())
+      .filter(Boolean)
+      .forEach((id) => equipped.add(id));
+  }
+  for (const mech of getVisibleMechEntries(state)) {
+    const loadout = getMechMenuLoadout(state, mech.id);
+    [loadout.plating, loadout.system, loadout.primaryWeapon, loadout.secondaryWeapon, loadout.supportWeapon]
+      .map((id) => String(id ?? "").trim())
+      .filter(Boolean)
+      .forEach((id) => equipped.add(id));
+  }
+  return equipped;
 }
 
 function doesShopEntryMatchCategory(entry, category) {
@@ -1457,7 +1561,101 @@ function doesShopEntryMatchCategory(entry, category) {
   if (type === "armor") return String(entry.scale ?? "pilot").toLowerCase() === "pilot" && String(entry.slot ?? "").toLowerCase() === "armor";
   if (type === "accessory") return String(entry.scale ?? "pilot").toLowerCase() === "pilot" && String(entry.slot ?? "").toLowerCase() === "accessory";
   if (type === "mechGear") return String(entry.scale ?? "").toLowerCase() === "mech";
+  if (type === "item") return String(entry.kind ?? "consumable").toLowerCase() === "consumable";
   return true;
+}
+
+function getEntryPrice(entry) {
+  return Math.max(0, Math.trunc(Number(entry?.price ?? 0) || 0));
+}
+
+function renderItemEffect(effect) {
+  if (!effect || typeof effect !== "object") return "";
+  const type = String(effect.type ?? effect.kind ?? "effect").replace(/_/g, " ");
+  const amount = Number.isFinite(Number(effect.amount)) ? ` ${effect.amount}` : "";
+  return `${titleCase(type)}${amount}`;
+}
+
+function confirmShopSelection(state) {
+  const menu = normalizeGameMenuState(state);
+  if (menu.shopStage === "categories") {
+    menu.shopStage = "items";
+    menu.selectedShopItemIndex = 0;
+    return { ok: false, reason: "open_shop_items" };
+  }
+
+  const category = SHOP_CATEGORIES.find((entry) => entry.key === menu.selectedShopCategory) ?? SHOP_CATEGORIES[0];
+  const rows = getShopItemsForCategory(state, category);
+  const row = rows[clampIndex(menu.selectedShopItemIndex, rows.length)] ?? null;
+  if (!row?.entry) {
+    menu.statusText = menu.shopMode === "sell" ? "No unequipped item selected." : "No stock selected.";
+    return { ok: false, reason: "no_shop_item" };
+  }
+
+  return menu.shopMode === "sell"
+    ? sellShopItem(state, category, row)
+    : buyShopItem(state, category, row);
+}
+
+function buyShopItem(state, category, row) {
+  const campaign = state.campaign ?? {};
+  const inventory = campaign.inventory ?? {};
+  campaign.inventory = inventory;
+  const bucket = getInventoryBucketForCategory(category.key);
+  if (!Array.isArray(inventory[bucket])) inventory[bucket] = [];
+
+  const price = getEntryPrice(row.entry);
+  const credits = Math.max(0, Math.trunc(Number(inventory.currency ?? 0) || 0));
+  if (credits < price) {
+    normalizeGameMenuState(state).statusText = `Need ${price} CR. Current credits: ${credits}.`;
+    return { ok: false, reason: "not_enough_credits" };
+  }
+
+  if (category.key !== "items" && inventory[bucket].includes(row.itemId)) {
+    normalizeGameMenuState(state).statusText = "Already owned.";
+    return { ok: false, reason: "already_owned" };
+  }
+
+  const shop = getActiveShopDefinition(state, normalizeGameMenuState(state).shopId);
+  const stock = normalizeShopStock(shop?.stock);
+  const stockEntry = stock[row.index];
+  if (!stockEntry || stockEntry.qty <= 0) {
+    normalizeGameMenuState(state).statusText = "Shop stock is empty.";
+    return { ok: false, reason: "stock_empty" };
+  }
+
+  inventory.currency = credits - price;
+  inventory[bucket].push(row.itemId);
+  stockEntry.qty = Math.max(0, stockEntry.qty - 1);
+  if (shop) shop.stock = stock;
+  const menu = normalizeGameMenuState(state);
+  menu.statusText = `Bought ${row.entry.name ?? row.itemId} for ${price} CR.`;
+  menu.selectedShopItemIndex = clampIndex(menu.selectedShopItemIndex, getShopItemsForCategory(state, category).length);
+  return { ok: true, reason: "bought_item" };
+}
+
+function sellShopItem(state, category, row) {
+  const campaign = state.campaign ?? {};
+  const inventory = campaign.inventory ?? {};
+  campaign.inventory = inventory;
+  const bucket = getInventoryBucketForCategory(category.key);
+  if (!Array.isArray(inventory[bucket])) inventory[bucket] = [];
+  const index = inventory[bucket].findIndex((id) => String(id ?? "").trim() === row.itemId);
+  if (index < 0) {
+    normalizeGameMenuState(state).statusText = "Item is no longer in inventory.";
+    return { ok: false, reason: "not_owned" };
+  }
+  if (category.key !== "items" && getEquippedInventoryIds(state).has(row.itemId)) {
+    normalizeGameMenuState(state).statusText = "Cannot sell equipped gear.";
+    return { ok: false, reason: "equipped" };
+  }
+  const price = getEntryPrice(row.entry);
+  inventory[bucket].splice(index, 1);
+  inventory.currency = Math.max(0, Math.trunc(Number(inventory.currency ?? 0) || 0)) + price;
+  const menu = normalizeGameMenuState(state);
+  menu.statusText = `Sold ${row.entry.name ?? row.itemId} for ${price} CR.`;
+  menu.selectedShopItemIndex = clampIndex(menu.selectedShopItemIndex, getShopItemsForCategory(state, category).length);
+  return { ok: true, reason: "sold_item" };
 }
 
 function getMissionBoardEntries(state) {
@@ -1514,6 +1712,11 @@ function normalizeShopCategory(categoryKey) {
 function normalizeShopStage(stage) {
   const value = String(stage ?? "categories").trim();
   return ["categories", "items"].includes(value) ? value : "categories";
+}
+
+function normalizeShopMode(mode) {
+  const value = String(mode ?? "buy").trim().toLowerCase();
+  return value === "sell" ? "sell" : "buy";
 }
 
 
@@ -1712,22 +1915,16 @@ function moveShopStage(state, delta) {
     menu.shopStage = "categories";
     return true;
   }
+  if (step < 0 && menu.shopStage === "categories") {
+    menu.shopMode = menu.shopMode === "sell" ? "buy" : "sell";
+    menu.selectedShopItemIndex = 0;
+    return true;
+  }
   if (step > 0 && menu.shopStage === "categories") {
     menu.shopStage = "items";
     return true;
   }
   return false;
-}
-
-function confirmShopSelection(state) {
-  const menu = normalizeGameMenuState(state);
-  if (menu.shopStage === "categories") {
-    menu.shopStage = "items";
-    menu.selectedShopItemIndex = 0;
-    return { ok: false, reason: "open_shop_items" };
-  }
-  menu.statusText = "Shop buy/sell is not active in this build.";
-  return { ok: false, reason: "shop_shell_only" };
 }
 
 function moveMissionBoardSelection(state, delta) {

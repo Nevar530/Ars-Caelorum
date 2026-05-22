@@ -7,7 +7,8 @@
     "modifiers": {
       "shield": 4
     },
-    "description": "Light armor with a small shield reserve."
+    "description": "Light armor with a small shield reserve.",
+    "price": 120
   },
   {
     "id": "pilot_armor_standard_01",
@@ -17,7 +18,8 @@
     "modifiers": {
       "shield": 7
     },
-    "description": "Standard pilot armor and field shield harness."
+    "description": "Standard pilot armor and field shield harness.",
+    "price": 220
   },
   {
     "id": "pilot_accessory_servo_01",
@@ -27,7 +29,8 @@
     "modifiers": {
       "move": 1
     },
-    "description": "Movement booster for on-foot repositioning."
+    "description": "Movement booster for on-foot repositioning.",
+    "price": 180
   },
   {
     "id": "pilot_accessory_targeting_01",
@@ -37,7 +40,8 @@
     "modifiers": {
       "targeting": 1
     },
-    "description": "Stabilizes pilot weapon aim."
+    "description": "Stabilizes pilot weapon aim.",
+    "price": 200
   },
   {
     "id": "pilot_accessory_reaction_01",
@@ -47,6 +51,7 @@
     "modifiers": {
       "reaction": 1
     },
-    "description": "Improves pilot reaction timing."
+    "description": "Improves pilot reaction timing.",
+    "price": 200
   }
 ]

@@ -1284,17 +1284,50 @@
       "id": "wayfarer_basic_shop",
       "name": "Wayfarer Supplies",
       "stock": [
-        "pilot_pistol_01",
-        "pilot_rifle_01",
-        "pilot_smg_01",
-        "pilot_armor_light_01",
-        "pilot_armor_standard_01",
-        "pilot_accessory_targeting_01",
-        "pilot_accessory_reaction_01",
-        "telum_plating_light_01",
-        "telum_plating_standard_01",
-        "telum_system_mobility_01",
-        "telum_system_stabilizer_01"
+        {
+          "itemId": "pilot_pistol_01",
+          "qty": 1
+        },
+        {
+          "itemId": "pilot_rifle_01",
+          "qty": 1
+        },
+        {
+          "itemId": "pilot_smg_01",
+          "qty": 1
+        },
+        {
+          "itemId": "pilot_armor_light_01",
+          "qty": 1
+        },
+        {
+          "itemId": "pilot_armor_standard_01",
+          "qty": 1
+        },
+        {
+          "itemId": "pilot_accessory_targeting_01",
+          "qty": 1
+        },
+        {
+          "itemId": "pilot_accessory_reaction_01",
+          "qty": 1
+        },
+        {
+          "itemId": "telum_plating_light_01",
+          "qty": 1
+        },
+        {
+          "itemId": "telum_plating_standard_01",
+          "qty": 1
+        },
+        {
+          "itemId": "telum_system_mobility_01",
+          "qty": 1
+        },
+        {
+          "itemId": "telum_system_stabilizer_01",
+          "qty": 1
+        }
       ]
     }
   ]

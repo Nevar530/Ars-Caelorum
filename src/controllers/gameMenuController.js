@@ -12,6 +12,8 @@ import {
   selectGameMenuMissionBoardIndex,
   selectGameMenuPilot,
   selectGameMenuShopCategory,
+  selectGameMenuShopItem,
+  selectGameMenuShopMode,
   selectGameMenuSystemAction,
   selectGameMenuTelumLoadoutOption,
   selectGameMenuTelumLoadoutSlot,
@@ -186,6 +188,23 @@ export function createGameMenuController({
     if (action === "select-shop-category") {
       selectGameMenuShopCategory(state, button.dataset.shopCategory);
       render?.();
+      return;
+    }
+
+    if (action === "select-shop-mode") {
+      selectGameMenuShopMode(state, button.dataset.shopMode);
+      render?.();
+      return;
+    }
+
+    if (action === "select-shop-item") {
+      selectGameMenuShopItem(state, button.dataset.shopItemIndex);
+      render?.();
+      return;
+    }
+
+    if (action === "confirm-shop-item") {
+      confirmSelection();
       return;
     }
 

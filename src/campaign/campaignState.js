@@ -270,7 +270,7 @@ function buildStartingInventory() {
     currency: 0,
     weapons: ["pilot_pistol_01", "pilot_rifle_01", "pilot_smg_01"],
     armor: ["pilot_armor_light_01", "pilot_armor_standard_01"],
-    accessories: ["pilot_accessory_servo_assist_01", "pilot_accessory_targeting_stabilizer_01", "pilot_accessory_reaction_booster_01"],
+    accessories: ["pilot_accessory_servo_01", "pilot_accessory_targeting_01", "pilot_accessory_reaction_01"],
     mechWeapons: ["machinegun_01", "melee_01", "srm_01", "lrm_01", "cannon_01"],
     mechGear: ["telum_plating_light_01", "telum_plating_standard_01", "telum_plating_heavy_01", "telum_system_mobility_01", "telum_system_stabilizer_01"],
     items: []
@@ -292,8 +292,14 @@ function normalizeInventory(inventory, fallbackInventory = {}) {
     accessories: uniqueIds([...(fallback.accessories ?? []), ...(source.accessories ?? [])]),
     mechWeapons: uniqueIds([...(fallback.mechWeapons ?? []), ...(source.mechWeapons ?? [])]),
     mechGear: uniqueIds([...(fallback.mechGear ?? []), ...(source.mechGear ?? [])]),
-    items: uniqueIds([...(fallback.items ?? []), ...(source.items ?? [])])
+    items: normalizeItemIds([...(fallback.items ?? []), ...(source.items ?? [])])
   };
+}
+
+function normalizeItemIds(ids) {
+  return (Array.isArray(ids) ? ids : [])
+    .map((id) => cleanId(id))
+    .filter(Boolean);
 }
 
 function normalizePilots(pilots) {

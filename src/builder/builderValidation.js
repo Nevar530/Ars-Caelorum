@@ -779,16 +779,26 @@ function validateContextScreenTrigger(result, trigger, label, shopDefinitions, k
     return;
   }
 
-  const stock = Array.isArray(shop.stock) ? shop.stock.map(cleanString).filter(Boolean) : [];
+  const stock = Array.isArray(shop.stock) ? shop.stock.map(normalizeShopStockEntry).filter((entry) => entry.itemId) : [];
   if (!stock.length) {
     addWarning(result, "TRIGGER_SHOP_STOCK_EMPTY", `${label} shop "${shopId}" has no authored stock.`);
   }
 
-  for (const itemId of stock) {
-    if (knownStockIds.size && !knownStockIds.has(itemId)) {
-      addWarning(result, "TRIGGER_SHOP_STOCK_UNKNOWN", `${label} shop stock item "${itemId}" is not in loaded gear/item data.`);
+  for (const entry of stock) {
+    if (knownStockIds.size && !knownStockIds.has(entry.itemId)) {
+      addWarning(result, "TRIGGER_SHOP_STOCK_UNKNOWN", `${label} shop stock item "${entry.itemId}" is not in loaded gear/item data.`);
+    }
+    if (!Number.isInteger(entry.qty) || entry.qty < 1) {
+      addWarning(result, "TRIGGER_SHOP_STOCK_QTY_BAD", `${label} shop stock item "${entry.itemId}" should have qty of 1 or higher.`);
     }
   }
+}
+
+function normalizeShopStockEntry(entry) {
+  if (typeof entry === "string") return { itemId: cleanString(entry), qty: 1 };
+  const itemId = cleanString(entry?.itemId ?? entry?.id);
+  const qty = Math.max(0, Math.trunc(Number(entry?.qty ?? entry?.quantity ?? 1) || 0));
+  return { itemId, qty };
 }
 
 function getMapShopDefinitions(map) {
