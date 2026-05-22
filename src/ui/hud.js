@@ -455,12 +455,11 @@ function renderSelectedActionReadout(state) {
         <span>${escapeHtml(title)}</span>
         <b>${escapeHtml(getActionSourceLabel(mode, entry))}</b>
       </div>
-      <div class="hud-action-readout-name">${escapeHtml(label)}</div>
-      <div class="hud-action-readout-chips">
+      <div class="hud-action-readout-line">
+        <strong>${escapeHtml(label)}</strong>
         ${chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join("")}
       </div>
-      ${effect ? `<div class="hud-action-readout-effect">${escapeHtml(effect)}</div>` : ""}
-      ${summary ? `<div class="hud-action-readout-desc">${escapeHtml(summary)}</div>` : ""}
+      ${effect || summary ? `<div class="hud-action-readout-detail">${escapeHtml([effect, summary].filter(Boolean).join(" — "))}</div>` : ""}
     </div>
   `;
 }

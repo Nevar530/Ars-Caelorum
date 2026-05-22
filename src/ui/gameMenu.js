@@ -969,10 +969,32 @@ function renderCatalogRows(state, items, type, emptyText) {
   if (!list.length) return `<div class="terminal-empty">${escapeHtml(emptyText)}</div>`;
   return `<div class="terminal-row-list">${list.map((itemId) => {
     const entry = getContentEntry(state, itemId, type);
-    const name = entry?.name ?? itemId;
-    const modifierText = renderModifierText(entry?.modifiers);
-    return `<div class="terminal-static-row"><span>${escapeHtml(name)}</span><b>${escapeHtml(modifierText || itemId)}</b></div>`;
+    const name = entry?.name ?? "Unknown";
+    const detail = getCatalogRowDetail(entry, type);
+    const status = entry ? detail : "MISSING DATA";
+    return `<div class="terminal-static-row"><span>${escapeHtml(name)}</span><b>${escapeHtml(status)}</b></div>`;
   }).join("")}</div>`;
+}
+
+function getCatalogRowDetail(entry, type) {
+  if (!entry) return "";
+  if (type === "weapon" || type === "mechWeapon") return renderWeaponDetail(entry) || titleCase(entry.type ?? "weapon");
+  if (type === "item") return renderItemDetail(entry);
+  return renderModifierText(entry.modifiers) || entry.description || "Stored";
+}
+
+function renderItemDetail(entry) {
+  if (!entry) return "";
+  const effect = entry.effect ?? {};
+  const amount = Number(effect.amount ?? 0) || 0;
+  const type = String(effect.type ?? effect.kind ?? "").trim();
+  if (type === "restore_core") return `+${amount} Core`;
+  if (type === "restore_shield") return `+${amount} Shield`;
+  if (type === "restore_core_percent_max") return `+${amount}% Max Core`;
+  if (type === "restore_shield_percent_max") return `+${amount}% Max Shield`;
+  if (type === "self_core_damage") return `-${amount} Core`;
+  if (type === "self_shield_damage") return `-${amount} Shield`;
+  return entry.description ?? titleCase(entry.kind ?? "item");
 }
 
 function renderMissionRows(state, items, emptyText) {
