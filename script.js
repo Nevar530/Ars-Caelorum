@@ -458,8 +458,9 @@ function getSelectedMissionEntry() {
     saveCampaign,
     getCpuTurnController: () => cpuTurnController,
     returnToTitle: () => actions.showTitleScreen(),
-    openMissionSelect: () => actions.openMissionSelect(),
-    restartMission: () => actions.restartCurrentMission()
+    openMissionSelect: (missionId = "") => actions.openMissionSelect(missionId),
+    restartMission: () => actions.restartCurrentMission(),
+    launchMissionById: (missionId = "") => actions.loadMissionById(missionId)
   });
 
   const actions = {
@@ -474,8 +475,13 @@ function getSelectedMissionEntry() {
       gameController.showTitleScreen();
     },
 
-    openMissionSelect() {
+    openMissionSelect(missionId = "") {
       storyController.stopStoryNpcWanderTimer?.();
+      const id = String(missionId ?? "").trim();
+      if (id) {
+        state.ui.shell.selectedMissionId = id;
+        state.ui.shell.selectedMapId = id;
+      }
       startTitleThemeAudio();
       state.ui.shell.screen = "mission-select";
       gameController.render();

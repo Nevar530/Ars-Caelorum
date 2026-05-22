@@ -30,7 +30,8 @@ export function createGameMenuController({
   getCpuTurnController = null,
   returnToTitle = null,
   openMissionSelect = null,
-  restartMission = null
+  restartMission = null,
+  launchMissionById = null
 }) {
   function getCpu() {
     return typeof getCpuTurnController === "function" ? getCpuTurnController() : null;
@@ -81,6 +82,10 @@ export function createGameMenuController({
 
     if (result?.type === "missionBoard") {
       closeGameMenu(state);
+      if (typeof launchMissionById === "function") {
+        launchMissionById(result.missionId);
+        return;
+      }
       if (typeof openMissionSelect === "function") {
         openMissionSelect(result.missionId);
         return;
@@ -187,6 +192,11 @@ export function createGameMenuController({
     if (action === "select-mission-board") {
       selectGameMenuMissionBoardIndex(state, button.dataset.missionIndex);
       render?.();
+      return;
+    }
+
+    if (action === "launch-mission-board") {
+      confirmSelection();
       return;
     }
 

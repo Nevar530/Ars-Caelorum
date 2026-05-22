@@ -79,6 +79,7 @@ export function normalizeGameMenuState(state) {
   state.ui.gameMenu.selectedShopItemIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedShopItemIndex);
   state.ui.gameMenu.shopStage = normalizeShopStage(state.ui.gameMenu.shopStage);
   state.ui.gameMenu.selectedMissionBoardIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedMissionBoardIndex);
+  state.ui.gameMenu.missionBoardStage = normalizeMissionBoardStage(state.ui.gameMenu.missionBoardStage);
   state.ui.gameMenu.selectedSystemIndex = normalizeSystemIndex(state.ui.gameMenu.selectedSystemIndex);
   state.ui.gameMenu.statusText = String(state.ui.gameMenu.statusText ?? "").trim();
   state.ui.gameMenu.shopId = String(state.ui.gameMenu.shopId ?? "").trim();
@@ -131,6 +132,10 @@ export function openContextualScreen(state, screenId = "pilot_loadout", options 
     menu.shopId = String(options?.shopId ?? "").trim();
   } else {
     menu.shopId = "";
+  }
+  if (menu.activeTab === "mission_board") {
+    menu.missionBoardStage = "list";
+    menu.selectedMissionBoardIndex = 0;
   }
   if (options?.statusText) menu.statusText = String(options.statusText ?? "").trim();
   const firstPilotId = getVisiblePilotEntries(state)[0]?.id ?? "";
@@ -228,6 +233,10 @@ export function moveGameMenuStatSelection(state, delta) {
 
   if (menu.activeTab === "shop") {
     return moveShopStage(state, delta);
+  }
+
+  if (menu.activeTab === "mission_board") {
+    return moveMissionBoardStage(state, delta);
   }
 
   if (menu.activeTab !== "characters") return false;
@@ -355,6 +364,7 @@ export function selectGameMenuMissionBoardIndex(state, index) {
   const missions = getMissionBoardEntries(state);
   const menu = normalizeGameMenuState(state);
   menu.selectedMissionBoardIndex = clampIndex(index, missions.length);
+  if (missions.length) menu.missionBoardStage = "detail";
   return true;
 }
 
@@ -833,34 +843,37 @@ function renderMissionBoardTab(state) {
   const menu = normalizeGameMenuState(state);
   menu.selectedMissionBoardIndex = clampIndex(menu.selectedMissionBoardIndex, missions.length);
   const selected = missions[menu.selectedMissionBoardIndex] ?? null;
+  const stage = normalizeMissionBoardStage(menu.missionBoardStage);
+  menu.missionBoardStage = stage;
 
   return `
-    <div class="terminal-screen terminal-screen--context-list">
-      <section class="terminal-panel terminal-panel--wide">
+    <div class="terminal-screen terminal-screen--context-list terminal-screen--mission-board">
+      <section class="terminal-panel terminal-panel--wide ${stage === "list" ? "is-focused" : ""}">
         <div class="terminal-panel-title">Mission Board</div>
         <div class="terminal-row-list">
           ${missions.length ? missions.map((mission, index) => `
-            <button type="button" class="terminal-row ${index === menu.selectedMissionBoardIndex ? "is-cursor" : ""}" data-game-menu-action="select-mission-board" data-mission-index="${escapeHtml(index)}">
-              <span>${escapeHtml(mission.name)}</span><b>${escapeHtml(mission.id)}</b>
+            <button type="button" class="terminal-row ${index === menu.selectedMissionBoardIndex ? "is-selected" : ""} ${stage === "list" && index === menu.selectedMissionBoardIndex ? "is-cursor" : ""}" data-game-menu-action="select-mission-board" data-mission-index="${escapeHtml(index)}">
+              <span>${escapeHtml(mission.name)}</span><b>${escapeHtml(mission.statusLabel)}</b>
             </button>
-          `).join("") : `<div class="terminal-empty">No unlocked missions.</div>`}
+          `).join("") : `<div class="terminal-empty">No launchable missions are unlocked.</div>`}
         </div>
       </section>
-      <section class="terminal-panel">
-        <div class="terminal-panel-title">Selected</div>
+      <section class="terminal-panel ${stage === "detail" ? "is-focused" : ""}">
+        <div class="terminal-panel-title">Mission Detail</div>
         ${selected ? `
           <div class="terminal-record terminal-record--stack">
             <strong>${escapeHtml(selected.name)}</strong>
             <span>${escapeHtml(selected.id)}</span>
-            <span>${selected.completed ? "Completed" : "Available"}</span>
+            ${selected.summary ? `<span>${escapeHtml(selected.summary)}</span>` : ""}
+            <span>${escapeHtml(selected.completed ? "Completed" : "Available")}</span>
           </div>
-          <div class="terminal-note">Enter opens the mission select/deployment screen.</div>
+          ${stage === "detail" ? `<button type="button" class="terminal-row is-cursor" data-game-menu-action="launch-mission-board"><span>Launch Mission</span><b>ENTER</b></button>` : ""}
+          <div class="terminal-note">${stage === "detail" ? "Enter launches this authored mission. Left returns to the list." : "Enter opens mission detail. I/Esc closes to map."}</div>
         ` : `<div class="terminal-empty">Select mission.</div>`}
       </section>
     </div>
   `;
 }
-
 
 function renderPilotLoadoutPanel(state, pilot) {
   const loadout = pilot?.loadout ?? {};
@@ -1449,13 +1462,23 @@ function doesShopEntryMatchCategory(entry, category) {
 
 function getMissionBoardEntries(state) {
   const campaign = state?.campaign ?? {};
-  const unlocked = Array.isArray(campaign.unlockedMissions) ? campaign.unlockedMissions : [];
-  const completed = new Set(Array.isArray(campaign.completedMissions) ? campaign.completedMissions : []);
-  return unlocked.map((missionId) => ({
-    id: missionId,
-    name: getMissionDisplayName(state, missionId),
-    completed: completed.has(missionId)
-  }));
+  const unlocked = new Set(Array.isArray(campaign.unlockedMissions) ? campaign.unlockedMissions.map((id) => String(id ?? "").trim()).filter(Boolean) : []);
+  const completed = new Set(Array.isArray(campaign.completedMissions) ? campaign.completedMissions.map((id) => String(id ?? "").trim()).filter(Boolean) : []);
+  const currentMissionId = String(campaign.currentMissionId ?? state?.mission?.definition?.id ?? "").trim();
+  const catalogEntries = Array.isArray(state?.content?.missionCatalog?.missions) ? state.content.missionCatalog.missions : [];
+  const entriesById = new Map(catalogEntries.map((entry) => [String(entry?.id ?? "").trim(), entry]).filter(([id]) => Boolean(id)));
+  const ids = Array.from(unlocked).filter((missionId) => missionId && missionId !== currentMissionId);
+
+  return ids.map((missionId) => {
+    const entry = entriesById.get(missionId) ?? null;
+    return {
+      id: missionId,
+      name: entry?.name ?? getMissionDisplayName(state, missionId),
+      summary: entry?.summary ?? "",
+      completed: completed.has(missionId),
+      statusLabel: completed.has(missionId) ? "COMPLETED" : "READY"
+    };
+  });
 }
 
 function renderWeaponDetail(entry) {
@@ -1712,6 +1735,7 @@ function moveMissionBoardSelection(state, delta) {
   const step = Math.sign(delta || 0);
   const missions = getMissionBoardEntries(state);
   if (!step || !missions.length) return false;
+  if (menu.missionBoardStage === "detail") return false;
   menu.selectedMissionBoardIndex = (clampIndex(menu.selectedMissionBoardIndex, missions.length) + step + missions.length) % missions.length;
   return true;
 }
@@ -1721,7 +1745,32 @@ function confirmMissionBoardSelection(state) {
   const menu = normalizeGameMenuState(state);
   if (!missions.length) return { ok: false, reason: "no_missions" };
   menu.selectedMissionBoardIndex = clampIndex(menu.selectedMissionBoardIndex, missions.length);
-  return { ok: true, type: "missionBoard", action: "missionSelect", missionId: missions[menu.selectedMissionBoardIndex]?.id ?? "" };
+  const missionId = missions[menu.selectedMissionBoardIndex]?.id ?? "";
+  if (!missionId) return { ok: false, reason: "invalid_mission" };
+  if (menu.missionBoardStage !== "detail") {
+    menu.missionBoardStage = "detail";
+    return { ok: false, reason: "open_mission_detail" };
+  }
+  return { ok: true, type: "missionBoard", action: "loadMission", missionId };
+}
+
+function moveMissionBoardStage(state, delta) {
+  const menu = normalizeGameMenuState(state);
+  const step = Math.sign(delta || 0);
+  if (step < 0 && menu.missionBoardStage === "detail") {
+    menu.missionBoardStage = "list";
+    return true;
+  }
+  if (step > 0 && menu.missionBoardStage === "list" && getMissionBoardEntries(state).length) {
+    menu.missionBoardStage = "detail";
+    return true;
+  }
+  return false;
+}
+
+function normalizeMissionBoardStage(stage) {
+  const value = String(stage ?? "list").trim();
+  return ["list", "detail"].includes(value) ? value : "list";
 }
 
 function normalizeSystemIndex(value) {
