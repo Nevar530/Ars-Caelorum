@@ -49,6 +49,8 @@ export async function loadGameData() {
     attacks,
     pilots,
     abilities,
+    pilotAbilities: normalizeAbilityCatalog(abilities, pilotAbilitiesRaw, "pilot"),
+    mechAbilities: normalizeAbilityCatalog(abilities, mechAbilitiesRaw, "mech"),
     pilotAbilitiesRaw,
     mechAbilitiesRaw,
     pilotItems,

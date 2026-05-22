@@ -3,7 +3,7 @@
 // Persistent campaign authority V2.
 // Campaign state is progression/save truth, not runtime map truth.
 
-export const CAMPAIGN_VERSION = 7;
+export const CAMPAIGN_VERSION = 8;
 export const PILOT_LEVEL_CAP = 20;
 export const PILOT_STAT_CAPS = Object.freeze({
   targeting: 5,
@@ -12,6 +12,8 @@ export const PILOT_STAT_CAPS = Object.freeze({
 export const PILOT_STAT_KEYS = Object.freeze(["core", "abilityPoints", "targeting", "reaction"]);
 export const STARTING_RECRUIT_IDS = Object.freeze(["pilot_skye"]);
 export const STARTING_MECH_IDS = Object.freeze(["telum_skye", "telum_eve"]);
+const PILOT_ITEM_SLOT_COUNT = 5;
+const MECH_ITEM_SLOT_COUNT = 10;
 
 export function getPilotAbilityUnlockIds(pilotDefinition = {}, level = 1) {
   const currentLevel = clampLevel(level);
@@ -87,8 +89,9 @@ export function consumeCampaignLoadoutItem(campaignState, unit = {}, itemId = ""
 
   let removedFromLoadout = false;
   if (progress.loadout && typeof progress.loadout === "object") {
-    const items = normalizeInventoryIds(progress.loadout.items);
-    removedFromLoadout = removeFirstInventoryId(items, id);
+    const slotCount = isMech ? MECH_ITEM_SLOT_COUNT : PILOT_ITEM_SLOT_COUNT;
+    const items = normalizeSlottedItemIds(progress.loadout.items, slotCount);
+    removedFromLoadout = clearFirstSlottedItemId(items, id);
     progress.loadout.items = items;
   }
 
@@ -268,10 +271,10 @@ export function setPilotLoadoutSlot(campaignState, pilotId, slotKey, equipmentId
   });
   if (slot.startsWith("item")) {
     const index = Math.max(0, Math.min(4, Math.trunc(Number(slot.replace("item", "")) || 1) - 1));
-    const items = normalizeItemIds(current.items);
+    const items = normalizeSlottedItemIds(current.items, PILOT_ITEM_SLOT_COUNT);
     while (items.length <= index) items.push("");
     items[index] = cleanId(equipmentId) || "";
-    current.items = items.filter(Boolean);
+    current.items = items;
   } else {
     current[slot] = cleanId(equipmentId) || "";
   }
@@ -296,10 +299,10 @@ export function setMechLoadoutSlot(campaignState, mechId, slotKey, equipmentId =
   });
   if (slot.startsWith("item")) {
     const index = Math.max(0, Math.min(9, Math.trunc(Number(slot.replace("item", "")) || 1) - 1));
-    const items = normalizeItemIds(current.items);
+    const items = normalizeSlottedItemIds(current.items, MECH_ITEM_SLOT_COUNT);
     while (items.length <= index) items.push("");
     items[index] = cleanId(equipmentId) || "";
-    current.items = items.filter(Boolean);
+    current.items = items;
   } else {
     current[slot] = cleanId(equipmentId) || "";
   }
@@ -416,6 +419,15 @@ function normalizeItemIds(ids) {
   return normalizeInventoryIds(ids);
 }
 
+function normalizeSlottedItemIds(ids, slotCount) {
+  const source = Array.isArray(ids) ? ids : [];
+  const output = [];
+  for (let index = 0; index < slotCount; index += 1) {
+    output.push(cleanId(source[index]) || "");
+  }
+  return output;
+}
+
 function normalizePilots(pilots) {
   const source = pilots && typeof pilots === "object" && !Array.isArray(pilots) ? pilots : {};
   return Object.fromEntries(
@@ -472,7 +484,7 @@ function normalizePilotLoadout(loadout) {
     secondaryWeapon,
     weapons: normalizedWeapons,
     abilities: uniqueIds(source.abilities),
-    items: normalizeItemIds(source.items)
+    items: normalizeSlottedItemIds(source.items, PILOT_ITEM_SLOT_COUNT)
   };
 }
 
@@ -496,7 +508,7 @@ function normalizeMechLoadout(loadout) {
     supportWeapon,
     weapons: normalizedWeapons,
     abilities: uniqueIds(source.abilities),
-    items: normalizeItemIds(source.items)
+    items: normalizeSlottedItemIds(source.items, MECH_ITEM_SLOT_COUNT)
   };
 }
 
@@ -560,6 +572,15 @@ function removeFirstInventoryId(items, itemId) {
   const index = items.findIndex((entry) => cleanId(entry) === id);
   if (index < 0) return false;
   items.splice(index, 1);
+  return true;
+}
+
+function clearFirstSlottedItemId(items, itemId) {
+  const id = cleanId(itemId);
+  if (!Array.isArray(items) || !id) return false;
+  const index = items.findIndex((entry) => cleanId(entry) === id);
+  if (index < 0) return false;
+  items[index] = "";
   return true;
 }
 

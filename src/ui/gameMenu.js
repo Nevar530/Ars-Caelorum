@@ -1671,23 +1671,10 @@ function buildInventoryStacks(ids) {
 function getMechMenuLoadout(state, mechId) {
   const definition = (Array.isArray(state?.content?.mechs) ? state.content.mechs : []).find((mech) => mech?.id === mechId) ?? {};
   const progress = state?.campaign?.mechs?.[mechId] ?? {};
-  const source = progress?.loadout && typeof progress.loadout === "object" ? progress.loadout : {};
-  const fallback = definition.loadout && typeof definition.loadout === "object" ? definition.loadout : {};
-  const sourceWeapons = Array.isArray(source.weapons) ? source.weapons : [];
-  const fallbackWeapons = Array.isArray(fallback.weapons) ? fallback.weapons : (Array.isArray(definition.weapons) ? definition.weapons : []);
-  const primaryWeapon = String(source.primaryWeapon ?? sourceWeapons[0] ?? fallback.primaryWeapon ?? fallbackWeapons[0] ?? "").trim();
-  const secondaryWeapon = String(source.secondaryWeapon ?? sourceWeapons[1] ?? fallback.secondaryWeapon ?? fallbackWeapons[1] ?? "").trim();
-  const supportWeapon = String(source.supportWeapon ?? sourceWeapons[2] ?? fallback.supportWeapon ?? fallbackWeapons[2] ?? "").trim();
-  return {
-    plating: String(source.plating ?? source.armor ?? fallback.plating ?? fallback.armor ?? "").trim(),
-    system: String(source.system ?? fallback.system ?? "").trim(),
-    primaryWeapon,
-    secondaryWeapon,
-    supportWeapon,
-    weapons: [primaryWeapon, secondaryWeapon, supportWeapon].filter(Boolean),
-    abilities: Array.isArray(source.abilities) && source.abilities.length ? [...source.abilities] : (Array.isArray(fallback.abilities) ? [...fallback.abilities] : []),
-    items: (Array.isArray(source.items) && source.items.length ? [...source.items] : (Array.isArray(fallback.items) ? [...fallback.items] : [])).map((id) => String(id ?? "").trim()).filter(Boolean)
-  };
+  return normalizeMechLoadout(progress?.loadout, {
+    ...(definition.loadout && typeof definition.loadout === "object" ? definition.loadout : {}),
+    weapons: definition.loadout?.weapons ?? definition.weapons ?? []
+  });
 }
 
 function getTelumLoadoutOptions(state, mech, slotKey) {

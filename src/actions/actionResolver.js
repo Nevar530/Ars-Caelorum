@@ -24,11 +24,15 @@ function updateUnitStatus(target) {
   return "operational";
 }
 
-function removeFirstMatchingItem(collection, itemId) {
+function removeFirstMatchingItem(collection, itemId, { preserveSlot = false } = {}) {
   if (!Array.isArray(collection)) return false;
   const index = collection.findIndex((entry) => entry === itemId);
   if (index < 0) return false;
-  collection.splice(index, 1);
+  if (preserveSlot) {
+    collection[index] = "";
+  } else {
+    collection.splice(index, 1);
+  }
   return true;
 }
 
@@ -167,9 +171,9 @@ function resolveContentAction(state, selected, options = {}) {
   let campaignConsumption = null;
   if (options.consume === true) {
     const consumed =
-      removeFirstMatchingItem(activeBody.inventory?.items, selected.id) ||
-      removeFirstMatchingItem(activeBody.loadout?.items, selected.id) ||
-      removeFirstMatchingItem(activeBody.items, selected.id);
+      removeFirstMatchingItem(activeBody.loadout?.items, selected.id, { preserveSlot: true }) ||
+      removeFirstMatchingItem(activeBody.items, selected.id) ||
+      removeFirstMatchingItem(activeBody.inventory?.items, selected.id);
 
     if (!consumed) {
       return {

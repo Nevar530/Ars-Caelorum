@@ -3,8 +3,10 @@
 export const PILOT_GEAR_SLOTS = Object.freeze(["armor", "accessory", "primaryWeapon", "secondaryWeapon"]);
 export const MECH_GEAR_SLOTS = Object.freeze(["plating", "system", "primaryWeapon", "secondaryWeapon", "supportWeapon"]);
 
-const DEFAULT_PILOT_SLOTS = Object.freeze({ armor: 1, accessory: 1, primaryWeapon: 1, secondaryWeapon: 1, ability: 3 });
-const DEFAULT_MECH_SLOTS = Object.freeze({ plating: 1, system: 1, primaryWeapon: 1, secondaryWeapon: 1, supportWeapon: 1, ability: 1, item: 10 });
+const PILOT_ITEM_SLOT_COUNT = 5;
+const MECH_ITEM_SLOT_COUNT = 10;
+const DEFAULT_PILOT_SLOTS = Object.freeze({ armor: 1, accessory: 1, primaryWeapon: 1, secondaryWeapon: 1, ability: 3, item: PILOT_ITEM_SLOT_COUNT });
+const DEFAULT_MECH_SLOTS = Object.freeze({ plating: 1, system: 1, primaryWeapon: 1, secondaryWeapon: 1, supportWeapon: 1, ability: 1, item: MECH_ITEM_SLOT_COUNT });
 
 function cloneArray(value) {
   return Array.isArray(value) ? [...value] : [];
@@ -12,6 +14,15 @@ function cloneArray(value) {
 
 function cloneIdArray(value) {
   return cloneArray(value).map((id) => cleanId(id)).filter(Boolean);
+}
+
+function normalizeSlottedItemArray(value, slotCount) {
+  const source = Array.isArray(value) ? value : [];
+  const output = [];
+  for (let index = 0; index < slotCount; index += 1) {
+    output.push(cleanId(source[index]) || "");
+  }
+  return output;
 }
 
 function cloneObject(value) {
@@ -62,7 +73,7 @@ export function normalizePilotLoadout(loadout = {}, fallback = {}) {
     secondaryWeapon,
     weapons,
     abilities: cloneIdArray(source.abilities?.length ? source.abilities : fallbackSource.abilities),
-    items: cloneIdArray(source.items?.length ? source.items : fallbackSource.items)
+    items: normalizeSlottedItemArray(source.items?.length ? source.items : fallbackSource.items, PILOT_ITEM_SLOT_COUNT)
   };
 }
 
@@ -85,7 +96,7 @@ export function normalizeMechLoadout(loadout = {}, fallback = {}) {
     supportWeapon,
     weapons,
     abilities: cloneIdArray(source.abilities?.length ? source.abilities : fallbackSource.abilities),
-    items: cloneIdArray(source.items?.length ? source.items : fallbackSource.items),
+    items: normalizeSlottedItemArray(source.items?.length ? source.items : fallbackSource.items, MECH_ITEM_SLOT_COUNT),
     hardpoints: cloneArray(source.hardpoints?.length ? source.hardpoints : fallbackSource.hardpoints)
   };
 }
@@ -146,11 +157,8 @@ export function getEquippedAbilityIds(unit) {
 }
 
 export function getEquippedItemIds(unit) {
-  const inventoryItems = cloneArray(unit?.inventory?.items).filter(Boolean);
-  if (inventoryItems.length) return inventoryItems;
-
-  const loadoutItems = cloneArray(unit?.loadout?.items).filter(Boolean);
+  const loadoutItems = cloneArray(unit?.loadout?.items).map(cleanId).filter(Boolean);
   if (loadoutItems.length) return loadoutItems;
 
-  return cloneArray(unit?.items).filter(Boolean);
+  return cloneArray(unit?.items).map(cleanId).filter(Boolean);
 }
