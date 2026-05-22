@@ -1,605 +1,408 @@
-# Ars Caelorum
+ARS CAELORUM — REPO README
+VERSION: 1.0 TXT
+DATE: 2026-05-22
+STATUS: COMPLETE UGLY GAME FOUNDATION / CONTENT PRODUCTION NEXT
 
-Live Build:
+============================================================
+PROJECT
+============================================================
+
+Ars Caelorum is an in-browser fixed-isometric tactics RPG built with HTML, CSS, JavaScript, JSON data, and SVG rendering.
+
+Live build:
 https://nevar530.github.io/Ars-Caelorum/
 
-Ars Caelorum is an in-browser fixed-isometric tactics RPG / tactics-engine project built with HTML, CSS, JavaScript, JSON data, and SVG rendering.
+Current state:
+Ars Caelorum is a complete ugly game framework / graybox campaign build.
 
-The project is built around readable tactical board truth:
+It has a working start-to-mission-to-result-to-reward-to-next-mission loop.
+It is not content-complete, balanced, polished, or art-complete.
 
-- mission-first runtime
-- maps as mission phases
-- combat and story/exploration maps
-- pilots and Telum sharing one battlefield
-- Telum as vehicles/platforms, not characters
-- builder-authored mission/map truth
-- validation before test/export
-- fixed authored 2:1 isometric presentation
-- top-down tactical blueprint view
-
-The current build is still in the fun-but-ugly phase.
-Art, polish, animation, final balance, and production content are not the point yet.
-The point is a stable playable foundation.
+The project is now ready to move from foundation coding into production content:
+- missions
+- dialogue
+- story
+- cutscenes
+- items
+- inventory usefulness
+- ability tables
+- weapons
+- balance
+- art
+- sound
+- UI polish
 
 ============================================================
-CURRENT PROJECT STATE
+HOW TO RUN LOCALLY
 ============================================================
 
-Current foundation status:
-- real title/menu shell
-- mission catalog loading
-- map catalog loading
+Use a local web server.
+
+From the repo root:
+
+python -m http.server 8000
+
+Then open:
+
+http://localhost:8000/
+
+Do not rely on opening index.html directly from the file system.
+Browser module/CORS behavior may block loading.
+
+============================================================
+CORE PROJECT RULES
+============================================================
+
+Code is truth.
+Builder writes truth.
+Engine runs truth.
+Export packages truth.
+Validation protects truth.
+
+Do not patch from memory.
+Always inspect the latest repo ZIP/current working tree first.
+
+Anything needed for mission/map production must be authorable in the Mission Builder, exported by the builder, and validated by the builder.
+
+Only raw assets/data live outside builder authoring:
+- art
+- pilots
+- Telum/mechs
+- weapons
+- gear
+- items
+- abilities
+- terrain/art catalogs
+
+After raw data/assets are added, they should flow into builder controls where relevant.
+
+No map magic.
+No hidden mission-specific runtime branches.
+No hand-authored-only JSON production behavior.
+
+============================================================
+CURRENT FOUNDATION FEATURES
+============================================================
+
+Runtime:
+- title/start flow
+- mission loading
 - mission briefing
 - phase briefing
-- mission-first runtime
-- maps as phases inside missions
+- mission result flow
+- campaignFlow
+- campaign state
+- save/load foundation
+
+Mission system:
+- missions are primary runtime packages
+- maps are phases inside missions
 - combat maps
 - story/exploration maps
 - objectives
 - triggers
 - logic chains
 - dialogue
-- mission results
-- campaign state foundation
-- campaignFlow foundation
-- milestone progression
-- enemy scaling foundation
-- pilot/Telum separation
-- enter/exit Telum behavior
-- fixed-isometric rendering
-- top-down tactical blueprint view
+- rewards
+
+Builder:
 - fullscreen Mission Builder
-- builder validation
-- builder export/test path
-- contextual interaction screens
-- Pilot Loadout shell
-- Telum Loadout shell
-- map-authored Shop shell
-- Mission Board shell
-- reserved Medbay context
-- Wayfarer Hub shell
+- mission package drafting
+- map phase authoring
+- terrain authoring
+- structures authoring
+- rooms / edges / props
+- spawns
+- deployments
+- active roster
+- objectives
+- triggers
+- logic
+- dialogue
+- results
+- rewards
+- validation
+- export/test
 
-Recent audit snapshot:
-- 109 JS files checked clean with node --check
-- 27 JSON files parsed clean
+Campaign/progression:
+- campaign state persistence
+- milestone progression
+- stat point spending
+- level-unlocked learned abilities
+- gear/weapon-granted abilities
+- pilot/Telum loadout carry
+- ship storage
+- credits
+- owned Telum roster
 
-Current main incomplete loop:
-Wayfarer Hub -> Mission Board -> selected mission -> results -> campaignFlow returns to hub
+Combat/story:
+- Combat Mode with rounds/initiative/move/action phases
+- Story Mode with free movement and interactions
+- pilot/Telum shared battlefield
+- enter/exit Telum
+- item use from assigned slots
+- consumed items persist as consumed
 
-The Mission Board exists as a contextual screen, but it still needs the launch flow that actually starts authored missions through the existing mission loading path.
+Screens/UI:
+- normal I menu for review/status/system use
+- contextual screens opened by authored interactions
+- Pilot Loadout
+- Telum Loadout
+- Shop
+- Mission Board
+- Medbay reserved
 
-============================================================
-HOW TO RUN
-============================================================
-
-This is a static browser project.
-There is no build step required.
-
-Recommended local run:
-
-```bash
-python -m http.server 8000
-```
-
-Then open:
-
-```txt
-http://localhost:8000/
-```
-
-Do not open index.html directly from the file system if browser module/CORS behavior causes loading issues.
-Use a local server.
+Rendering:
+- fixed authored 2:1 isometric view
+- top-down tactical blueprint view
+- SVG scene renderer
+- room/roof/cutaway support
+- footprint props
+- unit/Telum rendering
+- overlays/LOS overlay
 
 ============================================================
 REPO SHAPE
 ============================================================
 
-Key root files:
-
-```txt
-index.html
-script.js
-style.css
-README.md
-```
+Root:
+- index.html
+- script.js
+- style.css
+- README.md / README.txt
 
 Core source:
-
-```txt
-src/
-```
-
-Data:
-
-```txt
-data/
-  missions/
-  maps/
-  terrain/
-  pilots.json
-  mechs.json
-  weapons.json
-  pilot_gear.json
-  mech_gear.json
-```
-
-Art:
-
-```txt
-art/
-  menu/
-  pilot/
-  mech/
-  tiles/
-  structures/
-  props/
-```
-
-Mission Builder:
-
-```txt
-src/builder/
-```
+- src/
 
 Rendering:
+- src/render.js
+- src/render/
 
-```txt
-src/render/
-src/render.js
-```
+Campaign:
+- src/campaign/
 
-Campaign systems:
-
-```txt
-src/campaign/
-```
+Builder:
+- src/builder/
 
 UI:
+- src/ui/
 
-```txt
-src/ui/
-```
+Actions/items:
+- src/actions/
 
-============================================================
-CORE RUNTIME FLOW
-============================================================
+Data:
+- data/
+- data/missions/
+- data/maps/
+- data/pilots.json
+- data/mechs.json
+- data/weapons.json
+- data/pilot_gear.json
+- data/mech_gear.json
+- data/pilot_items.json
+- data/mech_items.json
+- data/abilities.json
 
-Current intended runtime flow:
-
-```txt
-TITLE
--> MISSION SELECT / CONTINUE
--> MISSION BRIEFING
--> MAP / PHASE BRIEFING
--> STORY OR COMBAT MAP
--> OBJECTIVES / TRIGGERS / DIALOGUE
--> NEXT MAP PHASE OR MISSION RESULT
--> CAMPAIGN FLOW / HUB / MISSION SELECT
-```
-
-The hub is not a fake menu.
-The hub should be a real story-mode mission/map.
-
-Current hub:
-
-```txt
-014_wayfarer_hub
-```
-
-Current hub interaction direction:
-
-```txt
-locker -> pilot_loadout
-mech bay terminal -> telum_loadout
-shop terminal -> shop
-Pax -> shop
-mission board terminal -> mission_board
-Theo -> dialogue
-```
+Art:
+- art/menu/
+- art/pilot/
+- art/mech/
+- art/tiles/
+- art/structures/
+- art/props/
 
 ============================================================
-MISSION BUILDER FLOW
+CURRENT CATALOGS
 ============================================================
 
-The Mission Builder exists to author runtime truth.
-It should not create fake builder-only behavior.
+Visible missions:
+- 000_game_state_tester_mission
+- new_map_mission / Structure Render Test Map
+- 014_wayfarer_hub / Wayfarer Hub - Bridge Shell
 
-Current builder flow:
+Map catalog includes:
+- 008_mars_cold_open
+- 009_earth_hospital
+- 010_hospital_garage_escape
+- 011_gabe_office
+- 012_gabriel_mech_bay
+- 013_practice_sparring
+- 014_wayfarer_hub
+- new_map
 
-```txt
-MISSION BUILDER
--> MISSION PACKAGE DRAFT
--> MAP PHASES
--> MAP MODE / PHASE BRIEFING
--> STARTS / DEPLOYMENTS
--> OBJECTIVES / TRIGGERS / LOGIC / DIALOGUE
--> CONTEXTUAL SCREEN TRIGGERS
--> VALIDATE
--> TEST MISSION
--> EXPORT PACKAGE
--> REAL RUNTIME LOADER
-```
+Starting owned Telum:
+- telum_skye / Skye's Telum
+- telum_eve / Eve's Telum
 
-Current major builder tabs:
-
-```txt
-Mission
-Map
-Terrain
-Structures
-Spawns
-Units
-Objectives
-Triggers
-Logic
-Dialogue
-Results
-Validate
-Export
-```
-
-Structures has sub-tabs:
-
-```txt
-Rooms
-Edges
-Props
-```
-
-Builder rules:
-- Builder writes truth.
-- Engine runs truth.
-- Export packages truth.
-- Validation protects truth.
-- Anything needed for mission production must be authorable in the builder.
-- No map magic.
-- No hand-authored-only JSON behavior for production systems.
+Known spelling note:
+- display/story language should use Gabrielle Enforcement Agency
+- current map/file id uses 012_gabriel_mech_bay
+- do not casually rename it; renaming needs a careful dedicated pass across maps, catalogs, mission refs, exports, and saved refs
 
 ============================================================
-COMBAT MODE
+CURRENT OPENING FLOW
 ============================================================
 
-Combat maps use:
-- rounds
-- initiative
-- move phase
-- action phase
-- player turns
-- CPU turns
-- tactical HUD
-- objectives
-- combat targeting
-- LOS
-- movement rules
+The opening structure is:
 
-Pilots are the initiative actors.
-Telum are controlled platforms/bodies.
-
-============================================================
-STORY / EXPLORATION MODE
-============================================================
-
-Story Mode is a map-level pacing mode, not a separate game.
-
-Maps can use:
-
-```json
-"mode": "story"
-```
-
-Story Mode supports:
-- free movement
-- no initiative
-- no rounds
-- no move/action phase split
-- no enemy turns unless the map is intentionally combat
-- Action / Enter interaction
-- authored interact triggers
-- dialogue triggers
-- zone triggers
-- reach/trigger objectives
-- enter/exit Telum
-- load next map
-
-Story Mode uses the same mission package, map data, objectives, triggers, logic, dialogue, validation, and export paths as Combat Mode.
-
-============================================================
-FIXED ISOMETRIC RENDERING
-============================================================
-
-Ars Caelorum is now a fixed authored 2:1 isometric game.
-
-Map turning / camera rotation is not part of the player-facing game.
-
-This is intentional.
-The game uses 2D art pretending to have depth, not true 3D.
-Locked iso makes map art, structures, props, roofs, and authoring more stable.
-
-Current rendering truth:
-- fixed authored iso view
-- top-down tactical blueprint view remains
-- unit facing remains
-- directional unit art remains
-- environment art does not need four rotated versions
-- renderer should be reviewed for old rotation-era assumptions
-
-Near-term renderer work:
-- inspect SVG group/layer ordering
-- inspect terrain/face sorting
-- inspect structures/roof/cutaway sorting
-- inspect prop footprint rendering
-- inspect unit/Telum sorting
-- inspect overlays and LOS overlay layers
-- inspect top-down tactical view
-- remove stale rotation assumptions only where safe
-
-Renderer review should not rewrite combat, LOS, movement, targeting, or mission flow.
-
-============================================================
-TOP-DOWN TACTICAL VIEW
-============================================================
-
-Top-down view is not a second art camera.
-It is a tactical blueprint/data view.
-
-Top-down should prioritize readability:
-- terrain with tactical tint
-- darker higher terrain
-- rooms as readable footprint areas
-- room labels
-- walls as blueprint lines
-- doors/windows as clear markers
-- props as footprint rectangles
-- units/cursor/overlays on top
-
-Iso view is for authored scene readability.
-Top-down is for tactical clarity.
-
-============================================================
-PILOTS AND TELUM
-============================================================
-
-Core rule:
-Pilots are characters.
-Telum are vehicles/platforms/bodies.
-
-Do not treat Telum as characters.
-Do not give Telum character-style ability progression.
-
-Pilots own:
-- identity
-- progression
-- stat points
-- abilities
-- role identity
-
-Telum own:
-- platform/body
-- footprint
-- mounted state
-- equipment/platform slots
-- shield/core body state
-
-Current gear foundation:
-
-Pilot gear:
-- armor
-- accessory
-- primary weapon
-- secondary weapon
-
-Telum gear:
-- plating
-- system
-- primary weapon
-- secondary weapon
-- support weapon
-
-Gear swapping should only happen in safe contextual spaces:
-- Wayfarer
-- shop
-- locker
-- mech bay terminal
-- other authored prep contexts
-
-Gear swapping should not happen during active missions.
-
-============================================================
-CONTEXTUAL SCREENS
-============================================================
-
-Contextual screens are standalone interaction screens opened from map/unit/terminal triggers.
-They are not normal I-menu tabs.
-
-Current context screen IDs:
-
-```txt
-pilot_loadout
-telum_loadout
-shop
-mission_board
-medbay
-```
-
-Current status:
-- pilot_loadout exists
-- telum_loadout exists
-- shop exists as shell with map-authored stock
-- mission_board exists as shell, launch flow needed
-- medbay reserved, not functional
-
-Preferred UI style:
-- compact terminal-like menus
-- dense columns
-- clean borders
-- small text
-- highlighted selected row
-- keyboard-first nested selection
-- no bubble/card web dashboard styling
-- no oversized spacing
-
-Normal I menu remains review/status/system oriented.
-Context screens handle active prep interaction.
-
-============================================================
-MISSION BOARD NEXT WORK
-============================================================
-
-Mission Board is the next key hub-loop pass.
-
-Goal:
-
-```txt
-Wayfarer Hub
--> prep screens
--> Mission Board
--> selected authored mission
--> results
--> campaignFlow return
--> Wayfarer Hub
-```
-
-Mission Board should:
-- open from authored context triggers
-- list available/unlocked missions
-- use campaign state and mission catalog
-- respect completed/unlocked state where available
-- use existing mission loading/deployment flow
-- not create a parallel mission loader
-- not become a world map
-- not become a node graph
-- not become a normal I-menu tab
-- stay compact and keyboard-first
-
-Expected controls:
-- Up/Down select mission
-- Enter detail/confirm or launch
-- Left backs out if detail exists
-- I/Esc closes to map
-
-============================================================
-CURRENT STORY / CONTENT FLOW
-============================================================
-
-Current opening campaign grammar:
-
-```txt
 008 Mars Cold Open - Aether Core Leak
 -> 009 Earth Hospital - Two Weeks Later
 -> 010 Underground Parking Garage Escape
 -> 011 Gabrielle Enforcement Agency - Gabe Meeting
 -> 012 Gabrielle Mech Bay - Mount Up
 -> 013 Practice Sparring
-```
 
-This proves the intended rhythm:
+Intended rhythm:
 
-```txt
 combat
 -> story
 -> combat
 -> story
--> story/mount
+-> story/mount-up
 -> combat
-```
-
-Current content is still graybox/testbed.
-The foundation is the priority before final map art and polish.
 
 ============================================================
-VALIDATION
+PILOTS AND TELUM
 ============================================================
 
-Validation protects the builder from broken runtime data.
+Pilots are characters.
+Telum are vehicles/platforms/bodies.
 
-Validation should cover:
-- mission id/start map
-- duplicate map ids
-- map dimensions
-- missing/invalid tiles
-- spawn bounds
-- deployment/start assignment errors
-- player pilot presence
-- enemy pilot presence only when required by objective
-- deployment cell size/count
-- mech deployment 3x3 fit
-- structure edge/cell bounds
-- duplicate structure edges
-- prop bounds and footprint sanity
-- objective data
-- protect unit target references
-- trigger data
-- context screen IDs
-- shop refs/stock
-- logic chain data
-- dialogue data
-- campaignFlow mission references
-- export/test blocking errors
-- warnings for placeholder/default text and suspicious authoring choices
+Do not treat Telum as characters.
+Do not give Telum character-style progression.
 
-Warnings do not block.
-Errors block Test Mission and Export.
+Pilots own:
+- identity
+- level
+- stat growth
+- learned abilities
+- natural role progression
+
+Telum own:
+- platform/body
+- mounted state
+- footprint
+- equipment
+- Telum AP
+- equipment-granted abilities
 
 ============================================================
-DEVELOPMENT RULES
+LOADOUT / STORAGE RULES
 ============================================================
 
-- Use the latest repo ZIP as code truth.
-- Do not patch from memory.
-- Do not assume prior generated ZIPs are current.
-- If expected files/features are missing, check whether the latest ZIP was opened.
-- Keep passes bounded but not absurdly tiny.
-- Prefer changed-files ZIPs, not full repo ZIPs, unless explicitly requested.
-- Include a short summary, test checklist, and known risks for code passes.
-- Do not break stable combat/movement/LOS/targeting/mission flow while adding UI.
-- Keep UI compact and keyboard-first.
-- Simple before clever.
+Ship Storage is persistent party inventory truth.
+
+Pilot item slots:
+- item1 through item5
+
+Telum item slots:
+- item1 through item10
+
+Loadouts assign from ship storage.
+Assigned/equipped items are locked from shop selling.
+Used consumables clear their assigned slot and decrement storage.
+Item slots must not collapse or shift after item use.
+
+Gear swapping is only allowed in safe contextual spaces:
+- Wayfarer
+- lockers
+- shops
+- Telum bay terminals
+- authored prep contexts
+
+No mid-mission gear swapping.
 
 ============================================================
-CURRENT KNOWN ROUGHNESS
+ABILITY / LEVELING RULES
 ============================================================
 
-- Mission Board launch flow is not complete.
-- Renderer should be reviewed for locked fixed-iso SVG assumptions now that map turning is gone.
-- Shop is a shell, not a full economy.
-- Medbay is reserved only.
-- Ability framework is not built.
-- Real opening maps/content are mostly graybox.
-- AI is functional but not objective-smart.
-- Builder can still tighten typography and reduce static help.
-- 012_gabriel_mech_bay spelling should not be casually renamed; it needs a careful dedicated pass.
+Abilities are mostly gained by character level.
+
+Campaign state stores learned abilities.
+Level-up sync adds newly unlocked abilities to campaign truth.
+
+Gear/accessories/weapons may grant temporary abilities while equipped.
+Remove the equipment, remove the granted ability.
+
+Pilot AP and Telum AP are separate.
+On foot uses pilot AP.
+In Telum uses Telum AP.
+
+Next design work:
+- define each pilot's level table in pilots.json
+- list ability unlocks by level
+- define role identity for each character
+- expand ability catalog only as needed for real missions
 
 ============================================================
-NEXT PRACTICAL PASSES
+FIXED ISO RULES
 ============================================================
 
-1. Mission Board Launch Flow
-2. Fixed-Iso SVG Renderer Review
-3. Mission Board Builder/Validation Hardening if needed
-4. Game Menu Missions Tab upgrade for status/intel
-5. Shop shell usability pass
-6. Active Roster data + builder tab
-7. Ability framework
-8. Real opening content authoring
+The game is fixed authored iso.
+
+No player-facing map rotation.
+No map turning.
+No four-direction environment art requirement.
+
+Top-down remains tactical blueprint view.
+
+Unit facing and directional unit art remain.
 
 ============================================================
-FINAL CURRENT VERDICT
+CURRENT DEVELOPMENT SNAPSHOT
 ============================================================
 
-Ars Caelorum has a stable game foundation and can continue.
+Latest audited ZIP state:
+- 109 JavaScript files syntax clean
+- 28 JSON files parse clean
 
-It is not finished.
-It is not polished.
-It is not content-complete.
+The foundation is stable enough to begin production content.
 
-But the foundation is real:
-- mission-first runtime
-- builder-authored maps/missions
-- combat/story mode split
-- campaign-state foundation
-- fixed iso direction
-- contextual interaction screens
-- Wayfarer hub shell
+============================================================
+NEXT WORK
+============================================================
 
-The next major unlock is the Mission Board launch flow.
-After that, the renderer should be reviewed so the fixed-iso SVG pipeline is clean, stable, and no longer carrying unnecessary map-rotation baggage.
+Take a short break before the production load.
+
+Then begin:
+
+PHASE 14 — Opening Content Production
+
+1. Mars Cold Open
+2. Earth Hospital
+3. Garage Escape
+4. Gabe Office
+5. Mech Bay Mount-Up
+6. Practice Sparring
+
+Goal:
+A playable first 30 minutes that proves Ars Caelorum's identity.
+
+============================================================
+NON-GOALS RIGHT NOW
+============================================================
+
+Do not build yet:
+- full shop economy bloat
+- salvage/crafting/rarity treadmill
+- giant ability tree
+- class/job system
+- full world map
+- visual node graph
+- one-off driving system
+- destructive wall system
+- automated building generator
+- map rotation
+- true 3D
+- true multi-floor simulation
+- massive AI rewrite before real missions demand it
+
+============================================================
+FINAL NOTE
+============================================================
+
+The project has reached potato.
+
+The next phase is shepherd's pie.
+
+END FILE
