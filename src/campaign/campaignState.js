@@ -3,7 +3,7 @@
 // Persistent campaign authority V2.
 // Campaign state is progression/save truth, not runtime map truth.
 
-export const CAMPAIGN_VERSION = 5;
+export const CAMPAIGN_VERSION = 6;
 export const PILOT_LEVEL_CAP = 20;
 export const PILOT_STAT_CAPS = Object.freeze({
   targeting: 5,
@@ -293,19 +293,27 @@ function normalizeInventory(inventory, fallbackInventory = {}) {
   const fallback = fallbackInventory && typeof fallbackInventory === "object" ? fallbackInventory : {};
   return {
     currency: Math.max(0, Math.trunc(Number(source.currency ?? fallback.currency ?? 0) || 0)),
-    weapons: uniqueIds([...(fallback.weapons ?? []), ...(source.weapons ?? [])]),
-    armor: uniqueIds([...(fallback.armor ?? []), ...(source.armor ?? [])]),
-    accessories: uniqueIds([...(fallback.accessories ?? []), ...(source.accessories ?? [])]),
-    mechWeapons: uniqueIds([...(fallback.mechWeapons ?? []), ...(source.mechWeapons ?? [])]),
-    mechGear: uniqueIds([...(fallback.mechGear ?? []), ...(source.mechGear ?? [])]),
-    items: normalizeItemIds([...(fallback.items ?? []), ...(source.items ?? [])])
+    weapons: normalizeStackedIds(Array.isArray(source.weapons) ? source.weapons : fallback.weapons),
+    armor: normalizeStackedIds(Array.isArray(source.armor) ? source.armor : fallback.armor),
+    accessories: normalizeStackedIds(Array.isArray(source.accessories) ? source.accessories : fallback.accessories),
+    mechWeapons: normalizeStackedIds(Array.isArray(source.mechWeapons) ? source.mechWeapons : fallback.mechWeapons),
+    mechGear: normalizeStackedIds(Array.isArray(source.mechGear) ? source.mechGear : fallback.mechGear),
+    items: normalizeStackedIds(Array.isArray(source.items) ? source.items : fallback.items)
   };
 }
 
-function normalizeItemIds(ids) {
-  return (Array.isArray(ids) ? ids : [])
-    .map((id) => cleanId(id))
-    .filter(Boolean);
+function normalizeStackedIds(ids, maxPerId = 99) {
+  const counts = new Map();
+  const result = [];
+  for (const rawId of Array.isArray(ids) ? ids : []) {
+    const id = cleanId(rawId);
+    if (!id) continue;
+    const current = counts.get(id) ?? 0;
+    if (current >= maxPerId) continue;
+    counts.set(id, current + 1);
+    result.push(id);
+  }
+  return result;
 }
 
 function normalizePilots(pilots) {
