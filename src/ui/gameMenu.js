@@ -967,11 +967,17 @@ function renderCatalogIdList(state, items, type, emptyText) {
 function renderCatalogRows(state, items, type, emptyText) {
   const list = Array.isArray(items) ? items.filter(Boolean) : [];
   if (!list.length) return `<div class="terminal-empty">${escapeHtml(emptyText)}</div>`;
-  return `<div class="terminal-row-list">${list.map((itemId) => {
+  const className = type === "weapon" || type === "mechWeapon"
+    ? "terminal-row-list terminal-row-list--weapons"
+    : "terminal-row-list";
+  return `<div class="${className}">${list.map((itemId) => {
     const entry = getContentEntry(state, itemId, type);
     const name = entry?.name ?? "Unknown";
     const detail = getCatalogRowDetail(entry, type);
     const status = entry ? detail : "MISSING DATA";
+    if (type === "weapon" || type === "mechWeapon") {
+      return `<div class="terminal-static-row terminal-static-row--weapon"><span>${escapeHtml(name)}</span><b>${escapeHtml(status)}</b></div>`;
+    }
     return `<div class="terminal-static-row"><span>${escapeHtml(name)}</span><b>${escapeHtml(status)}</b></div>`;
   }).join("")}</div>`;
 }
@@ -1133,10 +1139,6 @@ function renderInventoryTab(state) {
 
   return `
     <div class="terminal-screen terminal-screen--inventory">
-      <section class="terminal-panel terminal-panel--status">
-        <div class="terminal-panel-title">Credits</div>
-        <div class="terminal-big-value">${escapeHtml(credits)}</div>
-      </section>
       <section class="terminal-panel">
         <div class="terminal-panel-title">Weapons</div>
         ${renderCatalogRows(state, weapons, "weapon", "No stored weapons.")}
@@ -1157,9 +1159,10 @@ function renderInventoryTab(state) {
         <div class="terminal-panel-title">Telum Gear</div>
         ${renderCatalogRows(state, mechGear, "mechGear", "No Telum gear.")}
       </section>
-      <section class="terminal-panel terminal-panel--wide">
+      <section class="terminal-panel terminal-panel--inventory-items">
         <div class="terminal-panel-title">Items</div>
         ${renderCatalogRows(state, items, "item", "No items.")}
+        <div class="terminal-credit-strip"><span>CR</span><b>${escapeHtml(credits)}</b></div>
       </section>
     </div>
   `;

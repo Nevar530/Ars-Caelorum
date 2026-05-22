@@ -114,7 +114,7 @@ function renderActivePanel(state) {
 
   const stats = [
     ["MV", activeBody.move],
-    ["INIT", activeBody.initiative ?? "-"],
+    ["INIT", getDisplayInitiative(activeBody, pilot)],
     ["REACT", activeBody.reaction],
     ["TARG", activeBody.targeting],
     ["STAT", activeBody.status ?? "-"]
@@ -337,7 +337,7 @@ function renderContextPanel(state) {
     const role = focusedUnit.unitType === "mech" ? "Target Telum" : "Target Pilot";
     const stats = [
       ["MV", focusedUnit.move],
-      ["INIT", focusedUnit.initiative ?? "-"],
+      ["INIT", getDisplayInitiative(focusedUnit, targetPilot)],
       ["REACT", focusedUnit.reaction],
       ["TARG", focusedUnit.targeting],
       ["F", facingLabel(focusedUnit.facing)],
@@ -850,6 +850,14 @@ function stat(label, value) {
       <div class="hud-inline-stat-value">${escapeHtml(value)}</div>
     </div>
   `;
+}
+
+
+function getDisplayInitiative(unit, pilot = null) {
+  const value = unit?.unitType === "mech"
+    ? pilot?.initiative
+    : unit?.initiative;
+  return value ?? "-";
 }
 
 function compactStat(label, value) {

@@ -88,6 +88,6 @@ export function renderIso(state, refs) {
   drawInteractPrompt(state, worldUi);
 
   for (const item of unitStatusTagItems) {
-    drawIsoStatusPlate(worldUi, item.unit, item.x, item.y);
+    drawIsoStatusPlate(state, worldUi, item.unit, item.x, item.y);
   }
 }

@@ -4,6 +4,7 @@ import { svgEl, makePolygon, makeText } from "../utils.js";
 import { getUnitFootprint, getUnitFootprintBounds } from "../scale/scaleMath.js";
 import { RENDER_CONFIG } from "../config.js";
 import { getTopdownCellSize } from "./projection.js";
+import { getEmbarkedPilotForMech } from "../actors/actorResolver.js";
 
 const SPRITE_RENDER_BOX = {
   mech: { width: 192, height: 192 },
@@ -208,9 +209,11 @@ export function getWorldFacing(state, unit) {
   return isPreviewing ? state.ui.facingPreview : unit.facing;
 }
 
-export function drawIsoStatusPlate(parent, unit, anchorX, anchorY) {
+export function drawIsoStatusPlate(state, parent, unit, anchorX, anchorY) {
   const isPilot = unit?.unitType === "pilot";
-  const text = `${unit.name ?? "UNIT"}: I:${unit.initiative ?? 0} S:${unit.shield ?? 0} C:${unit.core ?? 0}`;
+  const platePilot = unit?.unitType === "mech" ? getEmbarkedPilotForMech(state, unit) : null;
+  const initiative = unit?.unitType === "mech" ? (platePilot?.initiative ?? "-") : (unit?.initiative ?? "-");
+  const text = `${unit.name ?? "UNIT"}: I:${initiative} S:${unit.shield ?? 0} C:${unit.core ?? 0}`;
 
   const plateWidth = isPilot ? 124 : 148;
   const plateHeight = 16;
