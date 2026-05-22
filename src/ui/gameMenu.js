@@ -1879,6 +1879,19 @@ function normalizeShopMode(mode) {
   return value === "sell" ? "sell" : "buy";
 }
 
+function normalizeShopBuyback(buyback) {
+  if (!Array.isArray(buyback)) return [];
+  return buyback
+    .map((entry) => {
+      const itemId = String(entry?.itemId ?? "").trim();
+      if (!itemId) return null;
+      const bucket = getInventoryBucketForCategory(entry?.bucket ?? entry?.categoryKey ?? "items");
+      const price = Math.max(0, Math.trunc(Number(entry?.price ?? 0) || 0));
+      const categoryKey = normalizeShopCategory(entry?.categoryKey ?? bucket);
+      return { itemId, bucket, price, categoryKey };
+    })
+    .filter(Boolean);
+}
 
 function normalizeStatKey(statKey) {
   const key = String(statKey ?? "core").trim();
