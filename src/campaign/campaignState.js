@@ -13,6 +13,12 @@ export const PILOT_STAT_KEYS = Object.freeze(["core", "abilityPoints", "targetin
 export const STARTING_RECRUIT_IDS = Object.freeze(["pilot_skye"]);
 export const STARTING_MECH_IDS = Object.freeze(["mech_a", "mech_b", "mech_c", "mech_d"]);
 
+const EQUIPMENT_ID_ALIASES = Object.freeze({
+  pilot_accessory_servo_assist_01: "pilot_accessory_servo_01",
+  pilot_accessory_targeting_stabilizer_01: "pilot_accessory_targeting_01",
+  pilot_accessory_reaction_booster_01: "pilot_accessory_reaction_01"
+});
+
 export function createInitialCampaignState({ defaultMissionId = "000_game_state_tester_mission" } = {}) {
   const missionId = cleanId(defaultMissionId) || "000_game_state_tester_mission";
 
@@ -411,5 +417,6 @@ function clampLevel(value) {
 }
 
 function cleanId(value) {
-  return String(value ?? "").trim();
+  const id = String(value ?? "").trim();
+  return EQUIPMENT_ID_ALIASES[id] ?? id;
 }

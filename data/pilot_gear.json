@@ -31,7 +31,10 @@
     },
     "description": "Movement booster for on-foot repositioning.",
     "price": 180,
-    "grantsAbilities": []
+    "grantsAbilities": [],
+    "aliases": [
+      "pilot_accessory_servo_assist_01"
+    ]
   },
   {
     "id": "pilot_accessory_targeting_01",
@@ -42,7 +45,10 @@
       "targeting": 1
     },
     "description": "Stabilizes pilot weapon aim.",
-    "price": 200
+    "price": 200,
+    "aliases": [
+      "pilot_accessory_targeting_stabilizer_01"
+    ]
   },
   {
     "id": "pilot_accessory_reaction_01",
@@ -57,6 +63,9 @@
     "rarity": "rare",
     "grantsAbilities": [
       "field_focus"
+    ],
+    "aliases": [
+      "pilot_accessory_reaction_booster_01"
     ]
   }
 ]

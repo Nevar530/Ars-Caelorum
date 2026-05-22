@@ -117,7 +117,6 @@ function renderActivePanel(state) {
     ["INIT", activeBody.initiative ?? "-"],
     ["REACT", activeBody.reaction],
     ["TARG", activeBody.targeting],
-    ["F", facingLabel(activeBody.facing)],
     ["STAT", activeBody.status ?? "-"]
   ];
 
@@ -324,6 +323,9 @@ function renderContextPanel(state) {
     return renderDeploymentPanel(state);
   }
 
+  const actionReadout = renderSelectedActionReadout(state);
+  if (actionReadout) return actionReadout;
+
   const focusedUnit = getUnitAt(state.units, state.focus.x, state.focus.y);
   const activeBody = getActiveBody(state);
 
@@ -415,6 +417,135 @@ function normalizePortraitKey(value) {
   key = key.replace(/^pilot[_-]/, "");
   key = key.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return key || "blank";
+}
+
+
+function renderSelectedActionReadout(state) {
+  const mode = String(state?.ui?.mode ?? "");
+  if (!["action-attack-select", "action-ability-select", "action-item-select"].includes(mode)) return "";
+
+  const selected = getSelectedActionMenuEntry(state, mode);
+  const title = mode === "action-attack-select"
+    ? "Weapon Readout"
+    : mode === "action-ability-select"
+      ? "Ability Readout"
+      : "Item Readout";
+
+  if (!selected) {
+    return `
+      <div class="hud-action-readout">
+        <div class="hud-action-readout-head">
+          <span>${escapeHtml(title)}</span>
+          <b>NO DATA</b>
+        </div>
+        <div class="hud-action-readout-empty">No selection.</div>
+      </div>
+    `;
+  }
+
+  const entry = selected.definition ?? selected.profile ?? selected;
+  const label = selected.label ?? entry.name ?? entry.id ?? "Selection";
+  const chips = getActionReadoutChips(selected, entry, mode);
+  const summary = getActionReadoutSummary(selected, entry, mode);
+  const effect = getActionReadoutEffect(selected, entry, mode);
+
+  return `
+    <div class="hud-action-readout">
+      <div class="hud-action-readout-head">
+        <span>${escapeHtml(title)}</span>
+        <b>${escapeHtml(getActionSourceLabel(mode, entry))}</b>
+      </div>
+      <div class="hud-action-readout-name">${escapeHtml(label)}</div>
+      <div class="hud-action-readout-chips">
+        ${chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join("")}
+      </div>
+      ${effect ? `<div class="hud-action-readout-effect">${escapeHtml(effect)}</div>` : ""}
+      ${summary ? `<div class="hud-action-readout-desc">${escapeHtml(summary)}</div>` : ""}
+    </div>
+  `;
+}
+
+function getSelectedActionMenuEntry(state, mode) {
+  const index = Math.max(0, Number(state?.ui?.action?.menuIndex ?? 0) || 0);
+  const items = mode === "action-attack-select"
+    ? getSelectedAttackMenuItems(state)
+    : mode === "action-ability-select"
+      ? getSelectedAbilityMenuItems(state)
+      : getSelectedItemMenuItems(state);
+  return items[index] ?? null;
+}
+
+function getActionSourceLabel(mode, entry) {
+  if (mode === "action-attack-select") return "WEAPON";
+  if (mode === "action-item-select") return "ITEM";
+  const context = String(entry?.sourceContext ?? "").toUpperCase();
+  return context === "TELUM" ? "TELUM" : context === "PILOT" ? "PILOT" : "ABILITY";
+}
+
+function getActionReadoutChips(selected, entry, mode) {
+  const chips = [];
+  const profile = selected?.profile ?? entry;
+  const cost = Number(selected?.cost ?? entry?.cost ?? profile?.cost ?? 0) || 0;
+  const range = entry?.range ?? profile?.range ?? profile?.targeting;
+  const targetType = entry?.targetType ?? entry?.target ?? profile?.targetType ?? "";
+  const targetTeam = entry?.targetTeam ?? profile?.targetTeam ?? "";
+  const losType = entry?.losType ?? profile?.losType ?? "";
+  const weaponType = entry?.type ?? entry?.weaponType ?? profile?.weaponType ?? "";
+
+  if (mode !== "action-attack-select" && cost > 0) chips.push(`AP ${cost}`);
+  if (mode === "action-attack-select" || weaponType) chips.push(titleCase(weaponType || "direct"));
+  const rangeText = formatRangeText(range);
+  if (rangeText) chips.push(rangeText);
+  if (targetType) chips.push(`Target ${titleCase(targetType)}`);
+  if (targetTeam && targetTeam !== "tile") chips.push(titleCase(targetTeam));
+  if (losType) chips.push(`${String(losType).toUpperCase()} LOS`);
+  return chips;
+}
+
+function getActionReadoutEffect(selected, entry, mode) {
+  const profile = selected?.profile ?? entry;
+  const damage = Number(entry?.damage ?? profile?.damage ?? 0) || 0;
+  const effect = entry?.effect ?? profile?.abilityEffect ?? profile?.effect ?? null;
+  const modifiers = entry?.modifiers ?? null;
+
+  if (mode === "action-attack-select" && damage > 0) {
+    return `Damage ${damage}${formatAoeSuffix(effect)}`;
+  }
+
+  if (damage > 0) return `Damage ${damage}${formatAoeSuffix(effect)}`;
+
+  if (effect?.type === "restore_core_percent_max") return `Restore ${effect.amount}% max core`;
+  if (effect?.type === "restore_shield_percent_max") return `Restore ${effect.amount}% max shield`;
+  if (effect?.type === "restore_core") return `Restore ${effect.amount} core`;
+  if (effect?.type === "restore_shield") return `Restore ${effect.amount} shield`;
+  if (effect?.type === "self_core_damage") return `Self core damage ${effect.amount}`;
+  if (effect?.type === "self_shield_damage") return `Self shield damage ${effect.amount}`;
+
+  const modifierText = renderModifierText(modifiers);
+  return modifierText || "";
+}
+
+function getActionReadoutSummary(selected, entry, mode) {
+  if (selected?.disabledReason === "no_ap") return "Not enough AP.";
+  if (selected?.disabledReason === "disabled_mech") return "Disabled Telum cannot use this ability.";
+  return entry?.description ?? entry?.notes ?? selected?.description ?? "";
+}
+
+function formatRangeText(range) {
+  if (!range || typeof range !== "object") return "";
+  const min = range.min ?? range.minRange;
+  const max = range.max ?? range.maxRange;
+  if (min == null && max == null) return "";
+  if (min != null && max != null) return `RNG ${min}-${max}`;
+  if (max != null) return `RNG ${max}`;
+  return `MIN ${min}`;
+}
+
+function formatAoeSuffix(effect) {
+  if (!effect || typeof effect !== "object") return "";
+  if (effect.kind === "circle" && Number(effect.radius ?? 0) > 0) return ` / AOE ${effect.radius}`;
+  if (effect.radius) return ` / AOE ${effect.radius}`;
+  return "";
 }
 
 function renderTacticalScanPanel(state) {
@@ -790,6 +921,12 @@ function renderDeploymentPanel(state) {
   `;
 }
 
+
+function titleCase(value) {
+  return String(value ?? "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 function escapeHtml(value) {
   return String(value ?? "")

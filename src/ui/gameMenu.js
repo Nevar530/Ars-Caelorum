@@ -1012,7 +1012,10 @@ function getContentEntry(state, id, type) {
   return catalogs
     .flatMap((catalog) => Array.isArray(catalog) ? catalog : [])
     .find((entry) => {
-      if (String(entry?.id ?? "") !== clean) return false;
+      const ids = [entry?.id, ...(Array.isArray(entry?.aliases) ? entry.aliases : []), ...(Array.isArray(entry?.legacyIds) ? entry.legacyIds : [])]
+        .map((value) => String(value ?? "").trim())
+        .filter(Boolean);
+      if (!ids.includes(clean)) return false;
       if (type === "weapon") return String(entry?.scale ?? "pilot") === "pilot";
       if (type === "mechWeapon") return String(entry?.scale ?? "mech") === "mech";
       if (type === "armor" || type === "accessory") return entry?.slot === type;
