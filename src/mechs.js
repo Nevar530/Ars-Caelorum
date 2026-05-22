@@ -97,9 +97,14 @@ function buildBaseRuntimeUnit(definition, overrides = {}, unitType = "mech") {
   const move = Math.max(0, Number(overrides.move ?? definition.move ?? (isPilot ? 4 : 4)) + equipmentModifiers.move);
   const unitLevel = Math.max(1, Math.trunc(Number(overrides.level ?? definition.level ?? 1) || 1));
   const maxAbilityPoints = Math.max(0, Math.trunc(Number(overrides.abilityPoints ?? definition.abilityPoints ?? 0) || 0) + equipmentModifiers.abilityPoints);
+  const learnedPilotAbilities = isPilot && Array.isArray(overrides.learnedAbilities)
+    ? overrides.learnedAbilities
+    : null;
   const naturalAbilities = uniqueIds([
-    ...(Array.isArray(definition.abilities) ? definition.abilities : []),
-    ...getAbilityIdsUnlockedByLevel(definition, unitLevel),
+    ...(learnedPilotAbilities ?? [
+      ...(Array.isArray(definition.abilities) ? definition.abilities : []),
+      ...getAbilityIdsUnlockedByLevel(definition, unitLevel)
+    ]),
     ...getLoadoutGrantedAbilityIds(overrides.content ?? {}, loadout, unitType)
   ]);
 
@@ -252,7 +257,8 @@ function buildPilotRuntimeOverrides(pilotDefinition, campaignState) {
     abilityPoints: Math.max(0, Math.trunc(Number(pilotDefinition?.abilityPoints ?? 0) || 0)) + Math.max(0, Math.trunc(Number(bonuses.abilityPoints ?? 0) || 0)),
     targeting: clampStat((Number(pilotDefinition?.targeting ?? 0) || 0) + (Number(bonuses.targeting ?? 0) || 0), PILOT_TARGETING_CAP),
     reaction: clampStat((Number(pilotDefinition?.reaction ?? 0) || 0) + (Number(bonuses.reaction ?? 0) || 0), PILOT_REACTION_CAP),
-    loadout: getCampaignPilotLoadout(campaignState, pilotDefinition)
+    loadout: getCampaignPilotLoadout(campaignState, pilotDefinition),
+    learnedAbilities: Array.isArray(progress?.learnedAbilities) ? [...progress.learnedAbilities] : null
   };
 }
 

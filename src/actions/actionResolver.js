@@ -1,6 +1,7 @@
 // src/actions/actionResolver.js
 
 import { getActiveBody } from "../actors/actorResolver.js";
+import { consumeCampaignLoadoutItem } from "../campaign/campaignState.js";
 import { getUnitById } from "../mechs.js";
 
 function clampMinZero(value) {
@@ -163,6 +164,7 @@ function resolveContentAction(state, selected, options = {}) {
     };
   }
 
+  let campaignConsumption = null;
   if (options.consume === true) {
     const consumed =
       removeFirstMatchingItem(activeBody.inventory?.items, selected.id) ||
@@ -177,6 +179,8 @@ function resolveContentAction(state, selected, options = {}) {
         changes: null
       };
     }
+
+    campaignConsumption = consumeCampaignLoadoutItem(state?.campaign, activeBody, selected.id);
   }
 
   const deltaShield = effectResult.after.shield - effectResult.before.shield;
@@ -202,7 +206,9 @@ function resolveContentAction(state, selected, options = {}) {
       shieldDelta: deltaShield,
       coreDelta: deltaCore,
       statusBefore: effectResult.before.status,
-      statusAfter: effectResult.after.status
+      statusAfter: effectResult.after.status,
+      consumedItemId: options.consume === true ? selected.id : null,
+      campaignConsumption
     }
   };
 }

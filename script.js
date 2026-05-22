@@ -24,7 +24,7 @@ import { getMissionEntries } from "./src/ui/frontScreen.js";
 import { confirmDeploymentPlacement, getDeploymentReady, isDeploymentActive, openDeploymentListAtFocus, removeDeploymentPlacementAtFocus } from "./src/deployment/deploymentState.js";
 import { advanceMissionDialogue, clearDialogueState, moveMissionDialogueOption, selectMissionDialogueOption } from "./src/mission/missionState.js";
 import { createMissionTriggerRuntime } from "./src/mission/missionTriggerRuntime.js";
-import { isMissionUnlocked, setCurrentMission } from "./src/campaign/campaignState.js";
+import { isMissionUnlocked, setCurrentMission, syncCampaignPilotAbilities } from "./src/campaign/campaignState.js";
 import { loadCampaignState, resetStoredCampaignState, saveCampaignState } from "./src/campaign/campaignStorage.js";
 import { applyMissionRewards } from "./src/campaign/campaignRewards.js";
 import { getCurrentMissionEntry } from "./src/campaign/campaignProgression.js";
@@ -71,6 +71,7 @@ async function init() {
   const content = await loadGameData();
   const defaultMissionId = content?.missionCatalog?.defaultMissionId ?? content?.mapCatalog?.defaultMapId ?? "000_game_state_tester_mission";
   const campaign = loadCampaignState({ defaultMissionId });
+  syncCampaignPilotAbilities(campaign, content);
 
   const initialMap = content.defaultMap ? normalizeMapDefinition(content.defaultMap) : createInitialMap();
 
@@ -94,7 +95,7 @@ async function init() {
     snapFocusToActiveUnit,
     logDev,
     onMissionEnded(missionResult, missionDefinition) {
-      const rewardOutcome = applyMissionRewards(state.campaign, missionDefinition, missionResult);
+      const rewardOutcome = applyMissionRewards(state.campaign, missionDefinition, missionResult, { content: state.content });
       state.campaign = saveCampaignState(state.campaign, { defaultMissionId });
       return rewardOutcome;
     }
@@ -379,6 +380,7 @@ function getSelectedMissionEntry() {
   }
 
   function saveCampaign() {
+    syncCampaignPilotAbilities(state.campaign, state.content);
     state.campaign = saveCampaignState(state.campaign, { defaultMissionId });
   }
 
@@ -400,6 +402,7 @@ function getSelectedMissionEntry() {
     state.ui.shell.selectedMissionId = missionEntry.id;
     state.ui.shell.selectedMapId = missionEntry.id;
     applyMissionRosterState(state.campaign, missionDefinition, state.content);
+    syncCampaignPilotAbilities(state.campaign, state.content);
     setCurrentMission(state.campaign, missionEntry.id);
     state.campaign = saveCampaignState(state.campaign, { defaultMissionId });
     state.ui.shell.briefingMission = missionEntry;

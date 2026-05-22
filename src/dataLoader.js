@@ -8,8 +8,8 @@ export async function loadGameData() {
     attacks,
     pilots,
     abilities,
-    pilotAbilities,
-    mechAbilities,
+    pilotAbilitiesRaw,
+    mechAbilitiesRaw,
     pilotItems,
     mechItems,
     pilotGear,
@@ -49,8 +49,8 @@ export async function loadGameData() {
     attacks,
     pilots,
     abilities,
-    pilotAbilities,
-    mechAbilities,
+    pilotAbilitiesRaw,
+    mechAbilitiesRaw,
     pilotItems,
     mechItems,
     pilotGear,
@@ -77,7 +77,8 @@ export async function loadMissionDefinitionByPath(path) {
 
 function normalizeAbilityCatalog(abilities, fallback, context) {
   const unified = Array.isArray(abilities) ? abilities : [];
-  const matching = unified.filter((ability) => ability?.sourceContext === context);
+  const acceptedContexts = context === "mech" ? new Set(["mech", "telum"]) : new Set([context]);
+  const matching = unified.filter((ability) => acceptedContexts.has(String(ability?.sourceContext ?? "").trim()));
   if (matching.length) return matching;
   return Array.isArray(fallback) ? fallback : [];
 }

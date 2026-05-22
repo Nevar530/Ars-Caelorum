@@ -3,7 +3,7 @@
 // Persistent campaign authority V2.
 // Campaign state is progression/save truth, not runtime map truth.
 
-export const CAMPAIGN_VERSION = 6;
+export const CAMPAIGN_VERSION = 7;
 export const PILOT_LEVEL_CAP = 20;
 export const PILOT_STAT_CAPS = Object.freeze({
   targeting: 5,
@@ -12,6 +12,95 @@ export const PILOT_STAT_CAPS = Object.freeze({
 export const PILOT_STAT_KEYS = Object.freeze(["core", "abilityPoints", "targeting", "reaction"]);
 export const STARTING_RECRUIT_IDS = Object.freeze(["pilot_skye"]);
 export const STARTING_MECH_IDS = Object.freeze(["telum_skye", "telum_eve"]);
+
+export function getPilotAbilityUnlockIds(pilotDefinition = {}, level = 1) {
+  const currentLevel = clampLevel(level);
+  const directAbilities = uniqueIds(pilotDefinition?.abilities);
+  const progressionAbilities = (Array.isArray(pilotDefinition?.abilityProgression) ? pilotDefinition.abilityProgression : [])
+    .filter((entry) => clampLevel(entry?.level ?? 1) <= currentLevel)
+    .map((entry) => cleanId(entry?.abilityId))
+    .filter(Boolean);
+
+  return uniqueIds([...directAbilities, ...progressionAbilities]);
+}
+
+export function syncCampaignPilotAbilities(campaignState, content = {}) {
+  if (!campaignState || !campaignState.pilots || typeof campaignState.pilots !== "object") {
+    return { changed: false, pilots: [] };
+  }
+
+  const pilotDefinitions = Array.isArray(content?.pilots) ? content.pilots : [];
+  const knownAbilityIds = getKnownAbilityIdSet(content);
+  const changedPilots = [];
+
+  for (const [pilotId, progress] of Object.entries(campaignState.pilots)) {
+    if (!pilotId || progress?.recruited === false) continue;
+    const definition = pilotDefinitions.find((pilot) => cleanId(pilot?.id) === pilotId) ?? null;
+    if (!definition) continue;
+
+    const before = uniqueIds(progress.learnedAbilities);
+    const levelUnlocks = getPilotAbilityUnlockIds(definition, progress.level);
+    const after = uniqueIds([
+      ...before,
+      ...levelUnlocks.filter((abilityId) => !knownAbilityIds.size || knownAbilityIds.has(abilityId))
+    ]);
+
+    if (after.length !== before.length || after.some((abilityId, index) => abilityId !== before[index])) {
+      progress.learnedAbilities = after;
+      changedPilots.push({ pilotId, learnedAbilities: after });
+    }
+  }
+
+  return { changed: changedPilots.length > 0, pilots: changedPilots };
+}
+
+export function spendPilotStatPoint(campaignState, pilotId, statKey) {
+  const id = cleanId(pilotId);
+  const key = cleanId(statKey);
+  if (!campaignState || !id || !PILOT_STAT_KEYS.includes(key)) return { ok: false, reason: "invalid_stat" };
+
+  const progress = ensurePilotProgress(campaignState, id, { recruited: true });
+  if (!progress || progress.recruited === false) return { ok: false, reason: "pilot_not_recruited" };
+
+  const points = Math.max(0, Math.trunc(Number(progress.statPoints ?? 0) || 0));
+  if (points <= 0) return { ok: false, reason: "no_points" };
+
+  const current = Math.max(0, Math.trunc(Number(progress.statBonuses?.[key] ?? 0) || 0));
+  const cap = PILOT_STAT_CAPS[key];
+  if (Number.isFinite(cap) && current >= cap) return { ok: false, reason: "stat_capped" };
+
+  progress.statBonuses = normalizeStatBonuses({ ...progress.statBonuses, [key]: current + 1 });
+  progress.statPoints = points - 1;
+
+  return { ok: true, pilotId: id, statKey: key, value: progress.statBonuses[key], remaining: progress.statPoints };
+}
+
+export function consumeCampaignLoadoutItem(campaignState, unit = {}, itemId = "") {
+  const id = cleanId(itemId);
+  if (!campaignState || !id) return { ok: false, reason: "invalid_item" };
+
+  const isMech = unit?.unitType === "mech";
+  const bucket = isMech ? campaignState.mechs : campaignState.pilots;
+  const ownerId = cleanId(unit?.definitionId ?? unit?.pilotId ?? unit?.id);
+  const progress = bucket && ownerId ? bucket[ownerId] : null;
+  if (!progress || typeof progress !== "object") return { ok: false, reason: "missing_progress" };
+
+  let removedFromLoadout = false;
+  if (progress.loadout && typeof progress.loadout === "object") {
+    const items = normalizeInventoryIds(progress.loadout.items);
+    removedFromLoadout = removeFirstInventoryId(items, id);
+    progress.loadout.items = items;
+  }
+
+  let removedFromStorage = false;
+  if (campaignState.inventory && typeof campaignState.inventory === "object") {
+    const items = normalizeInventoryIds(campaignState.inventory.items);
+    removedFromStorage = removeFirstInventoryId(items, id);
+    campaignState.inventory.items = items;
+  }
+
+  return { ok: removedFromLoadout || removedFromStorage, removedFromLoadout, removedFromStorage, ownerId, itemId: id };
+}
 
 const EQUIPMENT_ID_ALIASES = Object.freeze({
   pilot_accessory_servo_assist_01: "pilot_accessory_servo_01",
@@ -233,7 +322,7 @@ export function addPilotLevels(campaignState, pilotId, levels = 1) {
   progress.level = toLevel;
   progress.statPoints += gained;
 
-  return { pilotId: cleanId(pilotId), fromLevel, toLevel, gained };
+  return { pilotId: cleanId(pilotId), fromLevel, toLevel, gained, statPointsGained: gained };
 }
 
 export function setPilotLevelFloor(campaignState, pilotId, floorLevel = 1) {
@@ -248,7 +337,7 @@ export function setPilotLevelFloor(campaignState, pilotId, floorLevel = 1) {
   const gained = Math.max(0, targetLevel - fromLevel);
   progress.statPoints += gained;
 
-  return { pilotId: cleanId(pilotId), fromLevel, toLevel: targetLevel, gained };
+  return { pilotId: cleanId(pilotId), fromLevel, toLevel: targetLevel, gained, statPointsGained: gained };
 }
 
 export function getRecruitedPilotEntries(campaignState) {
@@ -454,6 +543,24 @@ function uniqueIds(value) {
 
 function ensureArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function getKnownAbilityIdSet(content = {}) {
+  const ids = [
+    ...(Array.isArray(content.abilities) ? content.abilities : []),
+    ...(Array.isArray(content.pilotAbilities) ? content.pilotAbilities : []),
+    ...(Array.isArray(content.mechAbilities) ? content.mechAbilities : [])
+  ].map((ability) => cleanId(ability?.id)).filter(Boolean);
+  return new Set(ids);
+}
+
+function removeFirstInventoryId(items, itemId) {
+  const id = cleanId(itemId);
+  if (!Array.isArray(items) || !id) return false;
+  const index = items.findIndex((entry) => cleanId(entry) === id);
+  if (index < 0) return false;
+  items.splice(index, 1);
+  return true;
 }
 
 function clampLevel(value) {

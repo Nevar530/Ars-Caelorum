@@ -4,8 +4,8 @@
 // this file only answers what those equipped ids add to runtime stats.
 
 const MODIFIER_KEYS = Object.freeze(["shield", "move", "core", "abilityPoints", "targeting", "reaction"]);
-const PILOT_GEAR_SLOT_KEYS = Object.freeze(["armor", "accessory"]);
-const MECH_GEAR_SLOT_KEYS = Object.freeze(["plating", "system", "armor", "core", "accessory"]);
+const PILOT_GEAR_SLOT_KEYS = Object.freeze(["armor", "accessory", "primaryWeapon", "secondaryWeapon"]);
+const MECH_GEAR_SLOT_KEYS = Object.freeze(["plating", "system", "primaryWeapon", "secondaryWeapon", "supportWeapon", "armor", "core", "accessory"]);
 
 export function getLoadoutModifiers(content = {}, loadout = {}, unitType = "pilot") {
   const modifiers = createEmptyModifiers();

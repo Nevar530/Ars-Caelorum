@@ -1,6 +1,7 @@
 // src/ui/gameMenu.js
 
-import { PILOT_STAT_CAPS, PILOT_STAT_KEYS, setMechLoadoutSlot, setPilotLoadoutSlot } from "../campaign/campaignState.js";
+import { PILOT_STAT_CAPS, PILOT_STAT_KEYS, setMechLoadoutSlot, setPilotLoadoutSlot, spendPilotStatPoint as spendCampaignPilotStatPoint } from "../campaign/campaignState.js";
+import { getLoadoutModifiers } from "../content/equipmentModifiers.js";
 import { normalizeMechLoadout, normalizePilotLoadout } from "../content/unitLoadout.js";
 import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
 import { getContextScreenTabId, getContextScreenTitle, normalizeContextScreenId } from "./contextScreens.js";
@@ -444,26 +445,7 @@ export function setGameMenuStatus(state, text = "") {
 }
 
 export function spendPilotStatPoint(state, pilotId, statKey) {
-  const id = String(pilotId ?? "").trim();
-  const key = String(statKey ?? "").trim();
-  if (!id || !PILOT_STAT_KEYS.includes(key)) return { ok: false, reason: "invalid_stat" };
-
-  const campaign = state?.campaign;
-  const progress = campaign?.pilots?.[id];
-  if (!campaign || !progress || progress.recruited === false) return { ok: false, reason: "pilot_not_recruited" };
-
-  const points = Math.max(0, Math.trunc(Number(progress.statPoints ?? 0) || 0));
-  if (points <= 0) return { ok: false, reason: "no_points" };
-
-  if (!progress.statBonuses || typeof progress.statBonuses !== "object") progress.statBonuses = {};
-  const current = Math.max(0, Math.trunc(Number(progress.statBonuses[key] ?? 0) || 0));
-  const cap = PILOT_STAT_CAPS[key];
-  if (Number.isFinite(cap) && current >= cap) return { ok: false, reason: "stat_capped" };
-
-  progress.statBonuses[key] = current + 1;
-  progress.statPoints = points - 1;
-
-  return { ok: true, pilotId: id, statKey: key, value: progress.statBonuses[key], remaining: progress.statPoints };
+  return spendCampaignPilotStatPoint(state?.campaign, pilotId, statKey);
 }
 
 export function setPilotLoadoutChoice(state, pilotId, slotKey, equipmentId) {
@@ -1465,7 +1447,12 @@ function getVisiblePilotEntries(state) {
         reaction: numberStat(definition.reaction, 0)
       };
       const statBonuses = normalizeMenuBonuses(progress?.statBonuses);
-      const totalStats = Object.fromEntries(PILOT_STAT_KEYS.map((key) => [key, baseStats[key] + statBonuses[key]]));
+      const loadout = normalizePilotLoadout(progress?.loadout, {
+        ...(definition.loadout && typeof definition.loadout === "object" ? definition.loadout : {}),
+        weapons: definition.loadout?.weapons ?? definition.weapons ?? []
+      });
+      const gearModifiers = getLoadoutModifiers(state?.content ?? {}, loadout, "pilot");
+      const totalStats = Object.fromEntries(PILOT_STAT_KEYS.map((key) => [key, baseStats[key] + statBonuses[key] + Math.trunc(Number(gearModifiers[key] ?? 0) || 0)]));
 
       return {
         id: pilotId,
@@ -1478,10 +1465,7 @@ function getVisiblePilotEntries(state) {
         baseStats,
         statBonuses,
         totalStats,
-        loadout: normalizePilotLoadout(progress?.loadout, {
-          ...(definition.loadout && typeof definition.loadout === "object" ? definition.loadout : {}),
-          weapons: definition.loadout?.weapons ?? definition.weapons ?? []
-        })
+        loadout
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));

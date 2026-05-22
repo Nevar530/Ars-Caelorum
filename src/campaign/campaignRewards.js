@@ -11,10 +11,11 @@ import {
   recruitPilot,
   setCurrentMission,
   setPilotLevelFloor,
+  syncCampaignPilotAbilities,
   unlockMission
 } from "./campaignState.js";
 
-export function applyMissionRewards(campaignState, missionDefinition, missionResult) {
+export function applyMissionRewards(campaignState, missionDefinition, missionResult, options = {}) {
   if (!campaignState || !missionDefinition || !missionResult?.missionId) {
     return buildRewardOutcome({ applied: false, reason: "missing_campaign_or_mission" });
   }
@@ -63,7 +64,10 @@ export function applyMissionRewards(campaignState, missionDefinition, missionRes
   };
 
   if (levelMilestone > 0) {
-    levelOutcome = applyLevelMilestone(campaignState, missionResult, levelMilestone);
+    levelOutcome = applyLevelMilestone(campaignState, missionResult, levelMilestone, options);
+  } else {
+    const abilitySync = syncCampaignPilotAbilities(campaignState, options?.content);
+    levelOutcome.abilityUnlocks = abilitySync.pilots;
   }
 
   if (result === "victory") {
@@ -85,7 +89,7 @@ export function applyMissionRewards(campaignState, missionDefinition, missionRes
   });
 }
 
-function applyLevelMilestone(campaignState, missionResult, levelMilestone) {
+function applyLevelMilestone(campaignState, missionResult, levelMilestone, options = {}) {
   const deployedPilotIds = uniqueIds(missionResult?.deployedPlayerPilotIds);
   const activeLevelUps = [];
 
@@ -105,11 +109,14 @@ function applyLevelMilestone(campaignState, missionResult, levelMilestone) {
     if (outcome?.gained) reserveCatchUps.push(outcome);
   }
 
+  const abilitySync = syncCampaignPilotAbilities(campaignState, options?.content);
+
   return {
     levelMilestone,
     activeLevelUps,
     reserveCatchUps,
-    reserveFloor
+    reserveFloor,
+    abilityUnlocks: abilitySync.pilots
   };
 }
 
@@ -125,7 +132,8 @@ function buildRewardOutcome({
   levelMilestone = 0,
   activeLevelUps = [],
   reserveCatchUps = [],
-  reserveFloor = null
+  reserveFloor = null,
+  abilityUnlocks = []
 }) {
   return {
     applied,
@@ -138,7 +146,8 @@ function buildRewardOutcome({
     levelMilestone: Math.max(0, Math.trunc(Number(levelMilestone ?? reward?.levelMilestone ?? 0) || 0)),
     activeLevelUps: Array.isArray(activeLevelUps) ? activeLevelUps : [],
     reserveCatchUps: Array.isArray(reserveCatchUps) ? reserveCatchUps : [],
-    reserveFloor
+    reserveFloor,
+    abilityUnlocks: Array.isArray(abilityUnlocks) ? abilityUnlocks : []
   };
 }
 
