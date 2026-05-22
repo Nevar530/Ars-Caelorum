@@ -4,7 +4,7 @@ export const PILOT_GEAR_SLOTS = Object.freeze(["armor", "accessory", "primaryWea
 export const MECH_GEAR_SLOTS = Object.freeze(["plating", "system", "primaryWeapon", "secondaryWeapon", "supportWeapon"]);
 
 const DEFAULT_PILOT_SLOTS = Object.freeze({ armor: 1, accessory: 1, primaryWeapon: 1, secondaryWeapon: 1, ability: 3 });
-const DEFAULT_MECH_SLOTS = Object.freeze({ plating: 1, system: 1, primaryWeapon: 1, secondaryWeapon: 1, supportWeapon: 1, ability: 1, item: 2 });
+const DEFAULT_MECH_SLOTS = Object.freeze({ plating: 1, system: 1, primaryWeapon: 1, secondaryWeapon: 1, supportWeapon: 1, ability: 1, item: 10 });
 
 function cloneArray(value) {
   return Array.isArray(value) ? [...value] : [];

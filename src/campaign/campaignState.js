@@ -198,7 +198,7 @@ export function setMechLoadoutSlot(campaignState, mechId, slotKey, equipmentId =
     ...(progress.loadout && typeof progress.loadout === "object" ? progress.loadout : {})
   });
   if (slot.startsWith("item")) {
-    const index = Math.max(0, Math.min(1, Math.trunc(Number(slot.replace("item", "")) || 1) - 1));
+    const index = Math.max(0, Math.min(9, Math.trunc(Number(slot.replace("item", "")) || 1) - 1));
     const items = normalizeItemIds(current.items);
     while (items.length <= index) items.push("");
     items[index] = cleanId(equipmentId) || "";
@@ -403,7 +403,23 @@ function normalizeMechLoadout(loadout) {
 }
 
 function isMechLoadoutSlot(slot) {
-  return ["plating", "system", "primaryWeapon", "secondaryWeapon", "supportWeapon", "item1", "item2"].includes(slot);
+  return [
+    "plating",
+    "system",
+    "primaryWeapon",
+    "secondaryWeapon",
+    "supportWeapon",
+    "item1",
+    "item2",
+    "item3",
+    "item4",
+    "item5",
+    "item6",
+    "item7",
+    "item8",
+    "item9",
+    "item10"
+  ].includes(slot);
 }
 
 function normalizeStatBonuses(value) {

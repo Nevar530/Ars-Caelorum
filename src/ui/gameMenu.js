@@ -36,7 +36,15 @@ const TELUM_LOADOUT_SLOTS = Object.freeze([
   { key: "secondaryWeapon", label: "Secondary", type: "mechWeapon" },
   { key: "supportWeapon", label: "Support", type: "mechWeapon" },
   { key: "item1", label: "Item 1", type: "item" },
-  { key: "item2", label: "Item 2", type: "item" }
+  { key: "item2", label: "Item 2", type: "item" },
+  { key: "item3", label: "Item 3", type: "item" },
+  { key: "item4", label: "Item 4", type: "item" },
+  { key: "item5", label: "Item 5", type: "item" },
+  { key: "item6", label: "Item 6", type: "item" },
+  { key: "item7", label: "Item 7", type: "item" },
+  { key: "item8", label: "Item 8", type: "item" },
+  { key: "item9", label: "Item 9", type: "item" },
+  { key: "item10", label: "Item 10", type: "item" }
 ]);
 
 const SHOP_CATEGORIES = Object.freeze([
