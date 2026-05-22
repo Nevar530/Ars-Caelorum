@@ -6,8 +6,8 @@ import { getMissionObjectiveStatus } from "../mission/missionObjectives.js";
 import { getContextScreenTabId, getContextScreenTitle, normalizeContextScreenId } from "./contextScreens.js";
 
 const TABS = Object.freeze([
-  { id: "characters", label: "Characters" },
-  { id: "inventory", label: "Inventory" },
+  { id: "characters", label: "Units" },
+  { id: "inventory", label: "Ship Storage" },
   { id: "missions", label: "Missions" },
   { id: "lore", label: "Lore" },
   { id: "system", label: "System" }
@@ -56,6 +56,16 @@ const SHOP_CATEGORIES = Object.freeze([
   { key: "items", label: "Items", type: "item" }
 ]);
 
+const INVENTORY_CATEGORIES = Object.freeze([
+  { key: "weapons", label: "Pilot Weapons", type: "weapon" },
+  { key: "armor", label: "Pilot Armor", type: "armor" },
+  { key: "accessories", label: "Pilot Accessories", type: "accessory" },
+  { key: "items", label: "Pilot Items", type: "item" },
+  { key: "mechWeapons", label: "Telum Weapons", type: "mechWeapon" },
+  { key: "mechGear", label: "Telum Gear", type: "mechGear" },
+  { key: "mechItems", label: "Telum Items", type: "item" }
+]);
+
 const SYSTEM_ACTIONS = Object.freeze([
   { id: "resume", label: "Resume" },
   { id: "save", label: "Save" },
@@ -96,6 +106,7 @@ export function normalizeGameMenuState(state) {
   state.ui.gameMenu.shopMode = normalizeShopMode(state.ui.gameMenu.shopMode);
   state.ui.gameMenu.selectedMissionBoardIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedMissionBoardIndex);
   state.ui.gameMenu.missionBoardStage = normalizeMissionBoardStage(state.ui.gameMenu.missionBoardStage);
+  state.ui.gameMenu.selectedInventoryIndex = normalizeLoadoutOptionIndex(state.ui.gameMenu.selectedInventoryIndex);
   state.ui.gameMenu.selectedSystemIndex = normalizeSystemIndex(state.ui.gameMenu.selectedSystemIndex);
   state.ui.gameMenu.statusText = String(state.ui.gameMenu.statusText ?? "").trim();
   state.ui.gameMenu.shopId = String(state.ui.gameMenu.shopId ?? "").trim();
@@ -203,6 +214,10 @@ export function moveGameMenuSelection(state, delta) {
     return true;
   }
 
+  if (menu.activeTab === "inventory") {
+    return moveInventorySelection(state, delta);
+  }
+
   if (menu.activeTab === "loadout") {
     return moveLoadoutSelection(state, delta);
   }
@@ -298,6 +313,10 @@ export function confirmGameMenuSelection(state) {
 
   if (menu.activeTab === "shop") {
     return confirmShopSelection(state);
+  }
+
+  if (menu.activeTab === "inventory") {
+    return { ok: false, reason: "inventory_readout_only" };
   }
 
   if (menu.activeTab === "mission_board") {
@@ -1151,48 +1170,181 @@ function renderStatRow(pilot, statKey, selectedStatKey, focusColumn = true) {
 }
 
 
-function renderInventoryTab(state) {
+function getInventoryDisplayEntries(state) {
   const inventory = state?.campaign?.inventory ?? {};
-  const credits = Math.max(0, Math.trunc(Number(inventory.currency ?? 0) || 0));
-  const items = Array.isArray(inventory.items) ? inventory.items : [];
-  const weapons = Array.isArray(inventory.weapons) ? inventory.weapons : [];
-  const armor = Array.isArray(inventory.armor) ? inventory.armor : [];
-  const accessories = Array.isArray(inventory.accessories) ? inventory.accessories : [];
-  const mechWeapons = Array.isArray(inventory.mechWeapons) ? inventory.mechWeapons : [];
-  const mechGear = Array.isArray(inventory.mechGear) ? inventory.mechGear : [];
+  const equippedCounts = getEquippedInventoryCounts(state);
+  const entries = [];
+
+  for (const category of INVENTORY_CATEGORIES) {
+    const ids = getInventoryIdsForCategory({ ...inventory, __state: state }, category.key);
+    const stacks = buildInventoryStacks(ids);
+    for (const stack of stacks) {
+      const contentEntry = getContentEntry(state, stack.id, category.type);
+      const name = contentEntry?.name ?? stack.id;
+      const equipped = equippedCounts.get(stack.id) ?? 0;
+      const available = Math.max(0, stack.qty - equipped);
+      entries.push({
+        index: entries.length,
+        id: stack.id,
+        qty: stack.qty,
+        equipped,
+        available,
+        categoryKey: category.key,
+        categoryLabel: category.label,
+        type: category.type,
+        entry: contentEntry,
+        name,
+        price: Math.max(0, Math.trunc(Number(contentEntry?.price ?? 0) || 0)),
+        description: contentEntry?.description ?? contentEntry?.notes ?? ""
+      });
+    }
+  }
+
+  return entries;
+}
+
+function getInventoryIdsForCategory(inventory, key) {
+  if (!inventory || typeof inventory !== "object") return [];
+  if (key === "mechItems") {
+    const allItems = Array.isArray(inventory.items) ? inventory.items : [];
+    return allItems.filter((id) => isInventoryItemFromMechCatalog(inventory.__state, id));
+  }
+  if (key === "items") {
+    const allItems = Array.isArray(inventory.items) ? inventory.items : [];
+    return allItems.filter((id) => !isInventoryItemFromMechCatalog(inventory.__state, id));
+  }
+  const values = inventory[key];
+  return Array.isArray(values) ? values : [];
+}
+
+function isInventoryItemFromMechCatalog(state, id) {
+  const clean = String(id ?? "").trim();
+  if (!clean) return false;
+  return (Array.isArray(state?.content?.mechItems) ? state.content.mechItems : []).some((entry) => {
+    const ids = [entry?.id, ...(Array.isArray(entry?.aliases) ? entry.aliases : []), ...(Array.isArray(entry?.legacyIds) ? entry.legacyIds : [])]
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean);
+    return ids.includes(clean);
+  });
+}
+
+function renderInventoryTab(state) {
+  const menu = normalizeGameMenuState(state);
+  const entries = getInventoryDisplayEntries(state);
+  menu.selectedInventoryIndex = clampIndex(menu.selectedInventoryIndex, entries.length);
+  const selected = entries[menu.selectedInventoryIndex] ?? entries[0] ?? null;
+  const credits = Math.max(0, Math.trunc(Number(state?.campaign?.inventory?.currency ?? 0) || 0));
 
   return `
-    <div class="terminal-screen terminal-screen--inventory">
-      <section class="terminal-panel terminal-panel--status">
-        <div class="terminal-panel-title">Credits</div>
-        <div class="terminal-big-value">${escapeHtml(credits)}</div>
+    <div class="terminal-screen terminal-screen--inventory terminal-screen--ship-storage">
+      <section class="terminal-panel terminal-panel--storage-list" aria-label="Ship storage">
+        <div class="terminal-panel-title">
+          <span>Ship Storage</span>
+          <b>CR ${escapeHtml(credits)}</b>
+        </div>
+        <div class="inventory-storage-grid">
+          ${INVENTORY_CATEGORIES.map((category) => renderInventoryCategoryPanel(state, category, entries, menu.selectedInventoryIndex)).join("")}
+        </div>
       </section>
-      <section class="terminal-panel">
-        <div class="terminal-panel-title">Weapons</div>
-        ${renderCatalogRows(state, weapons, "weapon", "No stored weapons.")}
-      </section>
-      <section class="terminal-panel">
-        <div class="terminal-panel-title">Armor</div>
-        ${renderCatalogRows(state, armor, "armor", "No armor.")}
-      </section>
-      <section class="terminal-panel">
-        <div class="terminal-panel-title">Accessories</div>
-        ${renderCatalogRows(state, accessories, "accessory", "No accessories.")}
-      </section>
-      <section class="terminal-panel">
-        <div class="terminal-panel-title">Telum Weapons</div>
-        ${renderCatalogRows(state, mechWeapons, "mechWeapon", "No Telum weapons.")}
-      </section>
-      <section class="terminal-panel">
-        <div class="terminal-panel-title">Telum Gear</div>
-        ${renderCatalogRows(state, mechGear, "mechGear", "No Telum gear.")}
-      </section>
-      <section class="terminal-panel terminal-panel--wide">
-        <div class="terminal-panel-title">Items</div>
-        ${renderCatalogRows(state, items, "item", "No items.")}
+      <section class="terminal-panel terminal-panel--inventory-readout" aria-label="Selected item readout">
+        ${renderInventoryReadout(state, selected, credits)}
       </section>
     </div>
   `;
+}
+
+function renderInventoryCategoryPanel(state, category, entries, selectedIndex) {
+  const categoryEntries = entries.filter((entry) => entry.categoryKey === category.key);
+  return `
+    <div class="inventory-category-panel">
+      <div class="inventory-category-title">${escapeHtml(category.label)}</div>
+      <div class="terminal-row-list terminal-row-list--inventory">
+        ${categoryEntries.length
+          ? categoryEntries.map((entry) => renderInventoryRow(entry, selectedIndex)).join("")
+          : `<div class="terminal-empty terminal-empty--tight">Empty</div>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderInventoryRow(entry, selectedIndex) {
+  const selected = entry.index === selectedIndex;
+  const qtyText = `STO ${entry.available}/${entry.qty}${entry.equipped ? ` EQ ${entry.equipped}` : ""}`;
+  return `
+    <button
+      type="button"
+      class="terminal-row terminal-row--inventory ${selected ? "is-cursor is-selected" : ""}"
+      data-game-menu-action="select-inventory-item"
+      data-inventory-index="${escapeHtml(entry.index)}"
+    >
+      <span>${escapeHtml(entry.name)}</span>
+      <b>${escapeHtml(qtyText)}</b>
+    </button>
+  `;
+}
+
+function renderInventoryReadout(state, entry, credits) {
+  if (!entry) {
+    return `
+      <div class="inventory-readout">
+        <div class="inventory-readout-title">
+          <span>Storage Readout</span>
+          <b>CR ${escapeHtml(credits)}</b>
+        </div>
+        <div class="inventory-readout-empty">No ship storage entries.</div>
+      </div>
+    `;
+  }
+
+  const detailRows = getInventoryReadoutRows(entry.entry, entry.type);
+  return `
+    <div class="inventory-readout">
+      <div class="inventory-readout-title">
+        <span>${escapeHtml(entry.name)}</span>
+        <b>${escapeHtml(entry.categoryLabel)} · CR ${escapeHtml(credits)}</b>
+      </div>
+      <div class="inventory-readout-strip">
+        <span>STO ${escapeHtml(entry.available)}/${escapeHtml(entry.qty)}</span>
+        ${entry.equipped ? `<span>EQ ${escapeHtml(entry.equipped)}</span>` : ""}
+        ${entry.price ? `<span>VAL ${escapeHtml(entry.price)}</span>` : ""}
+      </div>
+      <div class="inventory-readout-grid">
+        ${detailRows.map((row) => `
+          <div class="inventory-readout-row">
+            <span>${escapeHtml(row.label)}</span>
+            <b>${escapeHtml(row.value)}</b>
+          </div>
+        `).join("")}
+      </div>
+      ${entry.description ? `<div class="inventory-readout-note">${escapeHtml(entry.description)}</div>` : ""}
+    </div>
+  `;
+}
+
+function getInventoryReadoutRows(entry, type) {
+  if (!entry) return [{ label: "Status", value: "Missing item data" }];
+
+  const rows = [];
+  if (type === "weapon" || type === "mechWeapon") {
+    if (Number.isFinite(Number(entry.damage))) rows.push({ label: "Damage", value: String(entry.damage) });
+    const range = entry.range && typeof entry.range === "object" ? `${entry.range.min ?? 0}-${entry.range.max ?? 0}` : "";
+    if (range) rows.push({ label: "Range", value: range });
+    if (entry.fireArc || entry.arc) rows.push({ label: "Arc", value: titleCase(entry.fireArc ?? entry.arc) });
+    if (entry.type) rows.push({ label: "Type", value: titleCase(entry.type) });
+  } else if (type === "item") {
+    const detail = renderItemDetail(entry);
+    if (detail) rows.push({ label: "Effect", value: detail });
+    if (entry.charges) rows.push({ label: "Charges", value: String(entry.charges) });
+  } else {
+    const modifiers = renderModifierText(entry.modifiers);
+    if (modifiers) rows.push({ label: "Modifiers", value: modifiers });
+    if (entry.slot) rows.push({ label: "Slot", value: titleCase(entry.slot) });
+  }
+
+  const abilityIds = Array.isArray(entry.grantsAbilities) ? entry.grantsAbilities : [];
+  if (abilityIds.length) rows.push({ label: "Grants", value: abilityIds.join(", ") });
+  if (!rows.length) rows.push({ label: "Info", value: entry.description ?? "Stored equipment" });
+  return rows;
 }
 
 
@@ -2107,6 +2259,19 @@ function confirmTelumLoadoutSelection(state) {
   const option = options[index];
   if (!option || option.disabled) return { ok: false, reason: "invalid_equipment" };
   return setMechLoadoutChoice(state, mechId, slot, option.id ?? "");
+}
+
+function moveInventorySelection(state, delta) {
+  const menu = normalizeGameMenuState(state);
+  const step = Math.sign(delta || 0);
+  if (!step) return false;
+  const entries = getInventoryDisplayEntries(state);
+  if (!entries.length) {
+    menu.selectedInventoryIndex = 0;
+    return false;
+  }
+  menu.selectedInventoryIndex = (clampIndex(menu.selectedInventoryIndex, entries.length) + step + entries.length) % entries.length;
+  return true;
 }
 
 function moveShopSelection(state, delta) {

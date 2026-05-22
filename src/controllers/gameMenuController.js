@@ -9,6 +9,7 @@ import {
   selectGameMenuLoadoutOption,
   selectGameMenuLoadoutSlot,
   selectGameMenuMech,
+  selectGameMenuInventoryItem,
   selectGameMenuMissionBoardIndex,
   selectGameMenuPilot,
   selectGameMenuShopCategory,
@@ -181,6 +182,12 @@ export function createGameMenuController({
       selectGameMenuTelumLoadoutOption(state, button.dataset.loadoutOptionIndex);
       const result = setMechLoadoutChoice(state, button.dataset.mechId, button.dataset.loadoutSlot, button.dataset.equipmentId);
       if (result?.ok) save();
+      render?.();
+      return;
+    }
+
+    if (action === "select-inventory-item") {
+      selectGameMenuInventoryItem(state, button.dataset.inventoryIndex);
       render?.();
       return;
     }
